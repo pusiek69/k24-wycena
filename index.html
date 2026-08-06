@@ -27,112 +27,143 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "HomeAndConstructionBusiness",
-    "@id": "https://kam24h.pl/#firma",
-    "name": "Kamieniarstwo 24h",
-    "legalName": "Aaron sp. z o.o.",
-    "vatID": "PL8672241748",
-    "taxID": "8672241748",
-    "description": "Blaty kuchenne i łazienkowe oraz okładziny ścienne z konglomeratu kwarcowego, spieku i kamienia naturalnego. Własny zakład w Tarnobrzegu, pomiar Prolinerem, obróbka i montaż.",
-    "url": "https://kam24h.pl/",
-    "telephone": "+48796991128",
-    "email": "kamieniarstwo24h@gmail.com",
-    "image": "https://kam24h.pl/og-k24h.png",
-    "logo": "https://kam24h.pl/logo-k24h.png",
-    "priceRange": "$$",
-    "currenciesAccepted": "PLN",
-    "openingHoursSpecification": [
+    "@graph": [
       {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday"
+        "@type": "HomeAndConstructionBusiness",
+        "@id": "https://kam24h.pl/#firma",
+        "name": "Kamieniarstwo 24h",
+        "legalName": "Aaron sp. z o.o.",
+        "vatID": "PL8672241748",
+        "taxID": "8672241748",
+        "description": "Blaty kuchenne i łazienkowe oraz okładziny ścienne z konglomeratu kwarcowego, spieku i kamienia naturalnego. Własny zakład w Tarnobrzegu, pomiar Prolinerem, obróbka i montaż.",
+        "url": "https://kam24h.pl/",
+        "telephone": "+48796991128",
+        "email": "kamieniarstwo24h@gmail.com",
+        "image": "https://kam24h.pl/og-k24h.png",
+        "logo": "https://kam24h.pl/logo-k24h.png",
+        "priceRange": "$$",
+        "currenciesAccepted": "PLN",
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ],
+            "opens": "08:00",
+            "closes": "18:00"
+          }
         ],
-        "opens": "08:00",
-        "closes": "18:00"
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ul. Szpitalna 8",
+          "addressLocality": "Tarnobrzeg",
+          "postalCode": "39-400",
+          "addressRegion": "podkarpackie",
+          "addressCountry": "PL"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 50.5729,
+          "longitude": 21.679
+        },
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": "Tarnobrzeg"
+          },
+          {
+            "@type": "City",
+            "name": "Sandomierz"
+          },
+          {
+            "@type": "City",
+            "name": "Stalowa Wola"
+          },
+          {
+            "@type": "City",
+            "name": "Mielec"
+          },
+          {
+            "@type": "City",
+            "name": "Rzeszów"
+          },
+          {
+            "@type": "City",
+            "name": "Kielce"
+          },
+          {
+            "@type": "City",
+            "name": "Nisko"
+          },
+          {
+            "@type": "City",
+            "name": "Nowa Dęba"
+          },
+          {
+            "@type": "City",
+            "name": "Dębica"
+          },
+          {
+            "@type": "City",
+            "name": "Opatów"
+          },
+          {
+            "@type": "City",
+            "name": "Połaniec"
+          },
+          {
+            "@type": "City",
+            "name": "Baranów Sandomierski"
+          }
+        ],
+        "knowsAbout": [
+          "blaty kuchenne",
+          "blaty łazienkowe",
+          "okładziny ścienne z kamienia",
+          "konglomerat kwarcowy",
+          "spiek kwarcowy",
+          "granit",
+          "marmur",
+          "kwarcyt",
+          "trawertyn",
+          "dolomit",
+          "nagrobki"
+        ],
+        "sameAs": [
+          "https://k24h.pl"
+        ],
+        "founder": {
+          "@id": "https://kam24h.pl/#dawid"
+        },
+        "employee": {
+          "@id": "https://kam24h.pl/#dawid"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://kam24h.pl/#dawid",
+        "name": "Dawid Ząbek",
+        "jobTitle": "Właściciel, czeladnik kamieniarstwa",
+        "description": "Właściciel Kamieniarstwa 24h w Tarnobrzegu od 2014 roku. Czeladnik kamieniarstwa, specjalista projektowania komputerowego elementów kamiennych, obróbki CNC i pomiarów przestrzennych.",
+        "image": "https://kam24h.pl/dawid-zabek.webp",
+        "telephone": "+48796991128",
+        "email": "kamieniarstwo24h@gmail.com",
+        "url": "https://kam24h.pl/o-mnie",
+        "worksFor": {
+          "@id": "https://kam24h.pl/#firma"
+        },
+        "knowsAbout": [
+          "projektowanie komputerowe elementów kamiennych",
+          "obróbka CNC kamienia",
+          "pomiary przestrzenne",
+          "blaty kuchenne",
+          "okładziny ścienne z kamienia"
+        ]
       }
-    ],
-    "address": {
-      "@type": "PostalAddress",
-      "streetAddress": "ul. Szpitalna 8",
-      "addressLocality": "Tarnobrzeg",
-      "postalCode": "39-400",
-      "addressRegion": "podkarpackie",
-      "addressCountry": "PL"
-    },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": 50.5729,
-      "longitude": 21.679
-    },
-    "areaServed": [
-      {
-        "@type": "City",
-        "name": "Tarnobrzeg"
-      },
-      {
-        "@type": "City",
-        "name": "Sandomierz"
-      },
-      {
-        "@type": "City",
-        "name": "Stalowa Wola"
-      },
-      {
-        "@type": "City",
-        "name": "Mielec"
-      },
-      {
-        "@type": "City",
-        "name": "Rzeszów"
-      },
-      {
-        "@type": "City",
-        "name": "Kielce"
-      },
-      {
-        "@type": "City",
-        "name": "Nisko"
-      },
-      {
-        "@type": "City",
-        "name": "Nowa Dęba"
-      },
-      {
-        "@type": "City",
-        "name": "Dębica"
-      },
-      {
-        "@type": "City",
-        "name": "Opatów"
-      },
-      {
-        "@type": "City",
-        "name": "Połaniec"
-      },
-      {
-        "@type": "City",
-        "name": "Baranów Sandomierski"
-      }
-    ],
-    "knowsAbout": [
-      "blaty kuchenne",
-      "blaty łazienkowe",
-      "okładziny ścienne z kamienia",
-      "konglomerat kwarcowy",
-      "spiek kwarcowy",
-      "granit",
-      "marmur",
-      "kwarcyt",
-      "trawertyn",
-      "dolomit",
-      "nagrobki"
-    ],
-    "sameAs": [
-      "https://k24h.pl"
     ]
   }
   </script>
@@ -166,9 +197,9 @@
       +100&nbsp;km, realizacje w całej Polsce.
     </p>
     <div class="meta">
-      <span><i></i>Bezpłatny pomiar Prolinerem</span>
+      <span><i></i>Pomiar cyfrowy Prodim Proliner</span>
+      <span><i></i>Piła CNC GMM Extra 480</span>
       <span><i></i>Własny zakład w Tarnobrzegu</span>
-      <span><i></i>Wycena w 2 minuty</span>
     </div>
   </header>
 
@@ -204,6 +235,34 @@
       Więcej: <a href="/blaty-kuchenne-tarnobrzeg">jak pracujemy i ile to kosztuje</a> ·
       <a href="/czesto-zadawane-pytania">pytania i odpowiedzi</a>.
     </p>
+  </section>
+
+  <section class="wrap tekst opis-firmy">
+    <div class="owner">
+      <img class="owner-foto" src="/dawid-zabek-maly.webp" width="440" height="587"
+           alt="Dawid Ząbek, właściciel Kamieniarstwa 24h, przy blacie kamiennym"
+           loading="lazy" decoding="async" />
+      <div>
+        <h2>Kto za tym stoi</h2>
+        <p>
+          Nazywam się <strong>Dawid Ząbek</strong> i od 2014 roku prowadzę
+          Kamieniarstwo 24h. Jestem czeladnikiem kamieniarstwa i specjalizuję się
+          w projektowaniu komputerowym elementów kamiennych — blat powstaje
+          najpierw jako precyzyjny model, a dopiero potem jako płyta.
+        </p>
+        <p>
+          Pracujemy na pile mostowej <strong>CNC GMM Extra 480</strong> z 2025 roku
+          i mierzymy <strong>Prodim Prolinerem</strong>. Dzięki temu blat pasuje
+          do wnętrza bez szpar zamaskowanych silikonem — także tam, gdzie ściany
+          dawno zapomniały o kącie prostym.
+        </p>
+        <p class="drobne">
+          Asystent w kalkulatorze powyżej prowadzę osobiście — zna nasze materiały,
+          ceny i sposób pracy, a każde zgłoszenie trafia prosto do mnie.
+          <a href="/o-mnie">Więcej o mnie i o tym, jak pracujemy →</a>
+        </p>
+      </div>
+    </div>
   </section>
 
   <footer class="wrap">

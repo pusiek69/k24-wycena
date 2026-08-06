@@ -172,6 +172,12 @@
   force = true
 
 [[redirects]]
+  from = "/o-mnie.html"
+  to = "/o-mnie"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/czesto-zadawane-pytania.html"
   to = "/czesto-zadawane-pytania"
   status = 301

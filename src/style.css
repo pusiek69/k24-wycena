@@ -734,3 +734,73 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .foot-kol a { color: var(--muted); }
 .foot-kol a:hover { color: var(--vein); text-decoration: underline; }
 .foot-tu { color: var(--dim); }
+
+/* ═══════════════ WIZYTÓWKA NAD ROZMOWĄ ═══════════════════════════════════
+   Dawid jest twarzą tej strony — stąd zdjęcie i nazwisko. Jednocześnie
+   plakietka „asystent AI" mówi wprost, kto pisze. Klient ma wiedzieć,
+   z czym rozmawia, i jednocześnie widzieć, kto za tym stoi. */
+
+.wizytowka {
+  display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
+  background: linear-gradient(135deg, rgba(201, 168, 106, .10), rgba(201, 168, 106, .03));
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px; margin-bottom: 20px;
+}
+.wiz-foto {
+  flex: none; width: 68px; height: 68px; border-radius: 50%;
+  object-fit: cover; border: 2px solid var(--vein);
+}
+.wiz-tekst { flex: 1 1 260px; min-width: 0; }
+.wiz-imie {
+  font-size: 19px; line-height: 1.2; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+}
+.wiz-tag {
+  font-family: var(--sans); font-size: 9px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--ink); background: var(--vein); border-radius: 999px; padding: 3px 9px; font-weight: 700;
+}
+.wiz-rola {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--dim); margin-top: 5px;
+}
+.wiz-nota { color: var(--muted); font-size: 14px; line-height: 1.5; margin-top: 9px; max-width: 62ch; }
+.wiz-nota a { color: var(--vein); text-decoration: none; white-space: nowrap; }
+.wiz-nota a:hover { text-decoration: underline; }
+.wiz-tel {
+  flex: 1 1 100%; font-family: var(--sans); font-size: 13px; color: var(--vein);
+  text-decoration: none; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px;
+}
+.wiz-tel:hover { text-decoration: underline; }
+
+/* Awatar przy każdej wiadomości konsultanta — buduje wrażenie rozmowy
+   z konkretną osobą, a nie z bezimiennym oknem czatu. */
+.wiad-konsultant .wiad-kto { display: flex; align-items: center; gap: 8px; }
+.wiad-awatar { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; }
+
+@media (max-width: 480px) {
+  .wiz-foto { width: 54px; height: 54px; }
+  .wiz-imie { font-size: 17px; }
+}
+
+/* ═══════════════ SEKCJA O WŁAŚCICIELU ═══════════════════════════════════ */
+.owner {
+  display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 26px;
+  align-items: start; margin: 26px 0;
+}
+.owner-foto { width: 100%; height: auto; border-radius: var(--radius); display: block; }
+.owner h2 { margin-top: 0; }
+.owner-cytat {
+  border-left: 2px solid var(--vein); padding-left: 16px; margin: 16px 0;
+  font-style: italic; color: var(--cream); font-size: 17px; line-height: 1.5;
+}
+.maszyny { display: grid; gap: 12px; margin: 18px 0; }
+.maszyna {
+  background: var(--stone); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.maszyna b { display: block; color: var(--cream); font-weight: 400; font-size: 17px; }
+.maszyna span { color: var(--muted); font-size: 14px; line-height: 1.5; display: block; margin-top: 4px; }
+
+@media (max-width: 620px) {
+  .owner { grid-template-columns: 1fr; gap: 18px; }
+  .owner-foto { max-width: 240px; }
+}

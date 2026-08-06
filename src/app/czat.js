@@ -30,8 +30,8 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 const TEL = '796 991 128';
 
 const POWITANIE =
-  'Dzień dobry. Policzę orientacyjny koszt blatu — zajmie to chwilę. ' +
-  'Z czego ma być blat?';
+  'Dzień dobry, z tej strony asystent Dawida. Policzę orientacyjny koszt blatu — ' +
+  'zajmie to chwilę i nie wymaga dzwonienia. Z czego ma być blat?';
 
 /** Nazwy kolekcji z promptu → pliki firm w aplikacji. */
 const MATERIALY = {
@@ -86,7 +86,7 @@ export function uruchomCzat(root, akcje = {}) {
     pole.style.height = Math.min(pole.scrollHeight, 140) + 'px';
   });
 
-  root.replaceChildren(rozmowa, formularz);
+  root.replaceChildren(wizytowka(), rozmowa, formularz);
   dodajWiadomosc('konsultant', POWITANIE);
   historia.push({ rola: 'assistant', tresc: POWITANIE });
   odswiezPomocnika();
@@ -285,15 +285,78 @@ export function uruchomCzat(root, akcje = {}) {
   /* -------------------------------------------------------------- widok */
 
   function dodajWiadomosc(kto, tresc) {
+    const konsultant = kto !== 'klient';
     rozmowa.append(
       h(
         'div',
-        { class: 'wiad ' + (kto === 'klient' ? 'wiad-klient' : 'wiad-konsultant') },
-        h('div', { class: 'wiad-kto' }, kto === 'klient' ? 'Ty' : 'Konsultant'),
+        { class: 'wiad ' + (konsultant ? 'wiad-konsultant' : 'wiad-klient') },
+        h(
+          'div',
+          { class: 'wiad-kto' },
+          konsultant
+            ? [
+                h('img', {
+                  class: 'wiad-awatar',
+                  src: '/dawid-awatar-maly.webp',
+                  width: '40',
+                  height: '40',
+                  alt: '',
+                  loading: 'lazy',
+                }),
+                h('span', {}, 'Asystent Dawida'),
+              ]
+            : 'Ty'
+        ),
         h('div', { class: 'wiad-tresc' }, akapity(tresc))
       )
     );
     przewin();
+  }
+
+  /**
+   * Wizytówka nad rozmową.
+   *
+   * Dawid jest twarzą tej strony i to jego zakład stoi za każdą wyceną —
+   * dlatego zdjęcie, imię i nazwisko. Jednocześnie mówimy wprost, że pisze
+   * asystent, a nie człowiek: tego wymaga uczciwość wobec klienta
+   * (i przepisy o przejrzystości systemów AI). Jedno drugiego nie wyklucza.
+   */
+  function wizytowka() {
+    return h(
+      'div',
+      { class: 'wizytowka' },
+      h('img', {
+        class: 'wiz-foto',
+        src: '/dawid-awatar.webp',
+        width: '96',
+        height: '96',
+        alt: 'Dawid Ząbek — właściciel Kamieniarstwa 24h',
+        fetchpriority: 'high',
+      }),
+      h(
+        'div',
+        { class: 'wiz-tekst' },
+        h(
+          'div',
+          { class: 'wiz-imie' },
+          'Dawid Ząbek',
+          h('span', { class: 'wiz-tag' }, 'asystent AI')
+        ),
+        h('div', { class: 'wiz-rola' }, 'właściciel · Kamieniarstwo 24h · czeladnik kamieniarstwa'),
+        h(
+          'p',
+          { class: 'wiz-nota' },
+          'Rozmawiasz z asystentem, którego prowadzę osobiście — zna nasze materiały, ' +
+            'ceny i sposób pracy. Każde zgłoszenie trafia prosto do mnie. ',
+          h('a', { href: '/o-mnie' }, 'Poznaj mnie →')
+        )
+      ),
+      h(
+        'a',
+        { class: 'wiz-tel', href: 'tel:+48796991128', 'data-miejsce': 'wizytowka' },
+        '☎ Wolisz porozmawiać? ' + TEL
+      )
+    );
   }
 
   function dodajBlad(status) {

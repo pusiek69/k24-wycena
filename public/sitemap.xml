@@ -151,6 +151,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://kam24h.pl/o-mnie</loc>
+    <lastmod>2026-08-06</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://kam24h.pl/czesto-zadawane-pytania</loc>
     <lastmod>2026-08-06</lastmod>
     <changefreq>monthly</changefreq>
