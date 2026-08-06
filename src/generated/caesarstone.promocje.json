@@ -1,0 +1,30 @@
+{
+  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "kampanie": [
+    {
+      "nazwa": "Wiosna–Lato 2026",
+      "od": "2026-04-01",
+      "do": "2026-07-31",
+      "ceny": {
+        "Raven||20": 580,
+        "Pietra Grey||20": 640,
+        "White Attica||20": 640,
+        "White Attica MAT||20": 640,
+        "Noble Grey||20": 580
+      }
+    },
+    {
+      "nazwa": "Zima 2026",
+      "od": "2026-01-02",
+      "do": "2026-03-31",
+      "ceny": {
+        "Raven||20": 560,
+        "Raven MAT||20": 584,
+        "Pietra Grey||20": 574,
+        "White Attica||20": 620,
+        "White Attica MAT||20": 647,
+        "Noble Grey||20": 574
+      }
+    }
+  ]
+}

@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dodaj cennik — Kamieniarstwo 24h</title>
+<style>
+  :root{--ink:#13110f;--slab:#1b1815;--stone:#272320;--cream:#ece6da;--vein:#c9a86a;
+        --muted:#b6ad9d;--dim:#8c8474;--line:rgba(201,168,106,.2);--line-hi:rgba(201,168,106,.45);
+        --ok:#7a9d66;--warn:#d0a24a;--sans:"Helvetica Neue",Arial,sans-serif;--serif:Georgia,serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--cream);font-family:var(--serif);line-height:1.55;padding:26px 20px 60px}
+  .wrap{max-width:900px;margin:0 auto}
+  h1{font-weight:400;font-size:30px;margin-bottom:4px}
+  h1 em{font-style:italic;color:var(--vein)}
+  .sub{color:var(--muted);font-size:15px;margin-bottom:8px}
+  .ostrzezenie{background:rgba(208,162,74,.1);border:1px solid rgba(208,162,74,.35);border-radius:4px;
+        padding:11px 14px;color:#e2cfa6;font-size:13px;margin:16px 0 26px}
+  h2{font-family:var(--sans);font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+     color:var(--vein);margin:26px 0 12px;display:flex;align-items:center;gap:10px}
+  h2::after{content:"";flex:1;height:1px;background:var(--line)}
+  .karta{background:var(--slab);border:1px solid var(--line);border-radius:4px;padding:18px}
+  label{display:block;font-family:var(--sans);font-size:11px;letter-spacing:.1em;
+        text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+  input,select,textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:4px;
+        color:var(--cream);font-family:var(--sans);font-size:15px;padding:10px 12px}
+  textarea{font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.5;min-height:190px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--vein)}
+  .siatka{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .pole{margin-bottom:14px}
+  .pomoc{color:var(--dim);font-size:12px;font-family:var(--sans);margin-top:5px}
+  button{background:var(--vein);border:none;border-radius:4px;color:#1a1611;font-family:var(--sans);
+         font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+         padding:13px 22px;cursor:pointer}
+  button:hover{background:#d9bd84}
+  button[disabled]{opacity:.45;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line-hi);color:var(--muted)}
+  button.ghost:hover{color:var(--vein);background:transparent}
+  .rzad{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:16px}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px}
+  th{text-align:left;font-family:var(--sans);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+     color:var(--dim);font-weight:400;padding:8px 0;border-bottom:1px solid var(--line)}
+  td{padding:7px 0;border-bottom:1px solid rgba(201,168,106,.08)}
+  td.kw{text-align:right;font-family:var(--sans);white-space:nowrap}
+  .znacznik{display:inline-block;padding:2px 8px;border-radius:999px;font-family:var(--sans);
+            font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  .znacznik.nowa{background:var(--vein);color:var(--ink)}
+  .znacznik.jest{border:1px solid var(--line-hi);color:var(--dim)}
+  .komunikat{margin-top:16px;border-radius:4px;padding:13px 15px;font-size:14px;display:none}
+  .komunikat.ok{background:rgba(122,157,102,.12);border:1px solid rgba(122,157,102,.4);color:#cfe0c4;display:block}
+  .komunikat.zle{background:rgba(190,90,70,.12);border:1px solid rgba(190,90,70,.45);color:#e8b9ae;display:block}
+  .schowaj{display:none}
+  .lista-firm{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}
+  .firma{background:var(--stone);border:1px solid var(--line);border-radius:4px;padding:11px 13px;
+         cursor:pointer;text-align:left;color:var(--cream);font-family:var(--serif);font-size:15px}
+  .firma:hover{border-color:var(--vein)}
+  .firma small{display:block;font-family:var(--sans);font-size:11px;color:var(--dim);margin-top:3px}
+  .przelacznik{display:flex;gap:8px;margin-bottom:14px}
+  .przelacznik button{background:transparent;border:1px solid var(--line);color:var(--muted);
+                      font-size:12px;padding:9px 15px}
+  .przelacznik button.sel{border-color:var(--vein);color:var(--vein);background:rgba(201,168,106,.08)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Dodaj <em>cennik</em></h1>
+  <p class="sub">Wklej tabelę z cennika dostawcy, podaj rabat i marżę — resztę policzę.</p>
+
+  <div class="ostrzezenie">
+    <b>To narzędzie działa tylko na tym komputerze.</b> Rabaty i ceny zakupowe zapisują się
+    lokalnie i nigdy nie trafiają na stronę — klient widzi wyłącznie cenę końcową.
+  </div>
+
+  <h2>Firmy, które już mamy</h2>
+  <div class="karta">
+    <div class="lista-firm" id="firmy">Wczytuję…</div>
+    <p class="pomoc" style="margin-top:12px">Kliknij firmę, żeby zaktualizować jej cennik, albo wypełnij formularz niżej dla nowej.</p>
+  </div>
+
+  <h2>1 · Która firma</h2>
+  <div class="karta">
+    <div class="siatka">
+      <div class="pole">
+        <label for="nazwa">Nazwa firmy *</label>
+        <input id="nazwa" placeholder="np. Silestone">
+        <p class="pomoc">Tak zobaczy ją klient.</p>
+      </div>
+      <div class="pole">
+        <label for="typ">Rodzaj materiału</label>
+        <select id="typ">
+          <option>konglomerat kwarcowy</option>
+          <option>spiek kwarcowy / ceramika</option>
+          <option>kamień naturalny</option>
+        </select>
+      </div>
+    </div>
+    <div class="nowa-firma">
+      <div class="siatka">
+        <div class="pole">
+          <label for="krotki">Jednym zdaniem — czym się wyróżnia</label>
+          <input id="krotki" placeholder="np. Hiszpański kwarc, bardzo równa jakość płyt.">
+        </div>
+        <div class="pole">
+          <label for="link">Link do dekorów dla klienta</label>
+          <input id="link" placeholder="https://…">
+        </div>
+      </div>
+      <div class="siatka">
+        <div class="pole">
+          <label for="plytaW">Szerokość płyty (cm)</label>
+          <input id="plytaW" type="number" value="320">
+        </div>
+        <div class="pole">
+          <label for="plytaH">Wysokość płyty (cm)</label>
+          <input id="plytaH" type="number" value="160">
+        </div>
+        <div class="pole">
+          <label for="polowki">Czy można kupić pół płyty?</label>
+          <select id="polowki">
+            <option value="tak">tak — można kupić połówkę</option>
+            <option value="nie">nie — tylko całe płyty</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>2 · Cennik</h2>
+  <div class="karta">
+    <div class="pole">
+      <label for="grubosci">Grubości w kolejnych kolumnach cen *</label>
+      <input id="grubosci" value="20, 30" placeholder="np. 20, 30">
+      <p class="pomoc">Po przecinku, w tej samej kolejności co ceny w wierszu. Jedna cena w wierszu = jedna grubość.</p>
+    </div>
+    <div class="pole">
+      <label for="tekst">Wklej cennik (nazwa dekoru + ceny netto za m²) *</label>
+      <textarea id="tekst" placeholder="Dijon&#9;685&#9;973
+Blanche&#9;791&#9;1122
+White Quartz;635;831"></textarea>
+      <p class="pomoc">Kopiuj wprost z Excela albo z PDF-a. Rozdzielenie tabulatorem, średnikiem lub kilkoma spacjami.</p>
+    </div>
+    <div class="rzad">
+      <button class="ghost" id="podglad">Sprawdź, co rozpoznałem</button>
+      <span class="pomoc" id="licznik"></span>
+    </div>
+    <div id="tabela"></div>
+  </div>
+
+  <h2>3 · Rabat i marża</h2>
+  <div class="karta">
+    <div class="przelacznik">
+      <button class="sel" data-tryb="przelicz">Ceny katalogowe — przelicz</button>
+      <button data-tryb="gotowe">Ceny są już końcowe</button>
+    </div>
+    <div class="siatka" id="poleRabat">
+      <div class="pole">
+        <label for="rabat">Rabat zakupowy (%)</label>
+        <input id="rabat" type="number" min="0" max="99" step="0.5" placeholder="np. 30">
+        <p class="pomoc">Ile schodzi z cennika dostawcy.</p>
+      </div>
+      <div class="pole">
+        <label for="marza">Marża (%)</label>
+        <input id="marza" type="number" min="0" step="0.5" placeholder="np. 25">
+        <p class="pomoc">Ile doliczamy do ceny zakupu.</p>
+      </div>
+    </div>
+    <div class="siatka">
+      <div class="pole">
+        <label for="zrodlo">Skąd ten cennik (dla pamięci)</label>
+        <input id="zrodlo" placeholder="np. Cennik_2026.pdf, mail z 12.08">
+      </div>
+      <div class="pole">
+        <label for="odkiedy">Obowiązuje od</label>
+        <input id="odkiedy" type="date">
+      </div>
+    </div>
+    <div class="rzad">
+      <button id="zapisz">Zapisz cennik</button>
+      <span class="pomoc" id="mnoznik"></span>
+    </div>
+    <div class="komunikat" id="komunikat"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let tryb = 'przelicz';
+
+document.querySelectorAll('.przelacznik button').forEach((b) => {
+  b.onclick = () => {
+    tryb = b.dataset.tryb;
+    document.querySelectorAll('.przelacznik button').forEach((x) => x.classList.toggle('sel', x === b));
+    $('poleRabat').classList.toggle('schowaj', tryb === 'gotowe');
+    policzMnoznik();
+  };
+});
+['rabat', 'marza'].forEach((id) => ($(id).oninput = policzMnoznik));
+$('odkiedy').value = new Date().toISOString().slice(0, 10);
+policzMnoznik();
+
+function policzMnoznik() {
+  if (tryb === 'gotowe') return ($('mnoznik').textContent = 'Ceny wpisane = ceny końcowe dla klienta.');
+  const m = (1 - Number($('rabat').value) / 100) * (1 + Number($('marza').value) / 100);
+  $('mnoznik').textContent = `Cena katalogowa × ${m.toFixed(3)} = cena dla klienta (netto).`;
+}
+
+function grubosci() {
+  return $('grubosci').value.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+}
+
+async function api(sciezka, dane) {
+  const odp = await fetch(sciezka, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(dane),
+  });
+  const wynik = await odp.json();
+  if (!odp.ok) throw new Error(wynik.blad || 'Nie udało się.');
+  return wynik;
+}
+
+$('podglad').onclick = async () => {
+  try {
+    const w = await api('/api/podglad', { tekst: $('tekst').value, grubosci: grubosci() });
+    $('licznik').textContent =
+      `Rozpoznane dekory: ${w.ile}` + (w.pominiete.length ? ` · pominięte linie: ${w.pominiete.length}` : '');
+    pokazTabele(w.katalog);
+  } catch (e) {
+    pokazKomunikat(e.message, false);
+  }
+};
+
+function pokazTabele(katalog) {
+  const gr = grubosci();
+  const wiersze = Object.entries(katalog).slice(0, 12);
+  const mnoznik = tryb === 'gotowe' ? 1 : (1 - Number($('rabat').value) / 100) * (1 + Number($('marza').value) / 100);
+
+  $('tabela').innerHTML = wiersze.length
+    ? `<table><thead><tr><th>Dekor</th>${gr
+        .map((g) => `<th style="text-align:right">${g} mm → klient</th>`)
+        .join('')}</tr></thead><tbody>${wiersze
+        .map(
+          ([nazwa, ceny]) =>
+            `<tr><td>${escapuj(nazwa)}</td>${gr
+              .map((g) =>
+                ceny[g]
+                  ? `<td class="kw">${Math.round(ceny[g] * mnoznik).toLocaleString('pl-PL')} zł netto</td>`
+                  : '<td class="kw" style="color:#6f6859">—</td>'
+              )
+              .join('')}</tr>`
+        )
+        .join('')}</tbody></table>${
+        Object.keys(katalog).length > 12
+          ? `<p class="pomoc">…i jeszcze ${Object.keys(katalog).length - 12} dekorów.</p>`
+          : ''
+      }`
+    : '<p class="pomoc">Nic nie rozpoznałem — sprawdź, czy w każdej linii jest nazwa i cena.</p>';
+}
+
+$('zapisz').onclick = async () => {
+  $('zapisz').disabled = true;
+  try {
+    const w = await api('/api/zapisz', {
+      nazwa: $('nazwa').value.trim(),
+      typ: $('typ').value,
+      krotki: $('krotki').value.trim(),
+      opis: $('krotki').value.trim(),
+      linkDekory: $('link').value.trim(),
+      plytaW: $('plytaW').value,
+      plytaH: $('plytaH').value,
+      polowki: $('polowki').value === 'tak',
+      grubosci: grubosci(),
+      tekst: $('tekst').value,
+      juzPrzeliczone: tryb === 'gotowe',
+      rabat: $('rabat').value,
+      marza: $('marza').value,
+      zrodlo: $('zrodlo').value.trim(),
+      obowiazujeOd: $('odkiedy').value,
+    });
+
+    const p = w.przykład;
+    pokazKomunikat(
+      `Zapisane. Dekorów: ${w.ile}. ${w.nowaFirma ? 'Utworzyłem też nowy plik firmy.' : 'Cennik zaktualizowany.'}` +
+        (p ? ` Przykład — ${escapuj(p.nazwa)}: ${p.koncowa} zł netto, czyli ${p.brutto} zł brutto za m².` : '') +
+        (w.pominiete.length ? ` Pominięte linie: ${w.pominiete.length}.` : '') +
+        ' Teraz wystarczy przebudować stronę (npm run build) i wgrać ją na Netlify.',
+      true
+    );
+    wczytajFirmy();
+  } catch (e) {
+    pokazKomunikat(e.message, false);
+  } finally {
+    $('zapisz').disabled = false;
+  }
+};
+
+function pokazKomunikat(tekst, dobrze) {
+  const k = $('komunikat');
+  k.className = 'komunikat ' + (dobrze ? 'ok' : 'zle');
+  k.textContent = tekst;
+  k.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function wczytajFirmy() {
+  const { firmy } = await (await fetch('/api/firmy')).json();
+  $('firmy').innerHTML = firmy.length
+    ? ''
+    : '<p class="pomoc">Jeszcze nie ma żadnego cennika.</p>';
+  firmy.forEach((f) => {
+    const b = document.createElement('button');
+    b.className = 'firma';
+    b.innerHTML =
+      `${escapuj(f.slug)} <small>${f.dekorow} dekorów · aktualizacja ${f.wygenerowano || '—'}` +
+      (f.zasady && f.zasady.rabat != null
+        ? ` · rabat ${Math.round(f.zasady.rabat * 100)}% + marża ${Math.round(f.zasady.marza * 100)}%`
+        : '') +
+      '</small>';
+    b.onclick = () => {
+      $('nazwa').value = f.slug;
+      if (f.zasady && f.zasady.rabat != null) {
+        $('rabat').value = Math.round(f.zasady.rabat * 1000) / 10;
+        $('marza').value = Math.round(f.zasady.marza * 1000) / 10;
+      }
+      $('tekst').focus();
+      pokazKomunikat(`Aktualizujesz cennik „${f.slug}". Wklej nową tabelę i zapisz — nadpisze poprzednią.`, true);
+    };
+    $('firmy').appendChild(b);
+  });
+}
+
+function escapuj(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+wczytajFirmy();
+</script>
+</body>
+</html>

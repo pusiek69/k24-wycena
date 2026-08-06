@@ -1,0 +1,30 @@
+{
+  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "kampanie": [
+    {
+      "nazwa": "Technistone luty–lipiec 2026",
+      "od": "2026-02-01",
+      "do": "2026-07-31",
+      "ceny": {
+        "Crystal Polar White||20": 520,
+        "Crystal Absolute White||20": 559,
+        "Crystal Diamond||20": 559,
+        "Noble Ivory White||20": 702,
+        "Noble Quartzite||20": 702,
+        "Noble Villa||20": 819,
+        "Noble Arco||20": 819,
+        "Badal Grey||20": 819,
+        "Duna Beige||20": 819,
+        "Elysian Gold||20": 819,
+        "Mistral White||20": 819,
+        "Taj Mahal Gold||20": 819,
+        "Ambiente Light||20": 1039,
+        "Bronze Coast||20": 1039,
+        "Calacatta Olympos||20": 1039,
+        "Crystal Calacatta Silva||20": 1039,
+        "Altamonte||20": 1039,
+        "Glencoe||20": 1039
+      }
+    }
+  ]
+}

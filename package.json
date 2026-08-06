@@ -1,0 +1,26 @@
+{
+  "name": "k24-wycena",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Kamieniarstwo 24h — kreator szybkiej wyceny blatu (statyczna aplikacja)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/sprawdz-bundle.mjs",
+    "sprawdz": "node scripts/sprawdz-bundle.mjs",
+    "preview": "vite preview --port 4173",
+    "cennik": "node scripts/build-katalog.mjs",
+    "cennik:sprawdz": "node scripts/build-katalog.mjs --sprawdz",
+    "podglad": "npm run build:podglad && node scripts/podglad-jednoplikowy.mjs",
+    "build:podglad": "vite build --config vite.podglad.config.js",
+    "worker": "node scripts/build-worker.mjs",
+    "checklist": "node scripts/checklist.mjs",
+    "cennik:dodaj": "node scripts/cennik-serwer.mjs"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

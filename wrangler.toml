@@ -1,0 +1,42 @@
+# Konfiguracja wdrożenia Cloudflare Workera.
+#
+# Dzięki temu plikowi aktualizacja konsultanta AI to dwie komendy,
+# bez klikania i wklejania 25 kB kodu w edytorze przeglądarki:
+#
+#   npm run worker      → generuje worker/worker.js z szablonu + cenników
+#   npx wrangler deploy → wysyła go do Cloudflare
+#
+# UWAGA: worker/worker.js jest GENEROWANY. Zmiany wprowadzaj
+# w worker/worker.template.js, nigdy bezpośrednio tutaj.
+#
+# UWAGA 2 (TOML): wszystkie ustawienia pojedyncze muszą stać PRZED
+# sekcjami w nawiasach kwadratowych. Klucz zapisany pod [sekcją]
+# należy do niej, nawet jeśli wygląda na osobny.
+
+name = "k24h"
+main = "worker/worker.js"
+compatibility_date = "2026-08-01"
+
+# Zostawiamy adres k24h.kamieniarstwo24h.workers.dev włączony —
+# strona odwołuje się właśnie do niego.
+workers_dev = true
+
+# Adresy podglądowe (osobny publiczny URL dla każdej wersji) są niepotrzebne,
+# a każda rozmowa z konsultantem kosztuje — nie chcemy drugiego wejścia.
+preview_urls = false
+
+# NAJWAŻNIEJSZE USTAWIENIE.
+# Bez niego `wrangler deploy` skasowałby zmienne ustawione w panelu
+# Cloudflare, których nie ma w tym pliku — czyli ALLOWED_ORIGIN.
+# Z `keep_vars` wdrożenie podmienia wyłącznie kod, a sekrety
+# (ANTHROPIC_API_KEY, RESEND_API_KEY, LEAD_EMAIL) i zmienne
+# z dashboardu zostają nietknięte.
+keep_vars = true
+
+# Logi w panelu Cloudflare (Workers → k24h → Logs). Były włączone,
+# więc zostawiamy — bez nich nie widać, dlaczego rozmowa się wywaliła.
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true

@@ -1,0 +1,18 @@
+{
+  "firma": "nazwa-pliku-bez-rozszerzenia",
+  "nazwa": "Nazwa firmy dla klienta",
+  "zrodlo": "Nazwa_pliku_cennika.pdf z Downloads/CENNIKI/<FIRMA>/",
+  "obowiazujeOd": "2026-01-01",
+  "jednostka": "netto za 1 m2 plyty",
+
+  "juzPrzeliczone": false,
+  "rabatZakupowy": 0.0,
+  "marza": 0.0,
+
+  "notatka": "Skad rabat (mail, rozmowa, data). Co jeszcze do potwierdzenia.",
+
+  "katalog": {
+    "Nazwa Dekoru": { "20": 1000, "30": 1400 },
+    "Inny Dekor": { "12": 800, "20": 950 }
+  }
+}

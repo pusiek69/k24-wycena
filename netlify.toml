@@ -1,0 +1,57 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Node 20 skończył wsparcie w kwietniu 2026, a Vite 7 wymaga 20.19+/22.12+.
+  # Trzymamy 22 (LTS) — jedna z możliwych przyczyn nieudanego builda odpada.
+  NODE_VERSION = "22"
+
+
+# Formularz „umów pomiar" wysyłany jest POST-em na „/" — Netlify Forms
+# przechwytuje go zanim zadziała reguła przepisania poniżej.
+# Powiadomienia na maila: panel Netlify → Forms → Form notifications.
+
+# Strona żyje na domenie głównej kam24h.pl. Wersja z „www" przekierowuje
+# na nią trwale (301), żeby Google widział jeden adres, a nie dwa takie same.
+# Ta reguła musi być PRZED regułą łapiącą wszystko.
+[[redirects]]
+  from = "https://www.kam24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+# Aplikacja jest jednostronicowa — nieistniejące adresy pokazujemy jako kreator.
+# force = false (domyślnie), więc istniejące pliki (dziekujemy.html,
+# polityka-prywatnosci.html, robots.txt…) serwowane są normalnie.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), interest-cohort=()"
+    # CSP wpuszcza tylko to, czego naprawdę używamy: własne pliki + tagi
+    # Google i Meta. Gdyby ktoś podmienił kod strony, przeglądarka zablokuje
+    # wysyłkę danych w nieznane miejsce.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://www.google-analytics.com https://www.google.com https://www.google.pl https://googleads.g.doubleclick.net https://www.facebook.com; connect-src 'self' https://*.workers.dev https://www.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.google-analytics.com https://connect.facebook.net https://www.facebook.com; frame-src https://td.doubleclick.net https://www.googletagmanager.com; font-src 'self' data:; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"

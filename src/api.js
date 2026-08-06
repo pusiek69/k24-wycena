@@ -1,0 +1,76 @@
+/**
+ * POŁĄCZENIE Z SERWEREM
+ *
+ * Cała część, która wymaga kluczy (rozmowa z asystentem, wysyłka maili),
+ * działa w Cloudflare Workerze Dawida. Strona nie zna żadnego klucza —
+ * wysyła zapytanie do Workera i tyle.
+ *
+ *   POST {API_BASE}/chat  → odpowiedź asystenta
+ *   POST {API_BASE}/lead  → mail z wyceną do klienta + zgłoszenie do firmy
+ *
+ * Adres Workera można nadpisać przy budowaniu (VITE_API_BASE),
+ * np. gdyby powstał osobny worker testowy.
+ */
+export const API_BASE = (
+  import.meta.env?.VITE_API_BASE || 'https://k24h.kamieniarstwo24h.workers.dev'
+).replace(/\/$/, '');
+
+/** Rozmowa z konsultantem. Zwraca surowy tekst odpowiedzi. */
+export async function zapytajKonsultanta(messages) {
+  const odp = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+  if (!odp.ok) {
+    const blad = new Error('chat ' + odp.status);
+    blad.status = odp.status;
+    throw blad;
+  }
+  const dane = await odp.json();
+  // Worker zwraca odpowiedź Anthropic — bierzemy bloki tekstowe.
+  if (Array.isArray(dane?.content)) {
+    return dane.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+  }
+  return String(dane?.text || dane?.odpowiedz || '').trim();
+}
+
+/** Zgłoszenie: wycena mailem do klienta + lead do firmy. */
+export async function wyslijLead(dane) {
+  const odp = await fetch(`${API_BASE}/lead`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(dane),
+  });
+  if (!odp.ok) {
+    const blad = new Error('lead ' + odp.status);
+    blad.status = odp.status;
+    throw blad;
+  }
+  return odp.json().catch(() => ({}));
+}
+
+/**
+ * Zapas: jeśli Worker nie odpowiada, zgłoszenie idzie przez formularz Netlify.
+ * Lepiej stracić ładny mail do klienta niż cały kontakt.
+ */
+export async function wyslijLeadZapasowo(dane) {
+  const body = new URLSearchParams({
+    'form-name': 'pomiar',
+    imie: dane.name || '',
+    telefon: dane.phone || '',
+    email: dane.email || '',
+    miejscowosc: dane.city || '',
+    uwagi: dane.uwagi || '',
+    wycena: dane.quote || '',
+    kwota: String(dane.kwota || ''),
+    zgoda: 'tak',
+  });
+  const odp = await fetch('/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+  if (!odp.ok) throw new Error('netlify-forms ' + odp.status);
+  return { zapasowo: true };
+}

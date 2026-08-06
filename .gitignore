@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.netlify/
+.vite/
+
+# ==========================================================
+#  TAJEMNICA HANDLOWA — NIE TRAFIA DO GITA ANI DO PRZEGLĄDARKI
+#  Ceny zakupowe, rabaty Dawida, kalkulacje marż.
+#  Z tych plików skrypt `npm run cennik` generuje TYLKO
+#  gotowe ceny końcowe dla klienta (src/generated/*.dekory.json).
+# ==========================================================
+pricing/zrodla/*
+!pricing/zrodla/README.md
+!pricing/zrodla/_WZOR.zasady.json
+podglad.html
+dist-podglad/
+.wrangler/
+
+# Wytyczne rozmowy konsultanta — know-how handlowe, poza publicznym repo.
+# Wstrzykiwane w Workera przez `npm run worker`.
+worker/prompt.local.md
+worker/worker.js

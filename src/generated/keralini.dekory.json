@@ -1,0 +1,168 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/keralini.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "keralini",
+  "_wygenerowano": "2026-08-06",
+  "_dekorow": 49,
+  "dekory": {
+    "Absolute": {
+      "12": 792
+    },
+    "Absolute Black": {
+      "12": 792
+    },
+    "Absolute Grey": {
+      "12": 792
+    },
+    "Absolute White": {
+      "12": 792
+    },
+    "Arabescato Viola": {
+      "6": 411,
+      "12": 792
+    },
+    "Ballet": {
+      "6": 411,
+      "12": 792
+    },
+    "Boulevard Black": {
+      "12": 792
+    },
+    "Breccia Stone Beige": {
+      "12": 792
+    },
+    "Calacatta Dorato": {
+      "6": 411,
+      "12": 792
+    },
+    "Calacatta Oro": {
+      "6": 411,
+      "12": 792
+    },
+    "Camargue Arena": {
+      "12": 929
+    },
+    "Canela Roma": {
+      "12": 929
+    },
+    "Carrara Gold": {
+      "20": 1295
+    },
+    "Crystal Cream": {
+      "12": 792
+    },
+    "Fior Di Bosco": {
+      "6": 411,
+      "12": 792
+    },
+    "Hermon": {
+      "12": 792
+    },
+    "Icelanic White": {
+      "20": 1295
+    },
+    "Kenya": {
+      "12": 792
+    },
+    "Lasa White": {
+      "12": 792
+    },
+    "Laurent": {
+      "20": 1295
+    },
+    "Light Red Calacatta": {
+      "12": 792
+    },
+    "Macaubas Beige": {
+      "12": 792
+    },
+    "Makrana": {
+      "12": 792
+    },
+    "Marmo Antico": {
+      "12": 792
+    },
+    "Meraki": {
+      "12": 792
+    },
+    "Monte Bianco": {
+      "12": 792
+    },
+    "Negev": {
+      "6": 411,
+      "12": 792
+    },
+    "Nero Marquina": {
+      "6": 411,
+      "12": 792
+    },
+    "Noir Laurent": {
+      "6": 411,
+      "12": 792
+    },
+    "Pandora": {
+      "12": 792
+    },
+    "Patagonia": {
+      "6": 411,
+      "12": 792
+    },
+    "Pietra Brown": {
+      "12": 792
+    },
+    "Pietra Grigia": {
+      "12": 792
+    },
+    "Portoro": {
+      "12": 792
+    },
+    "Pulpis Ivory": {
+      "12": 792
+    },
+    "Saturnia": {
+      "12": 792
+    },
+    "Statuario Leonardo": {
+      "6": 411,
+      "12": 792
+    },
+    "Statuario Raffaello": {
+      "12": 792
+    },
+    "Taj Mahal": {
+      "6": 411,
+      "12": 792
+    },
+    "Tinta Unita Bianco": {
+      "6": 411,
+      "12": 792
+    },
+    "Tinta Unita Nero": {
+      "6": 411,
+      "12": 792
+    },
+    "Travertino Stone Beige": {
+      "12": 792
+    },
+    "Travertino White": {
+      "12": 792
+    },
+    "Aurora Black": {
+      "12": 777
+    },
+    "Black Diamond": {
+      "12": 777
+    },
+    "Blue Stone Negro": {
+      "12": 914
+    },
+    "Distrito Marfil": {
+      "12": 914
+    },
+    "Grey Soap": {
+      "12": 777
+    },
+    "Basaltina Grigia": {
+      "12": 777
+    }
+  }
+}

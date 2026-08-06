@@ -1,0 +1,403 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/marazzi.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "marazzi",
+  "_wygenerowano": "2026-08-06",
+  "_dekorow": 129,
+  "dekory": {
+    "Concrete Look Crete Naturale/Matt": {
+      "12": 621,
+      "20": 940
+    },
+    "Concrete Look Smoke Naturale/Matt": {
+      "12": 621,
+      "20": 940
+    },
+    "Concrete Look Graphite Naturale/Matt": {
+      "12": 621,
+      "20": 940
+    },
+    "Concrete Look White Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Cementum Nickel Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Black Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Cementum Sand Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Cementum Ash Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Ivory Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Concrete Look Slow Argilla Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Concrete Look Slow Calce Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Concrete Look Slow Pomice Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Marble Look Altissimo Lux": {
+      "12": 693
+    },
+    "Marble Look Altissimo Satin": {
+      "12": 634,
+      "20": 940
+    },
+    "Marble Look Calacatta Black Satin Plus": {
+      "12": 693
+    },
+    "Marble Look Calacatta Black Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Black Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Black Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Black Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Calacatta Extra Bookmatch Facia B Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Extra Bookmatch Faccia B Satin": {
+      "12": 634
+    },
+    "Marble Look Calacatta Extra Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Extra Bookmatch Faccia A Satin": {
+      "12": 634
+    },
+    "Marble Look Calacatta Vena Vecchia Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Vena Vecchia Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Vena Vecchia Satin": {
+      "12": 634
+    },
+    "Marble Look Capraia Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Capraia Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Capraia Bookmatch Faccia A Satin": {
+      "12": 664
+    },
+    "Marble Look Capraia Bookmatch Faccia B Satin": {
+      "12": 664
+    },
+    "Marble Look Crema Marfil Lux": {
+      "12": 693
+    },
+    "Marble Look Crema Marfil Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Elegant Black Satin Plus": {
+      "12": 693
+    },
+    "Marble Look Elegant Black Lux": {
+      "12": 693
+    },
+    "Marble Look Elegant Black Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Elegant Black Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Elegant Black Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Emperador Lux": {
+      "12": 693
+    },
+    "Marble Look Emperador Satin": {
+      "12": 634
+    },
+    "Marble Look Golden White Satin Plus": {
+      "12": 693
+    },
+    "Marble Look Golden White Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Golden White Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Golden White Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Golden White Bookmatch Faccia A Satin": {
+      "12": 634
+    },
+    "Marble Look Golden White Bookmatch Faccia B Satin": {
+      "12": 634
+    },
+    "Marble Look Imperiale Lux": {
+      "12": 693
+    },
+    "Marble Look Imperiale Bookmatch Faccia A Lux": {
+      "12": 693
+    },
+    "Marble Look Imperiale Bookmatch Faccia B Lux": {
+      "12": 693
+    },
+    "Marble Look Imperiale Satin": {
+      "12": 634,
+      "20": 940
+    },
+    "Marble Look Lasa Lux": {
+      "12": 693
+    },
+    "Marble Look Lasa Satin": {
+      "12": 634
+    },
+    "Marble Look Onice Avorio Lux": {
+      "12": 693
+    },
+    "Marble Look Onice Nero Lux": {
+      "12": 693
+    },
+    "Marble Look Patagonia Lux": {
+      "12": 693
+    },
+    "Marble Look Raffaello Lux": {
+      "12": 693
+    },
+    "Marble Look Raffaello Satin": {
+      "12": 634
+    },
+    "Marble Look Saint Laurent Lux": {
+      "12": 693
+    },
+    "Marble Look Saint Laurent Satin": {
+      "12": 634,
+      "20": 940
+    },
+    "Marble Look Statuario Satin Plus": {
+      "12": 693
+    },
+    "Marble Look Statuario Lux": {
+      "12": 693
+    },
+    "Marble Look Statuario Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Statuario Bookmatch Faccia A Satin": {
+      "12": 634
+    },
+    "Marble Look Statuario Bookmatch Faccia B Satin": {
+      "12": 634
+    },
+    "Marble Look Tafu Lux": {
+      "12": 693
+    },
+    "Marble Look Tafu Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Taj Mahal Lux": {
+      "12": 693
+    },
+    "Marble Look Taj Mahal Puro Satin": {
+      "12": 634
+    },
+    "Marble Look Verde Aver Satin": {
+      "12": 634
+    },
+    "Marble Look Verde Borgogna Lux": {
+      "12": 693
+    },
+    "Marble Look Verde Borgogna Satin": {
+      "12": 634
+    },
+    "Marble Look Calacatta Supreme Lux": {
+      "12": 693
+    },
+    "Marble Look Calacatta Supreme Satin Plus": {
+      "12": 693
+    },
+    "Marble Look Calacatta Supreme Puro 3D Ink Satin": {
+      "12": 634
+    },
+    "Metal Look Iron Dark Metal": {
+      "12": 621
+    },
+    "Metal Look Corten Metal": {
+      "12": 621
+    },
+    "Solid Color Look White Puro Satin": {
+      "12": 707
+    },
+    "Solid Color Look Black Satin": {
+      "12": 707,
+      "20": 993
+    },
+    "Solid Color Look White Lux": {
+      "12": 823
+    },
+    "Stone Look Bahia Black Puro 3D Ink Puro Satin": {
+      "12": 621
+    },
+    "Stone Look Bahia Black Satin Plus": {
+      "12": 678
+    },
+    "Stone Look Berici Beige Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Berici Beige Puro Fiammato/Riverwashed": {
+      "12": 621
+    },
+    "Stone Look Berici Bianco Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Berici Bianco Puro Fiammato/Riverwashed": {
+      "12": 621
+    },
+    "Stone Look Berici Grigio Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Berici Grigio Puro Fiammato/Riverwashed": {
+      "12": 621
+    },
+    "Stone Look Breccia Imperiale Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Ceppo Di Gre Grey Puro Naturale/Matt": {
+      "12": 621
+    },
+    "Stone Look Granito Black Satin": {
+      "12": 621
+    },
+    "Stone Look Gris Du Gent Satin": {
+      "12": 621
+    },
+    "Stone Look Limestone Ivory Satin": {
+      "12": 621
+    },
+    "Stone Look Limestone Sand Satin": {
+      "12": 621,
+      "20": 940
+    },
+    "Stone Look Silver Root Grey Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Silver Root White Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Silver Root Grey Bookmatch Faccia A Lux": {
+      "12": 678
+    },
+    "Stone Look Silver Root Grey Bookmatch Faccia B Lux": {
+      "12": 678
+    },
+    "Stone Look Silver Root Grey Lux": {
+      "12": 678
+    },
+    "Stone Look Silver Root Grey Bookmatch Faccia A Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Silver Root Grey Bookmatch Faccia B Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Travertino Classico Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Travertino Navona Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Travertino Silver Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Infinity Anthracite Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Jura Beige Puro 3D Ink Bodyplus Satin": {
+      "12": 621
+    },
+    "Stone Look Jura Grey Puro 3D Ink Bodyplus Satin": {
+      "12": 621
+    },
+    "Wood Look Oak 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Pietra Di Sicilia Beige Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Pietra Di Sicilia Bianco Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Pietra Di Sicilia Grigio Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Tivoli Beige Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Tivoli Bianco Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Stone Look Tivoli Grigio Puro 3D Ink Satin": {
+      "12": 621
+    },
+    "Lume Cobalto Lux": {
+      "12": 693
+    },
+    "Lume Magma Lux": {
+      "12": 693
+    },
+    "Lume Malachite Lux": {
+      "12": 693
+    },
+    "Lume Ossidiana Lux": {
+      "12": 693
+    },
+    "Lume Petrolio Lux": {
+      "12": 693
+    },
+    "Lume Pomice Lux": {
+      "12": 693
+    },
+    "Concrete Look White Naturale/Matt": {
+      "20": 940
+    },
+    "Marble Look Calacatta Extra Satin": {
+      "20": 940
+    },
+    "Marble Look Elegant Black Satin": {
+      "20": 940
+    },
+    "Marble Look Golden White Satin": {
+      "20": 940
+    },
+    "Marble Look Statuario Satin": {
+      "20": 940
+    },
+    "Marble Look Taj Mahal Satin": {
+      "20": 940
+    },
+    "Solid Color Look White Satin": {
+      "20": 993
+    },
+    "Stone Look Bluestone Satin": {
+      "20": 940
+    },
+    "Stone Look Ceppo Di Gre Grey Satin": {
+      "20": 940
+    },
+    "Stone Look Granito Black Fiammato/Riverwashed": {
+      "20": 993
+    },
+    "Stone Look Travertino Classico Satin": {
+      "20": 940
+    }
+  }
+}

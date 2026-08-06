@@ -1,0 +1,215 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/technistone.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "technistone",
+  "_wygenerowano": "2026-08-06",
+  "_dekorow": 54,
+  "dekory": {
+    "Altamonte": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Badal Grey": {
+      "20": 1015,
+      "30": 1348
+    },
+    "Brilliant Black": {
+      "20": 825,
+      "30": 1047
+    },
+    "Brilliant White": {
+      "20": 825,
+      "30": 1047
+    },
+    "Bronze Coast": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Calacatta Olympos": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Calacatta Serchio": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Calacatta Volegno": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Country Rose": {
+      "20": 963
+    },
+    "Crystal Absolute White": {
+      "20": 1067,
+      "30": 1408
+    },
+    "Crystal Anthracite Pure": {
+      "20": 710,
+      "30": 932
+    },
+    "Crystal Calacatta Silva": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Crystal Diamond": {
+      "20": 710,
+      "30": 932
+    },
+    "Crystal Polar White": {
+      "20": 884,
+      "30": 1154
+    },
+    "Crystal Royal": {
+      "20": 670,
+      "30": 876
+    },
+    "Duna Beige": {
+      "20": 1015,
+      "30": 1348
+    },
+    "Elegance Eco Nev": {
+      "20": 511,
+      "30": 642
+    },
+    "Elysian Gold": {
+      "20": 1015,
+      "30": 1348
+    },
+    "Glencoe": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Gobi Black": {
+      "20": 710,
+      "30": 932
+    },
+    "Gobi Grey": {
+      "20": 539
+    },
+    "Gobi Urban": {
+      "20": 539,
+      "30": 710
+    },
+    "Harmonia Navajo": {
+      "20": 710,
+      "30": 932
+    },
+    "Mistral White": {
+      "20": 1015,
+      "30": 1348
+    },
+    "Morning Daisy": {
+      "20": 963
+    },
+    "Mystery White": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Noble Arco": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Areti Bianco": {
+      "20": 1078,
+      "30": 1427
+    },
+    "Noble Athos Brown": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Botticino": {
+      "20": 963
+    },
+    "Noble Carrara": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Concrete Grey": {
+      "12": 769,
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Imperial Grey": {
+      "20": 1067
+    },
+    "Noble Ivory White": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Linea": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Olympos Mist": {
+      "20": 1067
+    },
+    "Noble Pietra Grey": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Pro Cloud": {
+      "20": 904,
+      "30": 1174
+    },
+    "Noble Pro Frost": {
+      "20": 904,
+      "30": 1174
+    },
+    "Noble Quartzite": {
+      "20": 963,
+      "30": 1245
+    },
+    "Noble Supreme White": {
+      "20": 1078,
+      "30": 1427
+    },
+    "Noble Troya": {
+      "20": 963
+    },
+    "Noble Villa": {
+      "20": 1078
+    },
+    "Noble Vintage": {
+      "12": 769,
+      "20": 963,
+      "30": 1245
+    },
+    "Pearl Delta": {
+      "20": 1078,
+      "30": 1427
+    },
+    "Starlight Black": {
+      "12": 670,
+      "20": 809,
+      "30": 1027
+    },
+    "Starlight White": {
+      "20": 809,
+      "30": 1027
+    },
+    "Taj Mahal Gold": {
+      "20": 1015,
+      "30": 1348
+    },
+    "Taurus Black": {
+      "20": 551,
+      "30": 670
+    },
+    "Taurus Terazzo Dark": {
+      "20": 559
+    },
+    "Taurus Terazzo Grey": {
+      "20": 527
+    },
+    "Verde Peak": {
+      "20": 1586,
+      "30": 1875
+    },
+    "Wedding Lily": {
+      "20": 963
+    },
+    "Wild Yucca": {
+      "20": 963
+    }
+  }
+}

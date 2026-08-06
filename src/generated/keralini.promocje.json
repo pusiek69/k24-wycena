@@ -1,0 +1,31 @@
+{
+  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "kampanie": [
+    {
+      "nazwa": "Wiosna–Lato 2026",
+      "od": "2026-04-01",
+      "do": "2026-07-31",
+      "ceny": {
+        "Aurora Black||12": 279,
+        "Black Diamond||12": 279,
+        "Grey Soap||12": 279,
+        "Basaltina Grigia||12": 279,
+        "Saturnia||12": 279,
+        "Travertino White||12": 279
+      }
+    },
+    {
+      "nazwa": "Zima 2026",
+      "od": "2026-01-02",
+      "do": "2026-03-31",
+      "ceny": {
+        "Aurora Black||12": 311,
+        "Black Diamond||12": 311,
+        "Blue Stone Negro||12": 366,
+        "Distrito Marfil||12": 366,
+        "Grey Soap||12": 311,
+        "Basaltina Grigia||12": 311
+      }
+    }
+  ]
+}
