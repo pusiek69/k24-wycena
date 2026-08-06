@@ -167,3 +167,53 @@ W kolejności opłacalności:
 4. **Wpisy blogowe pod długie frazy** — „czym różni się spiek od konglomeratu",
    „jak przygotować kuchnię do pomiaru blatu". Każdy taki tekst to nowe wejście
    do serwisu.
+
+---
+
+## 6 · Rozbudowa serwisu (6.08.2026) — baza wiedzy, zastosowania, miasta
+
+Serwis urósł z 7 do **27 adresów**. Wszystkie renderowane w HTML, bez JavaScriptu.
+
+### Baza wiedzy — /baza-wiedzy/
+
+Dziewięć artykułów o materiałach: właściwości fizyczne (twardość Mohsa,
+nasiąkliwość, odporność na kwasy, temperaturę i UV), zastosowania, wady
+i wymagania pielęgnacyjne. Treść jest **nasza** — to synteza tego, co piszą
+polskie firmy kamieniarskie i producenci, zestawiona z praktyką warsztatu.
+Nic nie jest przepisane.
+
+Tam, gdzie źródła się różnią, piszemy o tym wprost. Najlepszy przykład to
+trawertyn w łazience: część firm go odradza, część pokazuje udane realizacje.
+Zamiast wybrać wygodniejszą wersję, opisujemy obie i podajemy własne stanowisko.
+
+### Zastosowania
+
+`/blaty-lazienkowe` — wilgoć, kosmetyki, umywalki nablatowe vs podblatowe,
+tabela przydatności siedmiu materiałów.
+`/okladziny-scienne` — spiek na ścianę TV, kominek, book-match, waga płyt
+i wymagania wobec podłoża.
+
+### Miasta
+
+Dziewięć stron: Sandomierz, Stalowa Wola, Mielec, Rzeszów, Kielce, Nisko,
+Nowa Dęba, Dębica, Opatów. **Każda pisana osobno** — inna struktura, inne
+akapity, inny kąt. Wcześniej odradzałem takie strony i podtrzymuję ostrzeżenie:
+działają tylko wtedy, gdy niosą realną informację. Dlatego każda zawiera
+konkretną odległość i czas dojazdu, charakter zabudowy i wynikające z niego
+konsekwencje dla pomiaru, oraz materiały najczęściej wybierane w danym miejscu.
+
+Przy Kielcach (ok. 110 km) piszemy wprost, że to granica zasięgu i że przy
+małym zleceniu sensowniej poszukać wykonawcy bliżej. Uczciwość działa tu
+lepiej niż obietnica.
+
+**Czego nie ma na tych stronach:** wymyślonych liczb realizacji, fikcyjnych
+opinii i nazw osiedli, których nie znamy. Wszystko, co napisane, da się obronić.
+
+### Do uzupełnienia
+
+- [ ] **Zdjęcia realizacji** — strony są czysto tekstowe. Zdjęcia z podpisami
+      (materiał, dekor, miejscowość) poprawią pozycje i konwersję. Potrzebuję plików.
+- [ ] **Weryfikacja odległości** — podałem wartości przybliżone („około 45 km,
+      mniej więcej pięćdziesiąt minut"). Jeśli któraś odbiega od Twojego
+      doświadczenia, popraw — to liczby, które klient sprawdzi.
+- [ ] **Strona o nagrobkach** — nadal nie istnieje, a to drugi filar firmy.
