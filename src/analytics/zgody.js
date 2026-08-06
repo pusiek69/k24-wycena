@@ -111,7 +111,7 @@ function pokazBaner() {
       <strong>Ciasteczka</strong>
       <p>Używamy plików cookies, żeby wiedzieć, które reklamy realnie przynoszą
       telefony od klientów. Bez Twojej zgody nie wysyłamy nic do Google ani Facebooka.
-      Szczegóły w <a href="/polityka-prywatnosci.html">polityce prywatności</a>.</p>
+      Szczegóły w <a href="/polityka-prywatnosci">polityce prywatności</a>.</p>
     </div>
     <div class="zgody-akcje">
       <button type="button" class="btn ghost" data-wybor="niezbedne">Tylko niezbędne</button>

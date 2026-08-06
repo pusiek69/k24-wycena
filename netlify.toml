@@ -21,13 +21,50 @@
   status = 301
   force = true
 
-# Aplikacja jest jednostronicowa — nieistniejące adresy pokazujemy jako kreator.
-# force = false (domyślnie), więc istniejące pliki (dziekujemy.html,
-# polityka-prywatnosci.html, robots.txt…) serwowane są normalnie.
+# Jeden adres na jedną stronę. Netlify serwuje `nazwa.html` również pod
+# `/nazwa`, więc bez tych reguł ta sama treść żyłaby pod dwoma adresami,
+# a Google traktuje to jak duplikat. Wersja z „.html" przekierowuje trwale
+# na czystą — tę samą, którą wskazuje canonical.
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  from = "/blaty-kuchenne-tarnobrzeg.html"
+  to = "/blaty-kuchenne-tarnobrzeg"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-z-konglomeratu.html"
+  to = "/blaty-z-konglomeratu"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-ze-spieku.html"
+  to = "/blaty-ze-spieku"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-granitowe.html"
+  to = "/blaty-granitowe"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/czesto-zadawane-pytania.html"
+  to = "/czesto-zadawane-pytania"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/polityka-prywatnosci.html"
+  to = "/polityka-prywatnosci"
+  status = 301
+  force = true
+
+# Nieznane adresy NIE są przepisywane na stronę główną. Wcześniej każdy
+# literówkowy adres zwracał 200 z kreatorem, co Google liczy jako „miękki
+# 404" i potrafi obniżyć ocenę całego serwisu. Teraz Netlify sam poda
+# 404.html z prawidłowym kodem odpowiedzi.
 
 [[headers]]
   for = "/*"

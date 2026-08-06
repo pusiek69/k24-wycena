@@ -657,3 +657,55 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   .odcinek .icon-btn { grid-column: 2; justify-self: end; }
   .nav .btn { flex: 1 1 auto; justify-content: center; }
 }
+
+/* ═══════════════════════════ STRONY TREŚCIOWE (SEO) ═══════════════════════
+   Podstrony informacyjne: okruszki, nawigacja w stopce, ramka z wezwaniem
+   do wyceny. Renderują się bez JavaScriptu — stąd wszystko jest zwykłym
+   HTML-em, a tutaj tylko wygląd. */
+
+.okruszki {
+  font-family: var(--sans); font-size: 12px; color: var(--dim);
+  letter-spacing: .05em; margin-bottom: 22px;
+}
+.okruszki a { color: var(--vein); text-decoration: none; }
+.okruszki a:hover { text-decoration: underline; }
+.okruszki span[aria-hidden] { margin: 0 6px; }
+
+.tekst h2 { scroll-margin-top: 20px; }
+.tekst h3 { font-size: 18px; margin: 22px 0 8px; color: var(--cream); font-weight: 400; }
+.tekst ol { color: var(--muted); font-size: 16px; margin: 0 0 14px 20px; }
+.tekst ol li { margin-bottom: 10px; }
+.kroki-lista li strong { color: var(--cream); }
+
+/* Ramka „policz swój blat" — jedyne mocne wezwanie w treści, żeby nie
+   zamieniać artykułu w ulotkę. */
+.cta-box {
+  display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+  justify-content: space-between;
+  background: linear-gradient(135deg, rgba(201, 168, 106, .14), rgba(201, 168, 106, .05));
+  border: 1px solid var(--vein); border-radius: var(--radius);
+  padding: 20px 22px; margin: 26px 0;
+}
+.cta-box strong { display: block; font-size: 18px; font-weight: 400; color: var(--cream); }
+.cta-box span { color: var(--muted); font-size: 14px; max-width: 46ch; display: block; margin-top: 4px; }
+.cta-btny { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Mapa serwisu w stopce — proste linkowanie wewnętrzne. */
+.foot-nav {
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+  margin: 18px 0 14px; padding-top: 16px; border-top: 1px solid var(--line);
+  font-family: var(--sans); font-size: 13px;
+}
+.foot-nav a { color: var(--muted); text-decoration: none; letter-spacing: .03em; }
+.foot-nav a:hover { color: var(--vein); text-decoration: underline; }
+
+@media (max-width: 560px) {
+  .cta-box { flex-direction: column; align-items: flex-start; }
+  .cta-btny { width: 100%; }
+  .cta-btny .btn { flex: 1 1 auto; text-align: center; }
+}
+
+/* Statyczny opis pod kreatorem — oddzielony linią, żeby nie mieszał się
+   z interaktywną częścią strony. */
+.opis-firmy { border-top: 1px solid var(--line); padding-top: 26px; margin-top: 10px; }
+.opis-firmy h2 { margin-top: 0; }

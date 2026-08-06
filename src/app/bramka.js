@@ -78,7 +78,7 @@ function formularzBramki(w, box, opcje) {
         { class: 'zgoda-txt' },
         'Zgadzam się na kontakt w sprawie tej wyceny. Administratorem danych jest ' +
           'Aaron sp. z o.o. (Kamieniarstwo 24h) — szczegóły w ',
-        h('a', { href: '/polityka-prywatnosci.html', target: '_blank', rel: 'noopener' }, 'polityce prywatności'),
+        h('a', { href: '/polityka-prywatnosci', target: '_blank', rel: 'noopener' }, 'polityce prywatności'),
         '.'
       )
     ),

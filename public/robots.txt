@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
+
+# Strona podziękowania to wyłącznie cel konwersji dla Google Ads i Meta —
+# w wynikach wyszukiwania nie ma czego szukać.
+Disallow: /dziekujemy
 Disallow: /dziekujemy.html
 
 Sitemap: https://kam24h.pl/sitemap.xml

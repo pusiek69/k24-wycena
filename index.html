@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Wycena blatu kuchennego online — Kamieniarstwo 24h Tarnobrzeg</title>
-  <meta name="description" content="Porozmawiaj z konsultantem i poznaj orientacyjną cenę blatu kuchennego. Konglomerat kwarcowy, spiek i kamień naturalny. Bezpłatny pomiar — Tarnobrzeg, tel. 796 991 128." />
+  <title>Wycena blatu kuchennego online — Tarnobrzeg</title>
+  <meta name="description" content="Policz cenę blatu kuchennego online: konglomerat, spiek i kamień naturalny. Blat 60×300 cm od 4100 zł. Bezpłatny pomiar — Tarnobrzeg i okolice." />
   <link rel="canonical" href="https://kam24h.pl/" />
   <meta name="theme-color" content="#13110f" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -28,30 +28,100 @@
   {
     "@context": "https://schema.org",
     "@type": "HomeAndConstructionBusiness",
+    "@id": "https://kam24h.pl/#firma",
     "name": "Kamieniarstwo 24h",
     "legalName": "Aaron sp. z o.o.",
     "vatID": "PL8672241748",
     "taxID": "8672241748",
-    "description": "Blaty kuchenne z konglomeratu kwarcowego, spieku i kamienia naturalnego oraz nagrobki. Pomiar Prolinerem, obróbka i montaż.",
+    "description": "Blaty kuchenne z konglomeratu kwarcowego, spieku i kamienia naturalnego oraz nagrobki. Własny zakład w Tarnobrzegu, pomiar Prolinerem, obróbka i montaż.",
     "url": "https://kam24h.pl/",
     "telephone": "+48796991128",
     "email": "kamieniarstwo24h@gmail.com",
-    "openingHoursSpecification": {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      "opens": "08:00",
-      "closes": "18:00"
-    },
+    "image": "https://kam24h.pl/og-k24h.png",
+    "logo": "https://kam24h.pl/logo-k24h.png",
+    "priceRange": "$$",
+    "currenciesAccepted": "PLN",
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday"
+        ],
+        "opens": "08:00",
+        "closes": "18:00"
+      }
+    ],
     "address": {
       "@type": "PostalAddress",
       "streetAddress": "ul. Szpitalna 8",
       "addressLocality": "Tarnobrzeg",
       "postalCode": "39-400",
+      "addressRegion": "podkarpackie",
       "addressCountry": "PL"
     },
-    "areaServed": "Podkarpackie, świętokrzyskie i okolice",
-    "priceRange": "$$",
-    "sameAs": ["https://k24h.pl"]
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 50.5729,
+      "longitude": 21.679
+    },
+    "areaServed": [
+      {
+        "@type": "City",
+        "name": "Tarnobrzeg"
+      },
+      {
+        "@type": "City",
+        "name": "Sandomierz"
+      },
+      {
+        "@type": "City",
+        "name": "Stalowa Wola"
+      },
+      {
+        "@type": "City",
+        "name": "Mielec"
+      },
+      {
+        "@type": "City",
+        "name": "Nisko"
+      },
+      {
+        "@type": "City",
+        "name": "Nowa Dęba"
+      },
+      {
+        "@type": "City",
+        "name": "Kolbuszowa"
+      },
+      {
+        "@type": "City",
+        "name": "Baranów Sandomierski"
+      },
+      {
+        "@type": "City",
+        "name": "Połaniec"
+      },
+      {
+        "@type": "City",
+        "name": "Rzeszów"
+      }
+    ],
+    "knowsAbout": [
+      "blaty kuchenne",
+      "konglomerat kwarcowy",
+      "spiek kwarcowy",
+      "gres wielkoformatowy",
+      "granit",
+      "marmur",
+      "nagrobki"
+    ],
+    "sameAs": [
+      "https://k24h.pl"
+    ]
   }
   </script>
 </head>
@@ -75,10 +145,13 @@
     <h1>Wyceń swój blat<br><em>w kilka pytań.</em></h1>
     <p class="sub">
       Porozmawiaj z naszym konsultantem albo policz kreatorem — przygotujemy
-      orientacyjną wycenę i wyślemy ją na Twój e-mail. Kolekcje Avant&nbsp;Quartz,
-      Caesarstone, Technistone, Keralini oraz setki m² kamienia naturalnego na placu.
-      Pomiar Prolinerem, co do milimetra — Tarnobrzeg i Sandomierz +100&nbsp;km,
-      realizacje w całej Polsce.
+      orientacyjną wycenę i wyślemy ją na Twój e-mail. Do wyboru
+      <a href="/blaty-z-konglomeratu">konglomerat kwarcowy</a>,
+      <a href="/blaty-ze-spieku">spiek i gres wielkoformatowy</a> oraz
+      <a href="/blaty-granitowe">kamień naturalny</a> — ponad 300 wzorów
+      i płyty do obejrzenia na placu. Pomiar Prolinerem, co do milimetra —
+      <a href="/blaty-kuchenne-tarnobrzeg">Tarnobrzeg</a> i Sandomierz
+      +100&nbsp;km, realizacje w całej Polsce.
     </p>
     <div class="meta">
       <span><i></i>Bezpłatny pomiar Prolinerem</span>
@@ -88,6 +161,38 @@
   </header>
 
   <main id="kreator" class="wrap"></main>
+
+  <!--
+    Krótki opis pod kalkulatorem. Jest w źródle strony, a nie doklejany
+    JavaScriptem, żeby wyszukiwarka miała co czytać — sam kreator to dla
+    niej pusty kontener. Treść jest prawdziwa i przydatna człowiekowi,
+    więc nie jest to wypełniacz pod roboty.
+  -->
+  <section class="wrap tekst opis-firmy">
+    <h2>Blaty kamienne z własnego zakładu w Tarnobrzegu</h2>
+    <p>
+      Jesteśmy zakładem kamieniarskim, nie pośrednikiem: płyty docinamy, polerujemy
+      i kleimy u siebie przy ul. Szpitalnej 8, a potem montujemy je u klienta.
+      Kalkulator powyżej liczy dokładnie tak, jak wyceniamy przez telefon —
+      materiał plus obróbka (350 zł/mb), transport i montaż (150 zł/mb) oraz
+      wycięcia pod zlew i płytę grzewczą.
+    </p>
+    <p>
+      Blat 60 × 300 cm zaczyna się od <strong>4 100 zł brutto</strong>
+      w <a href="/blaty-z-konglomeratu">konglomeracie kwarcowym</a> i od
+      <strong>4 850 zł</strong> w <a href="/blaty-ze-spieku">spieku</a>.
+      <a href="/blaty-granitowe">Kamień naturalny</a> wyceniamy po obejrzeniu
+      konkretnej płyty — przy granicie i marmurze każda wygląda inaczej.
+      Pomiar jest bezpłatny i wykonujemy go Prolinerem, czyli cyfrowo,
+      co przy krzywych ścianach oszczędza silikonowych poprawek.
+    </p>
+    <p class="drobne">
+      Dojeżdżamy na pomiar w promieniu około 100 km od Tarnobrzega — Sandomierz,
+      Stalowa Wola, Mielec, Nisko, Nowa Dęba, Kolbuszowa, Połaniec, Rzeszów.
+      Więcej: <a href="/blaty-kuchenne-tarnobrzeg">jak pracujemy i ile to kosztuje</a> ·
+      <a href="/czesto-zadawane-pytania">pytania i odpowiedzi</a>.
+    </p>
+  </section>
 
   <footer class="wrap">
     <div class="foot-cta">
@@ -103,10 +208,19 @@
         </span>
       </a>
     </div>
+    <nav class="foot-nav" aria-label="Mapa serwisu">
+      <a href="/blaty-kuchenne-tarnobrzeg">Blaty kuchenne Tarnobrzeg</a>
+      <a href="/blaty-z-konglomeratu">Blaty z konglomeratu</a>
+      <a href="/blaty-ze-spieku">Blaty ze spieku</a>
+      <a href="/blaty-granitowe">Blaty granitowe</a>
+      <a href="/czesto-zadawane-pytania">Pytania i odpowiedzi</a>
+    </nav>
+
     <p class="foot-line">
       Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748 ·
       tel. <a href="tel:+48796991128" data-miejsce="stopka">796 991 128</a> ·
-      <a href="/polityka-prywatnosci.html">Polityka prywatności</a> ·
+      pon.–pt. 8:00–18:00 ·
+      <a href="/polityka-prywatnosci">Polityka prywatności</a> ·
       <a href="#" id="cookies">Ustawienia cookies</a>
     </p>
     <p class="foot-note">
