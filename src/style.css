@@ -709,3 +709,28 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
    z interaktywną częścią strony. */
 .opis-firmy { border-top: 1px solid var(--line); padding-top: 26px; margin-top: 10px; }
 .opis-firmy h2 { margin-top: 0; }
+
+/* Tabela porównawcza materiałów — szeroka, więc na telefonie przewija się
+   w swoim pudełku zamiast rozpychać całą stronę. */
+.tabela-przewijana { overflow-x: auto; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+.tabela-przewijana .zestawienie { min-width: 620px; margin-bottom: 0; }
+.porownanie th { font-family: var(--sans); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.porownanie th small { display: block; text-transform: none; letter-spacing: 0; color: var(--dim); font-size: 10px; }
+.porownanie td { font-size: 14px; }
+.porownanie td:first-child { color: var(--cream); }
+.porownanie b { color: var(--vein); }
+
+/* Mapa serwisu w stopce — cztery kolumny na dużym ekranie, jedna na telefonie. */
+.foot-mapa {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 22px;
+  margin: 20px 0 16px; padding-top: 18px; border-top: 1px solid var(--line);
+}
+.foot-kol nav { display: flex; flex-direction: column; gap: 5px; }
+.foot-kol-tytul {
+  display: block; font-family: var(--sans); font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--vein); margin-bottom: 9px;
+}
+.foot-kol a, .foot-tu { font-family: var(--sans); font-size: 13px; text-decoration: none; letter-spacing: .02em; }
+.foot-kol a { color: var(--muted); }
+.foot-kol a:hover { color: var(--vein); text-decoration: underline; }
+.foot-tu { color: var(--dim); }

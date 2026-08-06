@@ -25,9 +25,23 @@
 # `/nazwa`, więc bez tych reguł ta sama treść żyłaby pod dwoma adresami,
 # a Google traktuje to jak duplikat. Wersja z „.html" przekierowuje trwale
 # na czystą — tę samą, którą wskazuje canonical.
+# Lista generowana razem z podstronami; nie dopisuj tu ręcznie.
+
 [[redirects]]
   from = "/blaty-kuchenne-tarnobrzeg.html"
   to = "/blaty-kuchenne-tarnobrzeg"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-lazienkowe.html"
+  to = "/blaty-lazienkowe"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/okladziny-scienne.html"
+  to = "/okladziny-scienne"
   status = 301
   force = true
 
@@ -46,6 +60,114 @@
 [[redirects]]
   from = "/blaty-granitowe.html"
   to = "/blaty-granitowe"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/index.html"
+  to = "/baza-wiedzy"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/granit.html"
+  to = "/baza-wiedzy/granit"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/marmur.html"
+  to = "/baza-wiedzy/marmur"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/kwarcyt.html"
+  to = "/baza-wiedzy/kwarcyt"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/trawertyn.html"
+  to = "/baza-wiedzy/trawertyn"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/dolomit.html"
+  to = "/baza-wiedzy/dolomit"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/konglomerat-kwarcowy.html"
+  to = "/baza-wiedzy/konglomerat-kwarcowy"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/spiek-kwarcowy.html"
+  to = "/baza-wiedzy/spiek-kwarcowy"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/pielegnacja-i-impregnacja.html"
+  to = "/baza-wiedzy/pielegnacja-i-impregnacja"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-sandomierz.html"
+  to = "/blaty-kuchenne-sandomierz"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-stalowa-wola.html"
+  to = "/blaty-kuchenne-stalowa-wola"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-mielec.html"
+  to = "/blaty-kuchenne-mielec"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-rzeszow.html"
+  to = "/blaty-kuchenne-rzeszow"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-kielce.html"
+  to = "/blaty-kuchenne-kielce"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-nisko.html"
+  to = "/blaty-kuchenne-nisko"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-nowa-deba.html"
+  to = "/blaty-kuchenne-nowa-deba"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-debica.html"
+  to = "/blaty-kuchenne-debica"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-opatow.html"
+  to = "/blaty-kuchenne-opatow"
   status = 301
   force = true
 
