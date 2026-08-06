@@ -48,12 +48,32 @@ for (const { slug, klucz, pomij: pomijane } of firmyZPlikow()) {
   if (!fs.existsSync(plik)) continue;
   const dane = JSON.parse(fs.readFileSync(plik, 'utf8'));
 
+  // Kampania promocyjna potrafi wprowadzić wzory spoza cennika podstawowego.
+  // Bez tego konsultant nie znałby dekorów, które strona już pokazuje.
+  const plikPromo = path.join(ZRODLO, `${slug}.promocje.json`);
+  const dzis = new Date().toISOString().slice(0, 10);
+  const wCenie = new Set();
+  if (fs.existsSync(plikPromo)) {
+    for (const k of JSON.parse(fs.readFileSync(plikPromo, 'utf8')).kampanie || []) {
+      if (dzis < k.od || dzis > k.do) continue;
+      for (const [wpisKlucz, wpis] of Object.entries(k.ceny || {})) {
+        const i = wpisKlucz.lastIndexOf('||');
+        const nazwa = wpisKlucz.slice(0, i);
+        const gr = wpisKlucz.slice(i + 2);
+        if (typeof wpis === 'object' && wpis.matWCenie) wCenie.add(nazwa);
+        if (dane.dekory[nazwa]?.[gr] == null) {
+          dane.dekory[nazwa] = { ...(dane.dekory[nazwa] || {}), [gr]: 1 };
+        }
+      }
+    }
+  }
+
   const wpisy = [];
   for (const [nazwa, grubosci] of Object.entries(dane.dekory || {})) {
     const gr = Object.keys(grubosci)
       .filter((g) => !pomijane.includes(g))
       .sort((a, b) => Number(a) - Number(b));
-    if (gr.length) wpisy.push(`${nazwa} (${gr.join('/')} mm)`);
+    if (gr.length) wpisy.push(`${nazwa} (${gr.join('/')} mm${wCenie.has(nazwa) ? ', mat/struktura w tej samej cenie' : ''})`);
   }
   sekcje.push(`## ${klucz}\n${wpisy.join('; ')}`);
   console.log(`  ${klucz.padEnd(14)} ${wpisy.length} dekorów`);

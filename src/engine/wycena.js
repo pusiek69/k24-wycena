@@ -27,9 +27,9 @@ export function wycen(firma, w, dataISO) {
   const ostrzezenia = [];
 
   // ---------- 1. materiał ----------
-  const pak = upakuj(w.odcinki || [], firma.plyta, firma.narzutOdpad ?? 0.1);
-  if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
-  ostrzezenia.push(...pak.ostrzezenia);
+  if (!(w.odcinki || []).some((x) => x?.dl > 0 && x?.gl > 0)) {
+    return { ok: false, blad: 'Podaj wymiary blatu.' };
+  }
 
   let cenaM2Netto = null;
   let cenaBazowaNetto = null;
@@ -78,12 +78,22 @@ export function wycen(firma, w, dataISO) {
     if (promo) cenaM2Netto = promo.cena;
   }
 
+  // Format płyty potrafi zależeć od kampanii — Technistone sprzedaje część
+  // dekorów promocyjnych w większych płytach 330 × 165 zamiast 318,5 × 155.
+  // Dlatego pakujemy dopiero teraz, gdy wiemy, czy promocja obowiązuje.
+  const plyta = promo?.plyta || firma.plyta;
+  const pak = upakuj(w.odcinki || [], plyta, firma.narzutOdpad ?? 0.1);
+  if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
+  ostrzezenia.push(...pak.ostrzezenia);
+
   // Konglomeraty/spieki kupujemy w płytach; kamień naturalny rozliczamy metrażem.
   const wgMetrazu = firma.rozliczenieMaterialu === 'metraz';
   const m2Platne = wgMetrazu ? pak.m2Blatu * (1 + (firma.narzutOdpad ?? 0.1)) : pak.m2Kupione;
 
   // Promocja: pokazujemy klientowi, ile zyskuje względem ceny podstawowej.
-  const oszczednosc = promo
+  // Do oszczędności doliczamy też zniesioną dopłatę za mat — to realny zysk,
+  // a nie tylko niższa cena metra.
+  let oszczednosc = promo
     ? Math.max(0, (cenaBazowaNetto - cenaM2Netto) * m2Platne * (1 + vat))
     : 0;
 
@@ -139,6 +149,19 @@ export function wycen(firma, w, dataISO) {
       });
     } else {
       if (!v) continue;
+      // Przy części dekorów promocyjnych mat i struktura są w tej samej cenie
+      // co poler. Pokazujemy pozycję (klient ma widzieć, że o niej pamiętamy),
+      // ale bez dopłaty.
+      if (o.id === 'mat' && promo?.matWCenie) {
+        oszczednosc += kwotaBrutto(o.cena, firma, vat) * m2Platne;
+        pozycje.push({
+          grupa: 'usługi',
+          nazwa: o.label,
+          detal: 'w promocji bez dopłaty',
+          brutto: 0,
+        });
+        continue;
+      }
       pozycje.push({
         grupa: 'usługi',
         nazwa: o.label,
@@ -199,12 +222,21 @@ function mnoznik(o, pak, m2Platne) {
 }
 
 /** Promocje dostawcy — aktywne w oknie dat, nadpisują cenę bazową m²/netto. */
+/**
+ * Wpis kampanii to albo sama cena (tak było od początku), albo obiekt:
+ *   { cena, plyta: {w,h,polowkaDozwolona}, matWCenie: true }
+ * Dzięki temu kampania może zmienić format płyty albo znieść dopłatę
+ * za mat, nie zmieniając niczego w konfiguracji firmy.
+ */
 function znajdzPromocje(firma, dekor, grubosc, dataISO) {
   const d = dataISO || new Date().toISOString().slice(0, 10);
   for (const p of firma.promocje || []) {
     if (d < p.od || d > p.do) continue;
-    const cena = p.ceny?.[`${dekor}||${grubosc}`];
-    if (typeof cena === 'number') return { cena, nazwa: p.nazwa, do: p.do };
+    const wpis = p.ceny?.[`${dekor}||${grubosc}`];
+    if (typeof wpis === 'number') return { cena: wpis, nazwa: p.nazwa, do: p.do };
+    if (wpis && typeof wpis.cena === 'number') {
+      return { ...wpis, nazwa: p.nazwa, do: p.do };
+    }
   }
   return null;
 }

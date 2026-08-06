@@ -1,6 +1,7 @@
 import dekory from '../generated/technistone.dekory.json';
 import promocje from '../generated/technistone.promocje.json';
 import { VAT, ROBOCIZNA, OPCJE } from './_domyslne.js';
+import { dekoryZKampaniami } from './_promocje.js';
 
 /**
  * TECHNISTONE — konglomerat kwarcowy (Czechy)
@@ -58,7 +59,9 @@ export default {
   opcje: OPCJE,
   promocje: promocje.kampanie,
 
-  dekory: dekory.dekory,
+  // Kampania sierpień–grudzień 2026 wprowadza wzory, których nie ma
+  // w cenniku podstawowym — na czas jej trwania dokładamy je do listy.
+  dekory: dekoryZKampaniami(dekory.dekory, promocje.kampanie),
 
   // Widoczne dla klienta na ekranie wyniku — bez tego wycena mogłaby zaskoczyć.
   notaKlient:

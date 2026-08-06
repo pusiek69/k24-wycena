@@ -113,11 +113,96 @@ for (const plik of pliki) {
   }
 }
 
+/* ─────────────────────────────────────────────────────── kampanie promocyjne
+ * pricing/zrodla/<firma>.promocje.json  (ceny ZAKUPU + mnożnik)
+ *      ▼
+ * src/generated/<firma>.promocje.json   (tylko ceny końcowe dla klienta)
+ *
+ * Wpis dla klienta to albo sama cena, albo obiekt z dodatkami kampanii:
+ * innym formatem płyty i informacją, że mat jest w cenie polerowanego.
+ */
+const plikiPromo = fs.readdirSync(ZRODLA).filter((f) => f.endsWith('.promocje.json') && !f.startsWith('_'));
+
+for (const plik of plikiPromo) {
+  const slug = plik.replace('.promocje.json', '');
+  let z;
+  try {
+    z = JSON.parse(fs.readFileSync(path.join(ZRODLA, plik), 'utf8'));
+  } catch (e) {
+    console.error(`✗ ${plik}: niepoprawny JSON — ${e.message}`);
+    bledy++;
+    continue;
+  }
+
+  const formaty = z.formatyPlyt || {};
+  const kampanie = [];
+
+  for (const k of z.kampanie || []) {
+    const mnoznik = k.juzPrzeliczone ? 1 : k.mnoznik;
+    if (typeof mnoznik !== 'number' || !(mnoznik > 0)) {
+      console.error(`✗ ${plik}: kampania „${k.nazwa}" — brak poprawnego "mnoznik"`);
+      bledy++;
+      continue;
+    }
+
+    const ceny = {};
+    for (const p of k.pozycje || []) {
+      if (!(p.zakup > 0)) {
+        console.error(`✗ ${plik}: „${p.dekor}" — cena musi być liczbą > 0`);
+        bledy++;
+        continue;
+      }
+      const cena = Math.round(p.zakup * mnoznik);
+      const dodatki = {};
+      if (p.plyta) {
+        const format = formaty[p.plyta];
+        if (!format) {
+          console.error(`✗ ${plik}: „${p.dekor}" — nieznany format płyty „${p.plyta}"`);
+          bledy++;
+          continue;
+        }
+        dodatki.plyta = format;
+      }
+      if (p.matWCenie) dodatki.matWCenie = true;
+
+      ceny[`${p.dekor}||${p.grubosc}`] = Object.keys(dodatki).length ? { cena, ...dodatki } : cena;
+    }
+
+    kampanie.push({ nazwa: k.nazwa, od: k.od, do: k.do, ceny });
+  }
+
+  const wynik = {
+    _info:
+      'PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. ' +
+      'Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. ' +
+      'Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.',
+    kampanie,
+  };
+
+  const sciezka = path.join(CEL, `${slug}.promocje.json`);
+  const tresc = JSON.stringify(wynik, null, 2) + '\n';
+
+  if (tylkoSprawdz) {
+    const stara = fs.existsSync(sciezka) ? fs.readFileSync(sciezka, 'utf8') : '';
+    console.log(`${stara === tresc ? '=' : '≠'} ${slug.padEnd(14)} ${kampanie.length} kampanii promocyjnych`);
+  } else {
+    fs.writeFileSync(sciezka, tresc, 'utf8');
+    const aktywne = kampanie.filter((k) => {
+      const d = new Date().toISOString().slice(0, 10);
+      return d >= k.od && d <= k.do;
+    });
+    console.log(
+      `✓ ${slug.padEnd(14)} ${kampanie.length} kampanii promocyjnych ` +
+        `(aktywnych dziś: ${aktywne.length}, pozycji: ${kampanie.reduce((a, k) => a + Object.keys(k.ceny).length, 0)})`
+    );
+  }
+}
+
 if (bledy) {
   console.error(`\n✗ Zakończono z ${bledy} błędem/błędami.`);
   process.exit(1);
 }
-console.log('\nGotowe. Pliki dla klienta: src/generated/*.dekory.json');
+console.log('\nGotowe. Pliki dla klienta: src/generated/*.dekory.json, *.promocje.json');
 
 /**
  * Mnożnik: cena katalogowa netto → cena końcowa netto dla klienta.

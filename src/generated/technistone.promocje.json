@@ -1,6 +1,59 @@
 {
-  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
   "kampanie": [
+    {
+      "nazwa": "Technistone sierpień–grudzień 2026",
+      "od": "2026-08-01",
+      "do": "2026-12-31",
+      "ceny": {
+        "Crystal Polar White||20": 520,
+        "Crystal Absolute White||20": 559,
+        "Mistral White (gat. STQ)||20": 787,
+        "Taj Mahal Gold (gat. STQ)||20": 787,
+        "Nuova Crema||20": {
+          "cena": 735,
+          "matWCenie": true
+        },
+        "Venato Oro||20": 735,
+        "Noble Arctic Night||20": 735,
+        "Noble Arco Gold||20": 735,
+        "Calacatta Aurelia||20": {
+          "cena": 735,
+          "plyta": {
+            "w": 330,
+            "h": 165,
+            "polowkaDozwolona": false
+          }
+        },
+        "Perla Champagne||20": 865,
+        "Noble Supreme Brass||20": 865,
+        "Mistral White||20": {
+          "cena": 865,
+          "matWCenie": true
+        },
+        "Taj Mahal Gold||20": {
+          "cena": 865,
+          "matWCenie": true
+        },
+        "Emperador Beige||20": {
+          "cena": 917,
+          "matWCenie": true
+        },
+        "Dynasty White||20": 917,
+        "Perlado Bronze||20": {
+          "cena": 917,
+          "matWCenie": true
+        },
+        "Altamonte||20": {
+          "cena": 1034,
+          "plyta": {
+            "w": 330,
+            "h": 165,
+            "polowkaDozwolona": false
+          }
+        }
+      }
+    },
     {
       "nazwa": "Technistone luty–lipiec 2026",
       "od": "2026-02-01",
@@ -17,13 +70,7 @@
         "Duna Beige||20": 819,
         "Elysian Gold||20": 819,
         "Mistral White||20": 819,
-        "Taj Mahal Gold||20": 819,
-        "Ambiente Light||20": 1039,
-        "Bronze Coast||20": 1039,
-        "Calacatta Olympos||20": 1039,
-        "Crystal Calacatta Silva||20": 1039,
-        "Altamonte||20": 1039,
-        "Glencoe||20": 1039
+        "Taj Mahal Gold||20": 819
       }
     }
   ]
