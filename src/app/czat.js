@@ -30,8 +30,9 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 const TEL = '796 991 128';
 
 const POWITANIE =
-  'Dzień dobry, z tej strony asystent Dawida. Policzę orientacyjny koszt blatu — ' +
-  'zajmie to chwilę i nie wymaga dzwonienia. Z czego ma być blat?';
+  'Dzień dobry, jestem asystentem Dawida Ząbka — pomogę dobrać materiał ' +
+  'i policzyć orientacyjny koszt blatu. W każdej chwili może Pan/Pani też ' +
+  'zadzwonić bezpośrednio do Dawida: ' + TEL + '. Z czego ma być blat?';
 
 /** Nazwy kolekcji z promptu → pliki firm w aplikacji. */
 const MATERIALY = {
@@ -340,21 +341,20 @@ export function uruchomCzat(root, akcje = {}) {
           'div',
           { class: 'wiz-imie' },
           'Dawid Ząbek',
-          h('span', { class: 'wiz-tag' }, 'asystent AI')
+          h('span', { class: 'wiz-tag' }, h('i', { 'aria-hidden': 'true' }), 'asystent online')
         ),
-        h('div', { class: 'wiz-rola' }, 'właściciel · Kamieniarstwo 24h · czeladnik kamieniarstwa'),
+        h('div', { class: 'wiz-rola' }, 'właściciel Kamieniarstwa 24h · czeladnik kamieniarstwa'),
         h(
           'p',
           { class: 'wiz-nota' },
-          'Rozmawiasz z asystentem, którego prowadzę osobiście — zna nasze materiały, ' +
-            'ceny i sposób pracy. Każde zgłoszenie trafia prosto do mnie. ',
+          'Piszesz z moim asystentem — prowadzę go osobiście i czytam każde zgłoszenie. ',
           h('a', { href: '/o-mnie' }, 'Poznaj mnie →')
         )
       ),
       h(
         'a',
         { class: 'wiz-tel', href: 'tel:+48796991128', 'data-miejsce': 'wizytowka' },
-        '☎ Wolisz porozmawiać? ' + TEL
+        '☎ Wolisz porozmawiać ze mną osobiście? ' + TEL
       )
     );
   }
