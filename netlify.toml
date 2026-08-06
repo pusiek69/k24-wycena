@@ -65,7 +65,7 @@
 
 [[redirects]]
   from = "/baza-wiedzy/index.html"
-  to = "/baza-wiedzy"
+  to = "/baza-wiedzy/"
   status = 301
   force = true
 
