@@ -1,0 +1,1526 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/atlas-plan.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "atlas-plan",
+  "_wygenerowano": "2026-08-06",
+  "_dekorow": 143,
+  "dekory": {
+    "Boost Grey Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Natural Ecru Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Natural Pro Sand Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Smoke Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Stone Ivory Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost White Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Travertino Sand Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Travertino Pearl Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Travertino White Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Travertino Navona White Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Icor Bone Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Icor Dune Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nyra Hay Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nyra Mist Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nyra Ambrosia Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Vision Glow Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Vision Camel Hammered": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Basaltina Volcano Hammered": {
+      "12": {
+        "cena": 818,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1067,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Tarmac Hammered": {
+      "12": {
+        "cena": 818,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Kone Mix Hammered": {
+      "12": {
+        "cena": 818,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Soapstone Dark Hammered": {
+      "12": {
+        "cena": 818,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1067,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Alpinus Hammered": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Alpinus Bookmatch Hammered": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Blaze Iron Matte": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Boost Balance Ash": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Noce Canaletto Matte": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Absolute Black Matte": {
+      "12": {
+        "cena": 918,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Absolute White Matte": {
+      "12": {
+        "cena": 918,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1179,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Bianco Dolomite Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1225,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Antique Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Antique Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1225,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1225,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Bernini Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Bernini Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Apuano Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Apuano Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Fior di Bosco Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Fior di Bosco Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nero Marquina Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nero Marquina Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Atlantis Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Atlantis Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx White Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx White Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Viola Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Viola Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Gold Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Gold Bookmatch Polished": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Absolute White Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Desert Soul Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1269,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Desert Soul Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1269,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Crystal White Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1269,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Crystal White Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1269,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ice Crystal Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ice Crystal Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1269,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal White Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal White Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Noisette Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Noisette Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx Ivory Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx Ivory Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Natural Roots Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Natural Roots Bookmatch Polished": {
+      "12": {
+        "cena": 974,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Baobab Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Baobab Bookmatch Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Exotic Green Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Exotic Green Bookmatch Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Exotic Wave Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Exotic Wave Bookmatch Polished": {
+      "12": {
+        "cena": 1011,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Viola Satin": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Viola Satin Bookmatch": {
+      "12": {
+        "cena": 942,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Cream Prestige Silk": {
+      "12": {
+        "cena": 756,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Silver Root Silk": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Silver Root Silk Bookmatch": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Grey Stone Silk": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Light Grey Stone Silk": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Fior di Bosco Silk": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Fior di Bosco Silk Bookmatch": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Precious Brown Silk": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Precious Brown Silk Bookmatch": {
+      "12": {
+        "cena": 790,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Appennino Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Appennino Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ice Crystal Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ice Crystal Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Zephyr Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Zephyr Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Natural Roots silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Natural Roots silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Noisette Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Noisette Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal White Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal White Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Delicato Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Prestigio Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Prestigio Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Statuario Supremo Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Statuario Supremo Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Apuano Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Apuano Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "White Cloud Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Negresco Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nero Marquina Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nero Marquina Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Atlantis Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Atlantis Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Meraviglia Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Meraviglia Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx White Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Onyx White Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Gold Silk": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Gold Silk Bookmatch": {
+      "12": {
+        "cena": 837,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Tempest Silk": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Tempest Silk Bookmatch": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Sky Stone Silk": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Sky Stone Silk Bookmatch": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Crystal White Silk": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Crystal White Silk Bookmatch": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Desert Soul Silk": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Desert Soul Silk Bookmatch": {
+      "12": {
+        "cena": 874,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Black Lava Leathered": {
+      "12": {
+        "cena": 918,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Bernini Natura Vein Polished": {
+      "20": {
+        "cena": 1558,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Natura Vein Polished": {
+      "20": {
+        "cena": 1558,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Natura Vein Polished": {
+      "20": {
+        "cena": 1558,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Gold Natura Vein Polished": {
+      "20": {
+        "cena": 1558,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Matte": {
+      "20": {
+        "cena": 1098,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Bookmatch Matte": {
+      "20": {
+        "cena": 1098,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Extra Natura Vein Matte": {
+      "20": {
+        "cena": 1365,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Imperiale Natura Vein Matte": {
+      "20": {
+        "cena": 1365,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Statuario Supremo Natura Vein Matte": {
+      "20": {
+        "cena": 1365,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Calacatta Bernini Natura Vein Matte": {
+      "20": {
+        "cena": 1365,
+        "plyta": {
+          "w": 324,
+          "h": 159,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Grey Stone Matte": {
+      "20": {
+        "cena": 983,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taj Mahal Matte": {
+      "20": {
+        "cena": 1098,
+        "plyta": {
+          "w": 324,
+          "h": 162,
+          "polowkaDozwolona": false
+        }
+      }
+    }
+  }
+}

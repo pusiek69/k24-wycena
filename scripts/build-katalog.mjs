@@ -60,19 +60,40 @@ for (const plik of pliki) {
     continue;
   }
 
+  // Pozycja cennika może mieć własny format płyty (Atlas Plan tnie 12 mm
+  // z płyt 162 × 324, a 20 mm z 159 × 324). Wtedy wpis jest obiektem
+  // { cena, plyta: "162x324" }, a nazwa formatu rozwija się z `_formatyPlyt`.
+  const formaty = z._formatyPlyt || {};
+
   const dekory = {};
   let ile = 0;
   for (const [dekor, grubosci] of Object.entries(z.katalog || {})) {
     const wpis = {};
-    for (const [gr, cena] of Object.entries(grubosci)) {
-      if (cena == null) continue;
+    for (const [gr, pozycja] of Object.entries(grubosci)) {
+      if (pozycja == null) continue;
+
+      const cena = typeof pozycja === 'number' ? pozycja : pozycja.cena;
       if (typeof cena !== 'number' || !(cena > 0)) {
         console.error(`✗ ${slug}: dekor „${dekor}" gr. ${gr} — cena nie jest liczbą (${cena})`);
         bledy++;
         continue;
       }
+
       // Cena końcowa NETTO/m² dla klienta. VAT dolicza aplikacja.
-      wpis[gr] = Math.round(cena * mnoznik);
+      const koncowa = Math.round(cena * mnoznik);
+
+      const nazwaFormatu = typeof pozycja === 'number' ? null : pozycja.plyta;
+      if (!nazwaFormatu) {
+        wpis[gr] = koncowa;
+        continue;
+      }
+      const format = formaty[nazwaFormatu];
+      if (!format) {
+        console.error(`✗ ${slug}: dekor „${dekor}" gr. ${gr} — nieznany format płyty „${nazwaFormatu}"`);
+        bledy++;
+        continue;
+      }
+      wpis[gr] = { cena: koncowa, plyta: format };
     }
     if (Object.keys(wpis).length) {
       dekory[dekor] = wpis;

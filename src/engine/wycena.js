@@ -33,6 +33,7 @@ export function wycen(firma, w, dataISO) {
 
   let cenaM2Netto = null;
   let cenaBazowaNetto = null;
+  let plytaDekoru = null;
   let dekorNazwa = w.dekor || null;
   let promo = null;
 
@@ -70,7 +71,12 @@ export function wycen(firma, w, dataISO) {
       gr = podniesiona;
     }
     w = { ...w, grubosc: gr };
-    cenaM2Netto = dekor[gr];
+
+    // Wpis cennika to zwykle sama cena, ale bywa obiektem {cena, plyta} —
+    // Atlas Plan tnie 12 mm z płyt 162 × 324, a 20 mm z 159 × 324.
+    const wpis = dekor[gr];
+    cenaM2Netto = typeof wpis === 'number' ? wpis : wpis?.cena;
+    plytaDekoru = typeof wpis === 'number' ? null : wpis?.plyta || null;
 
     cenaBazowaNetto = cenaM2Netto;
     // Sprawdzamy WSZYSTKIE kampanie aktywne na dziś — może ich być kilka naraz.
@@ -81,7 +87,9 @@ export function wycen(firma, w, dataISO) {
   // Format płyty potrafi zależeć od kampanii — Technistone sprzedaje część
   // dekorów promocyjnych w większych płytach 330 × 165 zamiast 318,5 × 155.
   // Dlatego pakujemy dopiero teraz, gdy wiemy, czy promocja obowiązuje.
-  const plyta = promo?.plyta || firma.plyta;
+  // Pierwszeństwo: format z kampanii → format przypisany do pozycji cennika
+  // → domyślny format firmy.
+  const plyta = promo?.plyta || plytaDekoru || firma.plyta;
   const pak = upakuj(w.odcinki || [], plyta, firma.narzutOdpad ?? 0.1);
   if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
   ostrzezenia.push(...pak.ostrzezenia);

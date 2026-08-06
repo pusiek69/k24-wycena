@@ -43,6 +43,10 @@ const MATERIALY = {
   keralini: 'keralini',
   marazzi: 'marazzi',
   grande: 'marazzi',
+  atlas_plan: 'atlas-plan',
+  'atlas-plan': 'atlas-plan',
+  atlasplan: 'atlas-plan',
+  atlas: 'atlas-plan',
   kamien_naturalny: 'interstone',
   interstone: 'interstone',
 };

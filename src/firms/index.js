@@ -22,6 +22,15 @@ export function firmaWgSlug(slug) {
   return FIRMY.find((f) => f.slug === slug) || null;
 }
 
+/**
+ * Wpis cennika bywa liczbą albo obiektem {cena, plyta} — ta druga postać
+ * pozwala przypisać pozycji własny format płyty. Wszędzie, gdzie potrzebna
+ * jest sama cena, przechodzimy przez tę funkcję.
+ */
+export function cenaWpisu(wpis) {
+  return typeof wpis === 'number' ? wpis : wpis?.cena ?? null;
+}
+
 /** Grubości dostępne dla danego dekoru (z pominięciem tych nieblatowych). */
 export function grubosciDekoru(firma, dekor) {
   const wpis = firma.dekory?.[dekor];
@@ -48,9 +57,10 @@ export function gruboscDomyslna(firma, dekor) {
 export function odCenyM2(firma) {
   let min = Infinity;
   for (const wpis of Object.values(firma.dekory || {})) {
-    for (const [gr, cena] of Object.entries(wpis)) {
+    for (const [gr, pozycja] of Object.entries(wpis)) {
       if ((firma.pomijGrubosci || []).includes(gr)) continue;
-      if (cena < min) min = cena;
+      const cena = cenaWpisu(pozycja);
+      if (cena != null && cena < min) min = cena;
     }
   }
   return Number.isFinite(min) ? min * (1 + (firma.vat ?? 0.23)) : null;
