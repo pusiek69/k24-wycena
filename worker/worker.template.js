@@ -258,6 +258,9 @@ async function obsluzLead(request, env, cors) {
 
   const imie = String(d.name || '').trim() || 'Klient';
   const wycena = String(d.quote || '').trim();
+  // Zastrzeżenie zależne od materiału — przy kamieniu naturalnym mówi, że
+  // wycena jest wstępna, bo konkretna płyta może zejść z magazynu.
+  const uwaga = String(d.uwaga || '').trim().slice(0, 400);
   const nadawca = env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>';
   const doFirmy = env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com';
 
@@ -280,6 +283,7 @@ async function obsluzLead(request, env, cors) {
       '',
       'WYCENA:',
       wycena || '(brak)',
+      ...(uwaga ? ['', 'UWAGA: ' + uwaga] : []),
       '',
       'ROZMOWA:',
       String(d.transcript || '(brak transkrypcji)'),
@@ -293,7 +297,7 @@ async function obsluzLead(request, env, cors) {
     to: [email],
     reply_to: doFirmy,
     subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
-    html: mailDoKlienta(imie, wycena),
+    html: mailDoKlienta(imie, wycena, uwaga),
   });
 
   return json(
@@ -324,7 +328,7 @@ async function resend(env, wiadomosc) {
   }
 }
 
-function mailDoKlienta(imie, wycena) {
+function mailDoKlienta(imie, wycena, uwaga) {
   return `<!doctype html>
 <html lang="pl"><body style="margin:0;background:#13110f;color:#ece6da;font-family:Georgia,serif">
   <div style="max-width:600px;margin:0 auto;padding:32px 24px">
@@ -339,6 +343,14 @@ function mailDoKlienta(imie, wycena) {
                 border-radius:4px;padding:18px 20px;font-size:16px;line-height:1.6">
       ${esc(wycena) || 'Wycenę przekażemy telefonicznie.'}
     </div>
+    ${
+      uwaga
+        ? `<p style="background:#241f19;border-left:3px solid #c9a86a;border-radius:4px;
+                     padding:12px 16px;margin:14px 0 0;color:#d8cfbc;font-size:14px;line-height:1.55">
+             <strong style="color:#c9a86a">Ważne:</strong> ${esc(uwaga)}
+           </p>`
+        : ''
+    }
     <p style="color:#8c8474;font-size:13px;line-height:1.6;margin:20px 0">
       Wycena jest orientacyjna i nie stanowi oferty w rozumieniu art. 66 §1 Kodeksu cywilnego.
       Ostateczną cenę potwierdzamy po bezpłatnym pomiarze. Podane kwoty są brutto.

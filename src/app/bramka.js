@@ -119,6 +119,10 @@ function formularzBramki(w, box, opcje) {
       ...dane,
       quote: w ? opisWyceny(w) : 'Zapytanie z rozmowy — wycena do przygotowania',
       kwota: w ? Math.round(w.razemZaokr || 0) : 0,
+      // Zastrzeżenie materiału (np. „wycena wstępna, płyta może zejść
+      // z magazynu") musi dojechać do maila, nie zostać na karcie —
+      // klient wraca do wyceny właśnie w skrzynce.
+      uwaga: w?.firma?.notaKlient || '',
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
 
