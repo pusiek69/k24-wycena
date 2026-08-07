@@ -15,7 +15,8 @@
     "build:podglad": "vite build --config vite.podglad.config.js",
     "worker": "node scripts/build-worker.mjs",
     "checklist": "node scripts/checklist.mjs",
-    "cennik:dodaj": "node scripts/cennik-serwer.mjs"
+    "cennik:dodaj": "node scripts/cennik-serwer.mjs",
+    "test": "node --test scripts/test-*.mjs"
   },
   "devDependencies": {
     "vite": "^7.0.0"

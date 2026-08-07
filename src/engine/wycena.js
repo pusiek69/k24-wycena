@@ -89,8 +89,12 @@ export function wycen(firma, w, dataISO) {
   // Dlatego pakujemy dopiero teraz, gdy wiemy, czy promocja obowiązuje.
   // Pierwszeństwo: format z kampanii → format przypisany do pozycji cennika
   // → domyślny format firmy.
+  // `narzutOdpad` celowo NIE trafia już do pakowania: przy zakupie całych
+  // płyt odpadem jest ścinka, za którą klient i tak płaci, a doliczanie
+  // procentów do geometrii zawyżało liczbę płyt (patrz engine/pakowanie.js).
+  // Zapas na rzaz i obrzeże liczy pakowanie w centymetrach.
   const plyta = promo?.plyta || plytaDekoru || firma.plyta;
-  const pak = upakuj(w.odcinki || [], plyta, firma.narzutOdpad ?? 0.1);
+  const pak = upakuj(w.odcinki || [], plyta);
   if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
   ostrzezenia.push(...pak.ostrzezenia);
 

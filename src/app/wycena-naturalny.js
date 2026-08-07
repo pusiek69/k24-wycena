@@ -139,6 +139,10 @@ export function firmaZWariantu(wariant) {
       w: wariant.plytaCm.dl,
       h: wariant.plytaCm.gl,
       polowkaDozwolona: false,
+      // Magazyn podaje wymiar SUROWEJ płyty — krawędzie kamienia naturalnego
+      // są nierówne i schodzą przy obróbce. W cennikach producentów formaty
+      // są już użytkowe, dlatego obrzeże dokładamy tylko tutaj.
+      obrzeze: 1,
     },
     // Kamień naturalny ma większy odpad — rysunek trzeba dobrać, zdarzają się
     // pęknięcia. Konglomerat i spiek z Interstone tną się jak każde inne.
