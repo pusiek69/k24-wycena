@@ -296,7 +296,7 @@ export function pomocnikSzczegoly(wyslij) {
     h(
       'div',
       { class: 'o-warianty' },
-      [0, 1, 2, 3, 4].map((n) =>
+      [0, 1, 2, 3, 4, 5, 6].map((n) =>
         h(
           'button',
           {
