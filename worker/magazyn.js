@@ -160,6 +160,58 @@ export function oczyscFraze(fraza) {
   return s.length >= 2 ? s : '';
 }
 
+/* ─────────────────────────────────── link do magazynu dla klienta */
+
+/**
+ * Grupy materiałów w filtrze Interstone (`inventory-group`).
+ * Nazwa grupy stoi na karcie płyty nad tytułem — parser zapisuje ją jako
+ * `marka`, bo tam faktycznie widnieje „Kwarcyt", „Marmur", „Laminam".
+ */
+const GRUPY = {
+  granit: 512,
+  marmur: 511,
+  kwarcyt: 521,
+  onyx: 517,
+  trawertyn: 518,
+  dolomit: 608,
+  szlachetne: 527,
+  laminam: 524,
+  interq: 610,
+  interlite: 605,
+  cosmolite: 609,
+  re_stile: 607,
+  tailored: 606,
+  'quarella aglomarmur': 530,
+  'quarella quartz': 531,
+};
+
+/**
+ * Adres, pod którym KLIENT sam obejrzy i wybierze płytę: zdjęcia, wymiary
+ * i ceny konkretnych bloków. Ceny na interstone.pl są już z marżą Dawida,
+ * więc to, co klient tam zobaczy, zgadza się z naszą wyceną.
+ *
+ * Filtr grupy jest tu istotny, a nie kosmetyczny. Samo `search=taj mahal`
+ * daje 130 pozycji i na pierwszej stronie pokazuje spiek oraz konglomerat —
+ * naturalny kwarcyt leży dopiero na stronie 11. Z `inventory-group=521`
+ * klient od razu widzi to, o czym rozmawiamy.
+ */
+export function linkMagazynu(nazwa, grupa) {
+  const fraza = oczyscFraze(nazwa);
+  if (!fraza) return null;
+
+  const u = new URL(ADRES);
+  u.searchParams.set('custp', '1');
+  u.searchParams.set('type', 'inventory');
+  u.searchParams.set('sort', 'name-asc');
+  u.searchParams.set('search', fraza);
+  u.searchParams.set('inventory-status', '122');
+
+  const id = GRUPY[String(grupa || '').trim().toLowerCase()];
+  if (id) u.searchParams.set('inventory-group', String(id));
+
+  return u.toString();
+}
+
 /* ──────────────────────────────────────────── kontrola trafności wyników */
 
 /** „Kamień Naturalny" → „kamien naturalny" — do porównywania nazw. */
@@ -439,6 +491,9 @@ export function pogrupuj(plyty) {
       rozneFormaty: g.rozneFormaty,
       sztuk: g.sztuk,
       dostepneM2: Math.round(g.lacznieM2 * 100) / 100,
+      // Gotowy adres do obejrzenia płyt tego wzoru — budujemy go tutaj,
+      // żeby front i konsultant podawali dokładnie ten sam link.
+      link: linkMagazynu(g.nazwa, g.marka),
     }))
     .sort((a, b) => b.dostepneM2 - a.dostepneM2);
 }
@@ -522,10 +577,27 @@ export function opiszPlyty(wynik) {
     wiersze.push(`- …i ${mnoga(lista.length - POKAZ, ['dalszy wariant', 'dalsze warianty', 'dalszych wariantów'])} o mniejszej dostępności.`);
   }
 
+  // Adresy podajemy gotowe — model ma je WKLEIĆ, a nie składać z parametrów.
+  // Ręcznie sklejony link trafiłby klientowi do maila i po cichu prowadził
+  // na pierwszą stronę wszystkich 130 pozycji zamiast na właściwy kamień.
+  const linki = [];
+  const widziane = new Set();
+  for (const z of lista) {
+    const klucz = `${z.nazwa}|${z.marka}`;
+    if (!z.link || widziane.has(klucz)) continue;
+    widziane.add(klucz);
+    linki.push(`- ${z.nazwa}${z.marka ? ` (${z.marka})` : ''}: ${z.link}`);
+    if (linki.length >= 4) break;
+  }
+
   return [
     `Magazyn Interstone — „${wynik.fraza}": ${mnoga(wynik.plyty.length, ['płyta', 'płyty', 'płyt'])} ` +
       `w ${mnoga(lista.length, ['wariancie', 'wariantach', 'wariantach'])}.`,
     ...wiersze,
+    ...(linki.length
+      ? ['', 'Klient może sam obejrzeć i wybrać płytę — WKLEJ ten adres bez zmian:', ...linki]
+      : []),
+    '',
     'Wymiary płyt: dłuższy bok podany jako pierwszy — tyle mierzy najdłuższy odcinek bez łączenia. ' +
       'Ceny są brutto za m² i wolno je podać klientowi wprost; przy widełkach powiedz „od … zł/m²", ' +
       'bo każdy blok ma własną cenę. Stan magazynu bywa zmienny — potwierdzamy przy zamówieniu.',

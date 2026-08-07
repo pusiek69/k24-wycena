@@ -123,6 +123,9 @@ function formularzBramki(w, box, opcje) {
       // z magazynu") musi dojechać do maila, nie zostać na karcie —
       // klient wraca do wyceny właśnie w skrzynce.
       uwaga: w?.firma?.notaKlient || '',
+      // Link do wyboru płyty ma sens głównie w mailu: klient wraca do wyceny
+      // po kilku dniach i wtedy dopiero siada do wybierania kamienia.
+      linkPlyty: w?.firma?.wyborPlyty?.url || '',
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
 

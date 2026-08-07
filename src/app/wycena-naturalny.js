@@ -148,6 +148,17 @@ export function firmaZWariantu(wariant) {
     // pęknięcia. Konglomerat i spiek z Interstone tną się jak każde inne.
     narzutOdpad: naturalny ? 0.15 : 0.1,
     notaKlient: naturalny ? ZASTRZEZENIE : ZASTRZEZENIE_INNE,
+
+    // Klient ogląda i wybiera płytę sam — na stronie magazynu widzi zdjęcia
+    // konkretnych bloków, ich wymiary i ceny. Adres przychodzi gotowy
+    // z Workera (z filtrem na właściwy kamień i grupę), więc nikt go tutaj
+    // nie skleja z parametrów.
+    wyborPlyty: wariant.link
+      ? { url: wariant.link, nazwa: wariant.nazwa, naturalny }
+      : null,
+    linkDekory: wariant.link
+      ? { url: wariant.link, label: 'Zobacz płyty w magazynie' }
+      : baza.linkDekory,
   };
 }
 

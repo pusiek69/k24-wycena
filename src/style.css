@@ -278,6 +278,27 @@ table.zestawienie tr.suma td.kw { color: var(--vein); font-weight: 700; }
 }
 .info b { color: var(--cream); }
 
+/* Wybór konkretnej płyty w magazynie — tylko przy kamieniu z Interstone.
+   Wyróżniona złotą krawędzią, bo to jedyne miejsce, gdzie klient wychodzi
+   z naszej strony i realnie decyduje o cenie materiału. */
+.wybor-plyty {
+  margin-top: 18px; background: var(--stone);
+  border: 1px solid var(--line-hi); border-left: 3px solid var(--vein);
+  border-radius: var(--radius); padding: 17px 19px;
+}
+.wybor-plyty__tytul {
+  font-family: var(--sans); font-size: 12px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--vein); margin-bottom: 8px;
+}
+.wybor-plyty__opis { margin: 0 0 14px; color: var(--cream); font-size: 15px; line-height: 1.55; }
+.wybor-plyty__nota { margin: 13px 0 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.wybor-plyty__nota code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+  background: rgba(201, 168, 106, .12); border-radius: 3px; padding: 2px 5px; color: var(--vein);
+  white-space: nowrap;
+}
+.wybor-plyty__nota a { color: var(--vein); }
+
 .cta-box {
   margin-top: 24px; background: var(--stone); border: 1px solid var(--line-hi);
   border-radius: var(--radius); padding: 22px;

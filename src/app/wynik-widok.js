@@ -39,6 +39,7 @@ export function kartaWyceny(w, ustawienia = {}) {
       blok('2 · Cięcie i montaż', w.pozycje.filter((p) => p.grupa === 'usługi'), w)
     ),
     ostrzezenia(w),
+    wyborPlyty(w),
     h(
       'div',
       { class: 'info' },
@@ -392,6 +393,54 @@ function opisPlyty(w) {
     { class: 'blok-detal' },
     `${opisPlyt(w.pak)} · format ${liczbaCm(p.w)} × ${liczbaCm(p.h)} cm` +
       (p.polowkaDozwolona ? '' : ' · tylko całe płyty')
+  );
+}
+
+/**
+ * „Wybierz swoją płytę" — sekcja tylko dla materiału z magazynu Interstone.
+ *
+ * Przy kamieniu naturalnym nie ma czegoś takiego jak „ten wzór": każdy blok
+ * ma inny rysunek i inną cenę. Zamiast opisywać to słowami, dajemy klientowi
+ * link do magazynu z filtrem na jego kamień — zobaczy zdjęcia konkretnych
+ * płyt, ich wymiary i ceny. Ceny na interstone.pl są już z marżą Dawida,
+ * więc to, co tam zobaczy, zgadza się z tą wyceną.
+ */
+function wyborPlyty(w) {
+  const wybor = w.firma?.wyborPlyty;
+  if (!wybor?.url) return null;
+
+  return h(
+    'div',
+    { class: 'wybor-plyty' },
+    h('div', { class: 'wybor-plyty__tytul' }, 'Zobacz i wybierz swoją płytę'),
+    h(
+      'p',
+      { class: 'wybor-plyty__opis' },
+      wybor.naturalny
+        ? `Każda płyta ${wybor.nazwa} ma własny rysunek i własną cenę. W magazynie zobaczy Pan/Pani ` +
+            'zdjęcia konkretnych płyt, ich wymiary i ceny — można wybrać tę, która się spodoba.'
+        : `W magazynie zobaczy Pan/Pani dostępne płyty ${wybor.nazwa} wraz z wymiarami i cenami.`
+    ),
+    h(
+      'a',
+      {
+        class: 'link-btn',
+        href: wybor.url,
+        target: '_blank',
+        rel: 'noopener',
+        'data-miejsce': 'magazyn-wybor-plyty',
+      },
+      '↗ Przejdź do magazynu i wybierz płytę'
+    ),
+    h(
+      'p',
+      { class: 'wybor-plyty__nota' },
+      'Gdy wybierze Pan/Pani płytę, proszę podać nam jej numer (np. ',
+      h('code', {}, 'STON000477 - 92326'),
+      ') — telefonicznie pod ',
+      h('a', { href: 'tel:+48796991128', 'data-miejsce': 'wybor-plyty' }, TEL),
+      ' albo w rozmowie. Zarezerwujemy ją i potwierdzimy ostateczną cenę.'
+    )
   );
 }
 

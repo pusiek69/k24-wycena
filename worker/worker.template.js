@@ -261,6 +261,11 @@ async function obsluzLead(request, env, cors) {
   // Zastrzeżenie zależne od materiału — przy kamieniu naturalnym mówi, że
   // wycena jest wstępna, bo konkretna płyta może zejść z magazynu.
   const uwaga = String(d.uwaga || '').trim().slice(0, 400);
+  // Link do magazynu przyjmujemy tylko wtedy, gdy prowadzi do Interstone —
+  // pole przychodzi z przeglądarki, więc nie wolno go wstawić do maila w ciemno.
+  const linkPlyty = /^https:\/\/(www\.)?interstone\.pl\//.test(String(d.linkPlyty || ''))
+    ? String(d.linkPlyty).slice(0, 400)
+    : '';
   const nadawca = env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>';
   const doFirmy = env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com';
 
@@ -297,7 +302,7 @@ async function obsluzLead(request, env, cors) {
     to: [email],
     reply_to: doFirmy,
     subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
-    html: mailDoKlienta(imie, wycena, uwaga),
+    html: mailDoKlienta(imie, wycena, uwaga, linkPlyty),
   });
 
   return json(
@@ -328,7 +333,7 @@ async function resend(env, wiadomosc) {
   }
 }
 
-function mailDoKlienta(imie, wycena, uwaga) {
+function mailDoKlienta(imie, wycena, uwaga, linkPlyty) {
   return `<!doctype html>
 <html lang="pl"><body style="margin:0;background:#13110f;color:#ece6da;font-family:Georgia,serif">
   <div style="max-width:600px;margin:0 auto;padding:32px 24px">
@@ -349,6 +354,29 @@ function mailDoKlienta(imie, wycena, uwaga) {
                      padding:12px 16px;margin:14px 0 0;color:#d8cfbc;font-size:14px;line-height:1.55">
              <strong style="color:#c9a86a">Ważne:</strong> ${esc(uwaga)}
            </p>`
+        : ''
+    }
+    ${
+      linkPlyty
+        ? `<div style="margin:18px 0 0;padding:16px 18px;background:#1b1815;
+                       border:1px solid rgba(201,168,106,.25);border-left:3px solid #c9a86a;border-radius:4px">
+             <div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:.14em;
+                         text-transform:uppercase;color:#c9a86a;margin-bottom:8px">
+               Wybierz swoją płytę
+             </div>
+             <p style="margin:0 0 12px;color:#ece6da;font-size:15px;line-height:1.55">
+               Każda płyta kamienia ma własny rysunek i własną cenę. Pod tym adresem zobaczy
+               Pan/Pani zdjęcia dostępnych płyt, ich wymiary i ceny:
+             </p>
+             <a href="${esc(linkPlyty)}" style="display:inline-block;color:#c9a86a;font-weight:bold;
+                text-decoration:none;border:1px solid rgba(201,168,106,.45);border-radius:4px;padding:10px 14px">
+               ↗ Zobacz płyty w magazynie
+             </a>
+             <p style="margin:12px 0 0;color:#8c8474;font-size:13px;line-height:1.6">
+               Po wybraniu płyty proszę podać nam jej numer (np. STON000477 - 92326) —
+               zarezerwujemy ją i potwierdzimy ostateczną cenę.
+             </p>
+           </div>`
         : ''
     }
     <p style="color:#8c8474;font-size:13px;line-height:1.6;margin:20px 0">
