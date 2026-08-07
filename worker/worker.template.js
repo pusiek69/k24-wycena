@@ -274,25 +274,17 @@ async function obsluzLead(request, env, cors) {
     zalaczniki.push({ filename: String(d.filename).slice(0, 120), content: String(d.file) });
   }
 
-  // 1. zgłoszenie do firmy — z transkrypcją i załącznikiem
+  const szczegoly = d.szczegoly && typeof d.szczegoly === 'object' ? d.szczegoly : null;
+  const klient = { imie, telefon, email, miejscowosc, uwagi: String(d.uwagi || '').trim() };
+
+  // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
     from: nadawca,
     to: [doFirmy],
     reply_to: email,
-    subject: `Nowa wycena: ${imie}, ${miejscowosc} — ${telefon}`,
-    text: [
-      `Imię: ${imie}`,
-      `Telefon: ${telefon}`,
-      `E-mail: ${email}`,
-      `Miejscowość: ${miejscowosc}`,
-      '',
-      'WYCENA:',
-      wycena || '(brak)',
-      ...(uwaga ? ['', 'UWAGA: ' + uwaga] : []),
-      '',
-      'ROZMOWA:',
-      String(d.transcript || '(brak transkrypcji)'),
-    ].join('\n'),
+    subject: tematLeada(klient, szczegoly, wycena),
+    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
+    text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
     attachments: zalaczniki.length ? zalaczniki : undefined,
   });
 
@@ -331,6 +323,265 @@ async function resend(env, wiadomosc) {
     console.error('resend', e?.message || e);
     return false;
   }
+}
+
+/* ──────────────────────────────────── mail leadowy do firmy (dla Dawida) */
+
+const zl = (n) => Math.round(Number(n) || 0).toLocaleString('pl-PL') + ' zł';
+/** 1 płyta / 2 płyty / 5 płyt — mail czyta człowiek, nie parser. */
+function mnogaPlyt(n) {
+  const d = n % 10;
+  const st = n % 100;
+  if (n === 1) return 'płyta';
+  if (d >= 2 && d <= 4 && !(st >= 12 && st <= 14)) return 'płyty';
+  return 'płyt';
+}
+
+const lb = (n, m = 1) => {
+  const x = Math.round((Number(n) || 0) * 10 ** m) / 10 ** m;
+  return String(x).replace('.', ',');
+};
+
+/**
+ * Polski numer to 9 cyfr. Numer z leada Pauliny (+4851581645) miał osiem —
+ * czyli literówkę. Nie odrzucamy zgłoszenia, bo mail i tak działa, ale Dawid
+ * ma o tym wiedzieć ZANIM zacznie wydzwaniać pod niedziałający numer.
+ */
+function telefonPodejrzany(telefon) {
+  let c = String(telefon || '').replace(/\D/g, '');
+  if (c.startsWith('0048')) c = c.slice(4);
+  else if (c.startsWith('48') && c.length > 9) c = c.slice(2);
+  if (c.length === 9) return null;
+  return `numer ma ${c.length} ${c.length === 1 ? 'cyfrę' : c.length < 5 ? 'cyfry' : 'cyfr'} zamiast 9`;
+}
+
+/** „Nowa wycena: Paulina, Przecław — 22 200–27 150 zł — Technistone Calacatta Volegno" */
+function tematLeada(klient, s, wycenaTekst) {
+  const czesci = [`Nowa wycena: ${klient.imie}, ${klient.miejscowosc}`];
+  if (s?.widelki?.od) {
+    czesci.push(`${Math.round(s.widelki.od).toLocaleString('pl-PL')}–${zl(s.widelki.do)}`);
+  }
+  if (s?.firma) czesci.push([s.firma, s.dekor].filter(Boolean).join(' '));
+  else if (wycenaTekst) czesci.push(wycenaTekst.split('·')[0].trim());
+  return czesci.join(' — ').slice(0, 180);
+}
+
+/** Rozmowa bez powitań i bez ścian tekstu — ma się mieścić na jednym ekranie. */
+function skrocTranskrypcje(tekst, maks = 1800) {
+  const linie = String(tekst || '')
+    .split(/\n{2,}/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    // Powitanie asystenta i uprzejmości nic nie wnoszą — Dawid zna swój skrypt.
+    .filter((l) => !/^Konsultant:\s*Dzień dobry, jestem asystentem/i.test(l))
+    .filter((l) => !/^Klient:\s*(dzień dobry|cześć|witam)[.!, ]*$/i.test(l));
+
+  const out = [];
+  let dlugosc = 0;
+  for (let i = linie.length - 1; i >= 0; i--) {
+    const l = linie[i].length > 320 ? linie[i].slice(0, 317) + '…' : linie[i];
+    if (dlugosc + l.length > maks) {
+      out.unshift(`[…wcześniejsza część rozmowy pominięta — ${i + 1} wiadomości]`);
+      break;
+    }
+    out.unshift(l);
+    dlugosc += l.length;
+  }
+  return out.join('\n');
+}
+
+/** Które kawałki na której płycie — to, czego brakowało w starym mailu. */
+function opisUkladu(s) {
+  if (!s?.uklad?.length) return [];
+  return s.uklad.map((pl, i) => {
+    const pasy = pl.pasy.map((pas) => {
+      const el = pas.elementy
+        .map((e) => {
+          const zrodlo = s.odcinki?.[e.odcinek];
+          const nazwa = zrodlo ? `odcinek ${lb(zrodlo.gl, 0)}×${lb(zrodlo.dl, 0)}` : `odcinek ${e.odcinek + 1}`;
+          return `${lb(e.dl)} cm — ${nazwa}${e.ciety ? ' (kawałek, tu wypada łączenie)' : ''}`;
+        })
+        .join(' + ');
+      return `${el}  [zajęte ${lb(pas.zajete)} z ${lb(pas.dostepne)} cm]`;
+    });
+    return { nr: i + 1, wysokosc: `${lb(pl.wysokoscUzyta)} z ${lb(pl.wysokoscPlyty)} cm`, pasy };
+  });
+}
+
+function wykorzystaniePlyty(s) {
+  if (!s || !(s.m2Platne > 0)) return null;
+  const odpad = Math.round((1 - s.m2Blatu / s.m2Platne) * 100);
+  return {
+    tekst:
+      `${lb(s.m2Blatu, 2)} m² blatu z ${lb(s.m2Platne, 2)} m² ${s.wgMetrazu ? 'materiału' : 'płyt'} ` +
+      `(${odpad}% odpadu`,
+    odpad,
+  };
+}
+
+function mailDoFirmy(klient, s, extra) {
+  const problem = telefonPodejrzany(klient.telefon);
+  const uklad = opisUkladu(s);
+  const wyk = wykorzystaniePlyty(s);
+  const material = s ? s.pozycje.filter((p) => p.grupa === 'materiał') : [];
+  const uslugi = s ? s.pozycje.filter((p) => p.grupa === 'usługi') : [];
+  const transkrypcja = skrocTranskrypcje(extra.transkrypcja);
+
+  const wiersz = (p) => `
+    <tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #e8e4dc">
+        ${esc(p.nazwa)}${p.detal ? `<br><span style="color:#8c8474;font-size:12px">${esc(p.detal)}</span>` : ''}
+      </td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e8e4dc;text-align:right;white-space:nowrap;font-weight:bold">
+        ${zl(p.brutto)}
+      </td>
+    </tr>`;
+
+  const sekcja = (tytul, poz, suma) =>
+    !poz.length
+      ? ''
+      : `
+    <div style="font:bold 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8c7040;margin:18px 0 6px">${tytul}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      ${poz.map(wiersz).join('')}
+      <tr>
+        <td style="padding:7px 10px;font-weight:bold">Razem</td>
+        <td style="padding:7px 10px;text-align:right;font-weight:bold;white-space:nowrap">${zl(suma)}</td>
+      </tr>
+    </table>`;
+
+  return `<!doctype html>
+<html lang="pl"><body style="margin:0;background:#f4f1ea;font-family:Arial,Helvetica,sans-serif;color:#232220">
+<div style="max-width:640px;margin:0 auto;padding:20px">
+
+  <div style="background:#13110f;color:#ece6da;border-radius:6px;padding:18px 20px">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#c9a86a">Nowe zgłoszenie</div>
+    <div style="font-size:23px;margin-top:5px">${esc(klient.imie)} · ${esc(klient.miejscowosc)}</div>
+    <table style="width:100%;margin-top:12px;font-size:15px;color:#ece6da">
+      <tr>
+        <td style="padding:3px 0;width:76px;color:#b6ad9d">Telefon</td>
+        <td style="padding:3px 0">
+          <a href="tel:${esc(klient.telefon.replace(/[^\d+]/g, ''))}" style="color:#c9a86a;font-weight:bold;font-size:19px;text-decoration:none">${esc(klient.telefon)}</a>
+          ${problem ? `<div style="margin-top:5px;background:#5a2418;border-radius:4px;padding:7px 9px;font-size:13px;color:#ffd9cf"><b>Uwaga:</b> ${esc(problem)} — numer wygląda na niepełny, najlepiej odpisać mailem.</div>` : ''}
+        </td>
+      </tr>
+      <tr><td style="padding:3px 0;color:#b6ad9d">E-mail</td>
+          <td style="padding:3px 0"><a href="mailto:${esc(klient.email)}" style="color:#c9a86a;text-decoration:none">${esc(klient.email)}</a></td></tr>
+      ${klient.uwagi ? `<tr><td style="padding:3px 0;color:#b6ad9d">Uwagi</td><td style="padding:3px 0">${esc(klient.uwagi)}</td></tr>` : ''}
+    </table>
+  </div>
+
+  ${
+    s
+      ? `
+  <div style="background:#fff;border:1px solid #e0dbd1;border-radius:6px;padding:18px 20px;margin-top:14px">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8c7040">Wycena</div>
+    <div style="font-size:20px;margin:4px 0 2px">${esc(s.firma)}${s.dekor ? ' · ' + esc(s.dekor) : ''}</div>
+    <div style="color:#6b6459;font-size:14px">
+      ${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')}
+      · ${lb(s.mb)} m.b.${s.grubosc ? ' · ' + esc(s.grubosc) + ' mm' : ''}
+    </div>
+    <div style="margin-top:12px;padding:12px 14px;background:#f7f4ee;border-left:3px solid #c9a86a;border-radius:4px">
+      <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8c7040">Razem brutto</span><br>
+      <span style="font-size:26px;font-weight:bold">${zl(s.widelki.od)} – ${zl(s.widelki.do)}</span><br>
+      <span style="color:#6b6459;font-size:13px">wyliczenie: ${zl(s.razem)} · widełki ±10%</span>
+      ${s.promo ? `<br><span style="color:#1d6b3a;font-size:13px">promocja „${esc(s.promo.nazwa)}" — klient oszczędza ${zl(s.oszczednosc)}</span>` : ''}
+    </div>
+
+    ${sekcja('Materiał', material, s.materialBrutto)}
+    ${sekcja('Cięcie, montaż i dodatki', uslugi, s.uslugiBrutto)}
+
+    ${
+      uklad.length
+        ? `
+    <div style="font:bold 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8c7040;margin:20px 0 6px">
+      Rozkrój — ${s.plytyPelne}${s.polowka ? ' i ½' : ''} ${s.polowka ? 'płyty' : mnogaPlyt(s.plytyPelne)} ${lb(s.plyta.w)} × ${lb(s.plyta.h)} cm
+    </div>
+    ${uklad
+      .map(
+        (pl) => `
+    <div style="border:1px solid #e0dbd1;border-radius:4px;padding:10px 12px;margin-bottom:7px;font-size:13.5px">
+      <b>Płyta ${pl.nr}</b> <span style="color:#8c8474">— wykorzystana wysokość ${pl.wysokosc}</span>
+      <ul style="margin:6px 0 0 16px;padding:0;color:#3c3a35">
+        ${pl.pasy.map((p) => `<li style="margin-bottom:3px">${esc(p)}</li>`).join('')}
+      </ul>
+    </div>`
+      )
+      .join('')}
+    ${
+      wyk
+        ? `<div style="font-size:13.5px;color:#3c3a35;margin-top:8px">
+             <b>Wykorzystanie płyty:</b> ${wyk.tekst}${wyk.odpad >= 25 ? ' — resztę można wykorzystać np. na parapety, cokoły lub półki' : ''}).
+           </div>`
+        : ''
+    }`
+        : ''
+    }
+
+    ${
+      s.ostrzezenia?.length
+        ? `<div style="margin-top:14px;background:#fdf6e3;border:1px solid #e6d9b0;border-radius:4px;padding:10px 12px;font-size:13.5px">
+             <b>Do omówienia na pomiarze:</b>
+             <ul style="margin:5px 0 0 16px;padding:0">${s.ostrzezenia.map((o) => `<li>${esc(o)}</li>`).join('')}</ul>
+           </div>`
+        : ''
+    }
+    ${extra.uwaga ? `<div style="margin-top:10px;font-size:13px;color:#6b6459">${esc(extra.uwaga)}</div>` : ''}
+  </div>`
+      : `<div style="background:#fff;border:1px solid #e0dbd1;border-radius:6px;padding:18px 20px;margin-top:14px">
+           <b>Wycena:</b> ${esc(extra.wycena) || 'zapytanie z rozmowy — do przygotowania'}
+         </div>`
+  }
+
+  ${
+    transkrypcja
+      ? `
+  <div style="background:#fff;border:1px solid #e0dbd1;border-radius:6px;padding:14px 18px;margin-top:14px">
+    <div style="font:bold 11px/1 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#8c7040;margin-bottom:8px">Rozmowa (skrót)</div>
+    <pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font:13px/1.55 Arial,sans-serif;color:#4a4740">${esc(transkrypcja)}</pre>
+  </div>`
+      : ''
+  }
+
+</div></body></html>`;
+}
+
+/** Wersja tekstowa — dla klientów pocztowych bez HTML i dla podglądu. */
+function leadTekstem(klient, s, extra) {
+  const problem = telefonPodejrzany(klient.telefon);
+  const l = [
+    `${klient.imie}, ${klient.miejscowosc}`,
+    `Telefon: ${klient.telefon}${problem ? `  <-- UWAGA: ${problem}, numer wygląda na niepełny — najlepiej odpisać mailem` : ''}`,
+    `E-mail:  ${klient.email}`,
+  ];
+  if (klient.uwagi) l.push(`Uwagi:   ${klient.uwagi}`);
+
+  if (s) {
+    l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
+    l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
+    l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`, '');
+    for (const p of s.pozycje) l.push(`  ${p.nazwa}${p.detal ? ` (${p.detal})` : ''} — ${zl(p.brutto)}`);
+    l.push('', `  materiał ${zl(s.materialBrutto)} · usługi ${zl(s.uslugiBrutto)}`);
+
+    const uklad = opisUkladu(s);
+    if (uklad.length) {
+      l.push('', `ROZKRÓJ — ${s.plytyPelne}${s.polowka ? ' i ½' : ''} ${s.polowka ? 'płyty' : mnogaPlyt(s.plytyPelne)} ${lb(s.plyta.w)}×${lb(s.plyta.h)} cm:`);
+      for (const pl of uklad) {
+        l.push(`  Płyta ${pl.nr} (wysokość ${pl.wysokosc}):`);
+        for (const p of pl.pasy) l.push(`     ${p}`);
+      }
+    }
+    const wyk = wykorzystaniePlyty(s);
+    if (wyk) l.push('', `Wykorzystanie płyty: ${wyk.tekst}).`);
+    if (s.ostrzezenia?.length) l.push('', 'DO OMÓWIENIA NA POMIARZE:', ...s.ostrzezenia.map((o) => '  - ' + o));
+  } else {
+    l.push('', 'WYCENA: ' + (extra.wycena || '(brak)'));
+  }
+  if (extra.uwaga) l.push('', extra.uwaga);
+
+  const t = skrocTranskrypcje(extra.transkrypcja);
+  if (t) l.push('', '--- ROZMOWA (skrót) ---', t);
+  return l.join('\n');
 }
 
 function mailDoKlienta(imie, wycena, uwaga, linkPlyty) {

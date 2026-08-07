@@ -126,6 +126,10 @@ function formularzBramki(w, box, opcje) {
       // Link do wyboru płyty ma sens głównie w mailu: klient wraca do wyceny
       // po kilku dniach i wtedy dopiero siada do wybierania kamienia.
       linkPlyty: w?.firma?.wyborPlyty?.url || '',
+      // Pełne rozbicie dla Dawida. Do maila leadowego trafia to samo,
+      // co klient widzi na karcie — bez tego trzeba było odtwarzać wycenę
+      // z jednozdaniowego podsumowania i transkryptu rozmowy.
+      szczegoly: w?.ok ? szczegolyWyceny(w) : null,
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
 
@@ -257,6 +261,45 @@ function etykietaWyceny(w) {
   return w.materialDoUstalenia
     ? 'koszt obróbki i montażu'
     : `blat ${w.firma.nazwa}${w.dekor ? ' ' + w.dekor : ''}`;
+}
+
+/**
+ * Wycena rozłożona na czynniki — jedzie do Workera i stamtąd w mail do firmy.
+ *
+ * Świadomie NIE wysyłamy całego obiektu wyceny: siedzi w nim konfiguracja
+ * firmy z cennikiem wszystkich dekorów. Do maila potrzeba tylko tego,
+ * co widać na karcie klienta.
+ */
+export function szczegolyWyceny(w) {
+  const plyta = w.firma?.plyta || {};
+  return {
+    firma: w.firma?.nazwa || '',
+    dekor: w.dekor || '',
+    grubosc: w.grubosc || '',
+    odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),
+    plyta: { w: plyta.w, h: plyta.h },
+    plytyPelne: w.pak?.plytyPelne ?? 0,
+    polowka: !!w.pak?.polowka,
+    laczenia: w.pak?.laczenia ?? 0,
+    uklad: w.pak?.uklad || [],
+    m2Blatu: w.pak?.m2Blatu ?? 0,
+    m2Platne: w.m2Platne ?? 0,
+    mb: w.pak?.mb ?? 0,
+    wgMetrazu: !!w.wgMetrazu,
+    pozycje: (w.pozycje || []).map((p) => ({
+      grupa: p.grupa,
+      nazwa: p.nazwa,
+      detal: p.detal || '',
+      brutto: Math.round(p.brutto),
+    })),
+    materialBrutto: Math.round(w.materialBrutto || 0),
+    uslugiBrutto: Math.round(w.uslugiBrutto || 0),
+    razem: Math.round(w.razem || 0),
+    widelki: { od: Math.round(w.widelki?.od || 0), do: Math.round(w.widelki?.do || 0) },
+    promo: w.promo ? { nazwa: w.promo.nazwa, do: w.promo.do } : null,
+    oszczednosc: Math.round(w.oszczednosc || 0),
+    ostrzezenia: w.ostrzezenia || [],
+  };
 }
 
 /** Wycena jednym zdaniem — trafia do maila i do zgłoszenia. */

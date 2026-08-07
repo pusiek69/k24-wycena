@@ -113,7 +113,7 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
   let mb = 0;
   let laczenia = 0; // ile razy trzeba przeciąć odcinek, bo nie mieści się w płycie
 
-  for (const o of odcinki) {
+  for (const [nrOdcinka, o] of odcinki.entries()) {
     m2Blatu += (o.dl * o.gl) / 10000;
     mb += o.dl / 100;
 
@@ -131,16 +131,18 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
     if (o.dl / UW > 20) return null;
 
     let pozostalo = o.dl;
+    let dzielony = false;
     while (pozostalo > UW + 0.1) {
-      czesci.push({ dl: UW, gl: o.gl });
+      czesci.push({ dl: UW, gl: o.gl, odcinek: nrOdcinka, ciety: true });
       pozostalo -= UW;
+      dzielony = true;
       laczenia++;
       ostrzezenia.push(
         `Odcinek dłuższy niż płyta (${fmtCm(UW)} cm użytecznej długości) — blat będzie łączony. ` +
           'Miejsce łączenia ustalamy na pomiarze.'
       );
     }
-    if (pozostalo > 0.1) czesci.push({ dl: pozostalo, gl: o.gl });
+    if (pozostalo > 0.1) czesci.push({ dl: pozostalo, gl: o.gl, odcinek: nrOdcinka, ciety: dzielony });
   }
 
   if (!czesci.length) return null;
@@ -157,11 +159,12 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
       // niż pas, który już ma ustaloną wysokość.
       if (pas.zajete + rzaz + cz.dl <= UW + 0.1 && cz.gl <= pas.wysokosc + 0.1) {
         pas.zajete += rzaz + cz.dl;
+        pas.el.push(cz);
         wlozony = true;
         break;
       }
     }
-    if (!wlozony) pasy.push({ zajete: cz.dl, wysokosc: cz.gl });
+    if (!wlozony) pasy.push({ zajete: cz.dl, wysokosc: cz.gl, el: [cz] });
   }
 
   // Pasy pakujemy w płyty. Pas NIE MOŻE przechodzić z płyty na płytę —
@@ -172,11 +175,12 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
     for (const p of plyty) {
       if (p.wysokosc + rzaz + pas.wysokosc <= UH + 0.1) {
         p.wysokosc += rzaz + pas.wysokosc;
+        p.pasy.push(pas);
         wlozony = true;
         break;
       }
     }
-    if (!wlozony) plyty.push({ wysokosc: pas.wysokosc });
+    if (!wlozony) plyty.push({ wysokosc: pas.wysokosc, pasy: [pas] });
   }
 
   let plytyPelne = plyty.length;
@@ -201,8 +205,29 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
     m2Kupione,
     mb,
     laczenia,
+    // Rozkład kawałków na płytach — Dawid potrzebuje go w mailu leadowym,
+    // żeby przed pomiarem wiedzieć, co z czego wyjdzie i gdzie wypadnie
+    // łączenie. Postać jest celowo płaska: leci przez JSON do Workera.
+    uklad: plyty.map((p) => ({
+      wysokoscUzyta: zaokr(p.wysokosc),
+      wysokoscPlyty: zaokr(UH),
+      pasy: p.pasy.map((pas) => ({
+        zajete: zaokr(pas.zajete),
+        dostepne: zaokr(UW),
+        elementy: pas.el.map((e) => ({
+          dl: zaokr(e.dl),
+          gl: zaokr(e.gl),
+          odcinek: e.odcinek,
+          ciety: !!e.ciety,
+        })),
+      })),
+    })),
     ostrzezenia: [...new Set(ostrzezenia)],
   };
+}
+
+function zaokr(n) {
+  return Math.round(n * 10) / 10;
 }
 
 export function opisPlyt(pak) {

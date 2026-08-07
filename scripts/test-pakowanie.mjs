@@ -175,3 +175,39 @@ test('surowa płyta kamienia naturalnego traci obrzeże', () => {
   // i blat 300 cm nie zmieści się już bez łączenia.
   assert.equal(upakuj([{ gl: 60, dl: 300 }], plyta(300, 180, { obrzeze: 1 })).laczenia, 1);
 });
+
+/* ────────────────────────────────────── uklad kawalkow na plytach (mail) */
+
+test('uklad pokazuje, ktory odcinek trafia na ktora plyte', () => {
+  // Prawdziwe zgloszenie (Paulina, sierpien 2026): 60x185 + 60x396 + 60x200
+  // na plycie Technistone 318,5 x 155.
+  const p = upakuj(
+    [{ gl: 60, dl: 185 }, { gl: 60, dl: 396 }, { gl: 60, dl: 200 }],
+    plyta(318.5, 155)
+  );
+  assert.equal(p.plytyPelne, 2);
+  assert.equal(p.laczenia, 1, 'odcinek 396 cm nie miesci sie w plycie 318,5 cm');
+  assert.equal(p.uklad.length, 2, 'uklad ma tyle wpisow, ile plyt');
+
+  // Suma dlugosci wszystkich kawalkow = suma dlugosci odcinkow.
+  const kawalki = p.uklad.flatMap((pl) => pl.pasy.flatMap((s) => s.elementy));
+  const suma = kawalki.reduce((a, e) => a + e.dl, 0);
+  assert.ok(Math.abs(suma - (185 + 396 + 200)) < 0.5, 'nic nie zginelo: ' + suma);
+
+  // Odcinek nr 2 (396 cm) jest jedynym cietym i sklada sie z dwoch kawalkow.
+  const ciete = kawalki.filter((e) => e.ciety);
+  assert.equal(ciete.length, 2);
+  assert.ok(ciete.every((e) => e.odcinek === 1), 'ciety jest tylko odcinek nr 2 (indeks 1)');
+
+  // Zaden pas nie przekracza dlugosci plyty, zadna plyta swojej wysokosci.
+  for (const pl of p.uklad) {
+    assert.ok(pl.wysokoscUzyta <= pl.wysokoscPlyty + 0.1);
+    for (const pas of pl.pasy) assert.ok(pas.zajete <= pas.dostepne + 0.1);
+  }
+});
+
+test('uklad przechodzi przez JSON bez strat (leci do Workera)', () => {
+  const p = upakuj([{ gl: 60, dl: 300 }, { gl: 60, dl: 180 }], plyta(318.5, 155));
+  const poJson = JSON.parse(JSON.stringify(p.uklad));
+  assert.deepEqual(poJson, p.uklad);
+});
