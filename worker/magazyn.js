@@ -23,7 +23,18 @@ const UA =
 
 const LIMIT_CZASU_MS = 8000;
 const CACHE_SEK = 45 * 60; // magazyn zmienia się w skali dni, nie minut
-const MAKS_PLYT = 12; // tyle mieści jedna strona wyników — więcej i tak nie przyjdzie
+
+/**
+ * Wyniki są STRONICOWANE po 12 pozycji, a numer strony siedzi w parametrze
+ * `custp`. To nie jest drobiazg: „taj mahal" daje 130 pozycji na 11 stronach,
+ * a naturalny kwarcyt TAJ MAHAL leży dopiero na stronie 11 — bo sortowanie
+ * alfabetyczne stawia przed nim „I NATURALI…", „InterQ…" i „RARE…".
+ * Czytanie samej pierwszej strony kazało nam twierdzić, że naturalnego
+ * Taj Mahal nie ma w magazynie. Miał rację Dawid, nie parser.
+ */
+const NA_STRONE = 12;
+const MAKS_STRON = 14; // 168 płyt — z zapasem ponad najliczniejsze zapytania
+const RAZEM_STRON = 4; // ile stron ciągniemy równolegle, żeby nie zalać Interstone
 
 /* ─────────────────────────────────────────────── odescapowanie i pomocnicze */
 
@@ -98,7 +109,7 @@ export function parsujMagazyn(html) {
   const czesci = czysty.split('l-single-inventory__type-label');
   const plyty = [];
 
-  for (let i = 1; i < czesci.length && plyty.length < MAKS_PLYT; i++) {
+  for (let i = 1; i < czesci.length; i++) {
     const karta = czesci[i].slice(0, 12000);
 
     const nazwa = zlap(karta, /l-single-inventory__title[^>]*>([\s\S]*?)<\/div>/);
@@ -170,6 +181,21 @@ function uprosc(s) {
  * Porównujemy wyłącznie z nazwą — rodzaj („Kamień naturalny") czy kolor
  * pasowałyby do zbyt wielu przypadkowych zapytań.
  */
+/**
+ * Ta sama płyta potrafi wrócić z dwóch stron, gdy magazyn przestawi się
+ * między naszymi żądaniami. Kod magazynowy jest unikalny dla płyty,
+ * więc po nim rozpoznajemy powtórki.
+ */
+export function odfiltrujDuplikaty(plyty) {
+  const widziane = new Set();
+  return plyty.filter((p) => {
+    const klucz = p.kod || `${p.nazwa}|${p.formatCm?.wys}|${p.formatCm?.szer}|${p.dostepneM2}`;
+    if (widziane.has(klucz)) return false;
+    widziane.add(klucz);
+    return true;
+  });
+}
+
 export function odsiejNietrafione(plyty, fraza) {
   const slowa = uprosc(fraza)
     .split(/[^\p{L}\p{N}]+/u)
@@ -204,14 +230,47 @@ function wolnoPobrac() {
 
 /* ───────────────────────────────────────────────────────── pobranie + cache */
 
-function adresDla(fraza) {
+function adresDla(fraza, strona = 1) {
   const u = new URL(ADRES);
-  u.searchParams.set('custp', '1');
+  u.searchParams.set('custp', String(strona)); // numer strony wyników
   u.searchParams.set('type', 'inventory');
   u.searchParams.set('sort', 'name-asc');
   u.searchParams.set('search', fraza);
-  u.searchParams.set('inventory-status', '122'); // tylko pozycje dostępne
+  // 122 = „Produkt na stanie" (123 to „Produkt w drodze" — tego nie obiecujemy).
+  u.searchParams.set('inventory-status', '122');
   return u.toString();
+}
+
+/**
+ * Ile jest stron wyników — z bloku paginacji (`data-page="11"`).
+ * Gdy paginacji nie ma, wynik mieści się na jednej stronie.
+ */
+function ileStron(html) {
+  let maks = 1;
+  for (const m of html.matchAll(/data-page="(\d+)"/g)) {
+    const n = Number(m[1]);
+    if (n > maks) maks = n;
+  }
+  return Math.min(maks, MAKS_STRON);
+}
+
+/** Pobranie jednej strony wyników. Zwraca HTML albo null. */
+async function pobierzStrone(fraza, strona) {
+  try {
+    const odp = await fetch(adresDla(fraza, strona), {
+      headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'pl-PL,pl;q=0.9' },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(LIMIT_CZASU_MS),
+    });
+    if (!odp.ok) {
+      console.error('interstone', strona, odp.status);
+      return null;
+    }
+    return await odp.text();
+  } catch (e) {
+    console.error('interstone', strona, e?.message || e);
+    return null;
+  }
 }
 
 const kluczCache = (fraza) =>
@@ -240,36 +299,41 @@ export async function pobierzMagazyn(frazaSurowa, ctx) {
 
   if (!wolnoPobrac()) return { ok: false, powod: 'limit', fraza };
 
-  let html;
-  try {
-    const odp = await fetch(adresDla(fraza), {
-      headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'pl-PL,pl;q=0.9' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(LIMIT_CZASU_MS),
-    });
-    if (!odp.ok) {
-      console.error('interstone', odp.status);
-      return { ok: false, powod: 'blad-strony', fraza };
-    }
-    html = await odp.text();
-  } catch (e) {
-    console.error('interstone', e?.message || e);
-    return { ok: false, powod: 'blad-sieci', fraza };
-  }
+  const pierwsza = await pobierzStrone(fraza, 1);
+  if (pierwsza == null) return { ok: false, powod: 'blad-strony', fraza };
 
   // Znacznik kart musi być w treści. Gdy go nie ma, strona wygląda inaczej
   // niż zakładał parser — wolimy przyznać się do niewiedzy niż zmyślać.
-  if (!html.includes('l-single-inventory__type-label')) {
+  if (!pierwsza.includes('l-single-inventory__type-label')) {
+    // Pusty wynik wyszukiwania to nie awaria — po prostu nic nie pasuje.
+    if (/js-filters-counter[^>]*>\s*0\s/.test(pierwsza)) {
+      return { ok: true, fraza, plyty: [], stron: 1 };
+    }
     console.error('interstone: brak znacznika kart — strona zmieniła układ?');
     return { ok: false, powod: 'brak-danych', fraza };
   }
 
+  // Reszta stron równolegle, partiami — inaczej „taj mahal" (11 stron)
+  // czekałby na 11 kolejnych żądań po ~2 s każde.
+  const stron = ileStron(pierwsza);
+  const strony = [pierwsza];
+  for (let od = 2; od <= stron; od += RAZEM_STRON) {
+    const partia = [];
+    for (let n = od; n < od + RAZEM_STRON && n <= stron; n++) partia.push(pobierzStrone(fraza, n));
+    strony.push(...(await Promise.all(partia)));
+  }
+
   let plyty;
   try {
-    plyty = odsiejNietrafione(parsujMagazyn(html), fraza);
+    const wszystkie = strony.filter(Boolean).flatMap((h) => parsujMagazyn(h));
+    plyty = odsiejNietrafione(odfiltrujDuplikaty(wszystkie), fraza);
   } catch (e) {
     console.error('interstone parser', e?.message || e);
     return { ok: false, powod: 'brak-danych', fraza };
+  }
+
+  if (stron >= MAKS_STRON) {
+    console.warn(`interstone: „${fraza}" ma co najmniej ${stron} stron — czytamy pierwsze ${MAKS_STRON}.`);
   }
 
   if (cache) {
@@ -284,7 +348,7 @@ export async function pobierzMagazyn(frazaSurowa, ctx) {
     else await zapis;
   }
 
-  return { ok: true, fraza, plyty };
+  return { ok: true, fraza, plyty, stron };
 }
 
 /* ──────────────────────────────────────────── format wyniku dla konsultanta */
@@ -394,26 +458,66 @@ export function opiszPlyty(wynik) {
           'spróbuj raz jeszcze samą nazwą własną wzoru (bez słów „granit", „marmur", „blat").';
   }
 
-  const wiersze = warianty.map((g) => {
-    const p = g.plytaCm;
+  // Popularny wzór potrafi mieć 40 wariantów na 11 stronach — surowa lista
+  // byłaby dla konsultanta ścianą tekstu (i kosztem). Zwijamy ją o poziom
+  // wyżej: to samo wykończenie i gatunek, a cena jako WIDEŁKI, bo każdy blok
+  // kamienia naturalnego ma własną cenę.
+  const zwiniete = new Map();
+  for (const g of warianty) {
+    const klucz = [g.nazwa, g.rodzaj, g.wykonczenie, g.gruboscMm, g.jakosc].join('|');
+    const z = zwiniete.get(klucz) || {
+      ...g,
+      cenaOd: g.cenaBruttoM2,
+      cenaDo: g.cenaBruttoM2,
+      blokow: 0,
+      sztukRazem: 0,
+      m2Razem: 0,
+      najdluzsza: 0,
+    };
+    if (g.cenaBruttoM2 != null) {
+      z.cenaOd = z.cenaOd == null ? g.cenaBruttoM2 : Math.min(z.cenaOd, g.cenaBruttoM2);
+      z.cenaDo = z.cenaDo == null ? g.cenaBruttoM2 : Math.max(z.cenaDo, g.cenaBruttoM2);
+    }
+    z.blokow++;
+    z.sztukRazem += g.sztuk;
+    z.m2Razem += g.dostepneM2;
+    z.najdluzsza = Math.max(z.najdluzsza, g.plytaCm?.dl || 0);
+    zwiniete.set(klucz, z);
+  }
+
+  const lista = [...zwiniete.values()].sort((a, b) => b.m2Razem - a.m2Razem);
+  const POKAZ = 10;
+
+  const wiersze = lista.slice(0, POKAZ).map((z) => {
+    const cena =
+      z.cenaOd == null
+        ? 'cena do potwierdzenia'
+        : z.cenaOd === z.cenaDo
+          ? `${pl(z.cenaOd)} zł/m² brutto`
+          : `${pl(z.cenaOd)}–${pl(z.cenaDo)} zł/m² brutto (zależnie od bloku)`;
     const cz = [
-      g.nazwa,
-      g.rodzaj,
-      g.gruboscMm != null ? `${pl(g.gruboscMm)} mm` : null,
-      g.wykonczenie,
-      g.jakosc,
-      g.cenaBruttoM2 != null ? `${pl(g.cenaBruttoM2)} zł/m² brutto` : 'cena do potwierdzenia',
-      p ? `${g.rozneFormaty ? 'największa płyta ' : 'płyta '}${pl(p.dl)}×${pl(p.gl)} cm` : null,
-      p ? `najdłuższy odcinek bez łączenia ${pl(p.dl)} cm` : null,
-      `wolne ${pl(g.dostepneM2)} m² (${mnoga(g.sztuk, ['płyta', 'płyty', 'płyt'])})`,
+      z.nazwa,
+      z.rodzaj,
+      z.gruboscMm != null ? `${pl(z.gruboscMm)} mm` : null,
+      z.wykonczenie,
+      z.jakosc,
+      cena,
+      z.najdluzsza ? `płyty do ${pl(z.najdluzsza)} cm długości` : null,
+      `wolne ${pl(z.m2Razem)} m² (${mnoga(z.sztukRazem, ['płyta', 'płyty', 'płyt'])})`,
     ].filter(Boolean);
     return `- ${cz.join(' | ')}`;
   });
 
+  if (lista.length > POKAZ) {
+    wiersze.push(`- …i ${mnoga(lista.length - POKAZ, ['dalszy wariant', 'dalsze warianty', 'dalszych wariantów'])} o mniejszej dostępności.`);
+  }
+
   return [
-    `Magazyn Interstone — „${wynik.fraza}", ${mnoga(warianty.length, ['wariant', 'warianty', 'wariantów'])}:`,
+    `Magazyn Interstone — „${wynik.fraza}": ${mnoga(wynik.plyty.length, ['płyta', 'płyty', 'płyt'])} ` +
+      `w ${mnoga(lista.length, ['wariancie', 'wariantach', 'wariantach'])}.`,
     ...wiersze,
-    'Wymiary płyt: dłuższy bok podany jako pierwszy. Ceny są brutto za m² i wolno je ' +
-      'podać klientowi wprost. Stan magazynu bywa zmienny — potwierdzamy przy zamówieniu.',
+    'Wymiary płyt: dłuższy bok podany jako pierwszy — tyle mierzy najdłuższy odcinek bez łączenia. ' +
+      'Ceny są brutto za m² i wolno je podać klientowi wprost; przy widełkach powiedz „od … zł/m²", ' +
+      'bo każdy blok ma własną cenę. Stan magazynu bywa zmienny — potwierdzamy przy zamówieniu.',
   ].join('\n');
 }

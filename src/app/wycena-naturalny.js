@@ -68,22 +68,44 @@ function uprosc(s) {
  * najtańsza płyta, z której trzeba go składać z dwóch kawałków.
  */
 export function wybierzWariant(warianty, opcje = {}) {
-  const { grubosc, najdluzszyOdcinek = 0, wykonczenie, tylkoNaturalny = false } = opcje;
+  const {
+    grubosc,
+    najdluzszyOdcinek = 0,
+    m2Potrzebne = 0,
+    wykonczenie,
+    tylkoNaturalny = false,
+    preferujNaturalny = true,
+  } = opcje;
 
   const kandydaci = (warianty || []).filter(
     (w) => w?.cenaBruttoM2 > 0 && w?.plytaCm?.dl > 0 && w?.dostepneM2 > 0
   );
-  const pula = tylkoNaturalny ? kandydaci.filter(jestNaturalny) : kandydaci;
+
+  const naturalne = kandydaci.filter(jestNaturalny);
+  if (tylkoNaturalny) {
+    if (!naturalne.length) return null;
+  }
+
+  /**
+   * Gdy klient prosi o kamień naturalny, a magazyn ma i naturalny, i wersję
+   * z konglomeratu pod tą samą nazwą (Taj Mahal występuje jako naturalny
+   * kwarcyt ORAZ jako InterQ), wybieramy naturalny — twardo, nie punktami.
+   * Wcześniej decydowała różnica kilkudziesięciu punktów i przy odrobinie
+   * innej ofercie konglomerat wygrałby przypadkiem.
+   */
+  const pula = (tylkoNaturalny || preferujNaturalny) && naturalne.length ? naturalne : kandydaci;
   if (!pula.length) return null;
 
   const punkty = (w) => {
     let p = 0;
     if (/gat\.?\s*i\b/i.test(w.jakosc || '')) p += 1000; // I gatunek przed II
     if (w.plytaCm.dl + 0.1 >= najdluzszyOdcinek) p += 500; // odcinek bez łączenia
+    // Blok musi mieć dość materiału. Kamień naturalny bywa rozdrobniony:
+    // ta sama nazwa to kilkanaście bloków, z których część ma jedną płytę.
+    if (m2Potrzebne > 0 && w.dostepneM2 + 0.01 >= m2Potrzebne) p += 400;
     if (grubosc && String(w.gruboscMm) === String(grubosc)) p += 250;
     else if (!grubosc && w.gruboscMm >= 20) p += 200; // na blat domyślnie 20 mm
     if (wykonczenie && uprosc(w.wykonczenie).includes(uprosc(wykonczenie))) p += 100;
-    if (tylkoNaturalny || jestNaturalny(w)) p += 50;
     // Przy równych warunkach — tańsza płyta i większy zapas.
     p -= w.cenaBruttoM2 / 1000;
     p += Math.min(w.dostepneM2, 100) / 1000;

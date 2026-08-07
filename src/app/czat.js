@@ -211,6 +211,9 @@ export function uruchomCzat(root, akcje = {}) {
     const wariant = wybierzWariant(warianty, {
       grubosc: params.grubosc,
       najdluzszyOdcinek: Math.max(...odcinki.map((o) => Math.max(o.dl, o.gl))),
+      // Zgrubny metraż z zapasem — żeby nie wybrać bloku, w którym została
+      // jedna płyta, gdy blat potrzebuje dwóch.
+      m2Potrzebne: odcinki.reduce((a, o) => a + (o.dl * o.gl) / 10000, 0) * 1.15,
       wykonczenie: params.wykonczenie,
     });
     if (!wariant) return false;
