@@ -189,6 +189,11 @@ export function uruchomCzat(root, akcje = {}) {
     if (!stan.material || !stan.dekor || !stan.odcinki.length) return false;
     if (rozmowa.querySelector('.bramka')) return true;
 
+    // O zlew, indukcję i liczbę otworów pytamy ZAWSZE — także wtedy, gdy
+    // konsultant milczy i liczymy sami. Zwracamy true, żeby nie pokazywać
+    // komunikatu o błędzie: zaraz pojawi się pytanie o szczegóły.
+    if (!stan.szczegoly) return true;
+
     const firma = firmaWgSlug(stan.material);
     if (!firma || firma.trybCeny === 'reczna') return false;
 
@@ -197,9 +202,9 @@ export function uruchomCzat(root, akcje = {}) {
       grubosc: gruboscDomyslna(firma, stan.dekor),
       odcinki: stan.odcinki,
       opcje: {
-        zlew: 'podblat',
+        zlew: stan.opcje.nablatowy ? 'nablat' : 'podblat',
         plyta: stan.opcje.licowana ? 'licowana' : 'nakladana',
-        bateria: true,
+        otwory: stan.opcje.otwory ?? 1,
       },
     });
     if (!w.ok) return false;
@@ -459,13 +464,24 @@ export function przelozParametry(params) {
         // Wycięcie pod zlew i pod płytę grzewczą są w każdej wycenie.
         zlew: 'podblat',
         plyta: params.indukcja_licowana ? 'licowana' : 'nakladana',
-        bateria: params.otwor_bateria !== false,
+        // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew.
+        // `otwor_bateria` to stary parametr sprzed uogólnienia — przyjmujemy
+        // go nadal, żeby starsza odpowiedź konsultanta nie wywróciła wyceny.
+        otwory: liczbaOtworow(params),
         mat: !!params.wykonczenie_matowe,
         listwa: Number(params.listwa_mb) || 0,
         krawedz: Number(params.krawedz_mb) || 0,
       },
     },
   };
+}
+
+/** Liczba otworów z parametrów konsultanta, z obsługą starego pola. */
+function liczbaOtworow(params) {
+  const n = Number(params.otwory);
+  if (Number.isFinite(n) && n >= 0) return Math.min(6, Math.round(n));
+  if (params.otwor_bateria === false) return 0;
+  return 1;
 }
 
 function akapity(tekst) {
@@ -504,5 +520,12 @@ export function odczytajWymiary(wiadomosc) {
 /** „Zlew podwieszany, płyta indukcyjna licowana z blatem." → {licowana:true} */
 export function odczytajSzczegoly(wiadomosc) {
   const t = String(wiadomosc).toLowerCase();
-  return { licowana: t.includes('licowana'), nablatowy: t.includes('nablatowy') };
+  // „otwory w blacie: 2" — z pomocnika; przy pisaniu ręcznym bierzemy
+  // pierwszą liczbę stojącą przy słowie „otwor".
+  const m = t.match(/otwor\w*[^0-9]{0,20}(\d)/) || t.match(/(\d)\s*otwor/);
+  return {
+    licowana: t.includes('licowana'),
+    nablatowy: t.includes('nablatowy'),
+    otwory: m ? Math.min(6, Number(m[1])) : undefined,
+  };
 }

@@ -251,9 +251,16 @@ export function pomocnikWymiary(wyslij) {
   );
 }
 
-/** 5. Szczegóły — dwa pytania na jednym ekranie, z możliwością pominięcia. */
+/**
+ * 5. Szczegóły — trzy pytania na jednym ekranie.
+ *
+ * Zlew, płyta indukcyjna i liczba otworów pytane są ZAWSZE, bo każde
+ * z nich realnie zmienia cenę. Wszystkie mają podstawione typowe wartości,
+ * więc klient, któremu się spieszy, klika jeden przycisk — ale pytanie
+ * i tak zobaczył i świadomie je zaakceptował.
+ */
 export function pomocnikSzczegoly(wyslij) {
-  const wybor = { zlew: 'podwieszany', indukcja: 'nakładana' };
+  const wybor = { zlew: 'podwieszany', indukcja: 'nakładana', otwory: 1 };
 
   const grupa = (etykieta, klucz, opcje) =>
     h(
@@ -281,10 +288,42 @@ export function pomocnikSzczegoly(wyslij) {
       )
     );
 
+  // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew…
+  const otwory = h(
+    'div',
+    { class: 'pom-grupa' },
+    h('span', { class: 'pom-grupa-label' }, 'Otwory w blacie'),
+    h(
+      'div',
+      { class: 'o-warianty' },
+      [0, 1, 2, 3, 4].map((n) =>
+        h(
+          'button',
+          {
+            class: 'wariant' + (wybor.otwory === n ? ' sel' : ''),
+            type: 'button',
+            onclick: (e) => {
+              wybor.otwory = n;
+              [...e.target.parentElement.children].forEach((b) => b.classList.remove('sel'));
+              e.target.classList.add('sel');
+            },
+          },
+          n === 0 ? 'brak' : String(n)
+        )
+      )
+    ),
+    h(
+      'span',
+      { class: 'pom-podpowiedz' },
+      'Bateria, dozownik do płynu, gniazdko blatowe, przelew — każdy otwór liczymy osobno.'
+    )
+  );
+
   return ramka(
-    'Dwa szczegóły i liczymy',
+    'Trzy szczegóły i liczymy',
     grupa('Zlew', 'zlew', ['podwieszany', 'nablatowy']),
     grupa('Płyta indukcyjna', 'indukcja', ['nakładana', 'licowana z blatem']),
+    otwory,
     h(
       'div',
       { class: 'nav' },
@@ -294,19 +333,15 @@ export function pomocnikSzczegoly(wyslij) {
           class: 'btn',
           type: 'button',
           onclick: () =>
-            wyslij('szczegoly', `Zlew ${wybor.zlew}, płyta indukcyjna ${wybor.indukcja}. Proszę o wycenę.`),
+            wyslij(
+              'szczegoly',
+              `Zlew ${wybor.zlew}, płyta indukcyjna ${wybor.indukcja}, ` +
+                `otwory w blacie: ${wybor.otwory}. Proszę o wycenę.`
+            ),
         },
         'Policz wycenę →'
-      ),
-      h(
-        'button',
-        {
-          class: 'pom-pomin',
-          type: 'button',
-          onclick: () => wyslij('szczegoly', 'Proszę przyjąć standard i policzyć wycenę.'),
-        },
-        'Przyjmij standard'
       )
+
     )
   );
 }

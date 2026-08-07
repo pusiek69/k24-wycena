@@ -55,13 +55,22 @@ export const OPCJE = [
       { id: 'licowana', label: 'Wycięcie pod płytę licowaną z blatem', cena: 650 },
     ],
   },
+  /*
+   * Otwory w blacie liczymy sztukowo — nie tylko pod baterię. Klient
+   * zamawia dziś także dozownik do płynu, gniazdko blatowe czy przelew
+   * do zlewu, a każdy taki otwór to osobne wiercenie i wykończenie.
+   * Dlatego jedna pozycja z liczbą sztuk zamiast osobnych „ptaszków".
+   */
   {
-    id: 'bateria',
-    label: 'Otwór pod baterię',
-    typ: 'checkbox',
-    cena: 120,
-    per: 'szt',
-    domyslnie: true,
+    id: 'otwory',
+    label: 'Otwory w blacie (bateria, dozownik, gniazdko)',
+    opis: 'Każdy otwór wiercimy i wykańczamy osobno — bateria, dozownik, gniazdko blatowe, przelew.',
+    typ: 'liczba',
+    cena: 150,
+    jednostka: 'szt.',
+    domyslnie: 1,
+    min: 0,
+    max: 6,
   },
   {
     id: 'mat',
