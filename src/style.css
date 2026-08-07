@@ -237,6 +237,15 @@ main { padding: 26px 0 40px; }
 .btn.ghost { background: transparent; color: var(--muted); border-color: var(--line); }
 .btn.ghost:hover { color: var(--vein); border-color: var(--line-hi); background: transparent; }
 
+/* Przycisk będący linkiem WEWNĄTRZ treści (.tekst a) łapał złoty kolor
+   z reguły dla zwykłych odnośników — złoty tekst na złotym tle znikał.
+   Selektory poniżej mają wyższą specyficzność i przywracają kolory
+   przycisku. Dotyczy wszystkich bloków „Policz swój blat" na podstronach. */
+.tekst a.btn { color: #1a1611; }
+.tekst a.btn:hover { color: #1a1611; }
+.tekst a.btn.ghost { color: var(--muted); }
+.tekst a.btn.ghost:hover { color: var(--vein); }
+
 /* ---------- wynik ---------- */
 .wynik-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .kwota { text-align: right; }
