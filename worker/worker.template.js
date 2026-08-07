@@ -7,8 +7,10 @@
  *    (wstrzykiwana jest aktualna lista dekorów).
  *
  *  Co robi:
- *    POST /chat  — rozmowa z konsultantem (klucz Anthropic zostaje tutaj)
- *    POST /lead  — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
+ *    POST /chat     — rozmowa z konsultantem (klucz Anthropic zostaje tutaj)
+ *    POST /lead     — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
+ *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
+ *                     odczyt, z którego korzysta konsultant przez narzędzie)
  *
  *  Sekrety (Cloudflare → Settings → Variables and Secrets):
  *    ANTHROPIC_API_KEY   klucz do Anthropic
@@ -21,8 +23,14 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
+import { pobierzMagazyn, opiszPlyty } from './magazyn.js';
+
 const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 1000;
+
+// Ile razy w jednej turze konsultant może odpytać magazyn. Dwa wystarczą,
+// żeby porównać dwa materiały; więcej to już pętla, nie rozmowa.
+const MAKS_NARZEDZI = 2;
 
 /* ────────────────────────────────────────────────────────────────────────
    WYTYCZNE KONSULTANTA — uczymy go rozmawiać w pliku worker/prompt.local.md
@@ -53,7 +61,7 @@ const PROMPT = WYTYCZNE + `\n\n# Dekory (używaj wyłącznie tych nazw)\n` + DEK
 /* ──────────────────────────────────────────────────────────── obsługa HTTP */
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const cors = naglowkiCors(request, env);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -62,8 +70,9 @@ export default {
     const sciezka = new URL(request.url).pathname.replace(/\/$/, '');
 
     try {
-      if (sciezka === '/chat') return await obsluzChat(request, env, cors);
+      if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
+      if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
       console.error(sciezka, e?.message || e);
@@ -74,37 +83,140 @@ export default {
 
 /* ─────────────────────────────────────────────────────────────────── /chat */
 
-async function obsluzChat(request, env, cors) {
+/**
+ * Jedyne narzędzie konsultanta: podgląd magazynu Interstone.
+ * Wywołuje je model, a wykonuje Worker — klucze i adresy zostają po naszej
+ * stronie, a przeglądarka nie ma jak podstawić fałszywych danych.
+ */
+const NARZEDZIA = [
+  {
+    name: 'sprawdz_magazyn',
+    description: [
+      'Sprawdza AKTUALNY stan magazynowy hurtowni Interstone: jakie płyty są',
+      'na składzie, w jakim formacie, grubości i wykończeniu, po ile za m²',
+      'oraz ile metrów jest wolnych.',
+      '',
+      'Używaj, gdy klient pyta o konkretny kamień naturalny, kwarcyt, marmur',
+      'lub granit z oferty Interstone — o dostępność, cenę albo wymiar płyty.',
+      'Do konglomeratów i spieków z naszego kalkulatora (Technistone, Marazzi,',
+      'Atlas Plan, Keralini) NIE używaj — te wycenia kalkulator na stronie.',
+      '',
+      'Zwraca dane na dziś. Jeśli odpowiedź zaczyna się od NIEDOSTĘPNE,',
+      'znaczy że magazynu nie udało się odczytać — nie zgaduj wtedy',
+      'dostępności ani cen, tylko zaproponuj kontakt.',
+    ].join('\n'),
+    input_schema: {
+      type: 'object',
+      properties: {
+        fraza: {
+          type: 'string',
+          description:
+            'Nazwa materiału do wyszukania, np. „taj mahal", „verde guatemala", „calacatta". ' +
+            'Sama nazwa kamienia, bez słów „granit", „blat" czy „cena".',
+        },
+      },
+      required: ['fraza'],
+    },
+  },
+];
+
+async function obsluzChat(request, env, cors, ctx) {
   if (!env.ANTHROPIC_API_KEY) return json({ error: 'Brak konfiguracji.', kod: 'brak-klucza' }, 503, cors);
 
   const dane = await request.json().catch(() => null);
   const messages = oczyscHistorie(dane?.messages);
   if (!messages.length) return json({ error: 'Pusta rozmowa.' }, 400, cors);
 
-  // Prompt bierzemy ZAWSZE stąd — nawet jeśli front coś przyśle.
-  // Dzięki temu wytycznych nie da się podmienić z przeglądarki.
-  const odp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: [{ type: 'text', text: PROMPT, cache_control: { type: 'ephemeral' } }],
-      messages,
-    }),
-  });
+  // Pętla narzędziowa toczy się w CAŁOŚCI tutaj: front wysyła i dostaje
+  // zwykły tekst, więc nie musi wiedzieć nic o blokach tool_use.
+  let wynik = null;
 
-  if (!odp.ok) {
-    console.error('anthropic', odp.status, await odp.text().catch(() => ''));
-    return json({ error: 'Konsultant chwilowo niedostępny.' }, 502, cors);
+  for (let tura = 0; tura <= MAKS_NARZEDZI; tura++) {
+    // W ostatniej turze zabieramy narzędzia — model musi wtedy odpowiedzieć
+    // słowami, zamiast prosić o kolejne sprawdzenie w nieskończoność.
+    const ostatnia = tura === MAKS_NARZEDZI;
+    wynik = await anthropic(env, messages, ostatnia ? null : NARZEDZIA);
+    if (!wynik) return json({ error: 'Konsultant chwilowo niedostępny.' }, 502, cors);
+
+    const proby = (wynik.content || []).filter((b) => b?.type === 'tool_use');
+    if (wynik.stop_reason !== 'tool_use' || !proby.length) break;
+
+    messages.push({ role: 'assistant', content: wynik.content });
+    messages.push({
+      role: 'user',
+      content: await Promise.all(proby.map((b) => wykonajNarzedzie(b, ctx))),
+    });
   }
 
-  const wynik = await odp.json();
   return json({ content: wynik.content, stop_reason: wynik.stop_reason }, 200, cors);
+}
+
+async function wykonajNarzedzie(blok, ctx) {
+  let tresc;
+  try {
+    if (blok.name === 'sprawdz_magazyn') {
+      tresc = opiszPlyty(await pobierzMagazyn(blok.input?.fraza, ctx));
+    } else {
+      tresc = `NIEDOSTĘPNE: Nieznane narzędzie „${blok.name}".`;
+    }
+  } catch (e) {
+    // Awaria narzędzia nie może wywalić całej rozmowy — model dostaje
+    // czytelny komunikat i sam kieruje klienta do kontaktu.
+    console.error('narzędzie', blok.name, e?.message || e);
+    tresc = 'NIEDOSTĘPNE: Błąd podczas sprawdzania magazynu.';
+  }
+  return { type: 'tool_result', tool_use_id: blok.id, content: tresc };
+}
+
+/** Jedno wywołanie Anthropic. Zwraca odpowiedź albo null przy błędzie. */
+async function anthropic(env, messages, narzedzia) {
+  // Prompt bierzemy ZAWSZE stąd — nawet jeśli front coś przyśle.
+  // Dzięki temu wytycznych nie da się podmienić z przeglądarki.
+  const cialo = {
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    system: [{ type: 'text', text: PROMPT, cache_control: { type: 'ephemeral' } }],
+    messages,
+  };
+  if (narzedzia) cialo.tools = narzedzia;
+
+  try {
+    const odp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(cialo),
+    });
+
+    if (!odp.ok) {
+      console.error('anthropic', odp.status, await odp.text().catch(() => ''));
+      return null;
+    }
+    return await odp.json();
+  } catch (e) {
+    console.error('anthropic', e?.message || e);
+    return null;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────── /magazyn */
+
+/**
+ * Ten sam odczyt co narzędzie konsultanta, tylko wołany wprost.
+ * Przydaje się do sprawdzenia „czy Interstone nadal daje się parsować"
+ * bez płacenia za rozmowę z modelem.
+ */
+async function obsluzMagazyn(request, cors, ctx) {
+  const dane = await request.json().catch(() => null);
+  const wynik = await pobierzMagazyn(dane?.fraza, ctx);
+  return json(
+    { ...wynik, opis: opiszPlyty(wynik) },
+    wynik.ok ? 200 : wynik.powod === 'pusta-fraza' ? 400 : 503,
+    cors
+  );
 }
 
 function oczyscHistorie(messages) {
