@@ -273,8 +273,18 @@ async function pobierzStrone(fraza, strona) {
   }
 }
 
+/**
+ * Wersja w kluczu cache'u. PODNIEŚ JĄ przy każdej zmianie parsera albo
+ * sposobu pobierania — inaczej po wdrożeniu przez 45 minut serwujemy stare,
+ * błędne wyniki. Kosztowało nas to raz: po naprawie paginacji konsultant
+ * dalej twierdził, że nie ma naturalnego Taj Mahal, bo czytał cache.
+ */
+const WERSJA_CACHE = 2;
+
 const kluczCache = (fraza) =>
-  new Request(`https://magazyn.k24h.internal/interstone?q=${encodeURIComponent(fraza.toLowerCase())}`);
+  new Request(
+    `https://magazyn.k24h.internal/interstone?v=${WERSJA_CACHE}&q=${encodeURIComponent(fraza.toLowerCase())}`
+  );
 
 /**
  * Zwraca { ok, plyty, fraza } albo { ok: false, powod }.
