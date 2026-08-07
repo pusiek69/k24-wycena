@@ -226,3 +226,11 @@
   for = "/*.png"
   [headers.values]
     Cache-Control = "public, max-age=2592000"
+
+# Materiały promocyjne do wrzucania na social media. CORS jest tu potrzebny,
+# bo film pobiera skrypt z innej domeny (kompozer Facebooka) — bez tego
+# nagłówka fetch po stronie przeglądarki dostałby błąd CORS.
+[[headers]]
+  for = "/promo/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
