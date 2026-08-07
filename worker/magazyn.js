@@ -317,7 +317,7 @@ function mnoga(n, [jedna, kilka, wiele]) {
  * Konsultanta interesuje co innego: ile łącznie mamy i czy zmieści się
  * najdłuższy odcinek blatu. Dlatego łączymy wiersze w warianty.
  */
-function pogrupuj(plyty) {
+export function pogrupuj(plyty) {
   const grupy = new Map();
 
   for (const p of plyty) {
@@ -347,7 +347,26 @@ function pogrupuj(plyty) {
     grupy.set(klucz, g);
   }
 
-  return [...grupy.values()].sort((a, b) => b.lacznieM2 - a.lacznieM2);
+  return [...grupy.values()]
+    .map((g) => ({
+      nazwa: g.nazwa,
+      rodzaj: g.rodzaj,
+      marka: g.marka,
+      wykonczenie: g.wykonczenie,
+      kolor: g.kolor,
+      jakosc: g.jakosc,
+      gruboscMm: g.gruboscMm,
+      cenaBruttoM2: g.cenaBruttoM2,
+      // Wymiary płyty ZAWSZE dłuższym bokiem naprzód — front pakuje w nie
+      // odcinki blatu, więc pomylona orientacja to pomylona liczba płyt.
+      plytaCm: g.najwieksza
+        ? { dl: Math.max(g.najwieksza.wys, g.najwieksza.szer), gl: Math.min(g.najwieksza.wys, g.najwieksza.szer) }
+        : null,
+      rozneFormaty: g.rozneFormaty,
+      sztuk: g.sztuk,
+      dostepneM2: Math.round(g.lacznieM2 * 100) / 100,
+    }))
+    .sort((a, b) => b.dostepneM2 - a.dostepneM2);
 }
 
 /**
@@ -376,7 +395,7 @@ export function opiszPlyty(wynik) {
   }
 
   const wiersze = warianty.map((g) => {
-    const f = wymiar(g.najwieksza);
+    const p = g.plytaCm;
     const cz = [
       g.nazwa,
       g.rodzaj,
@@ -384,9 +403,9 @@ export function opiszPlyty(wynik) {
       g.wykonczenie,
       g.jakosc,
       g.cenaBruttoM2 != null ? `${pl(g.cenaBruttoM2)} zł/m² brutto` : 'cena do potwierdzenia',
-      f ? `${g.rozneFormaty ? 'największa płyta ' : 'płyta '}${f}` : null,
-      g.najwieksza ? `najdłuższy odcinek bez łączenia ${pl(dluzszyBok(g.najwieksza))} cm` : null,
-      `wolne ${pl(g.lacznieM2)} m² (${mnoga(g.sztuk, ['płyta', 'płyty', 'płyt'])})`,
+      p ? `${g.rozneFormaty ? 'największa płyta ' : 'płyta '}${pl(p.dl)}×${pl(p.gl)} cm` : null,
+      p ? `najdłuższy odcinek bez łączenia ${pl(p.dl)} cm` : null,
+      `wolne ${pl(g.dostepneM2)} m² (${mnoga(g.sztuk, ['płyta', 'płyty', 'płyt'])})`,
     ].filter(Boolean);
     return `- ${cz.join(' | ')}`;
   });

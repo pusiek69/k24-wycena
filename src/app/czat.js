@@ -2,7 +2,8 @@ import { h } from './dom.js';
 import { FIRMY, firmaWgSlug, gruboscDomyslna } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { bramkaWyceny, bramkaKontaktu } from './bramka.js';
-import { zapytajKonsultanta } from '../api.js';
+import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
+import { wybierzWariant, wycenZMagazynu } from './wycena-naturalny.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import {
   pomocnikRodzaj,
@@ -132,7 +133,9 @@ export function uruchomCzat(root, akcje = {}) {
         historia.push({ rola: 'assistant', tresc: tekst });
       }
 
-      if (akcja?.action === 'quote') policzWycene(akcja.params);
+      // `await` jest tu istotne: wycena kamienia naturalnego dopytuje magazyn,
+      // a bez czekania `finally` zdążyłoby podsunąć pomocnika przed bramką.
+      if (akcja?.action === 'quote') await policzWycene(akcja.params);
       else if (akcja?.action === 'lead') pokazBramke(null);
     } catch (e) {
       pisze.remove();
@@ -149,7 +152,19 @@ export function uruchomCzat(root, akcje = {}) {
 
   /* ------------------------------------------------------------- wycena */
 
-  function policzWycene(params) {
+  async function policzWycene(params) {
+    // Kamień naturalny: cenę i wymiar płyty bierzemy z magazynu na żywo.
+    if (MATERIALY[String(params?.material || '').toLowerCase()] === 'interstone') {
+      if (await wycenaZMagazynu(params)) return;
+      dodajWiadomosc(
+        'konsultant',
+        'Tej płyty nie widzę teraz w magazynie, więc wolę nie podawać ceny na wyrost. ' +
+          `Dawid sprawdzi dostępność i wyceni osobiście — proszę o kontakt albo telefon: ${TEL}.`
+      );
+      pokazBramke(null);
+      return;
+    }
+
     const wybor = przelozParametry(params);
     if (!wybor) {
       dodajWiadomosc(
@@ -174,6 +189,45 @@ export function uruchomCzat(root, akcje = {}) {
     rozmowa.querySelector('.pomocnik')?.remove();
     rozmowa.append(bramkaWyceny(w, { transkrypcja }));
     przewin();
+  }
+
+  /**
+   * Wstępna wycena kamienia naturalnego.
+   *
+   * Konsultant podaje wyłącznie NAZWĘ kamienia — cenę m² i wymiar płyty
+   * pobieramy sami z magazynu. Gdyby liczby przepisywał model, wystarczyłaby
+   * jedna pomyłka w cyfrze, żeby klient dostał mailem złą kwotę.
+   *
+   * Zwraca true, gdy udało się policzyć i pokazać bramkę.
+   */
+  async function wycenaZMagazynu(params) {
+    const nazwa = String(params?.kamien || params?.dekor || '').trim();
+    const odcinki = odcinkiZParametrow(params);
+    if (!nazwa || !odcinki.length) return false;
+
+    const { warianty } = await sprawdzMagazyn(nazwa);
+    if (!warianty.length) return false;
+
+    const wariant = wybierzWariant(warianty, {
+      grubosc: params.grubosc,
+      najdluzszyOdcinek: Math.max(...odcinki.map((o) => Math.max(o.dl, o.gl))),
+      wykonczenie: params.wykonczenie,
+    });
+    if (!wariant) return false;
+
+    const w = wycenZMagazynu(wariant, {
+      odcinki,
+      opcje: opcjeZParametrow(params),
+      grubosc: params.grubosc,
+    });
+    if (!w.ok) return false;
+
+    stan.szczegoly = true;
+    rozmowa.querySelector('.pomocnik')?.remove();
+    rozmowa.append(bramkaWyceny(w, { transkrypcja }));
+    zdarzenie('wycena_naturalny', { kamien: wariant.nazwa });
+    przewin();
+    return true;
   }
 
   function pokazBramke(w) {
@@ -440,18 +494,38 @@ export function rozdziel(surowa) {
  * Parametry z rozmowy → wejście kalkulatora.
  * W rozmowie odcinki są opisane jako {d: głębokość, w: długość} w cm.
  */
-export function przelozParametry(params) {
-  if (!params) return null;
-  const slug = MATERIALY[String(params.material || '').toLowerCase()];
-  if (!slug || slug === 'interstone') return null; // kamień naturalny — bez auto-wyceny
-
-  const odcinki = (Array.isArray(params.odcinki) ? params.odcinki : [])
+/** Odcinki z parametrów konsultanta: {d: głębokość, w: długość} w cm. */
+export function odcinkiZParametrow(params) {
+  return (Array.isArray(params?.odcinki) ? params.odcinki : [])
     .map((o) => ({
       dl: Number(o?.w ?? o?.dl) || 0,
       gl: Number(o?.d ?? o?.gl) || 60, // domyślna głębokość blatu to 60 cm
     }))
     .filter((o) => o.dl > 0);
+}
 
+/** Opcje obróbki z parametrów konsultanta — wspólne dla wszystkich materiałów. */
+export function opcjeZParametrow(params) {
+  return {
+    // Wycięcie pod zlew i pod płytę grzewczą są w każdej wycenie.
+    zlew: 'podblat',
+    plyta: params?.indukcja_licowana ? 'licowana' : 'nakladana',
+    // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew.
+    otwory: liczbaOtworow(params || {}),
+    mat: !!params?.wykonczenie_matowe,
+    listwa: Number(params?.listwa_mb) || 0,
+    krawedz: Number(params?.krawedz_mb) || 0,
+  };
+}
+
+export function przelozParametry(params) {
+  if (!params) return null;
+  const slug = MATERIALY[String(params.material || '').toLowerCase()];
+  // Kamień naturalny ma własną ścieżkę — cenę bierzemy z magazynu na żywo,
+  // bo w cenniku go nie ma (patrz app/wycena-naturalny.js).
+  if (!slug || slug === 'interstone') return null;
+
+  const odcinki = odcinkiZParametrow(params);
   if (!odcinki.length) return null;
 
   return {
@@ -460,23 +534,16 @@ export function przelozParametry(params) {
       dekor: params.dekor,
       grubosc: String(params.grubosc || (slug === 'keralini' ? '12' : '20')),
       odcinki,
-      opcje: {
-        // Wycięcie pod zlew i pod płytę grzewczą są w każdej wycenie.
-        zlew: 'podblat',
-        plyta: params.indukcja_licowana ? 'licowana' : 'nakladana',
-        // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew.
-        // `otwor_bateria` to stary parametr sprzed uogólnienia — przyjmujemy
-        // go nadal, żeby starsza odpowiedź konsultanta nie wywróciła wyceny.
-        otwory: liczbaOtworow(params),
-        mat: !!params.wykonczenie_matowe,
-        listwa: Number(params.listwa_mb) || 0,
-        krawedz: Number(params.krawedz_mb) || 0,
-      },
+      opcje: opcjeZParametrow(params),
     },
   };
 }
 
-/** Liczba otworów z parametrów konsultanta, z obsługą starego pola. */
+/**
+ * Liczba otworów z parametrów konsultanta.
+ * `otwor_bateria` to stary parametr sprzed uogólnienia — przyjmujemy go nadal,
+ * żeby starsza odpowiedź konsultanta nie wywróciła wyceny.
+ */
 function liczbaOtworow(params) {
   const n = Number(params.otwory);
   if (Number.isFinite(n) && n >= 0) return Math.min(6, Math.round(n));

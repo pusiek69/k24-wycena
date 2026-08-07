@@ -11,11 +11,17 @@ import { VAT, ROBOCIZNA, OPCJE } from './_domyslne.js';
  *   • ale można też wpisać cenę z magazynu ręcznie i policzyć wycenę
  *     (przydatne, gdy Dawid liczy przy kliencie albo przez telefon).
  *
- * CENY SĄ NETTO — sprawdzone na postach Dawida z fanpage'a (sierpień 2026):
- *   AZUL BAHIA    3030,72 zł brutto ÷ 1,23 = 2464 zł netto (równe)
- *   ANDORA WHITE  1013,52 zł brutto ÷ 1,23 =  824 zł netto (równe)
- * Obie kwoty netto wychodzą na pełne złote, więc stan magazynowy interstone.pl
- * podaje NETTO, a Dawid publikuje brutto. Stąd `cenaRecznaJest: 'netto'`.
+ * CENY ZE STANU MAGAZYNOWEGO SĄ BRUTTO. Wcześniej stało tu, że są netto —
+ * to był błąd, przez który każda ręczna wycena kamienia naturalnego rosła
+ * o 23%. Poprawione po sprawdzeniu na żywym magazynie (sierpień 2026):
+ *
+ *   • strona przy każdej płycie pisze wprost „zł/m² brutto",
+ *   • wszystkie kwoty dzielą się przez 1,23 na równe złote:
+ *     460,02 ÷ 1,23 = 374 · 1773,66 ÷ 1,23 = 1442 · 398,52 ÷ 1,23 = 324.
+ *
+ * Właśnie to, że NETTO wychodzi równe, dowodzi, że kwota na stronie jest
+ * brutto — bo powstała jako „równe netto × 1,23". Dawne rozumowanie
+ * odczytywało ten sam fakt na odwrót.
  */
 export default {
   slug: 'interstone',
@@ -28,9 +34,9 @@ export default {
   // Kamienia naturalnego nie kupujemy „w płytach z cennika" — rozliczamy metraż
   // konkretnej płyty wybranej na placu.
   rozliczenieMaterialu: 'metraz',
-  // Ceny ze stanu magazynowego interstone.pl są JUŻ z marżą i podane NETTO
-  // (potwierdzone przeliczeniem z postów na fanpage'u — patrz komentarz wyżej).
-  cenaRecznaJest: 'netto',
+  // Ceny ze stanu magazynowego interstone.pl są JUŻ z marżą i podane BRUTTO
+  // (strona sama tak je opisuje — patrz komentarz na górze pliku).
+  cenaRecznaJest: 'brutto',
 
   krotki: 'Niepowtarzalny — każda płyta jedyna w swoim rodzaju.',
   opis:

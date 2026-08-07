@@ -35,6 +35,31 @@ export async function zapytajKonsultanta(messages) {
   return String(dane?.text || dane?.odpowiedz || '').trim();
 }
 
+/**
+ * Stan magazynowy kamienia naturalnego (Interstone), przez Workera.
+ *
+ * Cenę i wymiar płyty bierzemy STĄD, a nie z wiadomości konsultanta —
+ * model bywa nieprecyzyjny przy przepisywaniu liczb, a z tych liczb
+ * wychodzi kwota dla klienta. Konsultant podaje tylko nazwę kamienia.
+ *
+ * Zwraca `{ ok, warianty: [...] }`. Gdy magazyn nie odpowiada, oddajemy
+ * `{ ok: false }` zamiast rzucać — brak danych nie może przerwać rozmowy.
+ */
+export async function sprawdzMagazyn(fraza) {
+  try {
+    const odp = await fetch(`${API_BASE}/magazyn`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ fraza }),
+    });
+    const dane = await odp.json().catch(() => null);
+    if (!odp.ok || !dane?.ok) return { ok: false, warianty: [] };
+    return { ok: true, warianty: Array.isArray(dane.warianty) ? dane.warianty : [] };
+  } catch {
+    return { ok: false, warianty: [] };
+  }
+}
+
 /** Zgłoszenie: wycena mailem do klienta + lead do firmy. */
 export async function wyslijLead(dane) {
   const odp = await fetch(`${API_BASE}/lead`, {

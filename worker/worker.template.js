@@ -23,7 +23,7 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
-import { pobierzMagazyn, opiszPlyty } from './magazyn.js';
+import { pobierzMagazyn, opiszPlyty, pogrupuj } from './magazyn.js';
 
 const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 1000;
@@ -206,14 +206,24 @@ async function anthropic(env, messages, narzedzia) {
 
 /**
  * Ten sam odczyt co narzędzie konsultanta, tylko wołany wprost.
- * Przydaje się do sprawdzenia „czy Interstone nadal daje się parsować"
+ *
+ * Woła go STRONA, gdy ma policzyć wstępną wycenę kamienia naturalnego.
+ * Robi to sama, zamiast brać cenę i wymiar płyty z wiadomości konsultanta —
+ * model potrafi się pomylić przy przepisywaniu liczb, a tu chodzi o kwotę
+ * na fakturze. Konsultant podaje wyłącznie NAZWĘ kamienia.
+ *
+ * Przydaje się też do sprawdzenia „czy Interstone nadal daje się parsować"
  * bez płacenia za rozmowę z modelem.
  */
 async function obsluzMagazyn(request, cors, ctx) {
   const dane = await request.json().catch(() => null);
   const wynik = await pobierzMagazyn(dane?.fraza, ctx);
   return json(
-    { ...wynik, opis: opiszPlyty(wynik) },
+    {
+      ...wynik,
+      warianty: wynik.ok ? pogrupuj(wynik.plyty) : [],
+      opis: opiszPlyty(wynik),
+    },
     wynik.ok ? 200 : wynik.powod === 'pusta-fraza' ? 400 : 503,
     cors
   );
