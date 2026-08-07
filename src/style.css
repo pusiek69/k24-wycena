@@ -278,6 +278,87 @@ table.zestawienie tr.suma td.kw { color: var(--vein); font-weight: 700; }
 }
 .info b { color: var(--cream); }
 
+/* ─────────────────────────────────────────────── GALERIA REALIZACJI ───── */
+
+/* Zdjęcia mają bardzo różne proporcje (pionowe kolaże 9:16 obok poziomych
+   4:3), więc zamiast siatki o równych wierszach używamy kolumn — każdy kafel
+   zachowuje własną wysokość i nic się nie przycina. */
+.galeria { columns: 3 300px; column-gap: 16px; margin: 22px 0 28px; }
+
+.real-kafel {
+  break-inside: avoid; margin: 0 0 16px; padding: 0;
+  background: var(--stone); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden;
+}
+.real-link { display: block; line-height: 0; }
+.real-kafel img {
+  width: 100%; height: auto; display: block;
+  transition: opacity .2s, transform .35s;
+}
+.real-link:hover img { opacity: .93; transform: scale(1.015); }
+.real-link:focus-visible { outline: 2px solid var(--vein); outline-offset: -2px; }
+
+.real-kafel figcaption {
+  padding: 12px 14px 14px; line-height: 1.45;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.real-kafel figcaption strong {
+  font-family: var(--sans); font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--vein);
+}
+.real-kafel figcaption span { color: var(--muted); font-size: 14.5px; }
+
+.real-cta {
+  margin: 26px 0; padding: 20px 22px;
+  background: var(--stone); border: 1px solid var(--line-hi);
+  border-left: 3px solid var(--vein); border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap;
+}
+.real-cta strong { display: block; color: var(--cream); font-size: 18px; margin-bottom: 3px; }
+.real-cta span { color: var(--muted); font-size: 15px; }
+
+/* Podgląd pełnego zdjęcia. Bez JS-u kafel jest zwykłym odnośnikiem
+   do pliku — lightbox tylko nadpisuje to ładniejszym zachowaniem. */
+.lightbox {
+  position: fixed; inset: 0; z-index: 100; background: rgba(8, 7, 6, .94);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.lightbox[hidden] { display: none; }
+.lightbox figure { margin: 0; max-width: min(1100px, 100%); max-height: 100%; text-align: center; }
+.lightbox img {
+  max-width: 100%; max-height: calc(100vh - 110px);
+  width: auto; height: auto; border-radius: var(--radius);
+}
+.lightbox figcaption {
+  margin-top: 12px; font-family: var(--sans); font-size: 12px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--vein);
+}
+.lightbox-zamknij {
+  position: absolute; top: 14px; right: 18px; width: 44px; height: 44px;
+  background: transparent; border: 1px solid var(--line-hi); border-radius: var(--radius);
+  color: var(--cream); font-size: 26px; line-height: 1; cursor: pointer;
+}
+.lightbox-zamknij:hover { background: rgba(201, 168, 106, .14); }
+
+@media (max-width: 560px) {
+  .galeria { columns: 1; }
+  .real-cta { flex-direction: column; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .real-kafel img { transition: none; }
+  .real-link:hover img { transform: none; }
+}
+
+/* Pasek realizacji na stronie głównej — poziomy, przewijalny na telefonie. */
+.real-pasek {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr);
+  gap: 12px; overflow-x: auto; padding-bottom: 6px; margin-top: 18px;
+  scroll-snap-type: x mandatory; scrollbar-width: thin;
+}
+.real-pasek a { scroll-snap-align: start; border-radius: var(--radius); overflow: hidden; line-height: 0; }
+.real-pasek img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+
 /* Wybór konkretnej płyty w magazynie — tylko przy kamieniu z Interstone.
    Wyróżniona złotą krawędzią, bo to jedyne miejsce, gdzie klient wychodzi
    z naszej strony i realnie decyduje o cenie materiału. */

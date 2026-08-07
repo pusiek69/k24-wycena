@@ -40,6 +40,7 @@ export default defineConfig({
         blaty_kuchenne_nowa_deba: resolve(import.meta.dirname, 'blaty-kuchenne-nowa-deba.html'),
         blaty_kuchenne_debica: resolve(import.meta.dirname, 'blaty-kuchenne-debica.html'),
         blaty_kuchenne_opatow: resolve(import.meta.dirname, 'blaty-kuchenne-opatow.html'),
+        realizacje: resolve(import.meta.dirname, 'realizacje.html'),
         o_mnie: resolve(import.meta.dirname, 'o-mnie.html'),
         czesto_zadawane_pytania: resolve(import.meta.dirname, 'czesto-zadawane-pytania.html'),
         polityka_prywatnosci: resolve(import.meta.dirname, 'polityka-prywatnosci.html'),

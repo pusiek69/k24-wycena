@@ -172,6 +172,12 @@
   force = true
 
 [[redirects]]
+  from = "/realizacje.html"
+  to = "/realizacje"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/o-mnie.html"
   to = "/o-mnie"
   status = 301

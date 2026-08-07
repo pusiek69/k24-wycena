@@ -16,9 +16,12 @@
     "worker": "node scripts/build-worker.mjs",
     "checklist": "node scripts/checklist.mjs",
     "cennik:dodaj": "node scripts/cennik-serwer.mjs",
-    "test": "node --test scripts/test-*.mjs"
+    "test": "node --test scripts/test-*.mjs",
+    "galeria": "node scripts/galeria.mjs",
+    "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz"
   },
   "devDependencies": {
+    "sharp": "^0.35.3",
     "vite": "^7.0.0"
   },
   "allowScripts": {
