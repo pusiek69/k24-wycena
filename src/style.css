@@ -66,6 +66,10 @@ header { padding: 30px 0 26px; border-bottom: 1px solid var(--line); }
 h1 { font-size: clamp(30px, 6vw, 52px); font-weight: 400; line-height: 1.05; letter-spacing: -.02em; margin: 26px 0 0; }
 h1 em { font-style: italic; color: var(--vein); }
 .sub { margin-top: 14px; max-width: 54ch; color: var(--muted); font-size: 16px; }
+/* Akapit pod nagłówkiem ma odnośniki (do kolekcji, do miasta), a nie leży
+   wewnątrz .tekst — bez tej reguły łapały domyślny niebieski przeglądarki
+   i świeciły na ciemnym tle. Kolor jak w treści strony. */
+.sub a { color: var(--vein); }
 .meta {
   margin-top: 20px; display: flex; gap: 22px; flex-wrap: wrap;
   font-family: var(--sans); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim);
