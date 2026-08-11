@@ -1,6 +1,7 @@
 import dekory from '../generated/avant-quartz.dekory.json';
 import promocje from '../generated/avant-quartz.promocje.json';
 import { VAT, ROBOCIZNA, OPCJE, PLYTA_STANDARD } from './_domyslne.js';
+import { dekoryZKampaniami } from './_promocje.js';
 
 /**
  * AVANT QUARTZ — konglomerat kwarcowy (dystrybucja: Architype)
@@ -56,7 +57,10 @@ export default {
   // Ceny w pliku to gotowe ceny końcowe netto/m² dla klienta.
   promocje: promocje.kampanie,
 
-  dekory: dekory.dekory,
+  // Kampania Architype wprowadza wzory spoza cennika podstawowego
+  // (np. Calacatta Modane). Bez tego klient nie mógłby ich wybrać,
+  // choć konsultant już o nich mówi — promocja byłaby w połowie niewidoczna.
+  dekory: dekoryZKampaniami(dekory.dekory, promocje.kampanie),
 
 };
 

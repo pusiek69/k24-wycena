@@ -137,18 +137,38 @@ export function pomocnikDekor(slug, wyslij) {
   const nazwy = Object.keys(firma.dekory || {}).sort((a, b) => a.localeCompare(b, 'pl'));
   const siatka = h('div', { class: 'pom-dekory' });
 
+  // Przy 143 wzorach (Atlas Plan) nie wysypujemy wszystkiego na ekran —
+  // pokazujemy pierwsze 60, reszta jest pod wyszukiwarką. Ucięcie MUSI być
+  // widoczne: bez tej informacji wzory z końca alfabetu (np. White Quartz)
+  // po prostu znikały i klient nie miał skąd wiedzieć, że istnieją.
+  const LIMIT = 60;
+
   const rysuj = (fraza = '') => {
     const q = uprosc(fraza);
-    const widoczne = (q ? nazwy.filter((n) => uprosc(n).includes(q)) : nazwy).slice(0, 60);
+    const pasujace = q ? nazwy.filter((n) => uprosc(n).includes(q)) : nazwy;
+    const widoczne = pasujace.slice(0, LIMIT);
+    const ukryte = pasujace.length - widoczne.length;
+
     siatka.replaceChildren(
       ...(widoczne.length
-        ? widoczne.map((n) =>
-            h(
-              'button',
-              { class: 'pom-dekor', type: 'button', onclick: () => wyslij(n, `Wybieram dekor ${n}.`) },
-              n
-            )
-          )
+        ? [
+            ...widoczne.map((n) =>
+              h(
+                'button',
+                { class: 'pom-dekor', type: 'button', onclick: () => wyslij(n, `Wybieram dekor ${n}.`) },
+                n
+              )
+            ),
+            ...(ukryte > 0
+              ? [
+                  h(
+                    'p',
+                    { class: 'pom-dekory-wiecej' },
+                    `…i jeszcze ${ukryte} ${ukryte === 1 ? 'wzór' : ukryte < 5 ? 'wzory' : 'wzorów'} — proszę wpisać nazwę w wyszukiwarce powyżej.`
+                  ),
+                ]
+              : []),
+          ]
         : [h('p', { class: 'pusto' }, 'Nie ma takiego wzoru w tej kolekcji — proszę napisać, jak ma wyglądać.')])
     );
   };

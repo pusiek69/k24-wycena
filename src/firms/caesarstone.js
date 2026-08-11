@@ -1,6 +1,7 @@
 import dekory from '../generated/caesarstone.dekory.json';
 import promocje from '../generated/caesarstone.promocje.json';
 import { VAT, ROBOCIZNA, OPCJE, PLYTA_STANDARD } from './_domyslne.js';
+import { dekoryZKampaniami } from './_promocje.js';
 
 /**
  * CAESARSTONE — konglomerat kwarcowy premium (dystrybucja: Architype)
@@ -45,7 +46,9 @@ export default {
   opcje: OPCJE,
   promocje: promocje.kampanie,
 
-  dekory: dekory.dekory,
+  // Kampania Architype wprowadza wzory spoza cennika podstawowego —
+  // bez tego klient nie mógłby ich wybrać (patrz avant-quartz.js).
+  dekory: dekoryZKampaniami(dekory.dekory, promocje.kampanie),
 
 };
 
