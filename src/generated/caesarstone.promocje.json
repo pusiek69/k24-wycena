@@ -1,6 +1,22 @@
 {
-  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
   "kampanie": [
+    {
+      "nazwa": "Promocja sierpień–wrzesień 2026",
+      "od": "2026-08-01",
+      "do": "2026-09-30",
+      "ceny": {
+        "Jet Black||20": 550,
+        "Fresh Concrete||20": 550,
+        "Sleek Concrete||20": 550,
+        "Raven||20": 550,
+        "Empira Black||20": 800,
+        "Calacatta Nuvo||20": 800,
+        "White Attica||20": 594,
+        "White Attica MAT||20": 594,
+        "Empira White||20": 800
+      }
+    },
     {
       "nazwa": "Wiosna–Lato 2026",
       "od": "2026-04-01",

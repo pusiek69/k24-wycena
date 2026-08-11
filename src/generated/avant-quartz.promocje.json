@@ -1,6 +1,39 @@
 {
-  "_info": "Kampanie promocyjne — ceny KOŃCOWE netto/m2 dla klienta. Silnik sprawdza wszystkie aktywne naraz.",
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
   "kampanie": [
+    {
+      "nazwa": "Promocja sierpień–wrzesień 2026",
+      "od": "2026-08-01",
+      "do": "2026-09-30",
+      "ceny": {
+        "Dijon||30": 389,
+        "Blanche||30": 449,
+        "Calacatta Dauphine||30": 580,
+        "Calacatta Arras||30": 580,
+        "Dijon||20": 390,
+        "Blanche||20": 450,
+        "Lumiere||20": 381,
+        "Botticino Bourges||20": 499,
+        "Nimes Marfil||20": 499,
+        "Loiret||20": 499,
+        "Calacatta Chenonceau||20": 735,
+        "Calacatta Versailles||20": 641,
+        "Statuario Lille||20": 409,
+        "Aquitaine Blanca||20": 641,
+        "Calacatta Dauphine||20": 641,
+        "Calacatta Bearn||20": 641,
+        "Calacatta Arras||20": 641,
+        "Calacatta Concorde||20": 641,
+        "Calacatta Modane||20": 409,
+        "Mulen||20": 646,
+        "Chamonix||20": 735,
+        "Bretagne||20": 540,
+        "Bourbonnais||20": 499,
+        "Corsica||20": 499,
+        "Royal Beige||20": 641,
+        "Gris Fonce||20": 499
+      }
+    },
     {
       "nazwa": "Wiosna–Lato 2026",
       "od": "2026-04-01",

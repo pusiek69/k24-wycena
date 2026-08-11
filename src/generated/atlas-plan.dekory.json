@@ -1,7 +1,7 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/atlas-plan.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "atlas-plan",
-  "_wygenerowano": "2026-08-06",
+  "_wygenerowano": "2026-08-11",
   "_dekorow": 143,
   "dekory": {
     "Boost Grey Hammered": {

@@ -53,6 +53,7 @@ for (const { slug, klucz, pomij: pomijane } of firmyZPlikow()) {
   const plikPromo = path.join(ZRODLO, `${slug}.promocje.json`);
   const dzis = new Date().toISOString().slice(0, 10);
   const wCenie = new Set();
+  const wPromocji = new Set();
   if (fs.existsSync(plikPromo)) {
     for (const k of JSON.parse(fs.readFileSync(plikPromo, 'utf8')).kampanie || []) {
       if (dzis < k.od || dzis > k.do) continue;
@@ -61,6 +62,9 @@ for (const { slug, klucz, pomij: pomijane } of firmyZPlikow()) {
         const nazwa = wpisKlucz.slice(0, i);
         const gr = wpisKlucz.slice(i + 2);
         if (typeof wpis === 'object' && wpis.matWCenie) wCenie.add(nazwa);
+        // Konsultant ma wiedzieć, że wzór jest objęty promocją — samą
+        // informację, bez ceny. Kwotę i tak liczy silnik po stronie strony.
+        wPromocji.add(nazwa);
         if (dane.dekory[nazwa]?.[gr] == null) {
           dane.dekory[nazwa] = { ...(dane.dekory[nazwa] || {}), [gr]: 1 };
         }
@@ -73,10 +77,16 @@ for (const { slug, klucz, pomij: pomijane } of firmyZPlikow()) {
     const gr = Object.keys(grubosci)
       .filter((g) => !pomijane.includes(g))
       .sort((a, b) => Number(a) - Number(b));
-    if (gr.length) wpisy.push(`${nazwa} (${gr.join('/')} mm${wCenie.has(nazwa) ? ', mat/struktura w tej samej cenie' : ''})`);
+    const dopiski = [
+      wCenie.has(nazwa) ? 'mat/struktura w tej samej cenie' : '',
+      wPromocji.has(nazwa) ? 'PROMOCJA' : '',
+    ].filter(Boolean);
+    if (gr.length) wpisy.push(`${nazwa} (${gr.join('/')} mm${dopiski.length ? ', ' + dopiski.join(', ') : ''})`);
   }
   sekcje.push(`## ${klucz}\n${wpisy.join('; ')}`);
-  console.log(`  ${klucz.padEnd(14)} ${wpisy.length} dekorów`);
+  console.log(
+    `  ${klucz.padEnd(14)} ${wpisy.length} dekorów` + (wPromocji.size ? `, w promocji: ${wPromocji.size}` : '')
+  );
 }
 
 /**
