@@ -19,8 +19,9 @@ export default {
     'Kwarc premium z Izraela — jedna z najbardziej rozpoznawalnych marek konglomeratu na świecie. ' +
     'Powtarzalna jakość, wyraziste dekory betonu i marmuru, także w wykończeniu matowym.',
 
+  // Patrz komentarz w avant-quartz.js — filtr marki tylko pojedynczy.
   linkDekory: {
-    url: 'https://architype.pl/stones/brands=avant-quartz,caesarstone',
+    url: 'https://architype.pl/stones/brands=caesarstone',
     label: 'Zobacz dekory Caesarstone',
   },
   linkiDodatkowe: [

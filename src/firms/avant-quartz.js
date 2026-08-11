@@ -23,8 +23,11 @@ export default {
     'Konglomerat kwarcowy — ok. 90% naturalnego kwarcu. Ciepły w dotyku, nienasiąkliwy, ' +
     'bogata paleta bieli, betonów i marmurowych calacatt. Najczęściej wybierany na blaty kuchenne.',
 
+  // Filtr marki MUSI być pojedynczy. Wspólny adres „brands=avant-quartz,caesarstone"
+  // pokazywał klientowi obie marki naraz — klikał „dekory Avant Quartz",
+  // a dostawał listę wymieszaną z Caesarstone (zgłoszone przez Dawida).
   linkDekory: {
-    url: 'https://architype.pl/stones/brands=avant-quartz,caesarstone',
+    url: 'https://architype.pl/stones/brands=avant-quartz',
     label: 'Zobacz dekory Avant Quartz',
   },
   linkiDodatkowe: [

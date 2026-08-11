@@ -173,5 +173,27 @@ const podejrzane = [];
 })(ROOT);
 ok(14, 'żadnych kluczy API w repozytorium', podejrzane.length === 0, podejrzane.join(', ') || 'klucze zostają w Cloudflare');
 
+/* 16. Link „Zobacz dekory" prowadzi do JEDNEJ marki
+ *
+ * Avant Quartz i Caesarstone miały ten sam adres z filtrem na obie marki
+ * naraz (brands=avant-quartz,caesarstone). Klient klikał „dekory Avant
+ * Quartz", a dostawał listę wymieszaną z Caesarstone — zgłoszone przez
+ * Dawida 11.08.2026. Ten test pilnuje, żeby to nie wróciło.
+ */
+const linki = new Map();
+const wielomarkowe = [];
+for (const plik of fs.readdirSync(path.join(ROOT, 'src/firms')).filter((f) => f.endsWith('.js') && !f.startsWith('_') && f !== 'index.js')) {
+  const tresc = czytaj(`src/firms/${plik}`);
+  const url = tresc.match(/linkDekory:\s*\{[^}]*url:\s*'([^']+)'/)?.[1];
+  if (!url) continue;
+  if (linki.has(url)) wielomarkowe.push(`${plik} i ${linki.get(url)} mają ten sam link`);
+  else linki.set(url, plik);
+  // Filtr marek architype.pl rozdziela je przecinkiem — więcej niż jedna
+  // marka w adresie oznacza wymieszaną listę.
+  const marki = url.match(/brands=([^&]+)/)?.[1];
+  if (marki && marki.includes(',')) wielomarkowe.push(`${plik}: link do kilku marek (${marki})`);
+}
+ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length === 0, wielomarkowe.join('; ') || `${linki.size} firm, każda z własnym adresem`);
+
 console.log(bledy ? `\n✗ Niezgodności: ${bledy}` : '\n✓ Checklista §8 — wszystko zgodne ze specyfikacją');
 process.exit(bledy ? 1 : 0);
