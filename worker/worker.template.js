@@ -294,7 +294,7 @@ async function obsluzLead(request, env, cors) {
     to: [email],
     reply_to: doFirmy,
     subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
-    html: mailDoKlienta(imie, wycena, uwaga, linkPlyty),
+    html: mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
   });
 
   return json(
@@ -584,7 +584,56 @@ function leadTekstem(klient, s, extra) {
   return l.join('\n');
 }
 
-function mailDoKlienta(imie, wycena, uwaga, linkPlyty) {
+/**
+ * Podsumowanie dla KLIENTA — dwie kwoty i lista tego, co w cenie.
+ *
+ * Świadomie bez stawek jednostkowych: klient ma widzieć „za płyty" i „za
+ * produkcję z montażem", a nie cennik obróbek (decyzja Dawida 11.08.2026).
+ * Pełne rozbicie ze stawkami idzie osobnym mailem do firmy — patrz mailDoFirmy.
+ */
+function podsumowanieDlaKlienta(s) {
+  if (!s || !Array.isArray(s.pozycje) || !s.pozycje.length) return '';
+
+  const material = s.pozycje.filter((p) => p.grupa === 'materiał');
+  const uslugi = s.pozycje.filter((p) => p.grupa === 'usługi');
+  const suma = (lista) => lista.reduce((a, p) => a + (Number(p.brutto) || 0), 0);
+
+  // „7,8 m.b. × 350 zł" → „7,8 m.b." — ilość zostaje, stawka znika.
+  const bezStawki = (p) => {
+    if (!p.detal) return esc(p.nazwa);
+    const ilosc = p.detal.includes('×') ? p.detal.split('×')[0].trim() : p.detal.trim();
+    return ilosc ? `${esc(p.nazwa)} — ${esc(ilosc)}` : esc(p.nazwa);
+  };
+
+  const wiersz = (tytul, opis, kwota) => `
+    <tr>
+      <td style="padding:12px 0;border-bottom:1px solid rgba(201,168,106,.15)">
+        <div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:.14em;
+                    text-transform:uppercase;color:#c9a86a">${tytul}</div>
+        <div style="margin-top:6px;font-size:15px;line-height:1.55;color:#ece6da">${opis}</div>
+      </td>
+      <td style="padding:12px 0;border-bottom:1px solid rgba(201,168,106,.15);
+                 text-align:right;vertical-align:top;white-space:nowrap;
+                 font-family:Arial,sans-serif;font-size:19px;font-weight:bold;color:#c9a86a">${kwota}</td>
+    </tr>`;
+
+  const opisMaterialu = material
+    .map((p) => `${esc(p.nazwa)}${p.detal ? `<br><span style="color:#8c8474;font-size:13px">${esc(p.detal)}</span>` : ''}`)
+    .join('<br>');
+
+  const listaUslug = uslugi.length
+    ? `<div style="color:#8c8474;font-size:13px;margin-bottom:6px">W tej cenie:</div>
+       <ul style="margin:0;padding-left:18px">${uslugi.map((p) => `<li style="margin:3px 0">${bezStawki(p)}</li>`).join('')}</ul>`
+    : '';
+
+  return `
+    <table style="width:100%;border-collapse:collapse;margin:18px 0 0">
+      ${material.length ? wiersz('Płyty / materiał', opisMaterialu, zl(suma(material))) : ''}
+      ${uslugi.length ? wiersz('Produkcja i montaż', listaUslug, zl(suma(uslugi))) : ''}
+    </table>`;
+}
+
+function mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly) {
   return `<!doctype html>
 <html lang="pl"><body style="margin:0;background:#13110f;color:#ece6da;font-family:Georgia,serif">
   <div style="max-width:600px;margin:0 auto;padding:32px 24px">
@@ -599,6 +648,7 @@ function mailDoKlienta(imie, wycena, uwaga, linkPlyty) {
                 border-radius:4px;padding:18px 20px;font-size:16px;line-height:1.6">
       ${esc(wycena) || 'Wycenę przekażemy telefonicznie.'}
     </div>
+    ${podsumowanieDlaKlienta(szczegoly)}
     ${
       uwaga
         ? `<p style="background:#241f19;border-left:3px solid #c9a86a;border-radius:4px;

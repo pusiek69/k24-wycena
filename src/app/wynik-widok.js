@@ -32,12 +32,7 @@ export function kartaWyceny(w, ustawienia = {}) {
     { class: 'karta-wyceny' },
     w.promo ? plakietkaPromo(w) : null,
     naglowek(w),
-    h(
-      'div',
-      { class: 'bloki' },
-      blok('1 · Płyta', w.pozycje.filter((p) => p.grupa === 'materiał'), w),
-      blok('2 · Cięcie i montaż', w.pozycje.filter((p) => p.grupa === 'usługi'), w)
-    ),
+    h('div', { class: 'bloki' }, blokMaterialu(w), blokUslug(w)),
     ostrzezenia(w),
     wyborPlyty(w),
     h(
@@ -350,7 +345,19 @@ function naglowek(w) {
   );
 }
 
-function blok(tytul, pozycje, w) {
+/**
+ * KLIENT WIDZI DWIE KWOTY, NIE CENNIK POZYCJI
+ *
+ * Wcześniej karta rozpisywała każdą pozycję ze stawką — 350 zł/mb za obróbkę,
+ * 150 zł za otwór i tak dalej. Decyzja Dawida (11.08.2026): klient ma widzieć
+ * „za płyty" i „za produkcję z montażem", a pod drugą kwotą listę tego, co
+ * jest w cenie — bez stawek jednostkowych.
+ *
+ * Pełne rozbicie ze stawkami zostaje w mailu leadowym do firmy — to osobny
+ * widok i osobna potrzeba (Dawid wycenia z niego robociznę przed pomiarem).
+ */
+function blokMaterialu(w) {
+  const pozycje = w.pozycje.filter((p) => p.grupa === 'materiał');
   if (!pozycje.length) return null;
   const suma = pozycje.reduce((a, p) => a + p.brutto, 0);
   const doUstalenia = pozycje.some((p) => p.materialDoUstalenia);
@@ -358,30 +365,52 @@ function blok(tytul, pozycje, w) {
   return h(
     'div',
     { class: 'blok' },
-    h('div', { class: 'blok-tytul' }, tytul, tytul.startsWith('1') ? opisPlyty(w) : null),
+    h('div', { class: 'blok-tytul' }, '1 · Płyty / materiał', opisPlyty(w)),
     h(
-      'table',
-      { class: 'zestawienie' },
+      'div',
+      { class: 'blok-kwota' },
       h(
-        'tbody',
-        {},
-        pozycje.map((p) =>
-          h(
-            'tr',
-            {},
-            h('td', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null),
-            h('td', { class: 'kw' }, p.materialDoUstalenia ? 'do ustalenia' : zl(p.brutto))
-          )
-        ),
-        h(
-          'tr',
-          { class: 'suma' },
-          h('td', {}, 'Razem'),
-          h('td', { class: 'kw' }, doUstalenia ? 'do ustalenia' : zl(suma))
-        )
-      )
+        'div',
+        { class: 'blok-opis' },
+        pozycje.map((p) => h('div', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null))
+      ),
+      h('div', { class: 'blok-suma' }, doUstalenia ? 'do ustalenia' : zl(suma))
     )
   );
+}
+
+function blokUslug(w) {
+  const pozycje = w.pozycje.filter((p) => p.grupa === 'usługi');
+  if (!pozycje.length) return null;
+  const suma = pozycje.reduce((a, p) => a + p.brutto, 0);
+
+  return h(
+    'div',
+    { class: 'blok' },
+    h('div', { class: 'blok-tytul' }, '2 · Produkcja i montaż'),
+    h(
+      'div',
+      { class: 'blok-kwota' },
+      h(
+        'div',
+        { class: 'blok-opis' },
+        h('div', { class: 'w-cenie-lbl' }, 'W tej cenie:'),
+        h('ul', { class: 'w-cenie' }, pozycje.map((p) => h('li', {}, opisPozycji(p))))
+      ),
+      h('div', { class: 'blok-suma' }, zl(suma))
+    )
+  );
+}
+
+/**
+ * Nazwa pozycji z ilością, ale BEZ stawki. Szczegóły mają postać
+ * „7,8 m.b. × 350 zł" — ilość zostaje, cena po znaku × znika.
+ */
+function opisPozycji(p) {
+  if (!p.detal) return p.nazwa;
+  // „7,8 m.b. × 350 zł" → „7,8 m.b."; „w promocji bez dopłaty" zostaje w całości.
+  const bezStawki = p.detal.includes('×') ? p.detal.split('×')[0].trim() : p.detal.trim();
+  return bezStawki ? `${p.nazwa} — ${bezStawki}` : p.nazwa;
 }
 
 /** Przy firmach bez połówek klient musi wiedzieć, że płaci za całą płytę. */

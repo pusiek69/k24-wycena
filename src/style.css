@@ -609,6 +609,21 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .blok-detal { color: var(--dim); letter-spacing: .04em; text-transform: none; font-size: 11px; }
 .blok .zestawienie { margin-top: 6px; }
 
+/* Klient widzi jedną kwotę na blok i listę tego, co w niej jest — bez stawek. */
+.blok-kwota {
+  display: flex; gap: 18px; align-items: flex-start; justify-content: space-between;
+  margin-top: 8px; padding-top: 10px; border-top: 1px solid rgba(201, 168, 106, .09);
+}
+.blok-opis { font-size: 15px; line-height: 1.5; min-width: 0; }
+.blok-opis small { display: block; color: var(--dim); font-family: var(--sans); font-size: 11px; margin-top: 2px; }
+.blok-suma {
+  font-family: var(--sans); font-size: 20px; font-weight: 700; color: var(--vein);
+  white-space: nowrap; text-align: right;
+}
+.w-cenie-lbl { font-family: var(--sans); font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+.w-cenie { margin: 0; padding-left: 18px; }
+.w-cenie li { margin: 3px 0; }
+
 /* ---------- tańsze zamienniki ---------- */
 .alternatywy:empty { display: none; }
 .alternatywy { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
