@@ -17,6 +17,27 @@ document.getElementById('cookies')?.addEventListener('click', (e) => {
 
 const root = document.getElementById('kreator');
 
+/**
+ * Przyklejony przycisk „Wyceń swój blat" — tylko telefon (resztę załatwia CSS).
+ *
+ * Pokazuje się dopiero wtedy, gdy kalkulator zjedzie z ekranu. Klient, który
+ * przewinął do zdjęć albo do stopki, ma jedno kliknięcie z powrotem do wyceny,
+ * ale nikomu nie zasłania tego, do czego prowadzi.
+ */
+function przyklejonyPrzycisk() {
+  const cta = document.querySelector('.cta-mobil');
+  if (!cta || !root || !('IntersectionObserver' in window)) return;
+
+  const obserwator = new IntersectionObserver(
+    ([wpis]) => {
+      cta.hidden = wpis.isIntersecting;
+    },
+    { rootMargin: '-80px 0px -120px 0px' }
+  );
+  obserwator.observe(root);
+}
+przyklejonyPrzycisk();
+
 if (!FIRMY.length) {
   root.innerHTML =
     '<div class="card"><p class="q-title">Brak skonfigurowanych firm.</p>' +

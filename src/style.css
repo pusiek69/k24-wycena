@@ -50,32 +50,75 @@ header { padding: 30px 0 26px; border-bottom: 1px solid var(--line); }
 .logo { display: block; text-decoration: none; }
 .logo-img { height: 54px; width: auto; display: block; }
 
+/* Telefon w nagłówku jest OBRYSOWANY, nie wypełniony złotem.
+   Wcześniej był to najgłośniejszy element całej strony — pełnowymiarowy
+   złoty pas nad nagłówkiem. Jedyne wypełnione złotem pole na ekranie
+   ma być wezwaniem do wyceny, bo to jest cel strony. */
 .phone-btn {
-  display: flex; align-items: center; gap: 11px;
-  background: var(--vein); color: #1a1611; text-decoration: none;
-  padding: 10px 18px; border-radius: var(--radius);
-  transition: background .15s, transform .1s;
+  display: inline-flex; align-items: center; gap: 9px; flex: 0 0 auto;
+  background: transparent; color: var(--vein); text-decoration: none;
+  border: 1px solid var(--line-hi);
+  padding: 9px 15px; border-radius: var(--radius);
+  transition: border-color .15s, background .15s, transform .1s;
 }
-.phone-btn:hover { background: var(--vein-hi); }
+.phone-btn:hover { border-color: var(--vein); background: rgba(201, 168, 106, .08); }
 .phone-btn:active { transform: scale(.97); }
-.phone-btn .ph-ico { font-size: 20px; line-height: 1; }
+.phone-btn .ph-ico { font-size: 17px; line-height: 1; }
 .phone-btn .ph-txt { display: flex; flex-direction: column; line-height: 1.15; }
 .phone-btn .ph-lbl { font-family: var(--sans); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
-.phone-btn .ph-num { font-family: var(--sans); font-size: 18px; font-weight: 700; letter-spacing: .02em; }
+.phone-btn .ph-num { font-family: var(--sans); font-size: 16px; font-weight: 700; letter-spacing: .02em; }
 
-h1 { font-size: clamp(30px, 6vw, 52px); font-weight: 400; line-height: 1.05; letter-spacing: -.02em; margin: 26px 0 0; }
+h1 { font-size: clamp(30px, 6vw, 52px); font-weight: 400; line-height: 1.05; letter-spacing: -.02em; margin: 34px 0 0; }
 h1 em { font-style: italic; color: var(--vein); }
-.sub { margin-top: 14px; max-width: 54ch; color: var(--muted); font-size: 16px; }
-/* Akapit pod nagłówkiem ma odnośniki (do kolekcji, do miasta), a nie leży
-   wewnątrz .tekst — bez tej reguły łapały domyślny niebieski przeglądarki
-   i świeciły na ciemnym tle. Kolor jak w treści strony. */
+.sub { margin-top: 16px; max-width: 46ch; color: var(--muted); font-size: 17px; }
 .sub a { color: var(--vein); }
+
+/* Jedyny wypełniony złotem przycisk na pierwszym ekranie. */
+.btn-hero {
+  display: inline-flex; margin-top: 26px; font-size: 16px; padding: 15px 26px;
+}
+
 .meta {
-  margin-top: 20px; display: flex; gap: 22px; flex-wrap: wrap;
+  margin-top: 26px; display: flex; gap: 22px; flex-wrap: wrap;
   font-family: var(--sans); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--dim);
 }
 .meta span { display: flex; align-items: center; gap: 7px; }
 .meta i { width: 5px; height: 5px; background: var(--vein); border-radius: 50%; display: inline-block; }
+
+/* ---------- rytm strony głównej ----------
+   Jeden odstęp między sekcjami i jeden rozmiar nagłówka sekcji. Wcześniej
+   każdy blok miał własne paddingi z klasy .tekst i strona „skakała". */
+.sekcja { padding: 54px 22px 0; max-width: 780px; }
+.sekcja > h2,
+.sekcja-wstep > h2 {
+  font-family: var(--serif); font-weight: 400; font-size: clamp(22px, 4.4vw, 30px);
+  line-height: 1.15; margin: 0 0 12px; color: var(--cream);
+}
+
+/* Zapowiedź kalkulatora — krótka, żeby nie odsuwać go w dół. */
+.sekcja-wstep { padding: 48px 22px 0; max-width: 780px; }
+.sekcja-wstep p { color: var(--muted); font-size: 16px; margin: 0 0 18px; max-width: 52ch; }
+
+.kroki {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  counter-reset: krok;
+}
+.kroki li {
+  counter-increment: krok;
+  background: var(--slab); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 19px 19px;
+}
+.kroki li::before {
+  content: counter(krok);
+  display: block; font-family: var(--sans); font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; color: var(--vein); margin-bottom: 9px;
+}
+.kroki b { display: block; font-weight: 400; font-size: 17px; color: var(--cream); margin-bottom: 5px; }
+.kroki span { color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* Przyklejone wezwanie — tylko telefon, tylko poza kalkulatorem. */
+.cta-mobil { display: none; }
 
 /* ---------- pasek kroków ---------- */
 main { padding: 26px 0 40px; }
@@ -347,6 +390,30 @@ table.zestawienie tr.suma td.kw { color: var(--vein); font-weight: 700; }
 @media (max-width: 560px) {
   .galeria { columns: 1; }
   .real-cta { flex-direction: column; align-items: flex-start; }
+
+  /* Na 390 px hero ma się zmieścić w jednym ekranie razem z przyciskiem. */
+  header { padding: 20px 0 22px; }
+  h1 { margin-top: 24px; }
+  .sub { font-size: 16px; margin-top: 12px; }
+  .btn-hero { margin-top: 20px; width: 100%; justify-content: center; }
+  .meta { margin-top: 20px; gap: 8px 20px; font-size: 11px; }
+  .sekcja { padding-top: 42px; }
+  .sekcja-wstep { padding-top: 38px; }
+  .logo-img { height: 44px; }
+
+  /* Przyklejony przycisk: dyskretny pasek nad dolną krawędzią.
+     Miejsce pod niego robimy paddingiem, żeby nie zasłaniał stopki. */
+  .cta-mobil {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; left: 14px; right: 14px; bottom: 14px; z-index: 40;
+    background: var(--vein); color: #1a1611; text-decoration: none;
+    font-family: var(--sans); font-size: 15px; font-weight: 700;
+    letter-spacing: .02em; padding: 14px 20px; border-radius: var(--radius);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, .45);
+    transition: opacity .2s, transform .2s;
+  }
+  .cta-mobil[hidden] { display: none; }
+  body:has(.cta-mobil:not([hidden])) { padding-bottom: 78px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -361,7 +428,22 @@ table.zestawienie tr.suma td.kw { color: var(--vein); font-weight: 700; }
   scroll-snap-type: x mandatory; scrollbar-width: thin;
 }
 .real-pasek a { scroll-snap-align: start; border-radius: var(--radius); overflow: hidden; line-height: 0; }
-.real-pasek img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+/* height: auto JEST TU KONIECZNE.
+   Zdjęcia mają w HTML atrybuty width/height (np. 800×1433). Przeglądarka
+   traktuje je jak jawną wysokość, a przy zadanej wysokości `aspect-ratio`
+   jest ignorowane — kafle rosły do 1433 px zamiast 172 px, pasek rozjeżdżał
+   się na dwie kolumny z czarną dziurą, a zdjęcia były ucinane w połowie.
+
+   Kadr 16:9 przyklejony do GÓRY zdjęcia odcina dół, gdzie Dawid ma wypalony
+   podpis z adresem i telefonem. Przy zdjęciu poziomym 800×597 zostaje 450 px
+   wysokości, czyli schodzi 147 px — więcej niż najgrubszy podpis w tym
+   zestawie. Przy pionowych schodzi go jeszcze więcej. Robimy to kadrem,
+   a nie przycinaniem plików: automatyczne wykrywanie białego pasa myliło
+   podpis z białą ścianą (do 45% wysokości zdjęcia) i cięłoby kadr. */
+.real-pasek img {
+  width: 100%; height: auto; aspect-ratio: 16 / 9;
+  object-fit: cover; object-position: 50% 0%; display: block;
+}
 
 /* Wybór konkretnej płyty w magazynie — tylko przy kamieniu z Interstone.
    Wyróżniona złotą krawędzią, bo to jedyne miejsce, gdzie klient wychodzi
@@ -785,8 +867,11 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 }
 
 @media (max-width: 560px) {
-  .topbar { justify-content: center; }
-  .phone-btn { width: 100%; justify-content: center; }
+  /* W nagłówku telefon stoi obok logo i ma swoją szerokość — pełnowymiarowy
+     pas robił z niego baner ważniejszy od nagłówka. Rozciąga się nadal
+     w stopce, gdzie jest głównym wezwaniem. */
+  .topbar { justify-content: space-between; gap: 10px; flex-wrap: nowrap; }
+  .foot-cta .phone-btn { width: 100%; justify-content: center; }
   .card { padding: 20px 17px 22px; }
   .odcinek { grid-template-columns: 1fr 1fr; }
   .odcinek .icon-btn { grid-column: 2; justify-self: end; }
@@ -875,19 +960,22 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
    plakietka „asystent AI" mówi wprost, kto pisze. Klient ma wiedzieć,
    z czym rozmawia, i jednocześnie widzieć, kto za tym stoi. */
 
+/* Wizytówka mieści się w jednym rzędzie: zdjęcie, nazwisko z plakietką
+   „asystent online", jedna linijka wyjaśnienia i telefon po prawej.
+   Wcześniej zajmowała cztery wiersze i odsuwała pierwsze pytanie w dół. */
 .wizytowka {
-  display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
   background: linear-gradient(135deg, rgba(201, 168, 106, .10), rgba(201, 168, 106, .03));
   border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 16px 18px; margin-bottom: 20px;
+  padding: 12px 15px; margin-bottom: 18px;
 }
 .wiz-foto {
-  flex: none; width: 68px; height: 68px; border-radius: 50%;
+  flex: none; width: 46px; height: 46px; border-radius: 50%;
   object-fit: cover; border: 2px solid var(--vein);
 }
-.wiz-tekst { flex: 1 1 260px; min-width: 0; }
+.wiz-tekst { flex: 1 1 220px; min-width: 0; }
 .wiz-imie {
-  font-size: 19px; line-height: 1.2; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-size: 17px; line-height: 1.2; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
 }
 /* Podpis „asystent online" ma być czytelny, ale spokojny — to informacja,
    nie ostrzeżenie. Stąd delikatna ramka i zielona kropka „jestem dostępny"
@@ -903,16 +991,16 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   box-shadow: 0 0 0 3px rgba(122, 157, 102, .18);
 }
 .wiz-rola {
-  font-family: var(--sans); font-size: 11px; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--dim); margin-top: 5px;
+  font-family: var(--sans); font-size: 12.5px; color: var(--dim); margin-top: 3px; line-height: 1.45;
 }
-.wiz-nota { color: var(--muted); font-size: 14px; line-height: 1.5; margin-top: 9px; max-width: 62ch; }
-.wiz-nota a { color: var(--vein); text-decoration: none; white-space: nowrap; }
-.wiz-nota a:hover { text-decoration: underline; }
+.wiz-rola a { color: var(--vein); text-decoration: none; white-space: nowrap; }
+.wiz-rola a:hover { text-decoration: underline; }
 .wiz-tel {
-  flex: 1 1 100%; font-family: var(--sans); font-size: 13px; color: var(--vein);
-  text-decoration: none; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px;
+  flex: 0 0 auto; font-family: var(--sans); font-size: 14px; font-weight: 700; color: var(--vein);
+  text-decoration: none; border: 1px solid var(--line-hi); border-radius: var(--radius);
+  padding: 8px 13px; white-space: nowrap;
 }
+.wiz-tel:hover { background: rgba(201, 168, 106, .08); }
 .wiz-tel:hover { text-decoration: underline; }
 
 /* Awatar przy każdej wiadomości konsultanta — buduje wrażenie rozmowy

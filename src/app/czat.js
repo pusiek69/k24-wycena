@@ -30,10 +30,11 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 
 const TEL = '796 991 128';
 
+// Numer telefonu stoi tuż nad powitaniem (w wizytówce) i w nagłówku strony —
+// powtarzanie go trzeci raz w pierwszym zdaniu rozmowy tylko rozpraszało.
 const POWITANIE =
   'Dzień dobry, jestem asystentem Dawida Ząbka — pomogę dobrać materiał ' +
-  'i policzyć orientacyjny koszt blatu. W każdej chwili może Pan/Pani też ' +
-  'zadzwonić bezpośrednio do Dawida: ' + TEL + '. Z czego ma być blat?';
+  'i policzyć orientacyjny koszt blatu. Z czego ma być blat?';
 
 /** Nazwy kolekcji z promptu → pliki firm w aplikacji. */
 const MATERIALY = {
@@ -409,18 +410,19 @@ export function uruchomCzat(root, akcje = {}) {
           'Dawid Ząbek',
           h('span', { class: 'wiz-tag' }, h('i', { 'aria-hidden': 'true' }), 'asystent online')
         ),
-        h('div', { class: 'wiz-rola' }, 'właściciel Kamieniarstwa 24h · czeladnik kamieniarstwa'),
+        // Informacja, że pisze asystent, a nie człowiek, ZOSTAJE — to wymóg
+        // uczciwości wobec klienta. Skrócona do jednej linijki razem z rolą.
         h(
-          'p',
-          { class: 'wiz-nota' },
-          'Piszesz z moim asystentem — prowadzę go osobiście i czytam każde zgłoszenie. ',
+          'div',
+          { class: 'wiz-rola' },
+          'Piszesz z moim asystentem — czytam każde zgłoszenie. ',
           h('a', { href: '/o-mnie' }, 'Poznaj mnie →')
         )
       ),
       h(
         'a',
         { class: 'wiz-tel', href: 'tel:+48796991128', 'data-miejsce': 'wizytowka' },
-        '☎ Wolisz porozmawiać ze mną osobiście? ' + TEL
+        '☎ ' + TEL
       )
     );
   }
