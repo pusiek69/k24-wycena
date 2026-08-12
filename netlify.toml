@@ -112,6 +112,24 @@
   force = true
 
 [[redirects]]
+  from = "/baza-wiedzy/kwarcyt-czy-granit.html"
+  to = "/baza-wiedzy/kwarcyt-czy-granit"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/cena-blatu-z-konglomeratu.html"
+  to = "/baza-wiedzy/cena-blatu-z-konglomeratu"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/spiek-kwarcowy-wady-i-zalety.html"
+  to = "/baza-wiedzy/spiek-kwarcowy-wady-i-zalety"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/baza-wiedzy/pielegnacja-i-impregnacja.html"
   to = "/baza-wiedzy/pielegnacja-i-impregnacja"
   status = 301
