@@ -36,8 +36,26 @@
 # pasujący do ścieżki i oddał go zamiast przekierować.
 #
 # Kolejność ma znaczenie — te reguły muszą stać przed regułami ścieżkowymi.
+#
+# Każdy alias ma wersję http:// i https://. Bez tej pierwszej wejście po
+# http kończyło się dwoma skokami: najpierw wymuszenie TLS przez Netlify,
+# dopiero potem nasze przekierowanie. Jeden skok mniej to jeden mniej
+# moment, w którym coś może się zgubić — zwłaszcza przy starych linkach
+# z wizytówek i podpisów na zdjęciach, gdzie „http://" bywa wpisane wprost.
+[[redirects]]
+  from = "http://k24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
 [[redirects]]
   from = "https://k24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.k24h.pl/*"
   to = "https://kam24h.pl/:splat"
   status = 301
   force = true
@@ -49,7 +67,19 @@
   force = true
 
 [[redirects]]
+  from = "http://kamieniarstwo24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "https://kamieniarstwo24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.kamieniarstwo24h.pl/*"
   to = "https://kam24h.pl/:splat"
   status = 301
   force = true
