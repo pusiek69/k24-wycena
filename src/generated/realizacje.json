@@ -7,9 +7,10 @@
     "w": 1536,
     "h": 2558,
     "miniW": 800,
-    "miniH": 1332,
+    "miniH": 1190,
     "zrodloW": 1536,
-    "zrodloH": 2558
+    "zrodloH": 2558,
+    "pasPodpisu": 273
   },
   {
     "slug": "granit-ciemny-wyspa",
@@ -21,7 +22,8 @@
     "miniW": 768,
     "miniH": 1261,
     "zrodloW": 768,
-    "zrodloH": 1261
+    "zrodloH": 1261,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-black-forest-drewno",
@@ -31,9 +33,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1311,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 469
   },
   {
     "slug": "granit-black-forest-jasna",
@@ -43,9 +46,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1408,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 96
   },
   {
     "slug": "granit-havana-blue",
@@ -55,9 +59,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1370,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 243
   },
   {
     "slug": "granit-ivory",
@@ -69,7 +74,8 @@
     "miniW": 768,
     "miniH": 1376,
     "zrodloW": 768,
-    "zrodloH": 1376
+    "zrodloH": 1376,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-star-galaxy",
@@ -81,7 +87,8 @@
     "miniW": 768,
     "miniH": 1376,
     "zrodloW": 768,
-    "zrodloH": 1376
+    "zrodloH": 1376,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-star-galaxy-polwysep",
@@ -91,9 +98,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 559,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 232
   },
   {
     "slug": "granit-andora-white",
@@ -103,9 +111,10 @@
     "w": 1536,
     "h": 2752,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1272,
     "zrodloW": 1536,
-    "zrodloH": 2752
+    "zrodloH": 2752,
+    "pasPodpisu": 310
   },
   {
     "slug": "granit-bianco-delicatus",
@@ -115,9 +124,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1340,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 360
   },
   {
     "slug": "granit-delicatus-wyspa",
@@ -129,7 +139,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-kaspian-white",
@@ -139,9 +150,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 577,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 124
   },
   {
     "slug": "granit-perfect-white",
@@ -151,9 +163,10 @@
     "w": 1536,
     "h": 2752,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1315,
     "zrodloW": 1536,
-    "zrodloH": 2752
+    "zrodloH": 2752,
+    "pasPodpisu": 228
   },
   {
     "slug": "granit-copacabana",
@@ -163,9 +176,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 580,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 104
   },
   {
     "slug": "granit-prada-gold",
@@ -175,9 +189,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1247,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 715
   },
   {
     "slug": "granit-eclipse-leather",
@@ -187,9 +202,10 @@
     "w": 768,
     "h": 1376,
     "miniW": 768,
-    "miniH": 1376,
+    "miniH": 1252,
     "zrodloW": 768,
-    "zrodloH": 1376
+    "zrodloH": 1376,
+    "pasPodpisu": 124
   },
   {
     "slug": "granit-nero-zimbabwe-antico",
@@ -201,7 +217,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-bianco-perfetto",
@@ -213,7 +230,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-alpinus",
@@ -223,9 +241,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 536,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 368
   },
   {
     "slug": "granit-millenium-cream",
@@ -237,7 +256,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-imperial-gold",
@@ -249,7 +269,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "granit-colonial-cream",
@@ -259,9 +280,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 574,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 139
   },
   {
     "slug": "granit-brown-silk",
@@ -271,9 +293,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1277,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 600
   },
   {
     "slug": "granit-brown-silk-wyspa",
@@ -283,9 +306,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1330,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 395
   },
   {
     "slug": "kwarcyt-patagonia",
@@ -295,9 +319,10 @@
     "w": 1536,
     "h": 2526,
     "miniW": 800,
-    "miniH": 1316,
+    "miniH": 1190,
     "zrodloW": 1536,
-    "zrodloH": 2526
+    "zrodloH": 2526,
+    "pasPodpisu": 242
   },
   {
     "slug": "kwarcyt-patagonia-narozna",
@@ -307,9 +332,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1285,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 569
   },
   {
     "slug": "kwarcyt-midnight-crystal",
@@ -319,9 +345,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1295,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 533
   },
   {
     "slug": "kwarcyt-monte-carlo",
@@ -331,9 +358,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1341,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 353
   },
   {
     "slug": "kwarcyt-taj-mahal-antico",
@@ -343,9 +371,10 @@
     "w": 1600,
     "h": 2867,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1240,
     "zrodloW": 3072,
-    "zrodloH": 5504
+    "zrodloH": 5504,
+    "pasPodpisu": 743
   },
   {
     "slug": "kwarcyt-taj-mahal-poler",
@@ -355,9 +384,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 575,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 135
   },
   {
     "slug": "kwarcyt-taj-mahal-u",
@@ -369,7 +399,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "kwarcyt-bianco-supreme",
@@ -379,9 +410,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 517,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 483
   },
   {
     "slug": "kwarcyt-gabana",
@@ -391,9 +423,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 557,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 240
   },
   {
     "slug": "kwarcyt-da-vinci",
@@ -403,9 +436,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 520,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 467
   },
   {
     "slug": "konglomerat-avant-chantilly",
@@ -415,9 +449,10 @@
     "w": 1536,
     "h": 2752,
     "miniW": 800,
-    "miniH": 1433,
+    "miniH": 1325,
     "zrodloW": 1536,
-    "zrodloH": 2752
+    "zrodloH": 2752,
+    "pasPodpisu": 208
   },
   {
     "slug": "konglomerat-avant-calacatta-evo",
@@ -427,9 +462,10 @@
     "w": 1536,
     "h": 2543,
     "miniW": 800,
-    "miniH": 1324,
+    "miniH": 1305,
     "zrodloW": 1536,
-    "zrodloH": 2543
+    "zrodloH": 2543,
+    "pasPodpisu": 38
   },
   {
     "slug": "konglomerat-bianco-carrara",
@@ -439,9 +475,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 553,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 269
   },
   {
     "slug": "konglomerat-almond-milk",
@@ -451,9 +488,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 568,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 174
   },
   {
     "slug": "konglomerat-lincoln-white",
@@ -463,9 +501,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 530,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 406
   },
   {
     "slug": "konglomerat-taj-amelie",
@@ -477,7 +516,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "konglomerat-calacatta-aveyron",
@@ -489,7 +529,8 @@
     "miniW": 800,
     "miniH": 597,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 0
   },
   {
     "slug": "konglomerat-calacatta-viviez",
@@ -499,9 +540,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 549,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 288
   },
   {
     "slug": "konglomerat-blave",
@@ -511,8 +553,9 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 571,
     "zrodloW": 4800,
-    "zrodloH": 3584
+    "zrodloH": 3584,
+    "pasPodpisu": 161
   }
 ]

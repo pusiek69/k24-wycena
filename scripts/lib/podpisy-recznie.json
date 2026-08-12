@@ -1,0 +1,25 @@
+{
+  "_info": [
+    "RĘCZNE KOREKTY WYSOKOŚCI PODPISU — ułamek wysokości oryginału.",
+    "Automat (scripts/lib/podpis.mjs) mierzy pasek pod zdjęciem. Tu są dwa rodzaje wyjątków:",
+    "  • liczba  → automat zmierzył za mało, wartość ustawiona ręcznie po obejrzeniu zdjęcia,",
+    "  • 0       → podpis NIE jest paskiem pod zdjęciem, tylko stoi obok kadru w kolażu.",
+    "              Ucięcie dołu nic by nie dało, a zabrałoby zdjęcie. Zostawiamy z podpisem.",
+    "Sprawdzone zdjęcie po zdjęciu na kontaktówkach, sierpień 2026."
+  ],
+
+  "korekty": {
+    "konglomerat-blave": 0.045
+  },
+
+  "bezCiecia": {
+    "granit-nero-zimbabwe-antico": "podpis po prawej, obok zdjęcia płyty",
+    "granit-bianco-perfetto": "podpis po lewej, obok zdjęcia płyty",
+    "granit-millenium-cream": "podpis po lewej, obok zdjęcia płyty",
+    "granit-delicatus-wyspa": "podpis w środku kolażu, między dwoma zdjęciami",
+    "konglomerat-taj-amelie": "podpis po lewej, obok zdjęcia płyty",
+    "konglomerat-calacatta-aveyron": "podpis po lewej, obok zdjęcia płyty",
+    "granit-imperial-gold": "podpis obok zdjęcia płyty — cięcie ucięłoby samą płytę",
+    "kwarcyt-taj-mahal-u": "podpis obok zdjęcia płyty — cięcie ucięłoby samą płytę"
+  }
+}

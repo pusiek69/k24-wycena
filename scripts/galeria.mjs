@@ -26,6 +26,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import sharp from 'sharp';
+import { wysokoscPodpisu } from './lib/podpis.mjs';
+
+const RECZNIE = JSON.parse(
+  fs.readFileSync(path.resolve(import.meta.dirname, 'lib', 'podpisy-recznie.json'), 'utf8')
+);
 
 const ZRODLO = 'C:/Users/kamie/Desktop/Reklama na facebook';
 const PODFOLDERY = ['Kuhcnia', 'Rzut 2', 'Zdjecia kuchnia 4 3'];
@@ -141,6 +146,8 @@ fs.mkdirSync(CEL, { recursive: true });
 fs.mkdirSync(path.dirname(MANIFEST), { recursive: true });
 
 const wynik = [];
+const pominiete = []; // podpis obok kadru — nie da sie odciac
+const reczne = [];    // wysokosc ustawiona recznie po obejrzeniu
 let bajtyPrzed = 0;
 let bajtyPo = 0;
 
@@ -151,9 +158,39 @@ for (const k of KATALOG) {
   const obraz = sharp(zrodlo).rotate(); // rotate() bez argumentu = wg EXIF
   const meta = await obraz.metadata();
 
+  /*
+   * MINIATURA BEZ WYPALONEGO PODPISU
+   *
+   * Duża wersja (lightbox) zostaje nietknięta — podpis z nazwą kamienia
+   * i kontaktem dokumentuje realizację i jest znakiem Dawida. Ale w siatce
+   * kafelków ucięty w połowie napis wyglądał jak błąd, więc miniaturę
+   * kadrujemy nad paskiem. Tniemy z ORYGINAŁU, nie z gotowej miniatury.
+   *
+   * Wysokość paska mierzy scripts/lib/podpis.mjs, a wyjątki — zdjęcia,
+   * gdzie podpis stoi OBOK kadru w kolażu i nie da się go odciąć bez
+   * zabrania płyty — są wypisane w podpisy-recznie.json.
+   */
+  let pasPodpisu = 0;
+  if (RECZNIE.bezCiecia[k.slug]) {
+    pominiete.push({ slug: k.slug, powod: RECZNIE.bezCiecia[k.slug] });
+  } else if (RECZNIE.korekty[k.slug]) {
+    pasPodpisu = Math.round(meta.height * RECZNIE.korekty[k.slug]);
+    reczne.push(k.slug);
+  } else {
+    pasPodpisu = await wysokoscPodpisu(() => sharp(zrodlo).rotate());
+  }
+  // Bezpiecznik: nigdy nie zabieramy więcej niż jednej trzeciej kadru.
+  pasPodpisu = Math.min(pasPodpisu, Math.floor(meta.height / 3));
+
   const warianty = [];
   for (const [przyrostek, szer] of [['', SZEROKOSC_DUZA], ['-mini', SZEROKOSC_MINI]]) {
-    const baza = sharp(zrodlo).rotate().resize({ width: szer, withoutEnlargement: true });
+    const przyciete =
+      przyrostek === '-mini' && pasPodpisu > 0
+        ? sharp(zrodlo)
+            .rotate()
+            .extract({ left: 0, top: 0, width: meta.width, height: meta.height - pasPodpisu })
+        : sharp(zrodlo).rotate();
+    const baza = przyciete.resize({ width: szer, withoutEnlargement: true });
     const webp = path.join(CEL, `${k.slug}${przyrostek}.webp`);
     const jpg = path.join(CEL, `${k.slug}${przyrostek}.jpg`);
     await baza.clone().webp({ quality: JAKOSC_WEBP }).toFile(webp);
@@ -180,10 +217,22 @@ for (const k of KATALOG) {
     miniH: mMini.height,
     zrodloW: meta.width,
     zrodloH: meta.height,
+    pasPodpisu,
   });
 
-  console.log(`  ${k.slug.padEnd(36)} ${meta.width}×${meta.height} → ${mDuza.width}×${mDuza.height}`);
+  console.log(
+    `  ${k.slug.padEnd(36)} ${meta.width}×${meta.height} → ${mDuza.width}×${mDuza.height}` +
+      (pasPodpisu ? `  (podpis −${pasPodpisu} px)` : '')
+  );
 }
+
+console.log(`
+── PODSUMOWANIE PODPISOW ─────────────────────────────`);
+console.log(`  przyciete automatycznie : ${wynik.filter((r) => r.pasPodpisu).length - reczne.length}`);
+console.log(`  przyciete recznie       : ${reczne.length}${reczne.length ? ' (' + reczne.join(', ') + ')' : ''}`);
+console.log(`  zostawione z podpisem   : ${pominiete.length}`);
+for (const p of pominiete) console.log(`      ${p.slug.padEnd(32)} ${p.powod}`);
+console.log(`  bez wykrytego podpisu   : ${wynik.filter((r) => !r.pasPodpisu).length - pominiete.length}`);
 
 fs.writeFileSync(MANIFEST, JSON.stringify(wynik, null, 2) + '\n', 'utf8');
 
