@@ -83,6 +83,16 @@ for (const plik of STRONY) {
         trafien += ile;
       }
     }
+
+    // Dane strukturalne: "lowPrice": "4400" — kwota BEZ „zł" obok, więc
+    // powyższy wzorzec jej nie widzi. To cena, którą czyta Google, więc
+    // musi się zgadzać z treścią (pierwsza wersja skryptu ją przegapiła).
+    const reLd = new RegExp(`("(?:low|high)Price":\\s*")${zapisy(stara)[0]}(")`, 'g');
+    const ileLd = (t.match(reLd) || []).length;
+    if (ileLd) {
+      t = t.replace(reLd, `$1${zapisy(nowa)[0]}$2`);
+      trafien += ileLd;
+    }
   }
 
   if (t !== przed) {
