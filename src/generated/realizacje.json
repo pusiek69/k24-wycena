@@ -85,10 +85,10 @@
     "w": 768,
     "h": 1376,
     "miniW": 768,
-    "miniH": 1376,
+    "miniH": 1032,
     "zrodloW": 768,
     "zrodloH": 1376,
-    "pasPodpisu": 0
+    "pasPodpisu": 344
   },
   {
     "slug": "granit-star-galaxy-polwysep",
@@ -137,10 +137,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 532,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 394
   },
   {
     "slug": "granit-kaspian-white",
@@ -215,10 +215,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 514,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 502
   },
   {
     "slug": "granit-bianco-perfetto",
@@ -228,10 +228,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 448,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 896
   },
   {
     "slug": "granit-alpinus",
@@ -254,10 +254,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 532,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 394
   },
   {
     "slug": "granit-imperial-gold",
@@ -267,10 +267,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 448,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 896
   },
   {
     "slug": "granit-colonial-cream",
@@ -397,10 +397,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 496,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 609
   },
   {
     "slug": "kwarcyt-bianco-supreme",
@@ -514,10 +514,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 508,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 538
   },
   {
     "slug": "konglomerat-calacatta-aveyron",
@@ -527,10 +527,10 @@
     "w": 1600,
     "h": 1195,
     "miniW": 800,
-    "miniH": 597,
+    "miniH": 508,
     "zrodloW": 4800,
     "zrodloH": 3584,
-    "pasPodpisu": 0
+    "pasPodpisu": 538
   },
   {
     "slug": "konglomerat-calacatta-viviez",

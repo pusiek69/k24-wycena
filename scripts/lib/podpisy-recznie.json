@@ -1,25 +1,25 @@
 {
   "_info": [
     "RĘCZNE KOREKTY WYSOKOŚCI PODPISU — ułamek wysokości oryginału.",
-    "Automat (scripts/lib/podpis.mjs) mierzy pasek pod zdjęciem. Tu są dwa rodzaje wyjątków:",
-    "  • liczba  → automat zmierzył za mało, wartość ustawiona ręcznie po obejrzeniu zdjęcia,",
-    "  • 0       → podpis NIE jest paskiem pod zdjęciem, tylko stoi obok kadru w kolażu.",
-    "              Ucięcie dołu nic by nie dało, a zabrałoby zdjęcie. Zostawiamy z podpisem.",
-    "Sprawdzone zdjęcie po zdjęciu na kontaktówkach, sierpień 2026."
+    "Automat (scripts/lib/podpis.mjs) szuka JEDNOLITEGO paska pod zdjęciem.",
+    "Część grafik ma podpis wpisany wprost NA zdjęcie — bez paska, więc automat",
+    "go nie widzi. Te przypadki są tutaj, zmierzone z siatki na oryginale 4800 px.",
+    "Cięcie bywa głębokie (do 24%), bo zabiera też małą wklejkę ze zdjęciem płyty",
+    "w prawym dolnym rogu. To świadome: w kafelku liczy się zamontowany blat.",
+    "Sprawdzone zdjęcie po zdjęciu na kontaktówkach, sierpień 2026.",
+    "granit-star-galaxy ma podpis w SRODKU kadru (y~75%), nie na dole — ciecie 25% zostawia sama kuchnie."
   ],
-
   "korekty": {
-    "konglomerat-blave": 0.045
+    "konglomerat-blave": 0.045,
+    "granit-nero-zimbabwe-antico": 0.14,
+    "granit-delicatus-wyspa": 0.11,
+    "granit-millenium-cream": 0.11,
+    "konglomerat-taj-amelie": 0.15,
+    "konglomerat-calacatta-aveyron": 0.15,
+    "kwarcyt-taj-mahal-u": 0.17,
+    "granit-bianco-perfetto": 0.25,
+    "granit-imperial-gold": 0.25,
+    "granit-star-galaxy": 0.25
   },
-
-  "bezCiecia": {
-    "granit-nero-zimbabwe-antico": "podpis po prawej, obok zdjęcia płyty",
-    "granit-bianco-perfetto": "podpis po lewej, obok zdjęcia płyty",
-    "granit-millenium-cream": "podpis po lewej, obok zdjęcia płyty",
-    "granit-delicatus-wyspa": "podpis w środku kolażu, między dwoma zdjęciami",
-    "konglomerat-taj-amelie": "podpis po lewej, obok zdjęcia płyty",
-    "konglomerat-calacatta-aveyron": "podpis po lewej, obok zdjęcia płyty",
-    "granit-imperial-gold": "podpis obok zdjęcia płyty — cięcie ucięłoby samą płytę",
-    "kwarcyt-taj-mahal-u": "podpis obok zdjęcia płyty — cięcie ucięłoby samą płytę"
-  }
+  "bezCiecia": {}
 }
