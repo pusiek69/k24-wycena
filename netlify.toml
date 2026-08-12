@@ -21,6 +21,45 @@
   status = 301
   force = true
 
+# STARE DOMENY FIRMY — wszystkie prowadzą na kam24h.pl.
+#
+# k24h.pl i kamieniarstwo24h.pl (z „www" i bez) są podpięte w Netlify jako
+# aliasy tego samego projektu. Bez tych reguł serwowałyby tę samą treść pod
+# czterema adresami naraz — a to dla Google cztery kopie jednej strony.
+#
+# Przekierowanie jest 1:1 (`:splat`), więc stary link do konkretnej podstrony
+# trafia dokładnie tam, gdzie powinien, a nie na stronę główną. To ma
+# znaczenie dla linków, które gdzieś już krążą — w wizytówkach, na Facebooku
+# i w podpisach zdjęć realizacji.
+#
+# `force = true` jest konieczne: bez tego Netlify najpierw znalazłby plik
+# pasujący do ścieżki i oddał go zamiast przekierować.
+#
+# Kolejność ma znaczenie — te reguły muszą stać przed regułami ścieżkowymi.
+[[redirects]]
+  from = "https://k24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.k24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://kamieniarstwo24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.kamieniarstwo24h.pl/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
 # Jeden adres na jedną stronę. Netlify serwuje `nazwa.html` również pod
 # `/nazwa`, więc bez tych reguł ta sama treść żyłaby pod dwoma adresami,
 # a Google traktuje to jak duplikat. Wersja z „.html" przekierowuje trwale
