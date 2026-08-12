@@ -1,0 +1,25 @@
+{
+  "_info": [
+    "Kwoty, które skrypt ceny-tresc.mjs wpisał ostatnio do stron.",
+    "Służą do znalezienia ich przy następnej zmianie cennika — nie edytuj ręcznie.",
+    "\"historia\" to kwoty juz wycofane — checklista pilnuje, zeby nie wrocily."
+  ],
+  "_zapisano": "2026-08-12",
+  "kwoty": {
+    "konglomeratProste": 4400,
+    "konglomeratL": 6700,
+    "konglomeratM2Od": 629,
+    "konglomeratM2Do": 2306,
+    "spiekProste": 4500,
+    "spiekL": 7200,
+    "spiekM2Od": 764,
+    "spiekM2Do": 1916
+  },
+  "historia": [
+    1593,
+    4100,
+    4850,
+    6400,
+    7300
+  ]
+}

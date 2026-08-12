@@ -195,5 +195,64 @@ for (const plik of fs.readdirSync(path.join(ROOT, 'src/firms')).filter((f) => f.
 }
 ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length === 0, wielomarkowe.join('; ') || `${linki.size} firm, każda z własnym adresem`);
 
+/* 17. Kwoty „od…" w treści stron zgodne z silnikiem wyceny
+ *
+ * Strona główna, strony miast i strony materiałowe podają progi w rodzaju
+ * „blat 60 × 300 cm od 4 400 zł". Pisane ręcznie rozjeżdżały się przy każdej
+ * zmianie cennika — w sierpniu 2026 strona mówiła 4 100 zł, gdy kalkulator
+ * liczył już 4 400 zł. Ten test porównuje treść z silnikiem.
+ * Naprawa: `npm run ceny:tresc`.
+ */
+{
+  const { wczytajSilnik } = await import('./lib/silnik.mjs');
+  const { progi, zapisy } = await import('./lib/ceny-progowe.mjs');
+  const { wycen, FIRMY } = await wczytajSilnik();
+  const p = progi(FIRMY, wycen);
+
+  const oczekiwane = [
+    ['konglomerat 60×300', p.konglomerat.proste],
+    ['konglomerat L', p.konglomerat.wL],
+    ['spiek 60×300', p.spiek.proste],
+    ['spiek L', p.spiek.wL],
+  ];
+  const strony = fs
+    .readdirSync(ROOT)
+    .filter((f) => f.endsWith('.html') && f !== 'podglad.html')
+    .map((f) => czytaj(f));
+  const cala = strony.join('\n');
+
+  // Każdy próg musi być gdzieś w treści; żadna wersja pamiętana jako
+  // poprzednia nie może już występować przy „zł".
+  const stan = JSON.parse(czytaj('scripts/lib/ceny-tresc.json'));
+  const brakuje = oczekiwane.filter(([, v]) => !zapisy(v).some((z) => cala.includes(`${z} zł`) || cala.includes(`${z}&nbsp;zł`)));
+  const rozjazd = Object.entries({
+    konglomeratProste: p.konglomerat.proste,
+    konglomeratL: p.konglomerat.wL,
+    spiekProste: p.spiek.proste,
+    spiekL: p.spiek.wL,
+  }).filter(([k, v]) => stan.kwoty[k] !== v);
+
+  // Kwoty wycofane nie mogą wrócić do treści — to łapie ręczną edycję strony,
+  // której samo porównanie pamięci z silnikiem by nie zauważyło.
+  const wrocily = (stan.historia || []).filter((v) =>
+    zapisy(v).some((z) => cala.includes(`${z} zł`) || cala.includes(`${z}&nbsp;zł`))
+  );
+
+  const problemy = [
+    ...brakuje.map(([n]) => `brak progu: ${n}`),
+    ...rozjazd.map(([k]) => `pamięć ≠ silnik: ${k}`),
+    ...wrocily.map((v) => `wycofana kwota ${v} zł znów w treści`),
+  ];
+
+  ok(
+    17,
+    'kwoty „od…" w treści stron zgodne z silnikiem',
+    problemy.length === 0,
+    problemy.length
+      ? `uruchom npm run ceny:tresc — ${problemy.join('; ')}`
+      : oczekiwane.map(([n, v]) => `${n} ${v} zł`).join(' · ')
+  );
+}
+
 console.log(bledy ? `\n✗ Niezgodności: ${bledy}` : '\n✓ Checklista §8 — wszystko zgodne ze specyfikacją');
 process.exit(bledy ? 1 : 0);

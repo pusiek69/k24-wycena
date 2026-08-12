@@ -18,7 +18,8 @@
     "cennik:dodaj": "node scripts/cennik-serwer.mjs",
     "test": "node --test scripts/test-*.mjs",
     "galeria": "node scripts/galeria.mjs",
-    "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz"
+    "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz",
+    "ceny:tresc": "node scripts/ceny-tresc.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.3",
