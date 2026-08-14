@@ -183,6 +183,32 @@ export function wycen(firma, w, dataISO) {
     }
   }
 
+  // ---------- 3a. dodatek za obróbkę kamienia naturalnego ----------
+  //
+  // Kamień naturalny obrabia się dłużej i z większym ryzykiem niż konglomerat:
+  // każda płyta ma inny rysunek do dobrania, twardość bywa nierówna, a przy
+  // cięciu zdarzają się pęknięcia, których nikt nie przewidzi. Przy dużym
+  // blacie ta praca rozkłada się na duży metraż i ginie w cenie materiału,
+  // ale przy małym zleceniu — blat łazienkowy, parapet — robocizna liczona
+  // od metra bieżącego nie pokrywa nawet przygotowania płyty.
+  //
+  // Dlatego doliczamy procent od wartości kupionego materiału: rośnie razem
+  // z ceną i wielkością płyty, czyli z tym, co realnie decyduje o trudności.
+  // Stawkę ustawia firma (`dodatekObrobkiNaturalnej`) — patrz firms/interstone.js.
+  //
+  // Kwota trafia do grupy „usługi", więc na karcie klienta wchodzi w „produkcję
+  // i montaż" i nie pojawia się jako osobna cena. Rozbicie ze stawką widzi
+  // tylko Dawid w mailu leadowym (stąd `detalFirmowy`).
+  const stawkaObrobki = firma.dodatekObrobkiNaturalnej ?? 0;
+  if (stawkaObrobki > 0 && materialNetto > 0) {
+    pozycje.push({
+      grupa: 'usługi',
+      nazwa: 'Obróbka kamienia naturalnego',
+      detalFirmowy: `${round1(stawkaObrobki * 100)}% wartości płyt`,
+      brutto: doBrutto(materialNetto) * stawkaObrobki,
+    });
+  }
+
   // ---------- 4. sumy ----------
   const materialBrutto = pozycje.filter((p) => p.grupa === 'materiał').reduce((a, p) => a + p.brutto, 0);
   const uslugiBrutto = pozycje.filter((p) => p.grupa === 'usługi').reduce((a, p) => a + p.brutto, 0);

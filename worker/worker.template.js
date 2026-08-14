@@ -427,10 +427,15 @@ function mailDoFirmy(klient, s, extra) {
   const uslugi = s ? s.pozycje.filter((p) => p.grupa === 'usługi') : [];
   const transkrypcja = skrocTranskrypcje(extra.transkrypcja);
 
+  // W mailu do FIRMY pokazujemy szczegół pełny: przy dodatku za obróbkę
+  // kamienia naturalnego to stawka, z której wyszła kwota. Klient widzi
+  // tylko nazwę pozycji — `detalFirmowy` nigdy nie trafia do jego maila.
+  const szczegol = (p) => p.detalFirmowy || p.detal;
+
   const wiersz = (p) => `
     <tr>
       <td style="padding:7px 10px;border-bottom:1px solid #e8e4dc">
-        ${esc(p.nazwa)}${p.detal ? `<br><span style="color:#8c8474;font-size:12px">${esc(p.detal)}</span>` : ''}
+        ${esc(p.nazwa)}${szczegol(p) ? `<br><span style="color:#8c8474;font-size:12px">${esc(szczegol(p))}</span>` : ''}
       </td>
       <td style="padding:7px 10px;border-bottom:1px solid #e8e4dc;text-align:right;white-space:nowrap;font-weight:bold">
         ${zl(p.brutto)}
@@ -560,7 +565,10 @@ function leadTekstem(klient, s, extra) {
     l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
     l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
     l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`, '');
-    for (const p of s.pozycje) l.push(`  ${p.nazwa}${p.detal ? ` (${p.detal})` : ''} — ${zl(p.brutto)}`);
+    for (const p of s.pozycje) {
+      const d = p.detalFirmowy || p.detal;
+      l.push(`  ${p.nazwa}${d ? ` (${d})` : ''} — ${zl(p.brutto)}`);
+    }
     l.push('', `  materiał ${zl(s.materialBrutto)} · usługi ${zl(s.uslugiBrutto)}`);
 
     const uklad = opisUkladu(s);

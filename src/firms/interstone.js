@@ -60,6 +60,24 @@ export default {
   plyta: { w: 300, h: 180, polowkaDozwolona: true },
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 
+  /*
+   * Dodatek za trudność obróbki kamienia naturalnego — 10% wartości płyt.
+   *
+   * Zgłoszenie Dawida (sierpień 2026): przy małych zleceniach, zwłaszcza
+   * łazienkowych, wycena wychodziła wyraźnie poniżej ceny rynkowej.
+   * Powód jest w strukturze kosztu: robocizna liczona od metra bieżącego
+   * zakłada blat kuchenny, a przy blacie 60 × 120 cm przygotowanie płyty
+   * kosztuje tyle samo co przy blacie trzymetrowym.
+   *
+   * Procent od materiału, a nie stawka ryczałtowa, bo trudność rośnie razem
+   * z ceną i wielkością płyty — droższy kamień to zwykle trudniejszy kamień.
+   *
+   * Nie dotyczy konglomeratów i spieków sprzedawanych przez Interstone
+   * (InterQ) — te tną się jak każdy inny konglomerat. Rozróżnienie robi
+   * `jestNaturalny()` w app/wycena-naturalny.js.
+   */
+  dodatekObrobkiNaturalnej: 0.1,
+
   opisGrubosci: {
     20: '20 mm — standard',
     30: '30 mm — masywny',

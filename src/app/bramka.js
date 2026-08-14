@@ -290,6 +290,10 @@ export function szczegolyWyceny(w) {
       grupa: p.grupa,
       nazwa: p.nazwa,
       detal: p.detal || '',
+      // Szczegół widoczny WYŁĄCZNIE w mailu do firmy — np. z jakiej stawki
+      // wyszedł dodatek za obróbkę kamienia naturalnego. Klient tego nie widzi
+      // ani na karcie, ani w swoim mailu.
+      detalFirmowy: p.detalFirmowy || '',
       brutto: Math.round(p.brutto),
     })),
     materialBrutto: Math.round(w.materialBrutto || 0),
