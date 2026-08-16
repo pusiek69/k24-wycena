@@ -17,11 +17,27 @@ export const ROBOCIZNA = [
     cena: 350,
     per: 'mb',
   },
+  /*
+   * MONTAŻ: baza raz na zamówienie + stawka od powierzchni blatu.
+   *
+   * Wcześniej było 150 zł od metra bieżącego. To zakładało, że koszt wyjazdu
+   * rośnie proporcjonalnie do długości blatu — a nie rośnie. Ekipa jedzie,
+   * wnosi, poziomuje i sylikonuje tak samo przy blacie łazienkowym, jak przy
+   * kuchni; różni się dopiero czas przy większej powierzchni. Przy małych
+   * zleceniach wycena wychodziła przez to wyraźnie poniżej rynku
+   * (zgłoszenie Dawida, sierpień 2026).
+   *
+   * `baza` naliczana JEDEN raz na całą wycenę, niezależnie od liczby
+   * elementów i pomieszczeń. Stawka liczona od powierzchni ELEMENTÓW blatu
+   * (`per: 'm2blatu'`), a nie od zużytej płyty — klient płaci za to,
+   * co mu zostaje na szafkach, nie za ścinkę.
+   */
   {
     id: 'montaz',
     label: 'Transport i montaż u klienta',
-    cena: 150,
-    per: 'mb',
+    baza: 1500,
+    cena: 200,
+    per: 'm2blatu',
   },
 ];
 

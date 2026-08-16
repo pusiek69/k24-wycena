@@ -126,13 +126,27 @@ export function wycen(firma, w, dataISO) {
 
   // ---------- 2. robocizna (zawsze) ----------
   for (const r of firma.robocizna || []) {
-    const ilosc = r.per === 'mb' ? pak.mb : r.per === 'm2' ? m2Platne : 1;
-    const kwota = kwotaBrutto(r.cena, firma, vat) * ilosc;
+    // `m2blatu` to powierzchnia samych elementów blatu — bez ścinki, którą
+    // klient i tak kupuje w cenie płyty. `m2` liczy metraż płatny (z płytą).
+    const ilosc =
+      r.per === 'mb' ? pak.mb : r.per === 'm2' ? m2Platne : r.per === 'm2blatu' ? pak.m2Blatu : 1;
+
+    // Pozycja może mieć część stałą (dojazd, wniesienie, przygotowanie) —
+    // naliczaną RAZ na całą wycenę, niezależnie od liczby elementów.
+    const baza = r.baza ? kwotaBrutto(r.baza, firma, vat) : 0;
+    const kwota = baza + kwotaBrutto(r.cena, firma, vat) * ilosc;
     if (kwota <= 0) continue;
+
+    const jednostka = r.per === 'mb' ? 'm.b.' : 'm²';
     pozycje.push({
       grupa: 'usługi',
       nazwa: r.label,
-      detal: r.per === 'mb' ? `${round1(pak.mb)} m.b. × ${fmtStawka(r.cena)}` : r.detal,
+      // Klient widzi samą ilość, bez stawki — kartę i jego mail czyta `detal`.
+      detal: r.per === 'mb' || r.per === 'm2blatu' ? `${round1(ilosc)} ${jednostka}` : r.detal,
+      // Dawid w mailu leadowym widzi, z czego kwota się złożyła.
+      detalFirmowy: baza
+        ? `baza ${fmtStawka(r.baza)} + ${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`
+        : `${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`,
       brutto: kwota,
     });
   }
