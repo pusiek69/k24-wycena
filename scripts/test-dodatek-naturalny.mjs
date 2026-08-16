@@ -1,5 +1,5 @@
 /**
- * Dodatek za obróbkę kamienia naturalnego — 10% wartości płyt.
+ * Dodatek za obróbkę kamienia naturalnego — 100 zł za m² blatu.
  *
  *   node --test scripts/test-dodatek-naturalny.mjs
  *
@@ -7,15 +7,21 @@
  * wycena kamienia naturalnego wychodziła poniżej ceny rynkowej, bo robocizna
  * liczona od metra bieżącego nie pokrywa przygotowania płyty.
  *
+ * Pierwotnie dodatek liczył się jako 10% wartości płyt. Od sierpnia 2026
+ * jest to stawka od metra — dodatek pokrywa PRACĘ, a ta nie rośnie z ceną
+ * kamienia. Metry bierzemy z elementów blatu, spójnie z montażem.
+ *
  * Testy pilnują trzech rzeczy naraz:
  *   • dodatek jest doliczany kamieniowi naturalnemu i NIE jest konglomeratom,
  *   • wchodzi w grupę „usługi", więc na karcie klienta ląduje w jednej kwocie
  *     „produkcja i montaż", a nie jako osobna cena,
- *   • stawka (10%) jest widoczna tylko w polu dla firmy.
+ *   • stawka jest widoczna tylko w polu dla firmy.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
+
+const ZA_M2 = 100;
 
 /* Minimalne konfiguracje firm — bez importu cenników, żeby test był
    niezależny od tego, co akurat jest w katalogu. */
@@ -37,7 +43,7 @@ const NATURALNY = {
   plyta: { w: 300, h: 180, polowkaDozwolona: false },
   robocizna: ROBOCIZNA,
   opcje: [],
-  dodatekObrobkiNaturalnej: 0.1,
+  obrobkaNaturalnaZaM2: ZA_M2,
 };
 
 const KONGLOMERAT = {
@@ -48,7 +54,7 @@ const KONGLOMERAT = {
   trybCeny: 'katalog',
   rozliczenieMaterialu: 'plyty',
   dekory: { Testowy: { 20: 800 } },
-  dodatekObrobkiNaturalnej: 0,
+  obrobkaNaturalnaZaM2: 0,
 };
 
 /** Blat łazienkowy — mały, czyli dokładnie ten przypadek, o który poszło. */
@@ -56,42 +62,49 @@ const LAZIENKA = [{ gl: 60, dl: 120 }];
 const KUCHNIA = [{ gl: 60, dl: 300 }];
 
 const dodatek = (w) => w.pozycje.find((p) => p.nazwa === 'Obróbka kamienia naturalnego');
-const material = (w) => w.pozycje.filter((p) => p.grupa === 'materiał').reduce((a, p) => a + p.brutto, 0);
 
 /* ────────────────────────────────────────────── kamień naturalny: dolicza */
 
-test('kamień naturalny dostaje 10% wartości płyt', () => {
+test('kamień naturalny dostaje 100 zł za m² blatu', () => {
   const w = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   const d = dodatek(w);
   assert.ok(d, 'brak pozycji z dodatkiem');
   assert.equal(d.grupa, 'usługi', 'dodatek musi wejść w produkcję i montaż');
   assert.ok(
-    Math.abs(d.brutto - material(w) * 0.1) < 0.01,
-    `dodatek ${d.brutto} ≠ 10% z ${material(w)}`
+    Math.abs(d.brutto - ZA_M2 * w.pak.m2Blatu) < 0.01,
+    `dodatek ${d.brutto} ≠ ${ZA_M2} × ${w.pak.m2Blatu} m²`
   );
+});
+
+test('liczymy od elementów blatu, nie od kupionej płyty', () => {
+  const w = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
+  // Płyta 300×180 na blat 60×120 — odpadu jest wielokrotnie więcej niż blatu.
+  assert.ok(w.pak.m2Kupione > w.pak.m2Blatu * 2, 'test bez sensu, gdyby metraże były zbliżone');
+  assert.ok(Math.abs(dodatek(w).brutto - ZA_M2 * w.pak.m2Blatu) < 0.01);
 });
 
 test('stawka jest widoczna tylko dla firmy, nie dla klienta', () => {
   const w = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   const d = dodatek(w);
   assert.equal(d.detal, undefined, 'klient nie może zobaczyć stawki w detalu');
-  assert.match(d.detalFirmowy, /10% wartości płyt/);
+  assert.match(d.detalFirmowy, /m² × 100 zł/);
 });
 
-test('dodatek rośnie razem z wartością płyty', () => {
+test('dodatek NIE zależy od ceny kamienia — to praca, nie narzut', () => {
   const tani = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 500 });
   const drogi = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1500 });
-  assert.ok(dodatek(drogi).brutto > dodatek(tani).brutto * 2.5);
+  assert.ok(
+    Math.abs(dodatek(tani).brutto - dodatek(drogi).brutto) < 0.01,
+    'marmur za 1500 nie tnie się trzy razy dłużej niż ten za 500'
+  );
 });
 
-test('przy małym blacie dodatek waży więcej niż przy dużym', () => {
+test('dodatek rośnie liniowo z powierzchnią blatu', () => {
   const mala = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   const duza = wycen(NATURALNY, { odcinki: KUCHNIA, opcje: {}, cenaRecznaM2: 1000 });
-  const udzial = (w) => dodatek(w).brutto / w.razem;
-  assert.ok(
-    udzial(mala) > udzial(duza),
-    'o to właśnie chodziło: przy łazience robocizna od mb nie wystarcza'
-  );
+  const naM2 = (w) => dodatek(w).brutto / w.pak.m2Blatu;
+  assert.ok(dodatek(duza).brutto > dodatek(mala).brutto);
+  assert.ok(Math.abs(naM2(mala) - naM2(duza)) < 0.01, 'stawka ma być płaska');
 });
 
 /* ─────────────────────────────────────── konglomerat i spiek: NIE dolicza */
@@ -102,15 +115,19 @@ test('konglomerat nie dostaje dodatku', () => {
 });
 
 test('firma bez ustawionej stawki nic nie dolicza', () => {
-  const bezStawki = { ...NATURALNY, dodatekObrobkiNaturalnej: undefined };
+  const bezStawki = { ...NATURALNY, obrobkaNaturalnaZaM2: undefined };
   const w = wycen(bezStawki, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   assert.equal(dodatek(w), undefined);
 });
 
-test('bez podanej ceny płyty nie ma z czego liczyć dodatku', () => {
-  // Kamień naturalny bez wybranej płyty — materiał „do ustalenia".
+test('dodatek liczy się także przed wyborem konkretnej płyty', () => {
+  // Kamień naturalny bez wybranej płyty — materiał jest „do ustalenia", ale
+  // robocizna nie: blat i tak trzeba dociąć i wypolerować. Przy poprzedniej
+  // formule (procent od materiału) nie było od czego liczyć i dodatek znikał.
   const w = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {} });
-  assert.equal(dodatek(w), undefined, 'nie wolno doliczać procentu od nieznanej kwoty');
+  const d = dodatek(w);
+  assert.ok(d, 'praca jest znana, nawet gdy cena płyty jeszcze nie');
+  assert.ok(Math.abs(d.brutto - ZA_M2 * w.pak.m2Blatu) < 0.01);
 });
 
 /* ──────────────────────────────────── karta klienta: nadal dwie kwoty */
@@ -124,13 +141,13 @@ test('karta klienta widzi dwie sumy, dodatek siedzi w usługach', () => {
   const suma = w.pozycje.reduce((a, p) => a + p.brutto, 0);
   assert.ok(Math.abs(suma - (w.materialBrutto + w.uslugiBrutto)) < 0.01);
   assert.ok(
-    Math.abs(w.uslugiBrutto - (w.pozycje.filter((p) => p.grupa === 'usługi').reduce((a, p) => a + p.brutto, 0))) < 0.01,
+    Math.abs(w.uslugiBrutto - w.pozycje.filter((p) => p.grupa === 'usługi').reduce((a, p) => a + p.brutto, 0)) < 0.01,
     'dodatek musi być policzony w sumie usług'
   );
 });
 
 test('dodatek podnosi wycenę dokładnie o swoją kwotę', () => {
-  const bez = wycen({ ...NATURALNY, dodatekObrobkiNaturalnej: 0 }, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
+  const bez = wycen({ ...NATURALNY, obrobkaNaturalnaZaM2: 0 }, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   const z = wycen(NATURALNY, { odcinki: LAZIENKA, opcje: {}, cenaRecznaM2: 1000 });
   assert.ok(Math.abs(z.razem - bez.razem - dodatek(z).brutto) < 0.01);
 });

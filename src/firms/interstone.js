@@ -61,7 +61,7 @@ export default {
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 
   /*
-   * Dodatek za trudność obróbki kamienia naturalnego — 10% wartości płyt.
+   * Dodatek za trudność obróbki kamienia naturalnego — 100 zł za m² blatu.
    *
    * Zgłoszenie Dawida (sierpień 2026): przy małych zleceniach, zwłaszcza
    * łazienkowych, wycena wychodziła wyraźnie poniżej ceny rynkowej.
@@ -69,14 +69,16 @@ export default {
    * zakłada blat kuchenny, a przy blacie 60 × 120 cm przygotowanie płyty
    * kosztuje tyle samo co przy blacie trzymetrowym.
    *
-   * Procent od materiału, a nie stawka ryczałtowa, bo trudność rośnie razem
-   * z ceną i wielkością płyty — droższy kamień to zwykle trudniejszy kamień.
+   * Pierwotnie liczone jako 10% wartości płyt; od sierpnia 2026 stawka
+   * od metra, bo dodatek pokrywa PRACĘ, a ta nie rośnie z ceną kamienia —
+   * marmur za 1 800 zł/m² nie tnie się dwa razy dłużej niż ten za 900.
+   * Metry liczymy z elementów blatu, spójnie z montażem.
    *
    * Nie dotyczy konglomeratów i spieków sprzedawanych przez Interstone
    * (InterQ) — te tną się jak każdy inny konglomerat. Rozróżnienie robi
    * `jestNaturalny()` w app/wycena-naturalny.js.
    */
-  dodatekObrobkiNaturalnej: 0.1,
+  obrobkaNaturalnaZaM2: 100,
 
   opisGrubosci: {
     20: '20 mm — standard',

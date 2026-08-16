@@ -96,7 +96,7 @@ test('metrażówka też dostaje bazę i stawkę od blatu', () => {
     cenaRecznaJest: 'brutto',
     rozliczenieMaterialu: 'metraz',
     narzutOdpad: 0.15,
-    dodatekObrobkiNaturalnej: 0.1,
+    obrobkaNaturalnaZaM2: 100,
   };
   const w = wycen(naturalny, { odcinki: [{ gl: 55, dl: 90 }], opcje: {}, cenaRecznaM2: 1200 });
   assert.ok(Math.abs(montaz(w).brutto - oczekiwany(w.pak.m2Blatu)) < 0.01);

@@ -212,20 +212,22 @@ export function wycen(firma, w, dataISO) {
   // ale przy małym zleceniu — blat łazienkowy, parapet — robocizna liczona
   // od metra bieżącego nie pokrywa nawet przygotowania płyty.
   //
-  // Dlatego doliczamy procent od wartości kupionego materiału: rośnie razem
-  // z ceną i wielkością płyty, czyli z tym, co realnie decyduje o trudności.
-  // Stawkę ustawia firma (`dodatekObrobkiNaturalnej`) — patrz firms/interstone.js.
+  // Dlatego doliczamy stawkę od metra kwadratowego blatu — tak samo jak montaż,
+  // bo to również robocizna, a nie narzut na materiał. Liczymy od powierzchni
+  // ELEMENTÓW, nie kupionej płyty: klient nie ma wpływu na to, ile płyty zeszło
+  // na odpad, a praca idzie w to, co faktycznie wyjeżdża do kuchni.
+  // Stawkę ustawia firma (`obrobkaNaturalnaZaM2`) — patrz firms/interstone.js.
   //
   // Kwota trafia do grupy „usługi", więc na karcie klienta wchodzi w „produkcję
   // i montaż" i nie pojawia się jako osobna cena. Rozbicie ze stawką widzi
   // tylko Dawid w mailu leadowym (stąd `detalFirmowy`).
-  const stawkaObrobki = firma.dodatekObrobkiNaturalnej ?? 0;
-  if (stawkaObrobki > 0 && materialNetto > 0) {
+  const stawkaObrobki = firma.obrobkaNaturalnaZaM2 ?? 0;
+  if (stawkaObrobki > 0 && pak.m2Blatu > 0) {
     pozycje.push({
       grupa: 'usługi',
       nazwa: 'Obróbka kamienia naturalnego',
-      detalFirmowy: `${round1(stawkaObrobki * 100)}% wartości płyt`,
-      brutto: doBrutto(materialNetto) * stawkaObrobki,
+      detalFirmowy: `${round1(pak.m2Blatu)} m² × ${fmtStawka(stawkaObrobki)}`,
+      brutto: kwotaBrutto(stawkaObrobki, firma, vat) * pak.m2Blatu,
     });
   }
 

@@ -94,7 +94,7 @@ test('dodatek za obróbkę kamienia naturalnego zostaje przy odbiorze', () => {
     trybCeny: 'reczna',
     cenaRecznaJest: 'brutto',
     rozliczenieMaterialu: 'plyty',
-    dodatekObrobkiNaturalnej: 0.1,
+    obrobkaNaturalnaZaM2: 100,
   };
   const w = wycen(naturalny, {
     odcinki: LAZIENKA,

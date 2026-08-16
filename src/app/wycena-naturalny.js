@@ -151,7 +151,7 @@ export function firmaZWariantu(wariant) {
     // Dodatek za trudność obróbki dotyczy WYŁĄCZNIE kamienia naturalnego.
     // Interstone sprzedaje też konglomerat InterQ i spieki Laminam — te tną
     // się jak każdy inny materiał płytowy, więc nic do nich nie doliczamy.
-    dodatekObrobkiNaturalnej: naturalny ? (baza.dodatekObrobkiNaturalnej ?? 0.1) : 0,
+    obrobkaNaturalnaZaM2: naturalny ? (baza.obrobkaNaturalnaZaM2 ?? 100) : 0,
 
     notaKlient: naturalny ? ZASTRZEZENIE : ZASTRZEZENIE_INNE,
 
