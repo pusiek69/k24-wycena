@@ -125,7 +125,13 @@ export function wycen(firma, w, dataISO) {
   });
 
   // ---------- 2. robocizna (zawsze) ----------
+  // Odbiór własny z zakładu: klient sam odbiera gotowy blat. Odpada wtedy
+  // wszystko, co dotyczy dojazdu i montażu — reszta produkcji bez zmian.
+  const odbiorWlasny = (w.opcje || {}).dostawa === 'odbior';
+
   for (const r of firma.robocizna || []) {
+    if (r.tylkoZMontazem && odbiorWlasny) continue;
+
     // `m2blatu` to powierzchnia samych elementów blatu — bez ścinki, którą
     // klient i tak kupuje w cenie płyty. `m2` liczy metraż płatny (z płytą).
     const ilosc =
@@ -249,6 +255,9 @@ export function wycen(firma, w, dataISO) {
     materialBrutto,
     uslugiBrutto,
     materialDoUstalenia,
+    // Zmienia nazwę drugiej kwoty na karcie i dokłada zastrzeżenie
+    // o odpowiedzialności za wymiary — patrz firms/_domyslne.js.
+    odbiorWlasny,
     razem,
     razemZaokr: Math.round(razem / 50) * 50,
     // Klientowi podajemy WIDEŁKI, nie jedną kwotę — to wycena bez pomiaru.

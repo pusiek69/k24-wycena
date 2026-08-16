@@ -481,6 +481,14 @@ function mailDoFirmy(klient, s, extra) {
       ? `
   <div style="background:#fff;border:1px solid #e0dbd1;border-radius:6px;padding:18px 20px;margin-top:14px">
     <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8c7040">Wycena</div>
+    ${
+      s.odbiorWlasny
+        ? `<div style="margin:8px 0 4px;padding:9px 12px;background:#fdf0e3;border-left:3px solid #c96a2a;
+                     border-radius:4px;font-weight:bold;color:#8a4413">
+             ODBIÓR WŁASNY — bez montażu. Brak pomiaru i wyjazdu; blat wg wymiarów klienta.
+           </div>`
+        : ''
+    }
     <div style="font-size:20px;margin:4px 0 2px">${esc(s.firma)}${s.dekor ? ' · ' + esc(s.dekor) : ''}</div>
     <div style="color:#6b6459;font-size:14px">
       ${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')}
@@ -494,7 +502,7 @@ function mailDoFirmy(klient, s, extra) {
     </div>
 
     ${sekcja('Materiał', material, s.materialBrutto)}
-    ${sekcja('Cięcie, montaż i dodatki', uslugi, s.uslugiBrutto)}
+    ${sekcja(s.odbiorWlasny ? 'Cięcie i dodatki (bez montażu)' : 'Cięcie, montaż i dodatki', uslugi, s.uslugiBrutto)}
 
     ${
       uklad.length
@@ -564,6 +572,7 @@ function leadTekstem(klient, s, extra) {
   if (s) {
     l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
     l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
+    if (s.odbiorWlasny) l.push('*** ODBIÓR WŁASNY — BEZ MONTAŻU (brak pomiaru i wyjazdu) ***');
     l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`, '');
     for (const p of s.pozycje) {
       const d = p.detalFirmowy || p.detal;
@@ -637,8 +646,24 @@ function podsumowanieDlaKlienta(s) {
   return `
     <table style="width:100%;border-collapse:collapse;margin:18px 0 0">
       ${material.length ? wiersz('Płyty / materiał', opisMaterialu, zl(suma(material))) : ''}
-      ${uslugi.length ? wiersz('Produkcja i montaż', listaUslug, zl(suma(uslugi))) : ''}
-    </table>`;
+      ${
+        uslugi.length
+          ? wiersz(s.odbiorWlasny ? 'Produkcja (odbiór własny)' : 'Produkcja i montaż', listaUslug, zl(suma(uslugi)))
+          : ''
+      }
+    </table>
+    ${
+      s.odbiorWlasny
+        ? `<p style="margin:14px 0 0;padding:12px 15px;background:#241f19;border-left:3px solid #c9a86a;
+                     border-radius:4px;color:#d8cfbc;font-size:14px;line-height:1.55">
+             <strong style="color:#c9a86a">Odbiór własny — ważne:</strong> blat wykonujemy ŚCIŚLE według
+             wymiarów podanych przez Państwa, bez naszego pomiaru i szablonu. Odpowiedzialność
+             za poprawność wymiarów i dopasowanie do zabudowy jest po stronie zamawiającego —
+             kamienia po docięciu nie da się poprawić.<br>
+             Odbiór: Tarnobrzeg, ul. Szpitalna 8, po wcześniejszym ustaleniu terminu.
+           </p>`
+        : ''
+    }`;
 }
 
 function mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly) {
@@ -690,7 +715,13 @@ function mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly) {
     }
     <p style="color:#8c8474;font-size:13px;line-height:1.6;margin:20px 0">
       Wycena jest orientacyjna i nie stanowi oferty w rozumieniu art. 66 §1 Kodeksu cywilnego.
-      Ostateczną cenę potwierdzamy po bezpłatnym pomiarze. Podane kwoty są brutto.
+      ${
+        // Przy odbiorze własnym pomiaru NIE robimy — obietnica pomiaru
+        // przeczyłaby zastrzeżeniu o wymiarach, które stoi wyżej.
+        szczegoly && szczegoly.odbiorWlasny
+          ? 'Cenę potwierdzamy po przyjęciu zamówienia.'
+          : 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze.'
+      } Podane kwoty są brutto.
     </p>
     <p style="font-size:16px;line-height:1.6">
       Oddzwonimy w godzinach 8:00–18:00. Można też dzwonić bezpośrednio:

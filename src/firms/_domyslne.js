@@ -38,8 +38,28 @@ export const ROBOCIZNA = [
     baza: 1500,
     cena: 200,
     per: 'm2blatu',
+    // Odpada w całości przy odbiorze własnym z zakładu — razem z bazą,
+    // stawką od metra i transportem. Reszta produkcji zostaje bez zmian.
+    tylkoZMontazem: true,
   },
 ];
+
+/**
+ * ODBIÓR WŁASNY — blat do odebrania z zakładu, bez montażu.
+ *
+ * Klient bierze na siebie dwie rzeczy: transport i, co ważniejsze, POPRAWNOŚĆ
+ * WYMIARÓW. Przy montażu robimy pomiar Prolinerem i to my odpowiadamy za to,
+ * że blat wejdzie. Przy odbiorze własnym tniemy dokładnie to, co klient poda —
+ * i jeśli ściana okaże się krzywa, płyty nie da się już „dociąć z powrotem".
+ *
+ * Dlatego to zastrzeżenie musi być widoczne w wycenie, a nie schowane
+ * w regulaminie.
+ */
+export const NOTA_ODBIOR =
+  'Odbiór własny: blat wykonujemy ŚCIŚLE według wymiarów podanych przez Państwa — ' +
+  'bez naszego pomiaru i szablonu. Odpowiedzialność za poprawność wymiarów ' +
+  'i dopasowanie do zabudowy jest po stronie zamawiającego. Kamienia po docięciu ' +
+  'nie da się poprawić. Odbiór: Tarnobrzeg, ul. Szpitalna 8, po wcześniejszym ustaleniu terminu.';
 
 /*
  * Wycięcie pod zlew i pod płytę grzewczą są w KAŻDEJ wycenie — nie ma

@@ -263,6 +263,7 @@ export function uruchomCzat(root, akcje = {}) {
         zlew: stan.opcje.nablatowy ? 'nablat' : 'podblat',
         plyta: stan.opcje.licowana ? 'licowana' : 'nakladana',
         otwory: stan.opcje.otwory ?? 1,
+        dostawa: stan.opcje.odbior ? 'odbior' : 'montaz',
       },
     });
     if (!w.ok) return false;
@@ -517,6 +518,8 @@ export function opcjeZParametrow(params) {
     plyta: params?.indukcja_licowana ? 'licowana' : 'nakladana',
     // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew.
     otwory: liczbaOtworow(params || {}),
+    // Konsultant przekazuje wybór montażu polem odbior_wlasny.
+    dostawa: params?.odbior_wlasny ? 'odbior' : 'montaz',
     mat: !!params?.wykonczenie_matowe,
     listwa: Number(params?.listwa_mb) || 0,
     krawedz: Number(params?.krawedz_mb) || 0,
@@ -599,5 +602,8 @@ export function odczytajSzczegoly(wiadomosc) {
     licowana: t.includes('licowana'),
     nablatowy: t.includes('nablatowy'),
     otwory: m ? Math.min(6, Number(m[1])) : undefined,
+    // „bez montażu — odbiór własny" z pomocnika; przy pisaniu ręcznym
+    // łapiemy też naturalne sformułowania klienta.
+    odbior: /odbi(o|ó)r w(l|ł)asny|bez monta(z|ż)u|odbior(e|ę) sam|sam odbior/.test(t),
   };
 }

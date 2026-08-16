@@ -195,7 +195,13 @@ function formularzBramki(w, box, opcje) {
       { class: 'bramka-lista' },
       h('li', {}, `Materiał: ${w.firma.nazwa}${w.dekor ? ' · ' + w.dekor : ''}`),
       h('li', {}, `Wymiary: ${opisOdcinkow(w)} (${liczba(w.pak.mb)} m.b.)`),
-      h('li', {}, 'W cenie: obróbka, wycięcie pod zlew i płytę grzewczą, montaż')
+      h(
+        'li',
+        {},
+        w.odbiorWlasny
+          ? 'W cenie: obróbka, wycięcie pod zlew i płytę grzewczą (bez montażu — odbiór własny)'
+          : 'W cenie: obróbka, wycięcie pod zlew i płytę grzewczą, montaż'
+      )
     ),
     form
   );
@@ -286,6 +292,9 @@ export function szczegolyWyceny(w) {
     m2Platne: w.m2Platne ?? 0,
     mb: w.pak?.mb ?? 0,
     wgMetrazu: !!w.wgMetrazu,
+    // Zamówienie bez montażu — Dawid musi to zobaczyć od razu, bo zmienia
+    // sposób obsługi (brak pomiaru, brak wyjazdu, odbiór w zakładzie).
+    odbiorWlasny: !!w.odbiorWlasny,
     pozycje: (w.pozycje || []).map((p) => ({
       grupa: p.grupa,
       nazwa: p.nazwa,

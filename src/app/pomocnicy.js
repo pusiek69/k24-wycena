@@ -280,7 +280,7 @@ export function pomocnikWymiary(wyslij) {
  * i tak zobaczył i świadomie je zaakceptował.
  */
 export function pomocnikSzczegoly(wyslij) {
-  const wybor = { zlew: 'podwieszany', indukcja: 'nakładana', otwory: 1 };
+  const wybor = { zlew: 'podwieszany', indukcja: 'nakładana', otwory: 1, dostawa: 'montaz' };
 
   const grupa = (etykieta, klucz, opcje) =>
     h(
@@ -340,10 +340,46 @@ export function pomocnikSzczegoly(wyslij) {
   );
 
   return ramka(
-    'Trzy szczegóły i liczymy',
+    'Kilka szczegółów i liczymy',
     grupa('Zlew', 'zlew', ['podwieszany', 'nablatowy']),
     grupa('Płyta indukcyjna', 'indukcja', ['nakładana', 'licowana z blatem']),
     otwory,
+    // Odbiór własny zdejmuje z wyceny montaż i transport, ale przenosi na
+    // klienta odpowiedzialność za wymiary — dlatego podpowiedź mówi o tym
+    // wprost już przy wyborze, a nie dopiero na karcie z ceną.
+    h(
+      'div',
+      { class: 'pom-grupa' },
+      h('span', { class: 'pom-grupa-label' }, 'Montaż'),
+      h(
+        'div',
+        { class: 'o-warianty' },
+        [
+          ['montaz', 'z montażem u klienta'],
+          ['odbior', 'bez montażu — odbiór własny'],
+        ].map(([id, etykieta]) =>
+          h(
+            'button',
+            {
+              class: 'wariant' + (wybor.dostawa === id ? ' sel' : ''),
+              type: 'button',
+              onclick: (e) => {
+                wybor.dostawa = id;
+                [...e.target.parentElement.children].forEach((b) => b.classList.remove('sel'));
+                e.target.classList.add('sel');
+              },
+            },
+            etykieta
+          )
+        )
+      ),
+      h(
+        'span',
+        { class: 'pom-podpowiedz' },
+        'Przy odbiorze własnym nie robimy pomiaru — blat tniemy ściśle wg podanych wymiarów, ' +
+          'a odbiór jest w zakładzie przy ul. Szpitalnej 8 w Tarnobrzegu.'
+      )
+    ),
     h(
       'div',
       { class: 'nav' },
@@ -356,7 +392,11 @@ export function pomocnikSzczegoly(wyslij) {
             wyslij(
               'szczegoly',
               `Zlew ${wybor.zlew}, płyta indukcyjna ${wybor.indukcja}, ` +
-                `otwory w blacie: ${wybor.otwory}. Proszę o wycenę.`
+                `otwory w blacie: ${wybor.otwory}, ` +
+                (wybor.dostawa === 'odbior'
+                  ? 'bez montażu — odbiór własny z zakładu'
+                  : 'z montażem u klienta') +
+                '. Proszę o wycenę.'
             ),
         },
         'Policz wycenę →'

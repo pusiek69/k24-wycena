@@ -117,7 +117,10 @@ const okPrompt = (nr, opis, warunek) => {
   ok(nr, opis, warunek);
 };
 okPrompt(9, 'styl premium: 1–2 zdania, bez wykrzykników', prompt.includes('Zwykle 1–2 zdania. Nigdy więcej niż 3.') && prompt.includes('ekskluzywnym salonie kamienia'));
-okPrompt(10, 'kamień naturalny: bez auto-wyceny + alternatywa', prompt.includes('Nie wyceniasz automatycznie') && prompt.includes('ZAWSZE zaproponuj alternatywę'));
+// Od sierpnia 2026 kamień naturalny wyceniamy z magazynu na żywo. Reguła
+// pilnuje więc czego innego niż kiedyś: że wycena pada jako WSTĘPNA, a przy
+// pustym magazynie klient dostaje alternatywę zamiast odprawy z kwitkiem.
+okPrompt(10, 'kamień naturalny: wycena wstępna + alternatywa gdy brak płyty', prompt.includes('wycena jest WSTĘPNA') && prompt.includes('ZAWSZE zaproponuj alternatywę'));
 okPrompt(11, 'inne marki: nigdy „nie mamy"', prompt.includes('Nigdy nie mów, że czegoś nie mamy') && prompt.includes('Neolith'));
 okPrompt(12, 'eskalacja do Dawida 796 991 128', prompt.includes('Dawid Ząbek, 796 991 128'));
 okPrompt(12.1, 'kolejność materiał → dekor → link', prompt.includes('KROK 1 — najpierw materiał') && prompt.includes('dopiero po wyborze materiału pokaż wzory'));
@@ -251,6 +254,32 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
     problemy.length
       ? `uruchom npm run ceny:tresc — ${problemy.join('; ')}`
       : oczekiwane.map(([n, v]) => `${n} ${v} zł`).join(' · ')
+  );
+}
+
+/* 18. Odbiór własny — zastrzeżenie o wymiarach i adres publiczny
+   Klient, który odbiera blat sam, nie dostaje pomiaru ani szablonu. To musi
+   paść wprost w każdym kanale (karta, mail, konsultant), bo źle podany wymiar
+   jest nie do naprawienia. Adres w komunikacji zawsze Szpitalna 8 — warsztat
+   przy Bema 227 nie jest adresem publicznym firmy. */
+{
+  const nota = czytaj('src/firms/_domyslne.js');
+  const mail = czytaj('worker/worker.template.js');
+  const kanaly = [
+    ['zastrzeżenie o wymiarach', /odpowiedzialność za poprawność wymiarów/i.test(nota)],
+    ['adres odbioru', nota.includes('Szpitalna 8') && mail.includes('Szpitalna 8')],
+    ['flaga w mailu firmowym', /ODBIÓR WŁASNY/.test(mail)],
+    ['konsultant zna wariant', prompt === null || prompt.includes('odbior_wlasny')],
+  ];
+  const braki = kanaly.filter(([, spelnione]) => !spelnione).map(([n]) => n);
+  const bema = [nota, mail, prompt || ''].some((t) => /Bema\s*227/i.test(t));
+  if (bema) braki.push('adres Bema 227 w treści dla klienta');
+
+  ok(
+    18,
+    'odbiór własny: zastrzeżenie o wymiarach + adres Szpitalna 8',
+    braki.length === 0,
+    braki.join('; ') || 'karta, mail i konsultant mówią to samo'
   );
 }
 

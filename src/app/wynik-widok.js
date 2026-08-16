@@ -8,6 +8,7 @@ import {
   nazwaRodzajuMianownik,
 } from '../engine/alternatywy.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
+import { NOTA_ODBIOR } from '../firms/_domyslne.js';
 
 const TEL = '796 991 128';
 
@@ -35,12 +36,23 @@ export function kartaWyceny(w, ustawienia = {}) {
     h('div', { class: 'bloki' }, blokMaterialu(w), blokUslug(w)),
     ostrzezenia(w),
     wyborPlyty(w),
+    // Przy odbiorze własnym NIE ma pomiaru, więc obietnica „potwierdzimy
+    // po pomiarze" byłaby nieprawdziwa — i to akurat ta nieprawda, która
+    // wraca przy reklamacji.
     h(
       'div',
       { class: 'info' },
-      'Wycena orientacyjna na podstawie podanych wymiarów. ',
-      h('b', {}, 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze'),
-      ' — przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.'
+      w.odbiorWlasny
+        ? [
+            'Wycena na podstawie wymiarów podanych przez Państwa. ',
+            h('b', {}, 'Przy odbiorze własnym nie wykonujemy pomiaru'),
+            ' — prosimy sprawdzić wymiary przed zamówieniem.',
+          ]
+        : [
+            'Wycena orientacyjna na podstawie podanych wymiarów. ',
+            h('b', {}, 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze'),
+            ' — przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.',
+          ]
     ),
     h(
       'div',
@@ -387,7 +399,11 @@ function blokUslug(w) {
   return h(
     'div',
     { class: 'blok' },
-    h('div', { class: 'blok-tytul' }, '2 · Produkcja i montaż'),
+    h(
+      'div',
+      { class: 'blok-tytul' },
+      w.odbiorWlasny ? '2 · Produkcja (odbiór własny)' : '2 · Produkcja i montaż'
+    ),
     h(
       'div',
       { class: 'blok-kwota' },
@@ -475,6 +491,9 @@ function wyborPlyty(w) {
 
 function ostrzezenia(w) {
   const lista = [...w.ostrzezenia];
+  // Przy odbiorze własnym to najważniejsza informacja w całej wycenie —
+  // stoi jako pierwsza, przed uwagami o materiale.
+  if (w.odbiorWlasny) lista.unshift(NOTA_ODBIOR);
   if (w.firma.notaKlient) lista.push(w.firma.notaKlient);
   if (!lista.length) return null;
   return h(
