@@ -383,7 +383,6 @@ export function uruchomCzat(root, akcje = {}) {
     stan.szukamPlyt = true;
     rozmowa.querySelector('.pomocnik')?.remove();
     dodajWiadomosc('klient', `Wybieram płytę o kodzie ${kod}.`);
-    historia.push({ rola: 'user', tresc: `Wybieram płytę o kodzie ${kod}.` });
     const pisze = wskaznikPisania();
     rozmowa.append(pisze);
     przewin();
@@ -398,8 +397,9 @@ export function uruchomCzat(root, akcje = {}) {
     stan.szukamPlyt = false;
 
     if (!odp.ok || !odp.plyta) {
+      historia.push({ rola: 'user', tresc: `Wybieram płytę o kodzie ${kod}.` });
       dodajWiadomosc('konsultant', komunikatKodu(odp.powodKodu, kod, odp));
-      historia.push({ rola: 'assistant', tresc: `Kod ${kod} nie trafił w wolną płytę.` });
+      historia.push({ rola: 'assistant', tresc: komunikatKodu(odp.powodKodu, kod, odp) });
       odswiezPomocnika();
       przewin();
       return;
@@ -412,14 +412,19 @@ export function uruchomCzat(root, akcje = {}) {
     rozmowa.append(kartaWybranejPlyty(odp.plyta, kod));
     przewin();
 
-    // Dopisujemy do historii, CO to za płyta. Bez tego konsultant szukałby
-    // jej sam po kodzie i mógłby nie trafić — a my mamy już komplet danych.
+    /*
+     * Dane płyty wkładamy do wiadomości KLIENTA, a nie jako osobną turę
+     * asystenta — rozmowa musi kończyć się turą użytkownika, inaczej
+     * zapytanie do modelu jest odrzucane i klient widzi „brak połączenia".
+     * Dzięki temu konsultant zna nazwę i cenę i nie szuka płyty po raz drugi.
+     */
     historia.push({
-      rola: 'assistant',
+      rola: 'user',
       tresc:
-        `Klient wskazał płytę ${kod}: ${odp.plyta.nazwa || 'kamień naturalny'}` +
+        `Wybieram płytę ${kod} — ${odp.plyta.nazwa || 'kamień naturalny'}` +
         (odp.plyta.cenaBruttoM2 ? `, ${odp.plyta.cenaBruttoM2} zł/m² brutto` : '') +
-        `. Płyta jest dostępna — nie sprawdzaj jej ponownie, przejdź do wymiarów i wyceny.`,
+        (odp.plyta.dostepneM2 ? `, wolne ${odp.plyta.dostepneM2} m²` : '') +
+        '. Płyta jest dostępna, sprawdziłem ją w magazynie — nie sprawdzaj ponownie.',
     });
 
     await odpowiedzKonsultanta();
