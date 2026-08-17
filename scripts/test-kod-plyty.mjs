@@ -14,7 +14,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE } from '../src/firms/_domyslne.js';
-import { normalizujKod, znajdzPoKodzie, wygladaJakKod } from '../worker/magazyn.js';
+import {
+  normalizujKod,
+  znajdzPoKodzie,
+  wygladaJakKod,
+  rozlozKod,
+  numerPlytyZKodu,
+} from '../worker/magazyn.js';
 import { wariantZPlyty, normalizujKodPlyty } from '../src/app/plyta-kod.js';
 import { wczytajSilnik } from './lib/silnik.mjs';
 
@@ -277,4 +283,58 @@ test('szukanie płyty po kodzie ignoruje różnice zapisu', () => {
   assert.equal(znajdzPoKodzie(plyty, 'ston000334-84224')?.nazwa, 'B');
   assert.equal(znajdzPoKodzie(plyty, 'STON000999-00000'), null);
   assert.equal(znajdzPoKodzie(plyty, 'byle co'), null);
+});
+
+/* ────────────────────── rozłożenie tego, co wkleił klient
+
+   Osobna ścieżka wyszukiwania po kodzie zaczyna się od `rozlozKod`. Musi
+   przyjąć wszystko, co realnie trafia od ludzi: kod w dowolnym zapisie,
+   sam numer płyty i adres zdjęcia skopiowany ze strony magazynu.        */
+
+test('kod w dowolnym zapisie rozkłada się na blok i numer', () => {
+  for (const zapis of [
+    'STON000623-86421',
+    'STON000623 - 86421',
+    'ston000623_86421',
+    'STON000623 86421',
+    'STON00062386421',
+  ]) {
+    assert.deepEqual(
+      rozlozKod(zapis),
+      { pelny: 'STON000623-86421', blok: 'STON000623', numer: '86421' },
+      `zapis: ${zapis}`
+    );
+  }
+});
+
+test('adres zdjęcia ze strony magazynu też jest kodem', () => {
+  const url = 'https://www.interstone.pl/content/uploads/images/stock/STON000623/86421/86421-3.jpg';
+  assert.deepEqual(rozlozKod(url), {
+    pelny: 'STON000623-86421',
+    blok: 'STON000623',
+    numer: '86421',
+  });
+  // Także miniatura i adres bez protokołu.
+  assert.equal(rozlozKod(url.replace('86421-3.jpg', 'conversions/86421-3-small.jpg')).numer, '86421');
+  assert.equal(rozlozKod('www.interstone.pl/content/uploads/images/stock/STON000623/86421/').numer, '86421');
+});
+
+test('sam numer płyty wystarcza, ale przypadkowa liczba już nie', () => {
+  assert.deepEqual(rozlozKod('86421'), { pelny: null, blok: null, numer: '86421' });
+  assert.deepEqual(rozlozKod(' 86421 '), { pelny: null, blok: null, numer: '86421' });
+  // Za krótkie i za długie odpadają — inaczej łapalibyśmy metry i wymiary.
+  assert.equal(rozlozKod('300'), null);
+  assert.equal(rozlozKod('1234567'), null);
+});
+
+test('to, co nie jest kodem ani numerem, odpada', () => {
+  for (const zly of ['', null, 'calacatta', 'blat 60x300', '2 szt', 'STON']) {
+    assert.equal(rozlozKod(zly), null, `zapis: ${JSON.stringify(zly)}`);
+  }
+});
+
+test('numer płyty wyciągamy z każdej postaci kodu', () => {
+  assert.equal(numerPlytyZKodu('STON000623 - 86421'), '86421');
+  assert.equal(numerPlytyZKodu('ston000623_86421'), '86421');
+  assert.equal(numerPlytyZKodu('bzdura'), '');
 });

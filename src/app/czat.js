@@ -44,6 +44,9 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 
 const TEL = '796 991 128';
 
+// Ogólny adres magazynu — do komunikatów, gdy nie znamy jeszcze wzoru.
+const LINK_MAGAZYNU = 'https://www.interstone.pl/stan-magazynowy';
+
 // Numer telefonu stoi tuż nad powitaniem (w wizytówce) i w nagłówku strony —
 // powtarzanie go trzeci raz w pierwszym zdaniu rozmowy tylko rozpraszało.
 const POWITANIE =
@@ -430,17 +433,50 @@ export function uruchomCzat(root, akcje = {}) {
     await odpowiedzKonsultanta();
   }
 
-  /** Co powiedzieć, gdy kodu brak albo jest zły. */
+  /**
+   * Co powiedzieć, gdy kod nie doprowadził do płyty.
+   *
+   * Każdy powód to inna rada dla klienta — i do każdego dokładamy adres
+   * magazynu, żeby miał gdzie kliknąć, zamiast utknąć na komunikacie.
+   */
   function komunikatKodu(powod, kod, odp) {
-    if (powod === 'zly-format' || (kod === '' && odp.powodKodu === null && stan.kodPlyty))
-      return 'Ten kod nie wygląda na kod płyty. Powinien mieć postać STON000334-84224 — proszę sprawdzić i wpisać jeszcze raz albo wybrać płytę z listy.';
-    if (powod === 'nie-znaleziono')
-      return 'Nie znalazłem tej płyty wśród dostępnych. Mogła zostać sprzedana — proszę wybrać inną z listy poniżej.';
-    if (powod === 'brak-dostepnosci')
-      return 'Ta płyta jest już zarezerwowana w całości. Proszę wybrać inną z listy poniżej.';
+    const gdzie = ' Płyty obejrzy Pan/Pani w magazynie: ' + (odp?.link || LINK_MAGAZYNU) + '.';
+
+    if (powod === 'zly-format')
+      return (
+        `„${kod}" nie wygląda na kod płyty. Kod stoi przy zdjęciu i ma postać ` +
+        'STON000334-84224 — można też wkleić sam numer z końca albo adres zdjęcia.' + gdzie
+      );
+    if (powod === 'niejednoznaczny')
+      return (
+        'Ten numer pasuje do kilku płyt: ' + (odp?.kody || []).join(', ') +
+        '. Proszę podać pełny kod, żebym wiedział, o którą chodzi.'
+      );
+    if (powod === 'niedostepna')
+      return (
+        `Płyta ${kod}${odp?.plyta?.nazwa ? ` (${odp.plyta.nazwa})` : ''} jest już w całości ` +
+        'zarezerwowana — nie zostało z niej wolnych metrów. Proszę wybrać inną.' + gdzie
+      );
     if (powod === 'brak-ceny')
-      return 'Przy tej płycie magazyn nie podaje ceny — proszę wybrać inną albo zadzwonić, potwierdzimy ją u dostawcy.';
-    return 'Kamień naturalny wyceniam z konkretnej płyty — każdy blok ma własną cenę i wymiar. Proszę wskazać płytę z listy albo wpisać jej kod.';
+      return (
+        `Przy płycie ${kod} magazyn nie podaje ceny. Proszę wybrać inną albo zadzwonić: ${TEL} — ` +
+        'potwierdzimy cenę u dostawcy.'
+      );
+    if (powod === 'brak-wymiaru')
+      return (
+        `Przy płycie ${kod} magazyn nie podaje wymiaru, więc nie policzę rozkroju. ` +
+        `Proszę wybrać inną albo zadzwonić: ${TEL}.`
+      );
+    if (powod === 'magazyn-niedostepny')
+      return (
+        'Nie mogę teraz połączyć się z magazynem, więc wolę nie podawać ceny na wyrost. ' +
+        `Proszę spróbować za chwilę albo zadzwonić: ${TEL}.`
+      );
+    // 'nie-znaleziono' i wszystko, czego nie przewidzieliśmy
+    return (
+      `Nie znajduję płyty o kodzie ${kod}. Proszę sprawdzić zapis — kod stoi przy zdjęciu płyty ` +
+      'i wygląda tak: STON000334-84224.' + gdzie
+    );
   }
 
   function pokazBramke(w) {

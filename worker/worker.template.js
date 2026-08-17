@@ -27,9 +27,9 @@ import {
   pobierzMagazyn,
   opiszPlyty,
   pogrupuj,
-  wygladaJakKod,
-  znajdzPoKodzie,
+  znajdzPlyte,
   numerPlytyZKodu,
+  linkMagazynu,
 } from './magazyn.js';
 
 const MODEL = 'claude-sonnet-4-6';
@@ -229,35 +229,41 @@ async function obsluzMagazyn(request, cors, ctx) {
   const dane = await request.json().catch(() => null);
 
   /*
-   * Gdy znamy kod, szukamy SAMYM NUMEREM PŁYTY — magazyn indeksuje matnr
-   * i oddaje wtedy dokładnie jedną kartę. Nazwa kamienia nie jest do niczego
-   * potrzebna, więc nie musimy o nią prosić klienta.
+   * DWIE ROZŁĄCZNE ŚCIEŻKI.
+   *
+   * `kod` → szukamy JEDNEJ konkretnej płyty: dokładne dopasowanie po
+   * znormalizowanym kodzie, po całym magazynie, bez filtra nazwy i bez filtra
+   * dostępności (żeby odróżnić „nie ma takiego kodu" od „płyta już zeszła").
+   *
+   * `fraza` → zwykłe szukanie po nazwie kamienia, z listą wariantów do wyboru.
+   *
+   * Mieszanie tych dwóch rzeczy kosztowało nas wcześniej błędny wniosek,
+   * że magazyn nie zna kodów — gubił je nasz własny filtr trafień.
    */
-  const numer = numerPlytyZKodu(dane?.kod);
-  const fraza = numer || dane?.fraza || '';
-  const wynik = await pobierzMagazyn(fraza, ctx);
-
-  // Kod konkretnej płyty sprawdzamy WŚRÓD pobranych — wyszukiwarka Interstone
-  // nie umie znaleźć płyty po kodzie, więc nazwa kamienia jest niezbędna.
-  let plyta = null;
-  let powodKodu = null;
   if (dane?.kod) {
-    if (!wygladaJakKod(dane.kod)) powodKodu = 'zly-format';
-    else if (!wynik.ok) powodKodu = 'magazyn-niedostepny';
-    else {
-      plyta = znajdzPoKodzie(wynik.plyty, dane.kod);
-      if (!plyta) powodKodu = 'nie-znaleziono';
-      else if (!(plyta.dostepneM2 > 0)) powodKodu = 'brak-dostepnosci';
-      else if (!(plyta.cenaBruttoM2 > 0)) powodKodu = 'brak-ceny';
-    }
+    const wynik = await znajdzPlyte(dane.kod, ctx);
+    return json(
+      {
+        ok: wynik.ok,
+        plyta: wynik.plyta || null,
+        kod: wynik.kod || null,
+        powodKodu: wynik.ok ? null : wynik.powod,
+        kody: wynik.kody || null,
+        // Adres, pod którym klient sam sprawdzi płytę — do każdego komunikatu
+        // o błędzie, żeby miał gdzie kliknąć zamiast utknąć.
+        link: linkMagazynu(wynik.plyta?.nazwa || '', wynik.plyta?.marka) || null,
+        zCache: !!wynik.zCache,
+      },
+      wynik.powod === 'magazyn-niedostepny' ? 503 : 200,
+      cors
+    );
   }
 
+  const wynik = await pobierzMagazyn(dane?.fraza, ctx);
   return json(
     {
       ...wynik,
       warianty: wynik.ok ? pogrupuj(wynik.plyty) : [],
-      plyta: powodKodu ? null : plyta,
-      powodKodu,
       opis: opiszPlyty(wynik),
     },
     wynik.ok ? 200 : wynik.powod === 'pusta-fraza' ? 400 : 503,

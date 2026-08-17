@@ -53,6 +53,20 @@ export async function sprawdzMagazyn(fraza, kod) {
       body: JSON.stringify(kod ? { fraza, kod } : { fraza }),
     });
     const dane = await odp.json().catch(() => null);
+    // Przy szukaniu po KODZIE `ok:false` niesie treść: powód odmowy i często
+    // samą płytę (np. zarezerwowaną). Odsyłamy to dalej, zamiast gubić.
+    if (kod && dane) {
+      return {
+        ok: !!dane.ok,
+        plyta: dane.plyta || null,
+        kod: dane.kod || null,
+        powodKodu: dane.powodKodu || null,
+        kody: dane.kody || null,
+        link: dane.link || null,
+        warianty: [],
+        plyty: [],
+      };
+    }
     if (!odp.ok || !dane?.ok) return { ok: false, warianty: [], plyty: [] };
     return {
       ok: true,

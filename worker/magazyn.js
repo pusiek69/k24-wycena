@@ -269,6 +269,45 @@ export function wygladaJakKod(kod) {
 }
 
 /**
+ * ROZŁOŻENIE TEGO, CO WKLEIŁ KLIENT, NA CZĘŚCI.
+ *
+ * Przyjmujemy trzy postacie, bo tyle realnie trafia od ludzi:
+ *   • kod w dowolnym zapisie — „STON000623 - 86421", „ston000623_86421",
+ *     „STON00062386421",
+ *   • ADRES ze strony Interstone — klient kopiuje link do zdjęcia płyty,
+ *     a ten zawiera i blok, i numer: …/stock/STON000623/86421/86421-3.jpg,
+ *   • sam numer płyty — „86421". Numery są unikalne w magazynie, więc to
+ *     wystarcza; gdyby jednak trafiły dwie płyty, lookup zgłosi niejednoznaczność.
+ *
+ * Zwraca { pelny, blok, numer } albo null, gdy z wejścia nic sensownego
+ * nie zostało. `pelny` bywa null, gdy klient podał sam numer.
+ */
+export function rozlozKod(wejscie) {
+  const surowe = String(wejscie ?? '').trim();
+  if (!surowe) return null;
+
+  // Adres ze strony magazynu — bierzemy blok i numer wprost ze ścieżki.
+  const zUrl = surowe.match(/stock\/([A-Za-z]{2,6}\d{4,})\/(\d{3,})/);
+  if (zUrl) {
+    const blok = zUrl[1].toUpperCase();
+    return { pelny: `${blok}-${zUrl[2]}`, blok, numer: zUrl[2] };
+  }
+
+  const pelny = normalizujKod(surowe);
+  if (pelny) {
+    const [blok, numer] = pelny.split('-');
+    return { pelny, blok, numer };
+  }
+
+  // Sam numer płyty. Wymagamy 4–6 cyfr, żeby nie łapać przypadkowych liczb
+  // z wiadomości (metrów, wymiarów, cen).
+  const samNumer = surowe.replace(/\s/g, '');
+  if (/^\d{4,6}$/.test(samNumer)) return { pelny: null, blok: null, numer: samNumer };
+
+  return null;
+}
+
+/**
  * Numer płyty z kodu: „STON000623 - 86421" → „86421".
  *
  * To NAJLEPSZA fraza do wyszukiwania. Sprawdzone na żywym magazynie:
@@ -419,14 +458,19 @@ function wolnoPobrac() {
 
 /* ───────────────────────────────────────────────────────── pobranie + cache */
 
-function adresDla(fraza, strona = 1) {
+function adresDla(fraza, strona = 1, { tylkoNaStanie = true } = {}) {
   const u = new URL(ADRES);
   u.searchParams.set('custp', String(strona)); // numer strony wyników
   u.searchParams.set('type', 'inventory');
   u.searchParams.set('sort', 'name-asc');
   u.searchParams.set('search', fraza);
   // 122 = „Produkt na stanie" (123 to „Produkt w drodze" — tego nie obiecujemy).
-  u.searchParams.set('inventory-status', '122');
+  //
+  // Przy szukaniu KONKRETNEJ płyty filtr zdejmujemy. Inaczej płyta sprzedana
+  // albo zarezerwowana wygląda dokładnie tak samo jak nieistniejący kod,
+  // a to dwie różne wiadomości dla klienta: „sprawdź zapis kodu" kontra
+  // „ta płyta już zeszła, proszę wybrać inną".
+  if (tylkoNaStanie) u.searchParams.set('inventory-status', '122');
   return u.toString();
 }
 
@@ -444,9 +488,9 @@ function ileStron(html) {
 }
 
 /** Pobranie jednej strony wyników. Zwraca HTML albo null. */
-async function pobierzStrone(fraza, strona) {
+async function pobierzStrone(fraza, strona, opcje) {
   try {
-    const odp = await fetch(adresDla(fraza, strona), {
+    const odp = await fetch(adresDla(fraza, strona, opcje), {
       headers: { 'user-agent': UA, accept: 'text/html', 'accept-language': 'pl-PL,pl;q=0.9' },
       redirect: 'follow',
       signal: AbortSignal.timeout(LIMIT_CZASU_MS),
@@ -463,12 +507,135 @@ async function pobierzStrone(fraza, strona) {
 }
 
 /**
+ * WYSZUKANIE KONKRETNEJ PŁYTY PO KODZIE — osobna ścieżka.
+ *
+ * Celowo NIE korzysta z `pobierzMagazyn`: tamto szuka po nazwie kamienia
+ * i przepuszcza wynik przez `odsiejNietrafione`, który porównuje frazę
+ * z nazwą. Kod nie jest nazwą, więc jazda tamtą drogą kończyła się gubieniem
+ * trafień i błędnym wnioskiem, że magazyn nie zna kodów. Zna — po numerze
+ * płyty oddaje dokładnie jedną kartę.
+ *
+ * Kolejność prób jest istotna:
+ *   1. `search=<numer>` — najwęższe zapytanie, zwykle jedna karta,
+ *   2. `search=<blok>` — cały blok (kilka–kilkanaście płyt), gdy numer sam
+ *      nic nie dał; wśród nich szukamy dokładnego kodu.
+ * Obie bez filtra dostępności, żeby odróżnić „nie ma takiego kodu"
+ * od „płyta już zeszła" — to dwie różne wiadomości dla klienta.
+ *
+ * Zwraca zawsze obiekt z `powod`; `plyta` bywa wypełniona także przy
+ * odmowie (np. „niedostepna"), żeby dało się napisać, o którą płytę chodzi.
+ */
+export async function znajdzPlyte(wejscie, ctx) {
+  const czesci = rozlozKod(wejscie);
+  if (!czesci) return { ok: false, powod: 'zly-format' };
+
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const klucz = new Request(
+    `https://magazyn.k24h.internal/plyta?v=${WERSJA_CACHE}&k=${encodeURIComponent(
+      czesci.pelny || czesci.numer
+    )}`
+  );
+
+  if (cache) {
+    const zPamieci = await cache.match(klucz).catch(() => null);
+    if (zPamieci) {
+      const zapisane = await zPamieci.json().catch(() => null);
+      if (zapisane) return { ...zapisane, zCache: true };
+    }
+  }
+
+  if (!wolnoPobrac()) return { ok: false, powod: 'magazyn-niedostepny' };
+
+  const proby = [czesci.numer, czesci.blok].filter(Boolean);
+  let znalezione = [];
+
+  for (const fraza of proby) {
+    const strony = await wszystkieStrony(fraza, { tylkoNaStanie: false });
+    if (strony === null) return { ok: false, powod: 'magazyn-niedostepny' };
+
+    let plyty;
+    try {
+      plyty = odfiltrujDuplikaty(strony.flatMap((h) => parsujMagazyn(h)));
+    } catch (e) {
+      console.error('interstone parser (kod)', e?.message || e);
+      return { ok: false, powod: 'magazyn-niedostepny' };
+    }
+
+    znalezione = plyty.filter((p) =>
+      czesci.pelny
+        ? normalizujKod(p.kod) === czesci.pelny
+        : numerPlytyZKodu(p.kod) === czesci.numer
+    );
+    if (znalezione.length) break;
+  }
+
+  const wynik = oceńZnalezione(znalezione, czesci);
+
+  if (cache && wynik.powod !== 'magazyn-niedostepny') {
+    const zapis = cache
+      .put(
+        klucz,
+        new Response(JSON.stringify(wynik), {
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'cache-control': `max-age=${CACHE_SEK}`,
+          },
+        })
+      )
+      .catch(() => {});
+    if (ctx?.waitUntil) ctx.waitUntil(zapis);
+  }
+
+  return wynik;
+}
+
+/** Co powiedzieć o tym, co znaleźliśmy (albo czego nie). */
+function oceńZnalezione(znalezione, czesci) {
+  const kod = czesci.pelny || (znalezione[0] ? normalizujKod(znalezione[0].kod) : null);
+
+  if (!znalezione.length) return { ok: false, powod: 'nie-znaleziono', kod };
+
+  // Sam numer płyty powinien być unikalny. Gdyby jednak trafił w kilka,
+  // prosimy o pełny kod zamiast zgadywać, którą płytę klient miał na myśli.
+  const rozne = new Set(znalezione.map((p) => normalizujKod(p.kod)));
+  if (!czesci.pelny && rozne.size > 1) {
+    return { ok: false, powod: 'niejednoznaczny', kody: [...rozne].slice(0, 5) };
+  }
+
+  const plyta = znalezione[0];
+  if (!(plyta.dostepneM2 > 0)) return { ok: false, powod: 'niedostepna', plyta, kod };
+  if (!(plyta.cenaBruttoM2 > 0)) return { ok: false, powod: 'brak-ceny', plyta, kod };
+  if (!plyta.formatCm) return { ok: false, powod: 'brak-wymiaru', plyta, kod };
+
+  return { ok: true, plyta, kod };
+}
+
+/**
+ * Wszystkie strony wyników dla frazy. Zwraca tablicę HTML-i albo null,
+ * gdy magazyn nie odpowiedział — wołający ma wtedy nie zgadywać.
+ */
+async function wszystkieStrony(fraza, opcje) {
+  const pierwsza = await pobierzStrone(fraza, 1, opcje);
+  if (pierwsza == null) return null;
+  if (!pierwsza.includes('l-single-inventory__type-label')) return [];
+
+  const stron = Math.min(ileStron(pierwsza), MAKS_STRON);
+  const strony = [pierwsza];
+  for (let od = 2; od <= stron; od += RAZEM_STRON) {
+    const partia = [];
+    for (let n = od; n < od + RAZEM_STRON && n <= stron; n++) partia.push(pobierzStrone(fraza, n, opcje));
+    strony.push(...(await Promise.all(partia)).filter(Boolean));
+  }
+  return strony;
+}
+
+/**
  * Wersja w kluczu cache'u. PODNIEŚ JĄ przy każdej zmianie parsera albo
  * sposobu pobierania — inaczej po wdrożeniu przez 45 minut serwujemy stare,
  * błędne wyniki. Kosztowało nas to raz: po naprawie paginacji konsultant
  * dalej twierdził, że nie ma naturalnego Taj Mahal, bo czytał cache.
  */
-const WERSJA_CACHE = 4; // 4: filtr trafień uwzględnia kod płyty (17.08.2026)
+const WERSJA_CACHE = 5; // 5: osobna ścieżka wyszukiwania po kodzie (17.08.2026)
 
 const kluczCache = (fraza) =>
   new Request(
