@@ -87,21 +87,23 @@ test('materiał bez zmian — odbiór dotyczy tylko usług', () => {
   assert.ok(Math.abs(a.materialBrutto - b.materialBrutto) < 0.01);
 });
 
-test('dodatek za obróbkę kamienia naturalnego zostaje przy odbiorze', () => {
+test('kamień naturalny przy odbiorze też traci tylko montaż', () => {
   const naturalny = {
     ...FIRMA,
     typ: 'granit · marmur · kwarcyt',
     trybCeny: 'reczna',
     cenaRecznaJest: 'brutto',
     rozliczenieMaterialu: 'plyty',
-    obrobkaNaturalnaZaM2: 100,
   };
-  const w = wycen(naturalny, {
+  const dane = (dostawa) => ({
     odcinki: LAZIENKA,
-    opcje: { ...OPCJE_BAZOWE, dostawa: 'odbior' },
+    opcje: { ...OPCJE_BAZOWE, dostawa },
     cenaRecznaM2: 1200,
   });
-  assert.ok(w.pozycje.find((p) => p.nazwa === 'Obróbka kamienia naturalnego'));
+  const zMontazem = wycen(naturalny, dane('montaz'));
+  const odbior = wycen(naturalny, dane('odbior'));
+  const oczekiwana = BAZA + ZA_M2 * zMontazem.pak.m2Blatu;
+  assert.ok(Math.abs(zMontazem.razem - odbior.razem - oczekiwana) < 0.01);
 });
 
 /* ─────────────────────────────────────────────── karta i zastrzeżenie */

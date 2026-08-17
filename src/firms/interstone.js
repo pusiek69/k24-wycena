@@ -61,31 +61,17 @@ export default {
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 
   /*
-   * Dodatek za trudność obróbki kamienia naturalnego — 100 zł za m² blatu.
+   * BEZ DODATKU ZA OBRÓBKĘ. Kamień naturalny liczymy jak każdy inny materiał:
+   * płyty plus standardowe pozycje (obróbka od metra bieżącego, wycięcia,
+   * otwory, montaż).
    *
-   * Zgłoszenie Dawida (sierpień 2026): przy małych zleceniach, zwłaszcza
-   * łazienkowych, wycena wychodziła wyraźnie poniżej ceny rynkowej.
-   * Powód jest w strukturze kosztu: robocizna liczona od metra bieżącego
-   * zakłada blat kuchenny, a przy blacie 60 × 120 cm przygotowanie płyty
-   * kosztuje tyle samo co przy blacie trzymetrowym.
-   *
-   * Pierwotnie liczone jako 10% wartości płyt; od sierpnia 2026 stawka
-   * od metra, bo dodatek pokrywa PRACĘ, a ta nie rośnie z ceną kamienia —
-   * marmur za 1 800 zł/m² nie tnie się dwa razy dłużej niż ten za 900.
-   *
-   * PODSTAWA: metry ELEMENTÓW blatu (pak.m2Blatu), spójnie z montażem.
-   * To DECYZJA DAWIDA z 17.08.2026, podjęta świadomie — nie pomyłka
-   * i nie do „naprawienia" przy okazji innych prac. Kontrargument był
-   * znany i odrzucony: przy elementach dodatek prawie znika tam, gdzie go
-   * wprowadzaliśmy (łazienka 60×120 to 0,72 m², czyli 72 zł zamiast
-   * 486–1026 zł według starej formuły), bo płacimy i tak za całą płytę
-   * (5,4 m² → byłoby 540 zł). Zmiana podstawy wymaga zgody Dawida.
-   *
-   * Nie dotyczy konglomeratów i spieków sprzedawanych przez Interstone
-   * (InterQ) — te tną się jak każdy inny konglomerat. Rozróżnienie robi
-   * `jestNaturalny()` w app/wycena-naturalny.js.
+   * Historia, żeby nikt nie wprowadzał tego trzeci raz: w sierpniu 2026
+   * doliczaliśmy 10% wartości płyt, potem 100 zł za m² blatu. Powodem były
+   * małe zlecenia łazienkowe wychodzące poniżej rynku. Dawid zdecydował
+   * 17.08.2026, że dodatek znika całkowicie — jeśli małe blaty znów będą
+   * wychodzić za tanio, właściwym narzędziem jest minimum zlecenia
+   * albo stawka od metra bieżącego, a nie narzut doklejany do materiału.
    */
-  obrobkaNaturalnaZaM2: 100,
 
   opisGrubosci: {
     20: '20 mm — standard',

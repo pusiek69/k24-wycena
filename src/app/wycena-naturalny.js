@@ -148,11 +148,6 @@ export function firmaZWariantu(wariant) {
     // pęknięcia. Konglomerat i spiek z Interstone tną się jak każde inne.
     narzutOdpad: naturalny ? 0.15 : 0.1,
 
-    // Dodatek za trudność obróbki dotyczy WYŁĄCZNIE kamienia naturalnego.
-    // Interstone sprzedaje też konglomerat InterQ i spieki Laminam — te tną
-    // się jak każdy inny materiał płytowy, więc nic do nich nie doliczamy.
-    obrobkaNaturalnaZaM2: naturalny ? (baza.obrobkaNaturalnaZaM2 ?? 100) : 0,
-
     notaKlient: naturalny ? ZASTRZEZENIE : ZASTRZEZENIE_INNE,
 
     // Klient ogląda i wybiera płytę sam — na stronie magazynu widzi zdjęcia

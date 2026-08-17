@@ -208,35 +208,11 @@ export function wycen(firma, w, dataISO) {
     }
   }
 
-  // ---------- 3a. dodatek za obróbkę kamienia naturalnego ----------
-  //
-  // Kamień naturalny obrabia się dłużej i z większym ryzykiem niż konglomerat:
-  // każda płyta ma inny rysunek do dobrania, twardość bywa nierówna, a przy
-  // cięciu zdarzają się pęknięcia, których nikt nie przewidzi. Przy dużym
-  // blacie ta praca rozkłada się na duży metraż i ginie w cenie materiału,
-  // ale przy małym zleceniu — blat łazienkowy, parapet — robocizna liczona
-  // od metra bieżącego nie pokrywa nawet przygotowania płyty.
-  //
-  // Dlatego doliczamy stawkę od metra kwadratowego blatu — tak samo jak montaż,
-  // bo to również robocizna, a nie narzut na materiał. Liczymy od powierzchni
-  // ELEMENTÓW, nie kupionej płyty: klient nie ma wpływu na to, ile płyty zeszło
-  // na odpad, a praca idzie w to, co faktycznie wyjeżdża do kuchni.
-  // Podstawa (elementy, nie kupiona płyta) to świadoma decyzja z 17.08.2026 —
-  // zanim ją zmienisz, przeczytaj komentarz przy `obrobkaNaturalnaZaM2`
-  // w firms/interstone.js. Tam też stawka.
-  //
-  // Kwota trafia do grupy „usługi", więc na karcie klienta wchodzi w „produkcję
-  // i montaż" i nie pojawia się jako osobna cena. Rozbicie ze stawką widzi
-  // tylko Dawid w mailu leadowym (stąd `detalFirmowy`).
-  const stawkaObrobki = firma.obrobkaNaturalnaZaM2 ?? 0;
-  if (stawkaObrobki > 0 && pak.m2Blatu > 0) {
-    pozycje.push({
-      grupa: 'usługi',
-      nazwa: 'Obróbka kamienia naturalnego',
-      detalFirmowy: `${round1(pak.m2Blatu)} m² × ${fmtStawka(stawkaObrobki)}`,
-      brutto: kwotaBrutto(stawkaObrobki, firma, vat) * pak.m2Blatu,
-    });
-  }
+  // Dodatek za obróbkę kamienia naturalnego (sierpień 2026: najpierw 10%
+  // wartości płyt, potem 100 zł/m²) został USUNIĘTY 17.08.2026 decyzją Dawida.
+  // Kamień naturalny liczy się teraz dokładnie tak samo jak konglomerat i spiek:
+  // materiał plus standardowe pozycje. Nie przywracaj tego bez jego zgody —
+  // test-kamien-naturalny.mjs pilnuje, żeby nic się tu nie doklejało.
 
   // ---------- 4. sumy ----------
   const materialBrutto = pozycje.filter((p) => p.grupa === 'materiał').reduce((a, p) => a + p.brutto, 0);
