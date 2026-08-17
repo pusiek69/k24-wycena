@@ -1,5 +1,9 @@
 import { firmaWgSlug } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
+// Czyste funkcje kodu płyty siedzą osobno, żeby dało się je testować
+// bez ciągnięcia firms/index.js (import.meta.glob Vite).
+export { normalizujKodPlyty, wariantZPlyty } from './plyta-kod.js';
+import { normalizujKodPlyty } from './plyta-kod.js';
 
 /**
  * WSTĘPNA WYCENA Z MAGAZYNU INTERSTONE
@@ -49,33 +53,6 @@ export const ZASTRZEZENIE_INNE =
 /** Czy wariant z magazynu to kamień naturalny (a nie konglomerat/spiek). */
 export function jestNaturalny(wariant) {
   return /kamie/i.test(uprosc(wariant?.rodzaj || ''));
-}
-
-/**
- * KOD PŁYTY — „STON000334 - 84224" → „STON000334-84224".
- *
- * Ta sama zasada co w worker/magazyn.js: magazyn zapisuje kod ze spacjami,
- * klient przepisuje go bez nich, czasem z myślnikiem typograficznym.
- * Kod poza formatem zwraca pusty łańcuch — wtedy wycena się nie zaczyna.
- *
- * Front potrzebuje własnej kopii, bo sprawdza format ZANIM ruszy do sieci:
- * literówkę widać od razu, bez czekania na odpowiedź magazynu.
- */
-export function normalizujKodPlyty(kod) {
-  const s = String(kod ?? '')
-    .toUpperCase()
-    .replace(/[‐-―−]/g, '-')
-    .replace(/[^A-Z0-9-]/g, '')
-    .replace(/-+/g, '-');
-  return /^STON\d{4,}-\d{3,}$/.test(s) ? s : '';
-}
-
-function uprosc(s) {
-  return String(s ?? '')
-    .toLowerCase()
-    .replace(/ł/g, 'l')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '');
 }
 
 /**

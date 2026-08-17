@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE } from '../src/firms/_domyslne.js';
 import { normalizujKod, znajdzPoKodzie, wygladaJakKod } from '../worker/magazyn.js';
+import { wariantZPlyty } from '../src/app/plyta-kod.js';
 
 const NATURALNY = {
   slug: 'test-naturalny',
@@ -119,6 +120,21 @@ test('to, co nie jest kodem, odpada', () => {
     assert.equal(normalizujKod(zly), '', `zapis: ${JSON.stringify(zly)}`);
     assert.equal(wygladaJakKod(zly), false);
   }
+});
+
+/* ──────────────── surowa płyta z magazynu → wariant dla wyceny */
+
+test('płyta z magazynu dostaje wymiar dłuższym bokiem naprzód', () => {
+  // `/magazyn` oddaje `formatCm: {wys, szer}` — wys bywa krótszym bokiem.
+  // Pomylona orientacja to pomylona liczba płyt w pakowaniu.
+  const w = wariantZPlyty({ kod: KOD, nazwa: 'CALACATTA', formatCm: { wys: 195, szer: 343 } });
+  assert.deepEqual(w.plytaCm, { dl: 343, gl: 195 });
+  assert.equal(w.kod, KOD, 'reszta danych płyty zostaje');
+});
+
+test('płyta bez formatu nie przechodzi dalej', () => {
+  assert.equal(wariantZPlyty({ kod: KOD, nazwa: 'X' }), null);
+  assert.equal(wariantZPlyty(null), null);
 });
 
 test('szukanie płyty po kodzie ignoruje różnice zapisu', () => {

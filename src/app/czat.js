@@ -3,7 +3,8 @@ import { FIRMY, firmaWgSlug, gruboscDomyslna } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { bramkaWyceny, bramkaKontaktu } from './bramka.js';
 import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
-import { wybierzWariant, wycenZMagazynu, normalizujKodPlyty } from './wycena-naturalny.js';
+import { wybierzWariant, wycenZMagazynu } from './wycena-naturalny.js';
+import { normalizujKodPlyty, wariantZPlyty } from './plyta-kod.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import {
   odcinkiZParametrow,
@@ -225,7 +226,12 @@ export function uruchomCzat(root, akcje = {}) {
     }
 
     stan.kodPlyty = kod;
-    const w = wycenZMagazynu(odp.plyta, {
+    // `/magazyn` oddaje surową płytę (formatCm) — wycena pracuje na wariancie
+    // z `plytaCm`, gdzie dłuższy bok stoi pierwszy.
+    const wariant = wariantZPlyty(odp.plyta);
+    if (!wariant) return false;
+
+    const w = wycenZMagazynu(wariant, {
       odcinki,
       opcje: opcjeZParametrow(params),
       grubosc: params.grubosc,
@@ -235,7 +241,7 @@ export function uruchomCzat(root, akcje = {}) {
     stan.szczegoly = true;
     rozmowa.querySelector('.pomocnik')?.remove();
     rozmowa.append(bramkaWyceny(w, { transkrypcja }));
-    zdarzenie('wycena_naturalny', { kamien: odp.plyta.nazwa, kod });
+    zdarzenie('wycena_naturalny', { kamien: wariant.nazwa, kod });
     przewin();
     return true;
   }

@@ -1,7 +1,7 @@
 import { h, uprosc } from './dom.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
-import { normalizujKodPlyty } from './wycena-naturalny.js';
+import { normalizujKodPlyty } from './plyta-kod.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
