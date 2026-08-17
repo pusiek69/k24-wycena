@@ -1,5 +1,5 @@
 /**
- * Montaż: baza 800 zł raz na zamówienie + 200 zł/m² powierzchni elementów.
+ * Montaż: baza 1500 zł raz na zamówienie + 200 zł/m² powierzchni elementów.
  *
  *   node --test scripts/test-montaz.mjs
  *
@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE, VAT } from '../src/firms/_domyslne.js';
 
-const BAZA = 800;
+const BAZA = 1500;
 const ZA_M2 = 200;
 
 const FIRMA = {
@@ -32,8 +32,8 @@ const FIRMA = {
 const licz = (odcinki, opcje = {}) =>
   wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje });
 const montaz = (w) => w.pozycje.find((p) => p.nazwa.startsWith('Transport i montaż'));
-// Stawki w konfiguracji są NETTO — silnik dolicza VAT wg wariantu
-// (8% z montażem, 23% przy odbiorze). Formułę sprawdzamy więc na netto.
+// Formułę sprawdzamy na NETTO — brutto zależy od stawki wariantu
+// (8% z montażem, 23% przy odbiorze własnym).
 const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 const montazNetto = (w) => nettoPozycji(w, montaz(w));
 // Stawki w plikach firm są zapisane BRUTTO przy 23%. Silnik sprowadza je
