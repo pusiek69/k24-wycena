@@ -104,8 +104,69 @@ function format(s) {
 
 /* ─────────────────────────────────────────────────────────────────── parser */
 
+/**
+ * ZDJĘCIA PŁYT — mapa „numer płyty → adresy zdjęć".
+ *
+ * Adresy mają postać:
+ *   /content/uploads/images/stock/<STON…>/<id>/<id>-<N>.jpg
+ * a miniatury tej samej płyty:
+ *   …/<id>/conversions/<id>-<N>-small.jpg
+ *
+ * Dwie rzeczy sprawdzone na żywym serwisie, zanim to powstało:
+ *   • rozszerzenie bywa .jpg ALBO .JPG — zgadywanie kończy się pustym obrazkiem,
+ *   • nie każda płyta ma komplet zdjęć (są takie z samymi -1 i -2),
+ * dlatego czytamy to, co faktycznie jest w HTML, zamiast składać adresy z kodu.
+ *
+ * Miniatura ma zawsze rozszerzenie .jpg, nawet gdy oryginał jest .JPG.
+ *
+ * Zdjęcia stoją w HTML PRZED znacznikiem karty, więc podział z parsera ich nie
+ * obejmuje. Przypisujemy je po numerze płyty, który jest i w adresie, i w kodzie
+ * („STON000890 - 91361" → 91361) — to nie zależy od układu strony.
+ */
+function zdjeciaWgPlyty(html) {
+  const mapa = new Map();
+  const wzor = /stock\/(STON\d+)\/(\d+)\/(\d+)-(\d+)\.(jpe?g)/gi;
+  let m;
+  while ((m = wzor.exec(html)) !== null) {
+    const [, ston, id, , numer] = m;
+    if (m[3] !== id) continue; // nazwa pliku musi dotyczyć tej samej płyty
+    const lista = mapa.get(id) || new Map();
+    if (!lista.has(numer)) {
+      const katalog = `${ADRES.replace('/stan-magazynowy', '')}/content/uploads/images/stock/${ston}/${id}`;
+      lista.set(numer, {
+        numer: Number(numer),
+        pelne: `${katalog}/${id}-${numer}.${m[5]}`,
+        miniatura: `${katalog}/conversions/${id}-${numer}-small.jpg`,
+      });
+    }
+    mapa.set(id, lista);
+  }
+  return mapa;
+}
+
+/**
+ * Zdjęcie CAŁEJ płyty (na tle Interstone) kontra zbliżenie powierzchni.
+ *
+ * Sprawdzone na płytach 91361 i 93588: „-1" i „-2" to zbliżenia rysunku,
+ * a „-3" to cała płyta ustawiona na stojaku. Dlatego bierzemy trójkę, a gdy
+ * jej nie ma (płyta 92384 ma tylko dwa zdjęcia) — ostatnie dostępne.
+ */
+function wybierzZdjecia(lista) {
+  if (!lista || !lista.size) return null;
+  const wszystkie = [...lista.values()].sort((a, b) => a.numer - b.numer);
+  const calaPlyta = wszystkie.find((z) => z.numer === 3) || wszystkie[wszystkie.length - 1];
+  return {
+    plyta: calaPlyta.pelne,
+    miniatura: calaPlyta.miniatura,
+    // Zbliżenie rysunku — przydaje się, gdy klient chce zobaczyć strukturę.
+    detal: (wszystkie.find((z) => z.numer === 1) || calaPlyta).pelne,
+    ile: wszystkie.length,
+  };
+}
+
 export function parsujMagazyn(html) {
   const czysty = odescapuj(html);
+  const zdjecia = zdjeciaWgPlyty(czysty);
   const czesci = czysty.split('l-single-inventory__type-label');
   const plyty = [];
 
@@ -122,9 +183,14 @@ export function parsujMagazyn(html) {
       tekst(m[1])
     );
 
+    const kod = zlap(karta, /l-single-inventory__matnr[^>]*>([\s\S]*?)<\/div>/);
+    // Numer płyty z końca kodu: „STON000890 - 91361" → „91361".
+    const numerPlyty = (String(kod || '').match(/(\d+)\s*$/) || [])[1];
+
     plyty.push({
       nazwa,
-      kod: zlap(karta, /l-single-inventory__matnr[^>]*>([\s\S]*?)<\/div>/),
+      kod,
+      zdjecia: wybierzZdjecia(zdjecia.get(numerPlyty)),
       rodzaj: (nag[0] || '').replace(/\s*\/\s*$/, '').trim() || null,
       marka: nag[1] || null,
       wykonczenie: c['Wykończenie'] || null,
@@ -368,7 +434,7 @@ async function pobierzStrone(fraza, strona) {
  * błędne wyniki. Kosztowało nas to raz: po naprawie paginacji konsultant
  * dalej twierdził, że nie ma naturalnego Taj Mahal, bo czytał cache.
  */
-const WERSJA_CACHE = 2;
+const WERSJA_CACHE = 3; // 3: parser zwraca zdjęcia płyt (17.08.2026)
 
 const kluczCache = (fraza) =>
   new Request(

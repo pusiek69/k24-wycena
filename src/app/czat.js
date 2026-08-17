@@ -24,6 +24,7 @@ import {
   pomocnikSzczegoly,
   pomocnikPlyty,
   pomocnikKamien,
+  kartaWybranejPlyty,
 } from './pomocnicy.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 
@@ -235,6 +236,9 @@ export function uruchomCzat(root, akcje = {}) {
 
     stan.kodPlyty = kod;
     stan.wyborPlyty = null;
+    // Klient podał kod w rozmowie — pokazujemy, którą płytę tak naprawdę
+    // wskazał, zanim zobaczy kwotę.
+    rozmowa.append(kartaWybranejPlyty(odp.plyta, kod));
     // `/magazyn` oddaje surową płytę (formatCm) — wycena pracuje na wariancie
     // z `plytaCm`, gdzie dłuższy bok stoi pierwszy.
     const wariant = wariantZPlyty(odp.plyta);
@@ -331,6 +335,7 @@ export function uruchomCzat(root, akcje = {}) {
         stan.nazwaKamienia = nazwa;
         stan.dekor = nazwa;
         stan.kodPlyty = kod;
+        rozmowa.append(kartaWybranejPlyty(trafiona, kod));
         wyslij(`Wybieram płytę ${kod} — ${nazwa}.`);
         return;
       }
@@ -471,8 +476,10 @@ export function uruchomCzat(root, akcje = {}) {
     if (stan.szukamPlyt) return;
     // Kamień naturalny czeka na wskazanie płyty — nic innego nie ma wtedy sensu.
     if (stan.wyborPlyty)
-      el = pomocnikPlyty(stan.wyborPlyty.plyty, stan.wyborPlyty.nazwa, (wybrany) => {
+      el = pomocnikPlyty(stan.wyborPlyty.plyty, stan.wyborPlyty.nazwa, (wybrany, plyta) => {
         const nazwa = stan.wyborPlyty?.nazwa || stan.nazwaKamienia || '';
+        // Potwierdzenie ze zdjęciem zostaje w rozmowie — pomocnik zaraz zniknie.
+        if (plyta) rozmowa.append(kartaWybranejPlyty(plyta, wybrany));
         stan.kodPlyty = wybrany;
         stan.nazwaKamienia = nazwa || stan.nazwaKamienia;
         // Dekor przy kamieniu naturalnym to nazwa kamienia — bez tego kreator

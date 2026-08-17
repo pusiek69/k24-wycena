@@ -629,7 +629,19 @@ export function pomocnikPlyty(plyty, nazwa, wybierz) {
     const kod = normalizujKodPlyty(p.kod) || p.kod;
     return h(
       'button',
-      { class: 'pom-plyta', type: 'button', onclick: () => wybierz(kod) },
+      { class: 'pom-plyta', type: 'button', onclick: () => wybierz(kod, p) },
+      // Zdjęcie jest najważniejszą informacją przy kamieniu naturalnym —
+      // rysunku bloku nie da się opisać liczbami. Ładujemy leniwie, bo
+      // przy 24 płytach to 24 osobne obrazki.
+      p.zdjecia?.miniatura
+        ? h('img', {
+            class: 'pom-plyta-foto',
+            src: p.zdjecia.miniatura,
+            alt: `Płyta ${p.nazwa}, kod ${kod}`,
+            loading: 'lazy',
+            decoding: 'async',
+          })
+        : h('span', { class: 'pom-plyta-foto pom-plyta-foto-brak' }, 'bez zdjęcia'),
       h('span', { class: 'pom-plyta-nazwa' }, p.nazwa),
       h(
         'span',
@@ -670,6 +682,57 @@ export function pomocnikPlyty(plyty, nazwa, wybierz) {
     link
       ? h('a', { class: 'link-btn', href: link, target: '_blank', rel: 'noopener' }, '↗ Zobacz płyty w magazynie')
       : null
+  );
+}
+
+/**
+ * POTWIERDZENIE WYBORU PŁYTY — zdjęcie, wymiar, cena, kod.
+ *
+ * Wchodzi do rozmowy jak wiadomość, a nie do pomocnika: pomocnik jest
+ * odświeżany po każdej odpowiedzi konsultanta i potwierdzenie by zniknęło.
+ * Klient ma tu zobaczyć, CO dokładnie wybrał — przy kamieniu naturalnym
+ * to jedyny moment, w którym widzi swoją płytę w całości.
+ */
+export function kartaWybranejPlyty(plyta, kod) {
+  const dl = plyta?.formatCm
+    ? Math.max(plyta.formatCm.wys, plyta.formatCm.szer)
+    : plyta?.plytaCm?.dl;
+  const gl = plyta?.formatCm
+    ? Math.min(plyta.formatCm.wys, plyta.formatCm.szer)
+    : plyta?.plytaCm?.gl;
+
+  return h(
+    'div',
+    { class: 'plyta-wybrana' },
+    plyta?.zdjecia?.plyta
+      ? h('img', {
+          class: 'plyta-wybrana-foto',
+          src: plyta.zdjecia.plyta,
+          alt: `Wybrana płyta ${plyta.nazwa || ''}, kod ${kod}`,
+          // Bez `lazy`: to zdjęcie jest sednem potwierdzenia i pojawia się
+          // dokładnie tam, gdzie klient właśnie patrzy.
+          decoding: 'async',
+        })
+      : null,
+    h(
+      'div',
+      { class: 'plyta-wybrana-opis' },
+      h('span', { class: 'plyta-wybrana-etykieta' }, 'Wybrana płyta'),
+      h('span', { class: 'plyta-wybrana-nazwa' }, plyta?.nazwa || 'Kamień naturalny'),
+      h(
+        'span',
+        { class: 'plyta-wybrana-dane' },
+        [
+          dl && gl ? `${liczbaPL(dl)} × ${liczbaPL(gl)} cm` : null,
+          plyta?.gruboscMm ? `${liczbaPL(plyta.gruboscMm)} mm` : null,
+          plyta?.cenaBruttoM2 ? `${liczbaPL(plyta.cenaBruttoM2)} zł/m²` : null,
+          plyta?.dostepneM2 ? `wolne ${liczbaPL(plyta.dostepneM2)} m²` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      ),
+      h('span', { class: 'plyta-wybrana-kod' }, kod)
+    )
   );
 }
 

@@ -635,21 +635,56 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
    Wiersz jest przyciskiem: klient wybiera płytę jednym kliknięciem. */
 .pom-plyty { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
 .pom-plyta {
-  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
+  display: grid; grid-template-columns: 84px 1fr auto; gap: 2px 12px; align-items: start;
   background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
   color: var(--cream); padding: 10px 12px; cursor: pointer; text-align: left;
   transition: border-color .15s;
 }
 .pom-plyta:hover { border-color: var(--vein); }
-.pom-plyta-nazwa { font-family: var(--serif); font-size: 15px; }
+/* Zdjęcie płyty — na tyle duże, żeby dało się ocenić rysunek kamienia. */
+.pom-plyta-foto {
+  grid-row: 1 / span 2; grid-column: 1;
+  width: 84px; height: 58px; object-fit: cover;
+  border-radius: 3px; background: #000; display: block;
+}
+.pom-plyta-foto-brak {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--line); color: var(--muted);
+  font-family: var(--sans); font-size: 10px; text-align: center; line-height: 1.2;
+}
+.pom-plyta-nazwa { grid-column: 2; font-family: var(--serif); font-size: 15px; }
 .pom-plyta-dane {
-  grid-column: 1 / -1; color: var(--muted); font-family: var(--sans); font-size: 12px;
-  font-variant-numeric: tabular-nums;
+  grid-row: 2; grid-column: 2 / -1; color: var(--muted);
+  font-family: var(--sans); font-size: 12px; font-variant-numeric: tabular-nums;
 }
 .pom-plyta-kod {
-  grid-row: 1; grid-column: 2; align-self: start;
+  grid-row: 1; grid-column: 3; align-self: start;
   color: var(--vein); font-family: var(--sans); font-size: 11px; letter-spacing: .04em;
   white-space: nowrap;
+}
+
+/* Potwierdzenie: „to jest płyta, którą wybrałeś" — zdjęcie całej płyty. */
+.plyta-wybrana {
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  background: var(--ink); border: 1px solid var(--vein); border-radius: var(--radius);
+  padding: 12px; margin: 10px 0;
+}
+.plyta-wybrana-foto {
+  width: 200px; max-width: 100%; aspect-ratio: 3 / 2; object-fit: cover;
+  border-radius: 3px; background: #000; display: block;
+}
+.plyta-wybrana-opis { flex: 1 1 12rem; display: flex; flex-direction: column; gap: 3px; }
+.plyta-wybrana-etykieta {
+  font-family: var(--sans); font-size: 10px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--vein);
+}
+.plyta-wybrana-nazwa { font-family: var(--serif); font-size: 17px; color: var(--cream); }
+.plyta-wybrana-dane {
+  color: var(--muted); font-family: var(--sans); font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.plyta-wybrana-kod {
+  color: var(--vein); font-family: var(--sans); font-size: 11px; letter-spacing: .04em;
 }
 .pom-pole-kod { flex: 1; min-width: 11rem; text-transform: uppercase; letter-spacing: .04em; }
 .pom-blad:empty { display: none; }
