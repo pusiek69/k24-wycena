@@ -191,11 +191,15 @@ export function wycen(firma, w, dataISO) {
       // Klient widzi samą ilość, bez stawki — kartę i jego mail czyta `detal`.
       detal: r.per === 'mb' || r.per === 'm2blatu' ? `${round1(ilosc)} ${jednostka}` : r.detal,
       // Dawid w mailu leadowym widzi, z czego kwota się złożyła.
+      // Pozycja bez `per` jest naliczana RAZ na zlecenie (pomiar Prolinerem) —
+      // dopisywanie jej „1 m² ×" było mylące w mailu do firmy.
       detalFirmowy: r.wCenie
         ? 'w cenie, bez osobnego naliczenia'
         : (baza
             ? `baza ${fmtStawka(r.baza)} + ${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`
-            : `${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`) + notaStawek(firma, vat, vatZrodla),
+            : r.per
+              ? `${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`
+              : `${fmtStawka(r.cena)} raz na zlecenie`) + notaStawek(firma, vat, vatZrodla),
       brutto: kwota,
       wCenie: !!r.wCenie,
     });
@@ -252,11 +256,35 @@ export function wycen(firma, w, dataISO) {
     }
   }
 
-  // Dodatek za obróbkę kamienia naturalnego (sierpień 2026: najpierw 10%
-  // wartości płyt, potem 100 zł/m²) został USUNIĘTY 17.08.2026 decyzją Dawida.
-  // Kamień naturalny liczy się teraz dokładnie tak samo jak konglomerat i spiek:
-  // materiał plus standardowe pozycje. Nie przywracaj tego bez jego zgody —
-  // test-kamien-naturalny.mjs pilnuje, żeby nic się tu nie doklejało.
+  // ---------- 3a. dodatek za obróbkę kamienia naturalnego ----------
+  //
+  // Kamień naturalny obrabia się dłużej i z większym ryzykiem niż konglomerat:
+  // każda płyta ma inny rysunek do dobrania, twardość bywa nierówna, a przy
+  // cięciu zdarzają się pęknięcia, których nikt nie przewidzi.
+  //
+  // Historia stawki (wszystko 2026): 10% wartości płyt → 100 zł/m² →
+  // usunięty → 300 zł/m² od 17.08. Podstawą są metry ELEMENTÓW blatu,
+  // spójnie z montażem — to świadoma decyzja Dawida, opisana szerzej
+  // przy `obrobkaNaturalnaZaM2` w firms/interstone.js.
+  //
+  // Stawka jest zapisana brutto przy 23%, jak reszta, więc idzie przez
+  // `kwotaBrutto` i schodzi do właściwej stawki wariantu.
+  //
+  // Kwota trafia do grupy „usługi", więc na karcie klienta wchodzi w jedną
+  // sumę „produkcja i montaż" i nie pojawia się jako osobna cena. Rozbicie
+  // ze stawką widzi tylko Dawid w mailu firmowym (stąd `detalFirmowy`).
+  const stawkaObrobki = firma.obrobkaNaturalnaZaM2 ?? 0;
+  if (stawkaObrobki > 0 && pak.m2Blatu > 0) {
+    pozycje.push({
+      grupa: 'usługi',
+      nazwa: 'Obróbka kamienia naturalnego',
+      detal: `${round1(pak.m2Blatu)} m²`,
+      detalFirmowy:
+        `${round1(pak.m2Blatu)} m² × ${fmtStawka(stawkaObrobki)}` +
+        notaStawek(firma, vat, vatZrodla),
+      brutto: kwotaBrutto(stawkaObrobki, firma, vat, vatZrodla) * pak.m2Blatu,
+    });
+  }
 
   // ---------- 4. sumy ----------
   const materialBrutto = pozycje.filter((p) => p.grupa === 'materiał').reduce((a, p) => a + p.brutto, 0);

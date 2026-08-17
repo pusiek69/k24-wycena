@@ -158,6 +158,11 @@ export function firmaZWariantu(wariant) {
     // się z katalogu, więc ich ten wymóg nie dotyczy.
     wymagaKoduPlyty: naturalny,
 
+    // Dodatek za trudność obróbki dotyczy WYŁĄCZNIE kamienia naturalnego.
+    // Interstone sprzedaje też konglomerat InterQ i spieki Laminam — te tną
+    // się jak każdy inny materiał płytowy, więc nic do nich nie doliczamy.
+    obrobkaNaturalnaZaM2: naturalny ? (baza.obrobkaNaturalnaZaM2 ?? 300) : 0,
+
     notaKlient: naturalny ? ZASTRZEZENIE : ZASTRZEZENIE_INNE,
 
     // Klient ogląda i wybiera płytę sam — na stronie magazynu widzi zdjęcia

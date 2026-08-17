@@ -121,3 +121,9 @@ test('karta klienta nadal ma tylko dwie grupy kwot', () => {
   const suma = w.pozycje.reduce((a, p) => a + p.brutto, 0);
   assert.ok(Math.abs(suma - (w.materialBrutto + w.uslugiBrutto)) < 0.01);
 });
+
+test('rozbicie firmowe mówi „raz na zlecenie", nie „1 m²"', () => {
+  const p = pomiar(licz(KUCHNIA, { pomieszczenie: 'kuchnia', otwory: 1 }));
+  assert.match(p.detalFirmowy, /1000 zł raz na zlecenie/);
+  assert.doesNotMatch(p.detalFirmowy, /m²/, 'pomiar nie jest liczony od metra');
+});

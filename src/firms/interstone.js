@@ -69,17 +69,29 @@ export default {
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 
   /*
-   * BEZ DODATKU ZA OBRÓBKĘ. Kamień naturalny liczymy jak każdy inny materiał:
-   * płyty plus standardowe pozycje (obróbka od metra bieżącego, wycięcia,
-   * otwory, montaż).
+   * DODATEK ZA OBRÓBKĘ KAMIENIA NATURALNEGO — 300 zł za m² blatu.
    *
-   * Historia, żeby nikt nie wprowadzał tego trzeci raz: w sierpniu 2026
-   * doliczaliśmy 10% wartości płyt, potem 100 zł za m² blatu. Powodem były
-   * małe zlecenia łazienkowe wychodzące poniżej rynku. Dawid zdecydował
-   * 17.08.2026, że dodatek znika całkowicie — jeśli małe blaty znów będą
-   * wychodzić za tanio, właściwym narzędziem jest minimum zlecenia
-   * albo stawka od metra bieżącego, a nie narzut doklejany do materiału.
+   * Kamień naturalny obrabia się dłużej i z większym ryzykiem niż konglomerat:
+   * rysunek trzeba dobrać, twardość bywa nierówna, przy cięciu zdarzają się
+   * pęknięcia. Konglomeratów i spieków to nie dotyczy — one mają 0.
+   *
+   * PODSTAWA: metry ELEMENTÓW blatu (pak.m2Blatu), spójnie z montażem.
+   * To świadoma decyzja Dawida, nie przeoczenie — kontrargument („płacimy
+   * i tak za całą płytę, więc liczmy od m² kupionych") był znany i odrzucony.
+   * Nie zmieniaj podstawy bez jego zgody.
+   *
+   * Historia stawki, żeby nikt nie odtwarzał jej od zera (wszystko 2026):
+   *   • 10% wartości płyt — narzut rósł z ceną kamienia,
+   *   • 100 zł/m² od metra blatu — bo dodatek pokrywa PRACĘ, a ta nie rośnie
+   *     z ceną; przy łazience wychodziło z tego 72 zł, czyli prawie nic,
+   *   • usunięty całkowicie 17.08,
+   *   • 300 zł/m² od 17.08 — powrót, tym razem w wysokości, która realnie
+   *     pokrywa robociznę przy kamieniu naturalnym.
+   *
+   * Kwota jest brutto przy 23%, jak wszystkie stawki w tym pliku — silnik
+   * sprowadza ją do netto i dolicza VAT właściwy dla wariantu.
    */
+  obrobkaNaturalnaZaM2: 300,
 
   opisGrubosci: {
     20: '20 mm — standard',
