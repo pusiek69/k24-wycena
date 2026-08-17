@@ -23,6 +23,7 @@ import {
   pomocnikWymiary,
   pomocnikSzczegoly,
   pomocnikPlyty,
+  pomocnikKamien,
 } from './pomocnicy.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 
@@ -66,6 +67,8 @@ export function uruchomCzat(root, akcje = {}) {
     // Ustawiane, gdy kamień naturalny czeka na wskazanie konkretnej płyty.
     wyborPlyty: null,
     kodPlyty: null,
+    nazwaKamienia: null,
+    szukamPlyt: false,
   };
 
   const rozmowa = h('div', { class: 'czat', 'aria-live': 'polite' });
@@ -262,6 +265,80 @@ export function uruchomCzat(root, akcje = {}) {
     stan.wyborPlyty = { nazwa, plyty: odp.plyty };
   }
 
+  /**
+   * Krok kreatora: klient podał nazwę kamienia — odpytujemy magazyn
+   * i pokazujemy konkretne płyty do wskazania.
+   *
+   * To jedyna droga do wyceny kamienia naturalnego, więc musi działać także
+   * wtedy, gdy konsultant milczy albo prowadzi rozmowę własnym torem.
+   */
+  async function szukajPlyt(nazwa) {
+    if (!nazwa) {
+      // „Nie wiem jeszcze" — oddajemy pałeczkę konsultantowi.
+      wyslij('Nie wiem jeszcze, jaki kamień naturalny — proszę o pomoc w doborze.');
+      return;
+    }
+
+    stan.szukamPlyt = true;
+    rozmowa.querySelector('.pomocnik')?.remove();
+    dodajWiadomosc('klient', `Interesuje mnie ${nazwa}.`);
+    historia.push({ rola: 'user', tresc: `Interesuje mnie ${nazwa}.` });
+    const pisze = wskaznikPisania();
+    rozmowa.append(pisze);
+    przewin();
+
+    let odp = { ok: false, plyty: [] };
+    try {
+      odp = await sprawdzMagazyn(nazwa);
+    } catch {
+      /* obsłużone niżej — brak płyt zachowuje się tak samo jak awaria */
+    }
+    pisze.remove();
+    stan.szukamPlyt = false;
+
+    const zKodem = (odp.plyty || []).filter(
+      (p) => p.kod && p.dostepneM2 > 0 && p.cenaBruttoM2 > 0 && p.formatCm
+    );
+    /*
+     * Pod jedną nazwą (np. „Calacatta") magazyn ma i naturalny marmur,
+     * i spiek Laminam, i konglomerat InterQ. Klient jest tu, bo wybrał
+     * KAMIEŃ NATURALNY, więc pokazujemy tylko jego — inaczej wskazałby
+     * spiek i dostał wycenę materiału, o który nie prosił.
+     */
+    const naturalne = zKodem.filter((p) => /kamie/i.test(String(p.rodzaj || '')));
+    const dostepne = naturalne.length ? naturalne : zKodem;
+
+    if (!dostepne.length) {
+      dodajWiadomosc(
+        'konsultant',
+        `Nie widzę teraz wolnych płyt pod nazwą „${nazwa}". Proszę spróbować samą nazwą własną wzoru ` +
+          `albo napisać, jaki efekt ma dać blat — dobierzemy kamień. Można też zadzwonić: ${TEL}.`
+      );
+      historia.push({ rola: 'assistant', tresc: `Brak wolnych płyt „${nazwa}".` });
+      odswiezPomocnika();
+      przewin();
+      return;
+    }
+
+    // Lista w pomocniku jest ucięta — mówimy o tylu płytach, ile realnie widać,
+    // żeby liczba w zdaniu zgadzała się z tym, co klient ma przed oczami.
+    const POKAZUJEMY = 24;
+    const widocznych = Math.min(dostepne.length, POKAZUJEMY);
+    dodajWiadomosc(
+      'konsultant',
+      (widocznych === 1
+        ? 'Mam jedną taką płytę w magazynie.'
+        : `Mam ${dostepne.length} płyt tego wzoru` +
+          (dostepne.length > POKAZUJEMY ? `, pokazuję ${POKAZUJEMY} największych.` : ' w magazynie.')) +
+        ' Każdy blok ma własną cenę i wymiar, więc proszę wskazać konkretną płytę — z niej policzę wycenę.'
+    );
+    historia.push({ rola: 'assistant', tresc: `Pokazuję dostępne płyty „${nazwa}" do wyboru.` });
+    stan.nazwaKamienia = nazwa;
+    stan.wyborPlyty = { nazwa, plyty: dostepne };
+    odswiezPomocnika();
+    przewin();
+  }
+
   /** Co powiedzieć, gdy kodu brak albo jest zły. */
   function komunikatKodu(powod, kod, odp) {
     if (powod === 'zly-format' || (kod === '' && odp.powodKodu === null && stan.kodPlyty))
@@ -335,18 +412,32 @@ export function uruchomCzat(root, akcje = {}) {
     if (rozmowa.querySelector('.bramka')) return;
 
     let el = null;
+    // Trwa odpytywanie magazynu — nie podsuwamy w tym czasie innego kroku.
+    if (stan.szukamPlyt) return;
     // Kamień naturalny czeka na wskazanie płyty — nic innego nie ma wtedy sensu.
     if (stan.wyborPlyty)
       el = pomocnikPlyty(stan.wyborPlyty.plyty, stan.wyborPlyty.nazwa, (wybrany) => {
+        const nazwa = stan.wyborPlyty?.nazwa || stan.nazwaKamienia || '';
         stan.kodPlyty = wybrany;
+        stan.nazwaKamienia = nazwa || stan.nazwaKamienia;
+        // Dekor przy kamieniu naturalnym to nazwa kamienia — bez tego kreator
+        // utknąłby na kroku wzoru, którego dla naturalnego nie ma.
+        if (nazwa) stan.dekor = nazwa;
         stan.wyborPlyty = null;
-        // Ta sama droga co zwykle: wiadomość klienta wraca do konsultanta,
-        // a wycena rusza dopiero z kodem.
-        wyslij(`Wybieram płytę ${wybrany}.`);
+        // Wiadomość niesie nazwę I kod, żeby konsultant miał komplet
+        // do `kamien` oraz `kod_plyty` — bez tego dopytywałby o wzór.
+        wyslij(
+          nazwa
+            ? `Wybieram płytę ${wybrany} — ${nazwa}.`
+            : `Wybieram płytę ${wybrany}.`
+        );
       });
     else if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
     else if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
+    // Kamień naturalny nie ma listy wzorów — zamiast niej pytamy o nazwę
+    // kamienia i pokazujemy konkretne płyty z magazynu.
+    else if (stan.material === 'interstone' && !stan.kodPlyty) el = pomocnikKamien(szukajPlyt);
     else if (!stan.dekor) el = pomocnikDekor(stan.material, wybrano);
     else if (!stan.wymiary) el = pomocnikWymiary(wybrano);
     else if (!stan.szczegoly) el = pomocnikSzczegoly(wybrano, stan.pomieszczenie);

@@ -450,6 +450,63 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
 }
 
 /**
+ * 3a. Jaki kamień naturalny — krok zamiast listy dekorów.
+ *
+ * Kamień naturalny nie ma cennika wzorów: to, co jest, leży na placu i zmienia
+ * się z tygodnia na tydzień. Kreator musi więc zapytać o nazwę, żeby odpytać
+ * magazyn i pokazać konkretne płyty. Bez tego kroku klient, który kliknął
+ * „kamień naturalny", szedł prosto do wymiarów i nie miał jak wskazać płyty —
+ * a bez wskazanej płyty nie policzymy wyceny.
+ */
+export function pomocnikKamien(szukaj) {
+  const POPULARNE = ['Calacatta', 'Taj Mahal', 'Verde Guatemala', 'Nero Assoluto', 'Patagonia'];
+
+  const pole = h('input', {
+    class: 'pom-pole pom-pole-kamien',
+    type: 'search',
+    placeholder: 'np. Calacatta',
+    'aria-label': 'Nazwa kamienia',
+  });
+  const zPola = () => {
+    const nazwa = pole.value.trim();
+    if (nazwa.length >= 2) szukaj(nazwa);
+    else pole.focus();
+  };
+  pole.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      zPola();
+    }
+  });
+
+  return ramka(
+    'Jaki kamień naturalny?',
+    h(
+      'p',
+      { class: 'pom-podpowiedz' },
+      'Podamy, które płyty tego wzoru leżą teraz w magazynie — z wymiarem, ceną i dostępnością.'
+    ),
+    h('div', { class: 'pom-narzedzia' }, pole, h('button', { class: 'btn', type: 'button', onclick: zPola }, 'Szukaj')),
+    h(
+      'div',
+      { class: 'o-warianty' },
+      POPULARNE.map((n) =>
+        h('button', { class: 'wariant', type: 'button', onclick: () => szukaj(n) }, n)
+      )
+    ),
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => szukaj(null),
+      },
+      'Nie wiem jeszcze — proszę doradzić'
+    )
+  );
+}
+
+/**
  * WYBÓR KONKRETNEJ PŁYTY — kamień naturalny.
  *
  * Kamienia naturalnego nie da się wycenić „ogólnie": ten sam wzór to
@@ -460,9 +517,12 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
  * zmieści się bez łączenia), cenę za m² i ile metrów zostało.
  */
 export function pomocnikPlyty(plyty, nazwa, wybierz) {
+  // Najdłuższe płyty na górze: to długość decyduje, czy blat da się wyciąć
+  // bez łączenia, a dopiero potem cena. Przy równej długości — tańsza wyżej.
+  const dlugosc = (p) => Math.max(p.formatCm.wys, p.formatCm.szer);
   const dostepne = (plyty || [])
     .filter((p) => p.kod && p.dostepneM2 > 0 && p.cenaBruttoM2 > 0 && p.formatCm)
-    .sort((a, b) => b.cenaBruttoM2 - a.cenaBruttoM2 || 0)
+    .sort((a, b) => dlugosc(b) - dlugosc(a) || a.cenaBruttoM2 - b.cenaBruttoM2)
     .slice(0, 24);
 
   const pole = h('input', {
