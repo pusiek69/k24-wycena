@@ -66,7 +66,7 @@ export default {
    * kwoty ze strony dzielą się przez 1,23 na równe złote.
    */
   vatCenZrodlowych: VAT_TOWAR,
-  cenyUslug: 'netto',
+  cenyUslug: 'brutto',
   plyta: { w: 300, h: 180, polowkaDozwolona: true },
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 

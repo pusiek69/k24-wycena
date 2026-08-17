@@ -22,7 +22,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   vat: VAT,
-  cenyUslug: 'netto',
+  cenyUslug: 'brutto', // stawki zapisane jak w produkcji: brutto przy 23%
   plyta: { w: 320, h: 160, polowkaDozwolona: true },
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
@@ -36,7 +36,11 @@ const montaz = (w) => w.pozycje.find((p) => p.nazwa.startsWith('Transport i mont
 // (8% z montażem, 23% przy odbiorze). Formułę sprawdzamy więc na netto.
 const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 const montazNetto = (w) => nettoPozycji(w, montaz(w));
-const oczekiwany = (m2) => BAZA + ZA_M2 * m2;
+// Stawki w plikach firm są zapisane BRUTTO przy 23%. Silnik sprowadza je
+// do netto i dolicza VAT właściwy dla wariantu, więc oczekiwane kwoty
+// netto to stawka podzielona przez 1,23.
+const nettoStawki = (bruttoDwadziesciaTrzy) => bruttoDwadziesciaTrzy / 1.23;
+const oczekiwany = (m2) => nettoStawki(BAZA) + nettoStawki(ZA_M2) * m2;
 
 /* ─────────────────────────────────────────────────────────── sama formuła */
 

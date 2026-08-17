@@ -150,9 +150,11 @@ export function wycen(firma, w, dataISO) {
 
     // Pozycja może mieć część stałą (dojazd, wniesienie, przygotowanie) —
     // naliczaną RAZ na całą wycenę, niezależnie od liczby elementów.
-    const baza = r.baza ? kwotaBrutto(r.baza, firma, vat) : 0;
-    const kwota = baza + kwotaBrutto(r.cena, firma, vat) * ilosc;
-    if (kwota <= 0) continue;
+    const baza = r.baza ? kwotaBrutto(r.baza, firma, vat, vatZrodla) : 0;
+    const kwota = baza + kwotaBrutto(r.cena, firma, vat, vatZrodla) * ilosc;
+    // Pozycje `wCenie` przepuszczamy mimo zerowej kwoty — to świadczenia,
+    // za które nie liczymy osobno, ale klient ma je widzieć na liście.
+    if (kwota <= 0 && !r.wCenie) continue;
 
     const jednostka = r.per === 'mb' ? 'm.b.' : 'm²';
     pozycje.push({
@@ -161,10 +163,13 @@ export function wycen(firma, w, dataISO) {
       // Klient widzi samą ilość, bez stawki — kartę i jego mail czyta `detal`.
       detal: r.per === 'mb' || r.per === 'm2blatu' ? `${round1(ilosc)} ${jednostka}` : r.detal,
       // Dawid w mailu leadowym widzi, z czego kwota się złożyła.
-      detalFirmowy: baza
-        ? `baza ${fmtStawka(r.baza)} + ${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`
-        : `${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`,
+      detalFirmowy: r.wCenie
+        ? 'w cenie, bez osobnego naliczenia'
+        : (baza
+            ? `baza ${fmtStawka(r.baza)} + ${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`
+            : `${round1(ilosc)} ${jednostka} × ${fmtStawka(r.cena)}`) + notaStawek(firma, vat, vatZrodla),
       brutto: kwota,
+      wCenie: !!r.wCenie,
     });
   }
 
@@ -184,7 +189,7 @@ export function wycen(firma, w, dataISO) {
         grupa: 'usługi',
         nazwa: wariant.label,
         detal: sztuk > 1 ? `${sztuk} szt.` : undefined,
-        brutto: kwotaBrutto(wariant.cena, firma, vat) * mnoznik(o, pak, m2Platne) * sztuk,
+        brutto: kwotaBrutto(wariant.cena, firma, vat, vatZrodla) * mnoznik(o, pak, m2Platne) * sztuk,
       });
     } else if (o.typ === 'liczba') {
       const ile = Number(v) || 0;
@@ -193,7 +198,7 @@ export function wycen(firma, w, dataISO) {
         grupa: 'usługi',
         nazwa: o.label,
         detal: `${round1(ile)} ${o.jednostka || 'szt.'} × ${fmtStawka(o.cena)}`,
-        brutto: kwotaBrutto(o.cena, firma, vat) * ile,
+        brutto: kwotaBrutto(o.cena, firma, vat, vatZrodla) * ile,
       });
     } else {
       if (!v) continue;
@@ -201,7 +206,7 @@ export function wycen(firma, w, dataISO) {
       // co poler. Pokazujemy pozycję (klient ma widzieć, że o niej pamiętamy),
       // ale bez dopłaty.
       if (o.id === 'mat' && promo?.matWCenie) {
-        oszczednosc += kwotaBrutto(o.cena, firma, vat) * m2Platne;
+        oszczednosc += kwotaBrutto(o.cena, firma, vat, vatZrodla) * m2Platne;
         pozycje.push({
           grupa: 'usługi',
           nazwa: o.label,
@@ -214,7 +219,7 @@ export function wycen(firma, w, dataISO) {
         grupa: 'usługi',
         nazwa: o.label,
         detal: o.per === 'm2' ? `${round1(m2Platne)} m² × ${fmtStawka(o.cena)}` : undefined,
-        brutto: kwotaBrutto(o.cena, firma, vat) * mnoznik(o, pak, m2Platne),
+        brutto: kwotaBrutto(o.cena, firma, vat, vatZrodla) * mnoznik(o, pak, m2Platne),
       });
     }
   }
@@ -272,9 +277,29 @@ export function wycen(firma, w, dataISO) {
   };
 }
 
-/** Ceny usług w plikach firm mogą być podane netto lub brutto (pole `cenyUslug`). */
-function kwotaBrutto(cena, firma, vat) {
-  return (firma.cenyUslug || 'brutto') === 'netto' ? cena * (1 + vat) : cena;
+/**
+ * Stawka z pliku firmy → kwota brutto przy stawce VAT tej wyceny.
+ *
+ * `cenyUslug: 'netto'` — liczba jest netto, doliczamy VAT sprzedaży.
+ * `cenyUslug: 'brutto'` — liczba jest kwotą BRUTTO PRZY 23% (tak zapisane są
+ * wszystkie stawki Dawida). Sprowadzamy ją do netto i grossujemy stawką
+ * właściwą dla wariantu. Netto zostaje bez zmian, więc blat z montażem
+ * tanieje brutto o różnicę stawek, zamiast po cichu podnosić nam marżę.
+ */
+/**
+ * Dopisek do rozbicia firmowego, gdy stawka sprzedaży różni się od tej,
+ * przy której zapisane są stawki w konfiguracji. Bez niego Dawid widziałby
+ * „200 zł/m²" obok kwoty policzonej po 8% i musiałby zgadywać, skąd różnica.
+ */
+function notaStawek(firma, vat, vatZrodla) {
+  if ((firma.cenyUslug || 'brutto') !== 'brutto') return '';
+  if (Math.abs(vat - vatZrodla) < 0.0001) return '';
+  return ` — stawki brutto ${Math.round(vatZrodla * 100)}%, wycena po ${Math.round(vat * 100)}%`;
+}
+
+function kwotaBrutto(cena, firma, vat, vatZrodla = 0.23) {
+  if ((firma.cenyUslug || 'brutto') === 'netto') return cena * (1 + vat);
+  return (cena / (1 + vatZrodla)) * (1 + vat);
 }
 
 function mnoznik(o, pak, m2Platne) {

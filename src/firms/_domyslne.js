@@ -27,11 +27,25 @@ export const VAT_TOWAR = 0.23;
 export const VAT = VAT_TOWAR;
 
 export const ROBOCIZNA = [
+  /*
+   * DOCIĘCIE, POLEROWANIE I KLEJENIE — W CENIE, BEZ OSOBNEGO NALICZENIA.
+   *
+   * Do 17.08.2026 była to pozycja 350 zł za metr bieżący i największa
+   * pojedyncza kwota w wielu wycenach (przy kuchni w U — 2 520 zł).
+   * Dawid zdecydował, że nie doliczamy jej osobno.
+   *
+   * Pozycja ZOSTAJE w wycenie z kwotą zero, bo klient ma widzieć na liście
+   * „w tej cenie", że dostaje docięcie, polerowanie i klejenie. Znika sama
+   * opłata, nie świadczenie. `wCenie` mówi silnikowi, żeby przepuścił
+   * pozycję mimo zerowej kwoty, a mailowi firmowemu — żeby jej nie
+   * pokazywał w rozbiciu naliczeń.
+   */
   {
     id: 'obrobka',
-    label: 'Obróbka: docięcie, polerowanie krawędzi, klejenie',
-    cena: 350,
+    label: 'Docięcie, polerowanie krawędzi, klejenie',
+    cena: 0,
     per: 'mb',
+    wCenie: true,
   },
   /*
    * MONTAŻ: baza raz na zamówienie + stawka od powierzchni blatu.

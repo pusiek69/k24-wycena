@@ -23,7 +23,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   vat: VAT,
-  cenyUslug: 'netto',
+  cenyUslug: 'brutto', // stawki zapisane jak w produkcji: brutto przy 23%
   plyta: { w: 320, h: 160, polowkaDozwolona: true },
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
@@ -43,6 +43,8 @@ const montaz = (w) => w.pozycje.find((p) => p.nazwa.startsWith('Transport i mont
  * Wszystkie porównania zakresu robimy na NETTO.
  */
 const netto = (w) => w.razemNetto;
+// Stawki w konfiguracji są brutto przy 23% — patrz test-montaz.mjs.
+const nettoStawki = (bruttoDwadziesciaTrzy) => bruttoDwadziesciaTrzy / 1.23;
 const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 
 /* ─────────────────────────────────────────────────────── różnica dokładna */
@@ -50,7 +52,7 @@ const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 test('różnica netto między wariantami to dokładnie baza + stawka × m²', () => {
   const zMontazem = licz(LAZIENKA, 'montaz');
   const odbior = licz(LAZIENKA, 'odbior');
-  const oczekiwana = BAZA + ZA_M2 * zMontazem.pak.m2Blatu;
+  const oczekiwana = nettoStawki(BAZA) + nettoStawki(ZA_M2) * zMontazem.pak.m2Blatu;
   assert.ok(
     Math.abs(netto(zMontazem) - netto(odbior) - oczekiwana) < 0.01,
     `różnica netto ${netto(zMontazem) - netto(odbior)} ≠ ${oczekiwana}`
@@ -113,7 +115,7 @@ test('kamień naturalny przy odbiorze też traci tylko montaż', () => {
   });
   const zMontazem = wycen(naturalny, dane('montaz'));
   const odbior = wycen(naturalny, dane('odbior'));
-  const oczekiwana = BAZA + ZA_M2 * zMontazem.pak.m2Blatu;
+  const oczekiwana = nettoStawki(BAZA) + nettoStawki(ZA_M2) * zMontazem.pak.m2Blatu;
   assert.ok(Math.abs(netto(zMontazem) - netto(odbior) - oczekiwana) < 0.01);
 });
 

@@ -452,7 +452,10 @@ function mailDoFirmy(klient, s, extra) {
   const uklad = opisUkladu(s);
   const wyk = wykorzystaniePlyty(s);
   const material = s ? s.pozycje.filter((p) => p.grupa === 'materiał') : [];
-  const uslugi = s ? s.pozycje.filter((p) => p.grupa === 'usługi') : [];
+  // Świadczenia bez osobnego naliczenia (docięcie, polerowanie, klejenie)
+  // zostają na liście dla klienta, ale w rozbiciu dla firmy są zbędne —
+  // to nie jest kwota do zweryfikowania, tylko zakres.
+  const uslugi = s ? s.pozycje.filter((p) => p.grupa === 'usługi' && !p.wCenie) : [];
   const transkrypcja = skrocTranskrypcje(extra.transkrypcja);
 
   // W mailu do FIRMY pokazujemy szczegół pełny: przy dodatku za obróbkę
@@ -609,7 +612,8 @@ function leadTekstem(klient, s, extra) {
       l.push(`  netto ${zl(netto)} + VAT ${procent}% ${zl(s.kwotaVat ?? s.razem - netto)} = ${zl(s.razem)}`);
     }
     l.push('');
-    for (const p of s.pozycje) {
+    // Świadczenia bez naliczenia pomijamy — w rozbiciu liczą się kwoty.
+    for (const p of s.pozycje.filter((x) => !x.wCenie)) {
       const d = p.detalFirmowy || p.detal;
       l.push(`  ${p.nazwa}${d ? ` (${d})` : ''} — ${zl(p.brutto)}`);
     }

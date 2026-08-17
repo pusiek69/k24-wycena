@@ -43,7 +43,7 @@ export default {
   },
 
   vat: VAT,
-  cenyUslug: 'netto',
+  cenyUslug: 'brutto',
 
   // Technistone: własny format płyty, sprzedaż tylko w całych płytach.
   plyta: { w: 318.5, h: 155, polowkaDozwolona: false },
