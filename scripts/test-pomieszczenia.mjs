@@ -26,7 +26,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
   plyta: { w: 320, h: 160, polowkaDozwolona: true },
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
@@ -38,8 +38,10 @@ const KUCHNIA = [{ gl: 60, dl: 300 }];
 
 const licz = (odcinki, opcje) => wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje });
 const poz = (w, wzor) => w.pozycje.find((p) => wzor.test(p.nazwa));
-const CENA_PLYTY = 250; // wycięcie pod płytę nakładaną
-const CENA_ZLEWU = 650; // wycięcie + montaż zlewu podblatowego
+// Stawki w konfiguracji są NETTO — silnik dolicza VAT wg wariantu.
+const CENA_PLYTY = 250; // netto, wycięcie pod płytę nakładaną
+const CENA_ZLEWU = 650; // netto, wycięcie + montaż zlewu podblatowego
+const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 
 /* ─────────────────────────────────────────── łazienka: bez płyty grzewczej */
 
@@ -56,7 +58,7 @@ test('kuchnia dostaje wycięcie pod płytę', () => {
 test('ta sama łazienka jest o wycięcie pod płytę tańsza niż wyceniona jak kuchnia', () => {
   const jakLazienka = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const jakKuchnia = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
-  assert.ok(Math.abs(jakKuchnia.razem - jakLazienka.razem - CENA_PLYTY) < 0.01);
+  assert.ok(Math.abs(jakKuchnia.razemNetto - jakLazienka.razemNetto - CENA_PLYTY) < 0.01);
 });
 
 test('konsultant nie może doliczyć indukcji w łazience, nawet gdy poda pole', () => {
@@ -97,7 +99,7 @@ test('kreator też nie wypuści kuchni bez montażu', () => {
 test('dwie umywalki to dwa wycięcia', () => {
   const jedna = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', umywalki: 1, otwory: 1 }));
   const dwie = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', umywalki: 2, otwory: 1 }));
-  assert.ok(Math.abs(dwie.razem - jedna.razem - CENA_ZLEWU) < 0.01);
+  assert.ok(Math.abs(dwie.razemNetto - jedna.razemNetto - CENA_ZLEWU) < 0.01);
   assert.equal(poz(dwie, /zlewu podblatowego/).detal, '2 szt.');
 });
 
@@ -119,14 +121,14 @@ test('umywalka nablatowa to dokładnie połowa ceny podwieszanej', () => {
   const pod = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const nad = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', zlew_nablatowy: true, otwory: 1 }));
   assert.ok(Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01);
-  assert.ok(Math.abs(wyciecie(pod).brutto - CENA_ZLEWU) < 0.01, 'podblatowy bez zmian');
+  assert.ok(Math.abs(nettoPozycji(pod, wyciecie(pod)) - CENA_ZLEWU) < 0.01, 'podblatowy bez zmian');
 });
 
 test('w kuchni zlew nablatowy liczy się tak samo', () => {
   const pod = licz(KUCHNIA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
   const nad = licz(KUCHNIA, opcjeZParametrow({ pomieszczenie: 'kuchnia', zlew_nablatowy: true, otwory: 1 }));
   assert.ok(Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01);
-  assert.ok(Math.abs(pod.razem - nad.razem - CENA_ZLEWU * 0.5) < 0.01);
+  assert.ok(Math.abs(pod.razemNetto - nad.razemNetto - CENA_ZLEWU * 0.5) < 0.01);
 });
 
 test('relacja 50% trzyma się przy kilku sztukach', () => {
@@ -137,7 +139,10 @@ test('relacja 50% trzyma się przy kilku sztukach', () => {
       Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01,
       `${sztuk} szt.: ${wyciecie(nad).brutto} ≠ połowa z ${wyciecie(pod).brutto}`
     );
-    assert.ok(Math.abs(wyciecie(nad).brutto - CENA_ZLEWU * 0.5 * sztuk) < 0.01, `${sztuk} szt. × 325 zł`);
+    assert.ok(
+      Math.abs(nettoPozycji(nad, wyciecie(nad)) - CENA_ZLEWU * 0.5 * sztuk) < 0.01,
+      `${sztuk} szt. × 325 zł netto`
+    );
   }
 });
 

@@ -28,7 +28,7 @@ export default {
   },
 
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
 
   // Płyta 162 × 324 cm — format z cennika dostawcy, ten sam dla 12 i 20 mm.
   // Kupujemy TYLKO całe płyty; przy małym blacie sporo materiału zostaje,

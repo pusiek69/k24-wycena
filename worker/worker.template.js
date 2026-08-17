@@ -419,6 +419,34 @@ function wykorzystaniePlyty(s) {
   };
 }
 
+/**
+ * Rozbicie podatkowe dla Dawida: netto, VAT i brutto.
+ *
+ * Stawka zależy od wariantu — 8% przy blacie z montażem w lokalu mieszkalnym,
+ * 23% przy odbiorze własnym (dostawa towaru). Dawid wystawia z tego fakturę,
+ * więc musi mieć netto i kwotę podatku wprost, a nie do przeliczania w głowie.
+ */
+function rozbicieVat(s) {
+  if (!s || !s.razem) return '';
+  const procent = Math.round((s.stawkaVat ?? 0.23) * 100);
+  const netto = s.razemNetto ?? Math.round(s.razem / (1 + (s.stawkaVat ?? 0.23)));
+  const podatek = s.kwotaVat ?? s.razem - netto;
+  const powod =
+    procent < 20
+      ? 'montaż w lokalu mieszkalnym (społeczny program mieszkaniowy)'
+      : 'dostawa towaru — bez montażu';
+  return `
+    <table style="margin-top:10px;border-collapse:collapse;font-size:13px;color:#3c3730">
+      <tr><td style="padding:2px 14px 2px 0">Netto</td>
+          <td style="padding:2px 0;text-align:right">${zl(netto)}</td></tr>
+      <tr><td style="padding:2px 14px 2px 0">VAT ${procent}%</td>
+          <td style="padding:2px 0;text-align:right">${zl(podatek)}</td></tr>
+      <tr><td style="padding:4px 14px 2px 0;border-top:1px solid #ded7cb"><b>Brutto</b></td>
+          <td style="padding:4px 0 2px;text-align:right;border-top:1px solid #ded7cb"><b>${zl(s.razem)}</b></td></tr>
+    </table>
+    <div style="color:#8c8474;font-size:12px;margin-top:4px">stawka ${procent}% — ${powod}</div>`;
+}
+
 function mailDoFirmy(klient, s, extra) {
   const problem = telefonPodejrzany(klient.telefon);
   const uklad = opisUkladu(s);
@@ -500,6 +528,7 @@ function mailDoFirmy(klient, s, extra) {
       <span style="color:#6b6459;font-size:13px">wyliczenie: ${zl(s.razem)} · widełki ±10%</span>
       ${s.promo ? `<br><span style="color:#1d6b3a;font-size:13px">promocja „${esc(s.promo.nazwa)}" — klient oszczędza ${zl(s.oszczednosc)}</span>` : ''}
     </div>
+    ${rozbicieVat(s)}
 
     ${sekcja('Materiał', material, s.materialBrutto)}
     ${sekcja(s.odbiorWlasny ? 'Cięcie i dodatki (bez montażu)' : 'Cięcie, montaż i dodatki', uslugi, s.uslugiBrutto)}
@@ -573,7 +602,13 @@ function leadTekstem(klient, s, extra) {
     l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
     l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
     if (s.odbiorWlasny) l.push('*** ODBIÓR WŁASNY — BEZ MONTAŻU (brak pomiaru i wyjazdu) ***');
-    l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`, '');
+    l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`);
+    {
+      const procent = Math.round((s.stawkaVat ?? 0.23) * 100);
+      const netto = s.razemNetto ?? Math.round(s.razem / (1 + (s.stawkaVat ?? 0.23)));
+      l.push(`  netto ${zl(netto)} + VAT ${procent}% ${zl(s.kwotaVat ?? s.razem - netto)} = ${zl(s.razem)}`);
+    }
+    l.push('');
     for (const p of s.pozycje) {
       const d = p.detalFirmowy || p.detal;
       l.push(`  ${p.nazwa}${d ? ` (${d})` : ''} — ${zl(p.brutto)}`);
@@ -722,6 +757,15 @@ function mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly) {
           ? 'Cenę potwierdzamy po przyjęciu zamówienia.'
           : 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze.'
       } Podane kwoty są brutto.
+      ${
+        // Skąd 8%: obniżona stawka dotyczy montażu w lokalach mieszkalnych.
+        // Bez tego zdania klient z lokalu użytkowego dostałby kwotę, której
+        // nie da się dotrzymać.
+        szczegoly && (szczegoly.stawkaVat ?? 0.23) < 0.2
+          ? 'Stawka VAT 8% dla montażu w lokalach mieszkalnych (budownictwo objęte ' +
+            'społecznym programem mieszkaniowym); dla lokali użytkowych i firm 23%.'
+          : 'Stawka VAT 23% — przy odbiorze własnym sprzedajemy sam blat, bez usługi montażu.'
+      }
     </p>
     <p style="font-size:16px;line-height:1.6">
       Oddzwonimy w godzinach 8:00–18:00. Można też dzwonić bezpośrednio:

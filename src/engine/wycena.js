@@ -21,7 +21,17 @@ import { upakuj, opisPlyt } from './pakowanie.js';
  * @param {string} [dataISO] data (do promocji); domyślnie dziś
  */
 export function wycen(firma, w, dataISO) {
-  const vat = firma.vat ?? 0.23;
+  // Stawka VAT zależy od TEGO, CO SPRZEDAJEMY. Blat z montażem to usługa
+  // budowlana w lokalu mieszkalnym (8%), blat wydany z zakładu to dostawa
+  // towaru (23%). Patrz firms/_domyslne.js.
+  const odbiorWlasny = (w.opcje || {}).dostawa === 'odbior';
+  const vat = odbiorWlasny ? (firma.vatTowar ?? 0.23) : (firma.vatMontaz ?? 0.08);
+
+  // Uwaga: to NIE jest stawka, przy której podane są ceny źródłowe. Ceny
+  // publiczne dostawców (np. magazyn Interstone) są brutto przy 23% i tak
+  // trzeba je rozliczać na netto, niezależnie od stawki naszej sprzedaży.
+  const vatZrodla = firma.vatCenZrodlowych ?? 0.23;
+
   const doBrutto = (netto) => netto * (1 + vat);
   const pozycje = [];
   const ostrzezenia = [];
@@ -44,7 +54,9 @@ export function wycen(firma, w, dataISO) {
     // Bez ceny też liczymy: pokazujemy samą obróbkę i montaż.
     const podana = Number(w.cenaRecznaM2);
     if (podana > 0) {
-      cenaM2Netto = firma.cenaRecznaJest === 'brutto' ? podana / (1 + vat) : podana;
+      // Cena ze strony dostawcy jest brutto przy 23% — rozliczamy ją tą
+      // stawką, a dopiero potem doliczamy VAT właściwy dla naszej sprzedaży.
+      cenaM2Netto = firma.cenaRecznaJest === 'brutto' ? podana / (1 + vatZrodla) : podana;
     } else {
       cenaM2Netto = 0;
       materialDoUstalenia = true;
@@ -127,8 +139,7 @@ export function wycen(firma, w, dataISO) {
   // ---------- 2. robocizna (zawsze) ----------
   // Odbiór własny z zakładu: klient sam odbiera gotowy blat. Odpada wtedy
   // wszystko, co dotyczy dojazdu i montażu — reszta produkcji bez zmian.
-  const odbiorWlasny = (w.opcje || {}).dostawa === 'odbior';
-
+  // (`odbiorWlasny` policzone na górze, bo decyduje też o stawce VAT.)
   for (const r of firma.robocizna || []) {
     if (r.tylkoZMontazem && odbiorWlasny) continue;
 
@@ -244,6 +255,11 @@ export function wycen(firma, w, dataISO) {
     // o odpowiedzialności za wymiary — patrz firms/_domyslne.js.
     odbiorWlasny,
     razem,
+    // Rozbicie podatkowe dla maila firmowego. Wszystkie pozycje są brutto
+    // przy tej samej stawce, więc netto liczy się jednym dzieleniem.
+    stawkaVat: vat,
+    razemNetto: razem / (1 + vat),
+    kwotaVat: razem - razem / (1 + vat),
     razemZaokr: Math.round(razem / 50) * 50,
     // Klientowi podajemy WIDEŁKI, nie jedną kwotę — to wycena bez pomiaru.
     widelki: {

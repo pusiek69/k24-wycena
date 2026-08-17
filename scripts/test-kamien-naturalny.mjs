@@ -31,7 +31,7 @@ const NATURALNY = {
   cenaRecznaJest: 'brutto',
   rozliczenieMaterialu: 'plyty',
   vat: 0.23,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
   plyta: { w: 300, h: 180, polowkaDozwolona: false },
   robocizna: ROBOCIZNA,
   opcje: [],

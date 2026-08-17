@@ -96,7 +96,9 @@ function przygotujDekory(f) {
 
 function rysujDekory(box, lista, stan, a, f) {
   box.replaceChildren();
-  const vat = 1 + (f.vat ?? 0.23);
+  // Ceny przy dekorach pokazujemy dla wariantu standardowego, czyli
+  // z montażem — a tam obowiązuje stawka 8%.
+  const vat = 1 + (f.vatMontaz ?? 0.08);
   const q = uprosc(stan.szukaj || '');
   const widoczne = q ? lista.filter((p) => uprosc(p.nazwa).includes(q)) : lista;
 
@@ -378,7 +380,8 @@ export function krokObrobki(stan, a) {
 }
 
 function opcjaWidok(o, stan, a, f) {
-  const vat = 1 + (f.vat ?? 0.23);
+  // Jak wyżej: podglądowe kwoty przy opcjach liczymy stawką montażową.
+  const vat = 1 + (f.vatMontaz ?? 0.08);
   const cenaBrutto = (c) => ((f.cenyUslug || 'brutto') === 'netto' ? c * vat : c);
 
   if (o.typ === 'wybor') {

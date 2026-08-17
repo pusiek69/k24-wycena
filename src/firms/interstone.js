@@ -1,4 +1,4 @@
-import { VAT, ROBOCIZNA, OPCJE } from './_domyslne.js';
+import { VAT, VAT_TOWAR, ROBOCIZNA, OPCJE } from './_domyslne.js';
 
 /**
  * INTERSTONE — KAMIEŃ NATURALNY (granit, marmur, kwarcyt) + spieki Laminam
@@ -56,7 +56,17 @@ export default {
   ],
 
   vat: VAT,
-  cenyUslug: 'brutto',
+  /*
+   * Ceny ze stanu magazynowego są brutto przy 23% — to dostawa towaru
+   * od dostawcy do nas. Nasza sprzedaż może mieć inną stawkę (8% przy blacie
+   * z montażem), więc rozliczenie na netto MUSI iść po 23%, inaczej cena
+   * płyty sama by się zmieniła przy zmianie wariantu.
+   *
+   * Dowód, że to brutto przy 23%, jest w komentarzu na górze pliku:
+   * kwoty ze strony dzielą się przez 1,23 na równe złote.
+   */
+  vatCenZrodlowych: VAT_TOWAR,
+  cenyUslug: 'netto',
   plyta: { w: 300, h: 180, polowkaDozwolona: true },
   narzutOdpad: 0.15, // kamień naturalny — większy odpad (rysunek, pęknięcia, dobór)
 

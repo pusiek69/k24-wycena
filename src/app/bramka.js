@@ -308,6 +308,11 @@ export function szczegolyWyceny(w) {
     materialBrutto: Math.round(w.materialBrutto || 0),
     uslugiBrutto: Math.round(w.uslugiBrutto || 0),
     razem: Math.round(w.razem || 0),
+    // Rozbicie podatkowe — do maila firmowego. Stawka zależy od wariantu:
+    // 8% przy montażu w lokalu mieszkalnym, 23% przy odbiorze własnym.
+    stawkaVat: w.stawkaVat ?? 0.23,
+    razemNetto: Math.round(w.razemNetto || 0),
+    kwotaVat: Math.round(w.kwotaVat || 0),
     widelki: { od: Math.round(w.widelki?.od || 0), do: Math.round(w.widelki?.do || 0) },
     promo: w.promo ? { nazwa: w.promo.nazwa, do: w.promo.do } : null,
     oszczednosc: Math.round(w.oszczednosc || 0),

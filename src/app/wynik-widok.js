@@ -12,6 +12,41 @@ import { NOTA_ODBIOR } from '../firms/_domyslne.js';
 
 const TEL = '796 991 128';
 
+/** „8%" albo „23%" — bez ułamków, bo stawki są całkowite. */
+function procentVat(w) {
+  return `${Math.round((w.stawkaVat ?? 0.23) * 100)}%`;
+}
+
+/**
+ * Adnotacja o stawce VAT.
+ *
+ * Przy 8% klient MUSI wiedzieć, skąd ta stawka — obniżona dotyczy montażu
+ * w lokalach mieszkalnych objętych społecznym programem mieszkaniowym.
+ * Ten sam blat do lokalu użytkowego albo na firmę idzie po 23%, więc
+ * pokazanie samego „8%" bez warunku byłoby wprowadzaniem w błąd.
+ *
+ * Przy odbiorze własnym stawka jest zwykła i nie ma czego tłumaczyć —
+ * wystarczy powiedzieć, dlaczego to dostawa towaru, a nie usługa.
+ */
+function notaVat(w) {
+  const stawka = w.stawkaVat ?? 0.23;
+  return h(
+    'div',
+    { class: 'info info-vat' },
+    stawka < 0.2
+      ? [
+          h('b', {}, 'Stawka VAT 8%'),
+          ' dla montażu w lokalach mieszkalnych (budownictwo objęte społecznym ' +
+            'programem mieszkaniowym); dla lokali użytkowych i firm 23%.',
+        ]
+      : [
+          h('b', {}, 'Stawka VAT 23%'),
+          ' — przy odbiorze własnym sprzedajemy sam blat, bez usługi montażu. ' +
+            'Blat z montażem w mieszkaniu objęty jest stawką 8%.',
+        ]
+  );
+}
+
 /**
  * KARTA WYCENY — wspólna dla rozmowy i kreatora, żeby obie ścieżki
  * pokazywały dokładnie to samo.
@@ -54,6 +89,7 @@ export function kartaWyceny(w, ustawienia = {}) {
             ' — przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.',
           ]
     ),
+    notaVat(w),
     h(
       'div',
       { class: 'nav' },
@@ -352,7 +388,13 @@ function naglowek(w) {
         { class: 'k-val' },
         doUstalenia ? zl(w.razemZaokr) : `${zl(w.widelki.od)} – ${zl(w.widelki.do)}`
       ),
-      h('div', { class: 'k-note' }, doUstalenia ? '+ materiał wg wybranej płyty' : 'z VAT · bez zobowiązań')
+      h(
+        'div',
+        { class: 'k-note' },
+        doUstalenia
+          ? '+ materiał wg wybranej płyty'
+          : `z VAT ${procentVat(w)} · bez zobowiązań`
+      )
     )
   );
 }

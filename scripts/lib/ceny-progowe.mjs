@@ -43,7 +43,8 @@ export function progi(firmy, wycen, data) {
 
     for (const f of firmy) {
       if (!f.aktywna || f.trybCeny === 'reczna' || !pasuje(f)) continue;
-      const vat = 1 + (f.vat ?? 0.23);
+      // Progi na stronach dotyczą blatu z montażem, czyli stawki 8%.
+      const vat = 1 + (f.vatMontaz ?? 0.08);
 
       for (const [dekor, grubosci] of Object.entries(f.dekory || {})) {
         const gr = Object.keys(grubosci).filter((g) => !(f.pomijGrubosci || []).includes(g));

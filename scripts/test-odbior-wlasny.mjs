@@ -23,7 +23,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
   plyta: { w: 320, h: 160, polowkaDozwolona: true },
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
@@ -37,15 +37,23 @@ const licz = (odcinki, dostawa) =>
   wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje: { ...OPCJE_BAZOWE, dostawa } });
 const montaz = (w) => w.pozycje.find((p) => p.nazwa.startsWith('Transport i montaż'));
 
+/*
+ * Warianty różnią się nie tylko zakresem, ale i stawką VAT (8% z montażem,
+ * 23% przy odbiorze), więc kwot brutto nie da się odejmować wprost.
+ * Wszystkie porównania zakresu robimy na NETTO.
+ */
+const netto = (w) => w.razemNetto;
+const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
+
 /* ─────────────────────────────────────────────────────── różnica dokładna */
 
-test('różnica między wariantami to dokładnie baza + stawka × m²', () => {
+test('różnica netto między wariantami to dokładnie baza + stawka × m²', () => {
   const zMontazem = licz(LAZIENKA, 'montaz');
   const odbior = licz(LAZIENKA, 'odbior');
   const oczekiwana = BAZA + ZA_M2 * zMontazem.pak.m2Blatu;
   assert.ok(
-    Math.abs(zMontazem.razem - odbior.razem - oczekiwana) < 0.01,
-    `różnica ${zMontazem.razem - odbior.razem} ≠ ${oczekiwana}`
+    Math.abs(netto(zMontazem) - netto(odbior) - oczekiwana) < 0.01,
+    `różnica netto ${netto(zMontazem) - netto(odbior)} ≠ ${oczekiwana}`
   );
 });
 
@@ -70,21 +78,24 @@ test('montaż jest domyślny — brak wyboru działa jak dawniej', () => {
 
 /* ────────────────────────────────────────── reszta produkcji bez zmian */
 
-test('cięcie, otwory i zlew zostają identyczne', () => {
+test('cięcie, otwory i zlew zostają identyczne (netto)', () => {
   const zMontazem = licz(LAZIENKA, 'montaz');
   const odbior = licz(LAZIENKA, 'odbior');
   const bezMontazu = (w) =>
     w.pozycje
       .filter((p) => !p.nazwa.startsWith('Transport i montaż'))
-      .map((p) => `${p.nazwa}=${Math.round(p.brutto)}`)
+      .map((p) => `${p.nazwa}=${Math.round(nettoPozycji(w, p))}`)
       .sort();
   assert.deepEqual(bezMontazu(odbior), bezMontazu(zMontazem));
 });
 
-test('materiał bez zmian — odbiór dotyczy tylko usług', () => {
+test('materiał netto bez zmian — odbiór dotyczy tylko zakresu usług', () => {
   const a = licz(LAZIENKA, 'montaz');
   const b = licz(LAZIENKA, 'odbior');
-  assert.ok(Math.abs(a.materialBrutto - b.materialBrutto) < 0.01);
+  const materialNetto = (w) => w.materialBrutto / (1 + w.stawkaVat);
+  assert.ok(Math.abs(materialNetto(a) - materialNetto(b)) < 0.01);
+  // Brutto RÓŻNI SIĘ, bo różni się stawka — to nie błąd, tylko sedno zmiany.
+  assert.ok(a.materialBrutto < b.materialBrutto, 'przy 8% ta sama płyta jest tańsza brutto');
 });
 
 test('kamień naturalny przy odbiorze też traci tylko montaż', () => {
@@ -103,7 +114,7 @@ test('kamień naturalny przy odbiorze też traci tylko montaż', () => {
   const zMontazem = wycen(naturalny, dane('montaz'));
   const odbior = wycen(naturalny, dane('odbior'));
   const oczekiwana = BAZA + ZA_M2 * zMontazem.pak.m2Blatu;
-  assert.ok(Math.abs(zMontazem.razem - odbior.razem - oczekiwana) < 0.01);
+  assert.ok(Math.abs(netto(zMontazem) - netto(odbior) - oczekiwana) < 0.01);
 });
 
 /* ─────────────────────────────────────────────── karta i zastrzeżenie */

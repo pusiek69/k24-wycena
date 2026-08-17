@@ -63,5 +63,6 @@ export function odCenyM2(firma) {
       if (cena != null && cena < min) min = cena;
     }
   }
-  return Number.isFinite(min) ? min * (1 + (firma.vat ?? 0.23)) : null;
+  // Kwota od m2 dotyczy blatu z montażem, czyli stawki 8%.
+  return Number.isFinite(min) ? min * (1 + (firma.vatMontaz ?? 0.08)) : null;
 }

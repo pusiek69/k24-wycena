@@ -26,7 +26,7 @@ export default {
   },
 
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
 
   // Format domyślny — 12 mm tniemy z płyt 324 × 162 cm. Część pozycji 20 mm
   // ma płytę 324 × 159 cm i taki wpis niesie własny format (patrz cennik).

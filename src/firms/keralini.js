@@ -27,7 +27,7 @@ export default {
   },
 
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
   plyta: { ...PLYTA_STANDARD },
   narzutOdpad: 0.1,
 

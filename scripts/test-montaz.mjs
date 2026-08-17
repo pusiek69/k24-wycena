@@ -22,7 +22,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   vat: VAT,
-  cenyUslug: 'brutto',
+  cenyUslug: 'netto',
   plyta: { w: 320, h: 160, polowkaDozwolona: true },
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
@@ -32,6 +32,10 @@ const FIRMA = {
 const licz = (odcinki, opcje = {}) =>
   wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje });
 const montaz = (w) => w.pozycje.find((p) => p.nazwa.startsWith('Transport i montaż'));
+// Stawki w konfiguracji są NETTO — silnik dolicza VAT wg wariantu
+// (8% z montażem, 23% przy odbiorze). Formułę sprawdzamy więc na netto.
+const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
+const montazNetto = (w) => nettoPozycji(w, montaz(w));
 const oczekiwany = (m2) => BAZA + ZA_M2 * m2;
 
 /* ─────────────────────────────────────────────────────────── sama formuła */
@@ -40,7 +44,7 @@ test('montaż to baza plus stawka od powierzchni elementów', () => {
   const w = licz([{ gl: 60, dl: 300 }]);
   const m2 = w.pak.m2Blatu;
   assert.ok(Math.abs(m2 - 1.8) < 0.001, `powierzchnia blatu ${m2}`);
-  assert.ok(Math.abs(montaz(w).brutto - oczekiwany(1.8)) < 0.01);
+  assert.ok(Math.abs(montazNetto(w) - oczekiwany(1.8)) < 0.01);
 });
 
 test('liczy od powierzchni ELEMENTÓW, nie od zużytej płyty', () => {
@@ -51,7 +55,7 @@ test('liczy od powierzchni ELEMENTÓW, nie od zużytej płyty', () => {
     w.pak.m2Kupione > w.pak.m2Blatu * 3,
     `kupujemy dużo więcej niż blat: ${w.pak.m2Kupione} vs ${w.pak.m2Blatu}`
   );
-  assert.ok(Math.abs(montaz(w).brutto - oczekiwany(0.72)) < 0.01);
+  assert.ok(Math.abs(montazNetto(w) - oczekiwany(0.72)) < 0.01);
 });
 
 /* ────────────────────────────────────── baza raz, niezależnie od elementów */
@@ -98,7 +102,7 @@ test('metrażówka też dostaje bazę i stawkę od blatu', () => {
     narzutOdpad: 0.15,
   };
   const w = wycen(naturalny, { odcinki: [{ gl: 55, dl: 90 }], opcje: {}, cenaRecznaM2: 1200 });
-  assert.ok(Math.abs(montaz(w).brutto - oczekiwany(w.pak.m2Blatu)) < 0.01);
+  assert.ok(Math.abs(montazNetto(w) - oczekiwany(w.pak.m2Blatu)) < 0.01);
   // Metraż płatny jest większy od blatu (narzut na odpad) — montaż go ignoruje.
   assert.ok(w.m2Platne > w.pak.m2Blatu);
 });

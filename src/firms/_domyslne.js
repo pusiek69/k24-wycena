@@ -8,7 +8,23 @@
  * Pliki zaczynające się od „_" nie są traktowane jak firmy.
  */
 
-export const VAT = 0.23;
+/*
+ * STAWKI VAT — zależą od tego, co sprzedajemy, a nie od materiału.
+ *
+ * Blat Z MONTAŻEM to usługa budowlana w obiekcie mieszkalnym objętym
+ * społecznym programem mieszkaniowym — 8%. Blat wydany z zakładu bez montażu
+ * to zwykła dostawa towaru — 23%. Ta sama płyta, dwie różne stawki, bo różni
+ * się przedmiot sprzedaży.
+ *
+ * 8% dotyczy lokali MIESZKALNYCH. Przy lokalu użytkowym, biurze czy zamówieniu
+ * na firmę obowiązuje 23% — dlatego karta klienta mówi o tym wprost, zamiast
+ * pokazywać 8% jak pewnik.
+ */
+export const VAT_MONTAZ = 0.08;
+export const VAT_TOWAR = 0.23;
+
+/** Stawka, przy której podane są ceny publiczne dostawców i stawki w cennikach. */
+export const VAT = VAT_TOWAR;
 
 export const ROBOCIZNA = [
   {
