@@ -216,7 +216,9 @@ export function wycen(firma, w, dataISO) {
   // bo to również robocizna, a nie narzut na materiał. Liczymy od powierzchni
   // ELEMENTÓW, nie kupionej płyty: klient nie ma wpływu na to, ile płyty zeszło
   // na odpad, a praca idzie w to, co faktycznie wyjeżdża do kuchni.
-  // Stawkę ustawia firma (`obrobkaNaturalnaZaM2`) — patrz firms/interstone.js.
+  // Podstawa (elementy, nie kupiona płyta) to świadoma decyzja z 17.08.2026 —
+  // zanim ją zmienisz, przeczytaj komentarz przy `obrobkaNaturalnaZaM2`
+  // w firms/interstone.js. Tam też stawka.
   //
   // Kwota trafia do grupy „usługi", więc na karcie klienta wchodzi w „produkcję
   // i montaż" i nie pojawia się jako osobna cena. Rozbicie ze stawką widzi

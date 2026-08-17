@@ -72,7 +72,14 @@ export default {
    * Pierwotnie liczone jako 10% wartości płyt; od sierpnia 2026 stawka
    * od metra, bo dodatek pokrywa PRACĘ, a ta nie rośnie z ceną kamienia —
    * marmur za 1 800 zł/m² nie tnie się dwa razy dłużej niż ten za 900.
-   * Metry liczymy z elementów blatu, spójnie z montażem.
+   *
+   * PODSTAWA: metry ELEMENTÓW blatu (pak.m2Blatu), spójnie z montażem.
+   * To DECYZJA DAWIDA z 17.08.2026, podjęta świadomie — nie pomyłka
+   * i nie do „naprawienia" przy okazji innych prac. Kontrargument był
+   * znany i odrzucony: przy elementach dodatek prawie znika tam, gdzie go
+   * wprowadzaliśmy (łazienka 60×120 to 0,72 m², czyli 72 zł zamiast
+   * 486–1026 zł według starej formuły), bo płacimy i tak za całą płytę
+   * (5,4 m² → byłoby 540 zł). Zmiana podstawy wymaga zgody Dawida.
    *
    * Nie dotyczy konglomeratów i spieków sprzedawanych przez Interstone
    * (InterQ) — te tną się jak każdy inny konglomerat. Rozróżnienie robi
