@@ -63,6 +63,9 @@ export function uruchomCzat(root, akcje = {}) {
     szczegoly: false,
     odcinki: [],
     opcje: {},
+    // Ustawiane, gdy kamień naturalny czeka na wskazanie konkretnej płyty.
+    wyborPlyty: null,
+    kodPlyty: null,
   };
 
   const rozmowa = h('div', { class: 'czat', 'aria-live': 'polite' });
@@ -226,6 +229,7 @@ export function uruchomCzat(root, akcje = {}) {
     }
 
     stan.kodPlyty = kod;
+    stan.wyborPlyty = null;
     // `/magazyn` oddaje surową płytę (formatCm) — wycena pracuje na wariancie
     // z `plytaCm`, gdzie dłuższy bok stoi pierwszy.
     const wariant = wariantZPlyty(odp.plyta);
@@ -251,17 +255,11 @@ export function uruchomCzat(root, akcje = {}) {
    * Pokazujemy ją zamiast wyceny — świadomie, bo bez płyty nie ma ceny.
    */
   function pokazWyborPlyty(nazwa, odp, params, kod) {
-    rozmowa.querySelector('.pomocnik')?.remove();
     dodajWiadomosc('konsultant', komunikatKodu(odp.powodKodu, kod, odp));
-    rozmowa.append(
-      pomocnikPlyty(odp.plyty, nazwa, (wybrany) => {
-        stan.kodPlyty = wybrany;
-        // Ta sama droga co zwykle: wiadomość klienta wraca do konsultanta,
-        // a wycena rusza dopiero z kodem.
-        wyslij(`Wybieram płytę ${wybrany}.`);
-      })
-    );
-    przewin();
+    // Wybór płyty trzymamy w STANIE, a nie doklejamy do rozmowy: `finally`
+    // w odpowiedzKonsultanta i tak odświeża pomocnika, więc doklejony element
+    // zniknąłby ułamek sekundy po dodaniu.
+    stan.wyborPlyty = { nazwa, plyty: odp.plyty };
   }
 
   /** Co powiedzieć, gdy kodu brak albo jest zły. */
@@ -337,7 +335,16 @@ export function uruchomCzat(root, akcje = {}) {
     if (rozmowa.querySelector('.bramka')) return;
 
     let el = null;
-    if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
+    // Kamień naturalny czeka na wskazanie płyty — nic innego nie ma wtedy sensu.
+    if (stan.wyborPlyty)
+      el = pomocnikPlyty(stan.wyborPlyty.plyty, stan.wyborPlyty.nazwa, (wybrany) => {
+        stan.kodPlyty = wybrany;
+        stan.wyborPlyty = null;
+        // Ta sama droga co zwykle: wiadomość klienta wraca do konsultanta,
+        // a wycena rusza dopiero z kodem.
+        wyslij(`Wybieram płytę ${wybrany}.`);
+      });
+    else if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
     else if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
     else if (!stan.dekor) el = pomocnikDekor(stan.material, wybrano);
