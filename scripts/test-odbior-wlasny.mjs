@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE, VAT, NOTA_ODBIOR } from '../src/firms/_domyslne.js';
 
-const BAZA = 1500;
+const BAZA = 800;
 const ZA_M2 = 200;
 
 const FIRMA = {

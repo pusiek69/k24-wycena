@@ -35,7 +35,8 @@ export const ROBOCIZNA = [
   {
     id: 'montaz',
     label: 'Transport i montaż u klienta',
-    baza: 1500,
+    // 1500 zł przy wprowadzeniu formuły, 800 zł od 17.08.2026 (korekta Dawida).
+    baza: 800,
     cena: 200,
     per: 'm2blatu',
     // Odpada w całości przy odbiorze własnym z zakładu — razem z bazą,

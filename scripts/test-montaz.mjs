@@ -1,5 +1,5 @@
 /**
- * Montaż: baza 1500 zł raz na zamówienie + 200 zł/m² powierzchni elementów.
+ * Montaż: baza 800 zł raz na zamówienie + 200 zł/m² powierzchni elementów.
  *
  *   node --test scripts/test-montaz.mjs
  *
@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE, VAT } from '../src/firms/_domyslne.js';
 
-const BAZA = 1500;
+const BAZA = 800;
 const ZA_M2 = 200;
 
 const FIRMA = {
@@ -111,7 +111,7 @@ test('klient nie widzi stawki montażu, firma widzi rozbicie', () => {
   const m = montaz(w);
   assert.doesNotMatch(m.detal, /zł/, 'w detalu dla klienta nie może być kwoty');
   assert.match(m.detal, /m²/, 'ilość zostaje');
-  assert.match(m.detalFirmowy, /baza 1 ?500 zł \+ .* m² × 200 zł/);
+  assert.match(m.detalFirmowy, new RegExp(`baza ${BAZA} zł \\+ .* m² × ${ZA_M2} zł`));
 });
 
 test('karta klienta nadal ma tylko dwie grupy kwot', () => {
