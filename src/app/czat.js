@@ -374,29 +374,45 @@ export function uruchomCzat(root, akcje = {}) {
    * najpierw próbujemy z nazwą, którą już znamy z rozmowy.
    */
   async function podajKodRecznie(kod) {
-    const nazwa = stan.nazwaKamienia;
-    if (nazwa) {
-      // Znamy wzór — magazyn ma czego szukać, więc kod da się sprawdzić.
-      stan.kodPlyty = kod;
-      wyslij(`Wybieram płytę ${kod} — ${nazwa}.`);
+    /*
+     * Kod wystarcza — magazyn indeksuje matnr, więc szukamy po samym kodzie
+     * i nie musimy pytać klienta o nazwę wzoru. (Przez chwilę było odwrotnie:
+     * wydawało się, że wyszukiwarka kodów nie zna, ale to nasz własny filtr
+     * trafień kasował wynik, bo porównywał frazę tylko z nazwą kamienia.)
+     */
+    stan.szukamPlyt = true;
+    rozmowa.querySelector('.pomocnik')?.remove();
+    dodajWiadomosc('klient', `Wybieram płytę o kodzie ${kod}.`);
+    historia.push({ rola: 'user', tresc: `Wybieram płytę o kodzie ${kod}.` });
+    const pisze = wskaznikPisania();
+    rozmowa.append(pisze);
+    przewin();
+
+    let odp = { ok: false };
+    try {
+      odp = await sprawdzMagazyn(kod, kod);
+    } catch {
+      /* obsłużone niżej */
+    }
+    pisze.remove();
+    stan.szukamPlyt = false;
+
+    if (!odp.ok || !odp.plyta) {
+      dodajWiadomosc('konsultant', komunikatKodu(odp.powodKodu, kod, odp));
+      historia.push({ rola: 'assistant', tresc: `Kod ${kod} nie trafił w wolną płytę.` });
+      odswiezPomocnika();
+      przewin();
       return;
     }
 
-    /*
-     * Bez nazwy kamienia kodu NIE DA SIĘ sprawdzić — wyszukiwarka Interstone
-     * nie zna kodów, szuka tylko po nazwie. Nie ustawiamy więc `kodPlyty`,
-     * bo klient przeszedłby dalej z kodem, którego nikt nie zweryfikował.
-     * Kod czeka, a my prosimy o nazwę wzoru i dopiero wtedy go dopasujemy.
-     */
-    stan.kodOczekujacy = kod;
-    dodajWiadomosc(
-      'konsultant',
-      `Zapisałem kod ${kod}. Żeby znaleźć tę płytę w magazynie, potrzebuję jeszcze nazwy wzoru — ` +
-        'jest napisana nad zdjęciem płyty (np. CALACATTA BRASIL). Proszę ją podać albo kliknąć poniżej.'
-    );
-    historia.push({ rola: 'assistant', tresc: `Klient podał kod ${kod}, czekam na nazwę wzoru.` });
-    odswiezPomocnika();
+    stan.kodPlyty = kod;
+    stan.nazwaKamienia = odp.plyta.nazwa || stan.nazwaKamienia;
+    if (odp.plyta.nazwa) stan.dekor = odp.plyta.nazwa;
+    stan.wyborPlyty = null;
+    rozmowa.append(kartaWybranejPlyty(odp.plyta, kod));
     przewin();
+
+    await odpowiedzKonsultanta();
   }
 
   /** Co powiedzieć, gdy kodu brak albo jest zły. */

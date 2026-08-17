@@ -236,24 +236,52 @@ export function oczyscFraze(fraza) {
  * sprowadzamy wszystko do jednej postaci: WIELKIE LITERY, jeden dywiz,
  * bez spacji.
  *
- * ⚠ Wyszukiwarka Interstone NIE znajduje płyt po kodzie — `search=STON000244`
- * zwraca zero wyników. Kodu nie da się więc sprawdzić samego z siebie;
- * zawsze potrzebujemy nazwy kamienia, po której pobieramy płyty tego wzoru
- * i dopiero wśród nich szukamy kodu. Stąd `znajdzPoKodzie(plyty, kod)`,
- * a nie „pobierz płytę po kodzie".
+ * Wyszukiwarka Interstone INDEKSUJE kody — `search=86421` oddaje dokładnie
+ * tę jedną płytę. Przez pewien czas było tu napisane odwrotnie: zera zwracał
+ * nie magazyn, tylko nasz własny filtr `odsiejNietrafione`, który porównywał
+ * frazę wyłącznie z nazwą kamienia i kasował trafienie po kodzie.
+ *
+ * Format jest stały: 4 litery + 6 cyfr + 5 cyfr (sprawdzone na 544 kodach
+ * ze stanu magazynowego). Prefiks bywa różny — STON to kamień naturalny,
+ * ale są też LAMF (Laminam) i IDYFN — dlatego nie zawężamy go do „STON".
  */
 export function normalizujKod(kod) {
   const s = String(kod ?? '')
     .toUpperCase()
     .replace(/[‐-―−]/g, '-') // myślniki typograficzne → dywiz
-    .replace(/[^A-Z0-9-]/g, '')
-    .replace(/-+/g, '-');
-  return /^STON\d{4,}-\d{3,}$/.test(s) ? s : '';
+    // Wszystko, co nie jest literą ani cyfrą, traktujemy jak separator:
+    // klient wpisuje spację, podkreślnik, ukośnik albo kropkę.
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (/^[A-Z]{2,6}\d{4,}-\d{3,}$/.test(s)) return s;
+
+  // Zapis bez żadnego separatora („STON00062386421"). Numer płyty to
+  // ostatnie 5 cyfr — reszta jest numerem bloku.
+  const bezMyslnika = s.replace(/-/g, '');
+  const m = bezMyslnika.match(/^([A-Z]{2,6}\d{4,})(\d{5})$/);
+  return m ? `${m[1]}-${m[2]}` : '';
 }
 
 /** Czy tekst wygląda na kod płyty (sam format, bez sprawdzania magazynu). */
 export function wygladaJakKod(kod) {
   return normalizujKod(kod) !== '';
+}
+
+/**
+ * Numer płyty z kodu: „STON000623 - 86421" → „86421".
+ *
+ * To NAJLEPSZA fraza do wyszukiwania. Sprawdzone na żywym magazynie:
+ *   search=86421              → 1 karta, dokładnie ta płyta,
+ *   search=STON000623         → 8 kart (cały blok),
+ *   search=STON000623-86421   → 8 kart, a nasz filtr trafień gubi z nich
+ *                               wszystko, bo Interstone inaczej tokenizuje
+ *                               pełny kod niż sam numer.
+ * Dlatego przy szukaniu po kodzie pytamy numerem, a nie całym kodem.
+ */
+export function numerPlytyZKodu(kod) {
+  const s = normalizujKod(kod);
+  return s ? s.split('-')[1] : '';
 }
 
 /** Płyta o podanym kodzie spośród pobranych. Zwraca null, gdy jej nie ma. */
@@ -359,7 +387,13 @@ export function odsiejNietrafione(plyty, fraza) {
   if (!slowa.length) return plyty;
   return plyty.filter((p) => {
     const nazwa = uprosc(p.nazwa);
-    return slowa.every((w) => nazwa.includes(w));
+    // Fraza bywa KODEM PŁYTY, nie nazwą kamienia — wyszukiwarka Interstone
+    // indeksuje matnr i oddaje wtedy właściwą kartę. Bez tego warunku
+    // sami kasowaliśmy trafienie, bo „STON000623" nie występuje w nazwie.
+    // Kod porównujemy bez separatorów, żeby „STON000623 - 86421",
+    // „ston000623-86421" i „86421" trafiały w to samo.
+    const kod = uprosc(String(p.kod || '')).replace(/[^a-z0-9]/g, '');
+    return slowa.every((w) => nazwa.includes(w) || kod.includes(w));
   });
 }
 
@@ -434,7 +468,7 @@ async function pobierzStrone(fraza, strona) {
  * błędne wyniki. Kosztowało nas to raz: po naprawie paginacji konsultant
  * dalej twierdził, że nie ma naturalnego Taj Mahal, bo czytał cache.
  */
-const WERSJA_CACHE = 3; // 3: parser zwraca zdjęcia płyt (17.08.2026)
+const WERSJA_CACHE = 4; // 4: filtr trafień uwzględnia kod płyty (17.08.2026)
 
 const kluczCache = (fraza) =>
   new Request(

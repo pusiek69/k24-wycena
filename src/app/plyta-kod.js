@@ -25,9 +25,16 @@ export function normalizujKodPlyty(kod) {
   const s = String(kod ?? '')
     .toUpperCase()
     .replace(/[‐-―−]/g, '-')
-    .replace(/[^A-Z0-9-]/g, '')
-    .replace(/-+/g, '-');
-  return /^STON\d{4,}-\d{3,}$/.test(s) ? s : '';
+    // Każdy znak niebędący literą ani cyfrą to separator: spacja, podkreślnik,
+    // ukośnik, kropka. Klient przepisuje kod ręcznie i robi to na swój sposób.
+    .replace(/[^A-Z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (/^[A-Z]{2,6}\d{4,}-\d{3,}$/.test(s)) return s;
+
+  // Zapis bez separatora („STON00062386421") — numer płyty to ostatnie 5 cyfr.
+  const m = s.replace(/-/g, '').match(/^([A-Z]{2,6}\d{4,})(\d{5})$/);
+  return m ? `${m[1]}-${m[2]}` : '';
 }
 
 /**

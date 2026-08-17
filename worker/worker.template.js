@@ -23,7 +23,14 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
-import { pobierzMagazyn, opiszPlyty, pogrupuj, wygladaJakKod, znajdzPoKodzie } from './magazyn.js';
+import {
+  pobierzMagazyn,
+  opiszPlyty,
+  pogrupuj,
+  wygladaJakKod,
+  znajdzPoKodzie,
+  numerPlytyZKodu,
+} from './magazyn.js';
 
 const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 1000;
@@ -217,7 +224,15 @@ async function anthropic(env, messages, narzedzia) {
  */
 async function obsluzMagazyn(request, cors, ctx) {
   const dane = await request.json().catch(() => null);
-  const wynik = await pobierzMagazyn(dane?.fraza, ctx);
+
+  /*
+   * Gdy znamy kod, szukamy SAMYM NUMEREM PŁYTY — magazyn indeksuje matnr
+   * i oddaje wtedy dokładnie jedną kartę. Nazwa kamienia nie jest do niczego
+   * potrzebna, więc nie musimy o nią prosić klienta.
+   */
+  const numer = numerPlytyZKodu(dane?.kod);
+  const fraza = numer || dane?.fraza || '';
+  const wynik = await pobierzMagazyn(fraza, ctx);
 
   // Kod konkretnej płyty sprawdzamy WŚRÓD pobranych — wyszukiwarka Interstone
   // nie umie znaleźć płyty po kodzie, więc nazwa kamienia jest niezbędna.

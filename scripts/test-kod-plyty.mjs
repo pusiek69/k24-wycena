@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE } from '../src/firms/_domyslne.js';
 import { normalizujKod, znajdzPoKodzie, wygladaJakKod } from '../worker/magazyn.js';
-import { wariantZPlyty } from '../src/app/plyta-kod.js';
+import { wariantZPlyty, normalizujKodPlyty } from '../src/app/plyta-kod.js';
 import { wczytajSilnik } from './lib/silnik.mjs';
 
 const NATURALNY = {
@@ -117,18 +117,44 @@ test('spiek i konglomerat z Interstone też liczą się bez kodu', () => {
 /* ──────────────────────────────────────────── format i szukanie kodu */
 
 test('kod normalizuje się niezależnie od zapisu klienta', () => {
+  // Zgłoszenie Dawida: „STON000623 - 86421" ze spacjami wokół myślnika.
+  // Klient przepisuje kod ręcznie ze strony magazynu i robi to po swojemu.
   for (const zapis of [
     'STON000334 - 84224',
     'ston000334-84224',
     ' STON000334  -  84224 ',
     'STON000334–84224', // półpauza zamiast dywizu
+    'STON000334 84224', // sama spacja, bez myślnika
+    'STON000334_84224',
+    'STON000334/84224',
+    'STON000334.84224',
+    'STON00033484224', // zupełnie bez separatora
+    'ston000334 – 84224',
   ]) {
     assert.equal(normalizujKod(zapis), KOD, `zapis: ${zapis}`);
+    assert.equal(normalizujKodPlyty(zapis), KOD, `front, zapis: ${zapis}`);
   }
 });
 
+test('front i worker normalizują identycznie', () => {
+  // Dwie kopie tej samej zasady — front sprawdza format bez sieci,
+  // worker przed odpytaniem magazynu. Rozjazd oznaczałby kod przyjęty
+  // w polu i odrzucony przy wyszukiwaniu.
+  for (const zapis of ['LAMF000046 - 86549', 'idyfn00241-84488', 'STON000623 86421', 'bzdura', '']) {
+    assert.equal(normalizujKod(zapis), normalizujKodPlyty(zapis), `zapis: ${JSON.stringify(zapis)}`);
+  }
+});
+
+test('prefiks nie musi być STON — magazyn ma też LAMF i IDYFN', () => {
+  assert.equal(normalizujKod('LAMF000046 - 86549'), 'LAMF000046-86549');
+  assert.equal(normalizujKod('IDYFN00241 - 84488'), 'IDYFN00241-84488');
+});
+
 test('to, co nie jest kodem, odpada', () => {
-  for (const zly of ['', null, 'calacatta', 'STON334-1', '000334-84224', 'STONE000334-84224']) {
+  // „STONE000334-84224" NIE jest tu odrzucane: literówki w prefiksie nie da
+  // się odróżnić od nieznanej serii, więc format przepuszczamy, a brak takiej
+  // płyty wychodzi dopiero przy wyszukiwaniu — z czytelnym komunikatem.
+  for (const zly of ['', null, 'calacatta', 'STON334-1', '000334-84224', '84224']) {
     assert.equal(normalizujKod(zly), '', `zapis: ${JSON.stringify(zly)}`);
     assert.equal(wygladaJakKod(zly), false);
   }
