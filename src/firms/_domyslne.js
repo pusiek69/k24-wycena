@@ -73,6 +73,10 @@ export const OPCJE = [
     label: 'Zlew',
     opis: 'Wycięcie otworu pod zlew klienta — gotowych zlewów nie sprzedajemy.',
     typ: 'wybor',
+    // Liczba wycięć siedzi w osobnym polu `zlewy` (domyślnie 1). W kuchni
+    // zlew jest zwykle jeden, ale w łazience dwie umywalki obok siebie
+    // to normalna zabudowa i każde wycięcie to osobna robota.
+    iloscZ: 'zlewy',
     domyslnie: 'podblat',
     wymagane: true,
     warianty: [

@@ -6,6 +6,16 @@ import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
 import { wybierzWariant, wycenZMagazynu } from './wycena-naturalny.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import {
+  odcinkiZParametrow,
+  odczytajSzczegoly,
+  odczytajWymiary,
+  opcjeZParametrow,
+  opcjeZeSzczegolow,
+  przelozParametry,
+  slugMaterialu,
+} from './parametry.js';
+import {
+  pomocnikPomieszczenie,
   pomocnikRodzaj,
   pomocnikMaterial,
   pomocnikDekor,
@@ -37,28 +47,13 @@ const POWITANIE =
   'i policzyć orientacyjny koszt blatu. Z czego ma być blat?';
 
 /** Nazwy kolekcji z promptu → pliki firm w aplikacji. */
-const MATERIALY = {
-  avant_quartz: 'avant-quartz',
-  'avant-quartz': 'avant-quartz',
-  caesarstone: 'caesarstone',
-  technistone: 'technistone',
-  keralini: 'keralini',
-  marazzi: 'marazzi',
-  grande: 'marazzi',
-  atlas_plan: 'atlas-plan',
-  'atlas-plan': 'atlas-plan',
-  atlasplan: 'atlas-plan',
-  atlas: 'atlas-plan',
-  kamien_naturalny: 'interstone',
-  interstone: 'interstone',
-};
-
 export function uruchomCzat(root, akcje = {}) {
   const historia = [];
   let zajety = false;
 
   // Na jakim etapie jest klient — po tym wiemy, co mu podsunąć pod odpowiedzią.
   const stan = {
+    pomieszczenie: null,
     rodzaj: null,
     material: null,
     dekor: null,
@@ -154,8 +149,15 @@ export function uruchomCzat(root, akcje = {}) {
   /* ------------------------------------------------------------- wycena */
 
   async function policzWycene(params) {
+    // Pomieszczenie decyduje o płycie grzewczej i o tym, czy odbiór własny
+    // jest w ogóle możliwy. Konsultant ma je podawać, ale gdy zapomni —
+    // a klient przeszedł kreatorem — bierzemy je stąd, zamiast zgadywać.
+    params = { ...(params || {}) };
+    if (!params.pomieszczenie && stan.pomieszczenie) params.pomieszczenie = stan.pomieszczenie;
+    else if (params.pomieszczenie && !stan.pomieszczenie) stan.pomieszczenie = params.pomieszczenie;
+
     // Kamień naturalny: cenę i wymiar płyty bierzemy z magazynu na żywo.
-    if (MATERIALY[String(params?.material || '').toLowerCase()] === 'interstone') {
+    if (slugMaterialu(params?.material) === 'interstone') {
       if (await wycenaZMagazynu(params)) return;
       dodajWiadomosc(
         'konsultant',
@@ -259,12 +261,7 @@ export function uruchomCzat(root, akcje = {}) {
       dekor: stan.dekor,
       grubosc: gruboscDomyslna(firma, stan.dekor),
       odcinki: stan.odcinki,
-      opcje: {
-        zlew: stan.opcje.nablatowy ? 'nablat' : 'podblat',
-        plyta: stan.opcje.licowana ? 'licowana' : 'nakladana',
-        otwory: stan.opcje.otwory ?? 1,
-        dostawa: stan.opcje.odbior ? 'odbior' : 'montaz',
-      },
+      opcje: opcjeZeSzczegolow(stan.opcje, stan.pomieszczenie),
     });
     if (!w.ok) return false;
 
@@ -299,11 +296,12 @@ export function uruchomCzat(root, akcje = {}) {
     if (rozmowa.querySelector('.bramka')) return;
 
     let el = null;
-    if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
+    if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
+    else if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
     else if (!stan.dekor) el = pomocnikDekor(stan.material, wybrano);
     else if (!stan.wymiary) el = pomocnikWymiary(wybrano);
-    else if (!stan.szczegoly) el = pomocnikSzczegoly(wybrano);
+    else if (!stan.szczegoly) el = pomocnikSzczegoly(wybrano, stan.pomieszczenie);
 
     if (el) {
       rozmowa.append(el);
@@ -313,6 +311,14 @@ export function uruchomCzat(root, akcje = {}) {
 
   /** Kliknięcie w pomocniku = wysłana wiadomość + przejście do kolejnego kroku. */
   function wybrano(wartosc, wiadomosc) {
+    // Krok „kuchnia czy łazienka" — od tego zależy zestaw dalszych pytań.
+    if (typeof wartosc === 'string' && wartosc.startsWith('pomieszczenie:')) {
+      stan.pomieszczenie = wartosc.slice(14);
+      zdarzenie('wybor_pomieszczenia', { pomieszczenie: stan.pomieszczenie });
+      wyslij(wiadomosc);
+      return;
+    }
+
     // Krok „rodzaj kamienia" — najpierw grupa, potem dopiero nazwy kolekcji.
     if (typeof wartosc === 'string' && wartosc.startsWith('rodzaj:')) {
       const rodzaj = wartosc.slice(7);
@@ -496,69 +502,6 @@ export function rozdziel(surowa) {
   return { tekst: String(akcja.message || pozaJsonem || '').trim(), akcja };
 }
 
-/**
- * Parametry z rozmowy → wejście kalkulatora.
- * W rozmowie odcinki są opisane jako {d: głębokość, w: długość} w cm.
- */
-/** Odcinki z parametrów konsultanta: {d: głębokość, w: długość} w cm. */
-export function odcinkiZParametrow(params) {
-  return (Array.isArray(params?.odcinki) ? params.odcinki : [])
-    .map((o) => ({
-      dl: Number(o?.w ?? o?.dl) || 0,
-      gl: Number(o?.d ?? o?.gl) || 60, // domyślna głębokość blatu to 60 cm
-    }))
-    .filter((o) => o.dl > 0);
-}
-
-/** Opcje obróbki z parametrów konsultanta — wspólne dla wszystkich materiałów. */
-export function opcjeZParametrow(params) {
-  return {
-    // Wycięcie pod zlew i pod płytę grzewczą są w każdej wycenie.
-    zlew: 'podblat',
-    plyta: params?.indukcja_licowana ? 'licowana' : 'nakladana',
-    // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew.
-    otwory: liczbaOtworow(params || {}),
-    // Konsultant przekazuje wybór montażu polem odbior_wlasny.
-    dostawa: params?.odbior_wlasny ? 'odbior' : 'montaz',
-    mat: !!params?.wykonczenie_matowe,
-    listwa: Number(params?.listwa_mb) || 0,
-    krawedz: Number(params?.krawedz_mb) || 0,
-  };
-}
-
-export function przelozParametry(params) {
-  if (!params) return null;
-  const slug = MATERIALY[String(params.material || '').toLowerCase()];
-  // Kamień naturalny ma własną ścieżkę — cenę bierzemy z magazynu na żywo,
-  // bo w cenniku go nie ma (patrz app/wycena-naturalny.js).
-  if (!slug || slug === 'interstone') return null;
-
-  const odcinki = odcinkiZParametrow(params);
-  if (!odcinki.length) return null;
-
-  return {
-    slug,
-    dane: {
-      dekor: params.dekor,
-      grubosc: String(params.grubosc || (slug === 'keralini' ? '12' : '20')),
-      odcinki,
-      opcje: opcjeZParametrow(params),
-    },
-  };
-}
-
-/**
- * Liczba otworów z parametrów konsultanta.
- * `otwor_bateria` to stary parametr sprzed uogólnienia — przyjmujemy go nadal,
- * żeby starsza odpowiedź konsultanta nie wywróciła wyceny.
- */
-function liczbaOtworow(params) {
-  const n = Number(params.otwory);
-  if (Number.isFinite(n) && n >= 0) return Math.min(6, Math.round(n));
-  if (params.otwor_bateria === false) return 0;
-  return 1;
-}
-
 function akapity(tekst) {
   return String(tekst)
     .split(/\n+/)
@@ -579,31 +522,4 @@ function linkuj(linia) {
   }
   if (ostatni < linia.length) czesci.push(linia.slice(ostatni));
   return czesci;
-}
-
-/** „Wymiary blatu: 60×300 cm, 60×180 cm." → [{gl:60,dl:300},{gl:60,dl:180}] */
-export function odczytajWymiary(wiadomosc) {
-  const wynik = [];
-  const wzor = /(\d{2,3})\s*[×x]\s*(\d{2,4})/g;
-  let m;
-  while ((m = wzor.exec(String(wiadomosc))) !== null) {
-    wynik.push({ gl: Number(m[1]), dl: Number(m[2]) });
-  }
-  return wynik;
-}
-
-/** „Zlew podwieszany, płyta indukcyjna licowana z blatem." → {licowana:true} */
-export function odczytajSzczegoly(wiadomosc) {
-  const t = String(wiadomosc).toLowerCase();
-  // „otwory w blacie: 2" — z pomocnika; przy pisaniu ręcznym bierzemy
-  // pierwszą liczbę stojącą przy słowie „otwor".
-  const m = t.match(/otwor\w*[^0-9]{0,20}(\d)/) || t.match(/(\d)\s*otwor/);
-  return {
-    licowana: t.includes('licowana'),
-    nablatowy: t.includes('nablatowy'),
-    otwory: m ? Math.min(6, Number(m[1])) : undefined,
-    // „bez montażu — odbiór własny" z pomocnika; przy pisaniu ręcznym
-    // łapiemy też naturalne sformułowania klienta.
-    odbior: /odbi(o|ó)r w(l|ł)asny|bez monta(z|ż)u|odbior(e|ę) sam|sam odbior/.test(t),
-  };
 }

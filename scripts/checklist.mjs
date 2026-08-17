@@ -283,5 +283,36 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
   );
 }
 
+/* 19. Kuchnia a łazienka — dwie ścieżki, dwa zestawy pytań
+   Łazienka nie ma płyty grzewczej, a odbiór własny jest wariantem wyłącznie
+   łazienkowym: blat kuchenny wymaga naszego pomiaru. Obie reguły muszą trzymać
+   w KODZIE, a nie tylko w wytycznych — model bywa nieprecyzyjny, więc ostatnie
+   słowo ma `opcjeZParametrow`. */
+{
+  const par = czytaj('src/app/parametry.js');
+  const kreator = czytaj('src/app/pomocnicy.js');
+  const braki = [];
+
+  if (!/lazienka \? 'brak'/.test(par)) braki.push('łazienka wciąż może dostać płytę grzewczą');
+  if (!/lazienka && params\?\.odbior_wlasny \? 'odbior' : 'montaz'/.test(par))
+    braki.push('kuchnia nie jest zablokowana na montaż');
+  if (!/lazienka && szczegoly\.odbior \? 'odbior' : 'montaz'/.test(par))
+    braki.push('kreator nie blokuje odbioru w kuchni');
+  if (!kreator.includes('pomocnikPomieszczenie')) braki.push('kreator nie pyta o pomieszczenie');
+  if (prompt !== null) {
+    if (!prompt.includes('KROK 0 — kuchnia czy łazienka')) braki.push('konsultant nie pyta o pomieszczenie');
+    if (!prompt.includes('O PŁYTĘ INDUKCYJNĄ W ŁAZIENCE NIE PYTASZ'))
+      braki.push('konsultant może pytać o indukcję w łazience');
+    if (!prompt.includes('TYLKO BLATY ŁAZIENKOWE')) braki.push('konsultant może dać odbiór własny w kuchni');
+  }
+
+  ok(
+    19,
+    'kuchnia a łazienka: bez indukcji w łazience, bez odbioru w kuchni',
+    braki.length === 0,
+    braki.join('; ') || 'kreator, konsultant i kalkulator rozdzielone'
+  );
+}
+
 console.log(bledy ? `\n✗ Niezgodności: ${bledy}` : '\n✓ Checklista §8 — wszystko zgodne ze specyfikacją');
 process.exit(bledy ? 1 : 0);

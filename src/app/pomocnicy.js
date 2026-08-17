@@ -41,7 +41,55 @@ const RODZAJE = [
 ];
 
 /**
- * 1. Rodzaj kamienia — pierwszy krok.
+ * 0. Pomieszczenie — o co w ogóle chodzi.
+ *
+ * Kuchnia i łazienka różnią się na tyle, że dalsze pytania nie mogą być te
+ * same: w łazience nie ma płyty indukcyjnej, bywają dwie umywalki, a klient
+ * częściej ma już gotowy blat pod wymiar i chce go tylko odebrać. Pytanie jest
+ * pierwsze, bo od odpowiedzi zależy cała reszta kreatora.
+ */
+export function pomocnikPomieszczenie(wyslij) {
+  const wybory = [
+    {
+      id: 'kuchnia',
+      nazwa: 'Blat kuchenny',
+      krotki: 'Zabudowa kuchenna, wyspa, parapet przy oknie.',
+      opis: 'Pytamy o zlew, płytę indukcyjną i otwory. Zawsze z pomiarem i montażem.',
+      wiadomosc: 'Potrzebuję blatu kuchennego.',
+    },
+    {
+      id: 'lazienka',
+      nazwa: 'Blat łazienkowy',
+      krotki: 'Pod umywalkę, nablatową lub podwieszaną.',
+      opis: 'Pytamy o umywalki i otwory. Można też odebrać blat samemu, bez montażu.',
+      wiadomosc: 'Potrzebuję blatu łazienkowego.',
+    },
+  ];
+
+  return ramka(
+    'Blat do kuchni czy do łazienki?',
+    h(
+      'div',
+      { class: 'pom-karty' },
+      wybory.map((p) =>
+        h(
+          'button',
+          {
+            class: 'pom-karta',
+            type: 'button',
+            onclick: () => wyslij('pomieszczenie:' + p.id, p.wiadomosc),
+          },
+          h('span', { class: 'pom-karta-nazwa' }, p.nazwa),
+          h('span', { class: 'pom-karta-typ' }, p.krotki),
+          h('span', { class: 'pom-karta-opis' }, p.opis)
+        )
+      )
+    )
+  );
+}
+
+/**
+ * 1. Rodzaj kamienia — drugi krok.
  *
  * Wcześniej od razu leciała lista wszystkich firm i przy sześciu dostawcach
  * robiła się z tego ściana nazw, z których klient i tak nic nie rozumie.
@@ -249,7 +297,7 @@ export function pomocnikWymiary(wyslij) {
             rysuj();
           },
         },
-        '+ kolejny odcinek (kuchnia w L lub U)'
+        '+ kolejny odcinek (blat w L lub U)'
       )
     );
   };
@@ -272,17 +320,39 @@ export function pomocnikWymiary(wyslij) {
 }
 
 /**
- * 5. Szczegóły — trzy pytania na jednym ekranie.
+ * 5. Szczegóły — kilka pytań na jednym ekranie.
  *
- * Zlew, płyta indukcyjna i liczba otworów pytane są ZAWSZE, bo każde
- * z nich realnie zmienia cenę. Wszystkie mają podstawione typowe wartości,
- * więc klient, któremu się spieszy, klika jeden przycisk — ale pytanie
- * i tak zobaczył i świadomie je zaakceptował.
+ * Każde z nich realnie zmienia cenę i każde ma podstawioną typową wartość,
+ * więc klient, któremu się spieszy, klika jeden przycisk — ale pytanie i tak
+ * zobaczył i świadomie je zaakceptował.
+ *
+ * Zestaw pytań zależy od pomieszczenia:
+ *   • kuchnia  — zlew, płyta indukcyjna, otwory. Zawsze z montażem.
+ *   • łazienka — umywalka (rodzaj i liczba), otwory, montaż albo odbiór własny.
+ *     O płytę indukcyjną nie pytamy, bo w łazience jej nie ma.
  */
-export function pomocnikSzczegoly(wyslij) {
-  const wybor = { zlew: 'podwieszany', indukcja: 'nakładana', otwory: 1, dostawa: 'montaz' };
+export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
+  const lazienka = pomieszczenie === 'lazienka';
+  const wybor = {
+    zlew: lazienka ? 'podwieszana' : 'podwieszany',
+    zlewy: 1,
+    indukcja: 'nakładana',
+    otwory: 1,
+    dostawa: 'montaz',
+  };
 
-  const grupa = (etykieta, klucz, opcje) =>
+  /** Grupa przycisków, gdzie wartością jest sama etykieta. */
+  const grupa = (etykieta, klucz, opcje, podpowiedz) =>
+    grupaOgolna(
+      etykieta,
+      opcje.map((o) => [o, o]),
+      () => wybor[klucz],
+      (v) => (wybor[klucz] = v),
+      podpowiedz
+    );
+
+  /** Grupa przycisków, gdzie wartość i etykieta są różne. */
+  const grupaOgolna = (etykieta, pary, czytaj, ustaw, podpowiedz) =>
     h(
       'div',
       { class: 'pom-grupa' },
@@ -290,118 +360,90 @@ export function pomocnikSzczegoly(wyslij) {
       h(
         'div',
         { class: 'o-warianty' },
-        opcje.map((o) =>
+        pary.map(([wartosc, opis]) =>
           h(
             'button',
             {
-              class: 'wariant' + (wybor[klucz] === o ? ' sel' : ''),
+              class: 'wariant' + (czytaj() === wartosc ? ' sel' : ''),
               type: 'button',
               onclick: (e) => {
-                wybor[klucz] = o;
+                ustaw(wartosc);
                 [...e.target.parentElement.children].forEach((b) => b.classList.remove('sel'));
                 e.target.classList.add('sel');
               },
             },
-            o
-          )
-        )
-      )
-    );
-
-  // Liczba otworów: bateria, dozownik, gniazdko blatowe, przelew…
-  const otwory = h(
-    'div',
-    { class: 'pom-grupa' },
-    h('span', { class: 'pom-grupa-label' }, 'Otwory w blacie'),
-    h(
-      'div',
-      { class: 'o-warianty' },
-      [0, 1, 2, 3, 4, 5, 6].map((n) =>
-        h(
-          'button',
-          {
-            class: 'wariant' + (wybor.otwory === n ? ' sel' : ''),
-            type: 'button',
-            onclick: (e) => {
-              wybor.otwory = n;
-              [...e.target.parentElement.children].forEach((b) => b.classList.remove('sel'));
-              e.target.classList.add('sel');
-            },
-          },
-          n === 0 ? 'brak' : String(n)
-        )
-      )
-    ),
-    h(
-      'span',
-      { class: 'pom-podpowiedz' },
-      'Bateria, dozownik do płynu, gniazdko blatowe, przelew — każdy otwór liczymy osobno.'
-    )
-  );
-
-  return ramka(
-    'Kilka szczegółów i liczymy',
-    grupa('Zlew', 'zlew', ['podwieszany', 'nablatowy']),
-    grupa('Płyta indukcyjna', 'indukcja', ['nakładana', 'licowana z blatem']),
-    otwory,
-    // Odbiór własny zdejmuje z wyceny montaż i transport, ale przenosi na
-    // klienta odpowiedzialność za wymiary — dlatego podpowiedź mówi o tym
-    // wprost już przy wyborze, a nie dopiero na karcie z ceną.
-    h(
-      'div',
-      { class: 'pom-grupa' },
-      h('span', { class: 'pom-grupa-label' }, 'Montaż'),
-      h(
-        'div',
-        { class: 'o-warianty' },
-        [
-          ['montaz', 'z montażem u klienta'],
-          ['odbior', 'bez montażu — odbiór własny'],
-        ].map(([id, etykieta]) =>
-          h(
-            'button',
-            {
-              class: 'wariant' + (wybor.dostawa === id ? ' sel' : ''),
-              type: 'button',
-              onclick: (e) => {
-                wybor.dostawa = id;
-                [...e.target.parentElement.children].forEach((b) => b.classList.remove('sel'));
-                e.target.classList.add('sel');
-              },
-            },
-            etykieta
+            opis
           )
         )
       ),
-      h(
-        'span',
-        { class: 'pom-podpowiedz' },
-        'Przy odbiorze własnym nie robimy pomiaru — blat tniemy ściśle wg podanych wymiarów, ' +
-          'a odbiór jest w zakładzie przy ul. Szpitalnej 8 w Tarnobrzegu.'
-      )
-    ),
+      podpowiedz ? h('span', { class: 'pom-podpowiedz' }, podpowiedz) : null
+    );
+
+  const liczby = (od, ile) => Array.from({ length: ile }, (_, i) => od + i);
+
+  // Otwory: bateria, dozownik, gniazdko blatowe, przelew…
+  const otwory = grupaOgolna(
+    'Otwory w blacie',
+    liczby(0, 7).map((n) => [n, n === 0 ? 'brak' : String(n)]),
+    () => wybor.otwory,
+    (v) => (wybor.otwory = v),
+    lazienka
+      ? 'Bateria, dozownik, przelew — każdy otwór liczymy osobno.'
+      : 'Bateria, dozownik do płynu, gniazdko blatowe, przelew — każdy otwór liczymy osobno.'
+  );
+
+  // Odbiór własny zdejmuje z wyceny montaż i transport, ale przenosi na
+  // klienta odpowiedzialność za wymiary — dlatego podpowiedź mówi o tym
+  // wprost już przy wyborze, a nie dopiero na karcie z ceną. W kuchni tego
+  // wyboru nie ma: blat kuchenny montujemy zawsze, po własnym pomiarze.
+  const montaz = grupaOgolna(
+    'Montaż',
+    [
+      ['montaz', 'z montażem u klienta'],
+      ['odbior', 'bez montażu — odbiór własny'],
+    ],
+    () => wybor.dostawa,
+    (v) => (wybor.dostawa = v),
+    'Przy odbiorze własnym nie robimy pomiaru — blat tniemy ściśle wg podanych wymiarów, ' +
+      'a odbiór jest w zakładzie przy ul. Szpitalnej 8 w Tarnobrzegu.'
+  );
+
+  const opis = () =>
+    lazienka
+      ? `Umywalka ${wybor.zlew}, liczba umywalek: ${wybor.zlewy}, ` +
+        `otwory w blacie: ${wybor.otwory}, ` +
+        (wybor.dostawa === 'odbior'
+          ? 'bez montażu — odbiór własny z zakładu'
+          : 'z montażem u klienta') +
+        '. Proszę o wycenę blatu łazienkowego.'
+      : `Zlew ${wybor.zlew}, płyta indukcyjna ${wybor.indukcja}, ` +
+        `otwory w blacie: ${wybor.otwory}, z montażem u klienta. ` +
+        'Proszę o wycenę blatu kuchennego.';
+
+  return ramka(
+    'Kilka szczegółów i liczymy',
+    ...(lazienka
+      ? [
+          grupa('Umywalka', 'zlew', ['podwieszana', 'nablatowa']),
+          grupaOgolna(
+            'Liczba umywalek',
+            liczby(1, 3).map((n) => [n, String(n)]),
+            () => wybor.zlewy,
+            (v) => (wybor.zlewy = v),
+            'Każde wycięcie to osobna robota — przy dwóch umywalkach liczymy dwa.'
+          ),
+          otwory,
+          montaz,
+        ]
+      : [
+          grupa('Zlew', 'zlew', ['podwieszany', 'nablatowy']),
+          grupa('Płyta indukcyjna', 'indukcja', ['nakładana', 'licowana z blatem']),
+          otwory,
+        ]),
     h(
       'div',
       { class: 'nav' },
-      h(
-        'button',
-        {
-          class: 'btn',
-          type: 'button',
-          onclick: () =>
-            wyslij(
-              'szczegoly',
-              `Zlew ${wybor.zlew}, płyta indukcyjna ${wybor.indukcja}, ` +
-                `otwory w blacie: ${wybor.otwory}, ` +
-                (wybor.dostawa === 'odbior'
-                  ? 'bez montażu — odbiór własny z zakładu'
-                  : 'z montażem u klienta') +
-                '. Proszę o wycenę.'
-            ),
-        },
-        'Policz wycenę →'
-      )
-
+      h('button', { class: 'btn', type: 'button', onclick: () => wyslij('szczegoly', opis()) }, 'Policz wycenę →')
     )
   );
 }

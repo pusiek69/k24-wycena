@@ -165,10 +165,15 @@ export function wycen(firma, w, dataISO) {
     if (o.typ === 'wybor') {
       const wariant = (o.warianty || []).find((x) => x.id === v);
       if (!wariant || !wariant.cena) continue;
+      // Niektóre wycięcia bywają w blacie więcej niż raz — w łazience dwie
+      // umywalki obok siebie to normalna zabudowa. Liczbę bierzemy z osobnego
+      // pola (`o.iloscZ`), żeby rodzaj i sztuki zostały niezależne.
+      const sztuk = o.iloscZ ? Math.max(1, Math.round(Number(wybrane[o.iloscZ]) || 1)) : 1;
       pozycje.push({
         grupa: 'usługi',
         nazwa: wariant.label,
-        brutto: kwotaBrutto(wariant.cena, firma, vat) * mnoznik(o, pak, m2Platne),
+        detal: sztuk > 1 ? `${sztuk} szt.` : undefined,
+        brutto: kwotaBrutto(wariant.cena, firma, vat) * mnoznik(o, pak, m2Platne) * sztuk,
       });
     } else if (o.typ === 'liczba') {
       const ile = Number(v) || 0;
