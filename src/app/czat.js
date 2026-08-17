@@ -68,6 +68,8 @@ export function uruchomCzat(root, akcje = {}) {
     wyborPlyty: null,
     kodPlyty: null,
     nazwaKamienia: null,
+    // Kod podany, zanim znaliśmy nazwę wzoru — czeka na sprawdzenie.
+    kodOczekujacy: null,
     szukamPlyt: false,
   };
 
@@ -320,6 +322,25 @@ export function uruchomCzat(root, akcje = {}) {
       return;
     }
 
+    // Klient podał wcześniej kod bez nazwy — teraz mamy czego szukać.
+    if (stan.kodOczekujacy) {
+      const kod = stan.kodOczekujacy;
+      const trafiona = dostepne.find((p) => normalizujKodPlyty(p.kod) === kod);
+      stan.kodOczekujacy = null;
+      if (trafiona) {
+        stan.nazwaKamienia = nazwa;
+        stan.dekor = nazwa;
+        stan.kodPlyty = kod;
+        wyslij(`Wybieram płytę ${kod} — ${nazwa}.`);
+        return;
+      }
+      dodajWiadomosc(
+        'konsultant',
+        `Kodu ${kod} nie ma wśród wolnych płyt tego wzoru — mógł zostać sprzedany. ` +
+          'Proszę wybrać inną płytę z listy poniżej.'
+      );
+    }
+
     // Lista w pomocniku jest ucięta — mówimy o tylu płytach, ile realnie widać,
     // żeby liczba w zdaniu zgadzała się z tym, co klient ma przed oczami.
     const POKAZUJEMY = 24;
@@ -335,6 +356,40 @@ export function uruchomCzat(root, akcje = {}) {
     historia.push({ rola: 'assistant', tresc: `Pokazuję dostępne płyty „${nazwa}" do wyboru.` });
     stan.nazwaKamienia = nazwa;
     stan.wyborPlyty = { nazwa, plyty: dostepne };
+    odswiezPomocnika();
+    przewin();
+  }
+
+  /**
+   * Klient przepisał kod ze strony magazynu, zanim podał nazwę kamienia.
+   *
+   * Kodu nie da się sprawdzić samego z siebie — wyszukiwarka Interstone go
+   * nie zna. Ale kod niesie numer bloku (STON000596), a magazyn wyszukuje
+   * po nazwie, więc pytamy klienta o nazwę tylko wtedy, gdy naprawdę musimy:
+   * najpierw próbujemy z nazwą, którą już znamy z rozmowy.
+   */
+  async function podajKodRecznie(kod) {
+    const nazwa = stan.nazwaKamienia;
+    if (nazwa) {
+      // Znamy wzór — magazyn ma czego szukać, więc kod da się sprawdzić.
+      stan.kodPlyty = kod;
+      wyslij(`Wybieram płytę ${kod} — ${nazwa}.`);
+      return;
+    }
+
+    /*
+     * Bez nazwy kamienia kodu NIE DA SIĘ sprawdzić — wyszukiwarka Interstone
+     * nie zna kodów, szuka tylko po nazwie. Nie ustawiamy więc `kodPlyty`,
+     * bo klient przeszedłby dalej z kodem, którego nikt nie zweryfikował.
+     * Kod czeka, a my prosimy o nazwę wzoru i dopiero wtedy go dopasujemy.
+     */
+    stan.kodOczekujacy = kod;
+    dodajWiadomosc(
+      'konsultant',
+      `Zapisałem kod ${kod}. Żeby znaleźć tę płytę w magazynie, potrzebuję jeszcze nazwy wzoru — ` +
+        'jest napisana nad zdjęciem płyty (np. CALACATTA BRASIL). Proszę ją podać albo kliknąć poniżej.'
+    );
+    historia.push({ rola: 'assistant', tresc: `Klient podał kod ${kod}, czekam na nazwę wzoru.` });
     odswiezPomocnika();
     przewin();
   }
@@ -437,7 +492,7 @@ export function uruchomCzat(root, akcje = {}) {
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
     // Kamień naturalny nie ma listy wzorów — zamiast niej pytamy o nazwę
     // kamienia i pokazujemy konkretne płyty z magazynu.
-    else if (stan.material === 'interstone' && !stan.kodPlyty) el = pomocnikKamien(szukajPlyt);
+    else if (stan.material === 'interstone' && !stan.kodPlyty) el = pomocnikKamien(szukajPlyt, podajKodRecznie);
     else if (!stan.dekor) el = pomocnikDekor(stan.material, wybrano);
     else if (!stan.wymiary) el = pomocnikWymiary(wybrano);
     else if (!stan.szczegoly) el = pomocnikSzczegoly(wybrano, stan.pomieszczenie);

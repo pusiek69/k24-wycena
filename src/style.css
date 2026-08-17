@@ -610,6 +610,27 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   color: var(--muted); font-family: var(--sans); font-size: 12px;
 }
 
+/* Instrukcja „skąd wziąć kod" — pierwsza rzecz w kroku kamienia naturalnego.
+   Numerowana, bo to realna sekwencja: wejdź, wybierz, przepisz kod. */
+.pom-kroki {
+  margin: 0 0 14px; padding-left: 1.3em;
+  color: var(--muted); font-family: var(--sans); font-size: 13px; line-height: 1.65;
+}
+.pom-kroki li { margin-bottom: 3px; }
+.pom-kroki li::marker { color: var(--vein); font-weight: 700; }
+.pom-kroki b { color: var(--cream); font-family: var(--sans); letter-spacing: .04em; }
+
+/* Wejścia do magazynu — trzy rodzaje kamienia, każdy z własnym filtrem. */
+.pom-magazyn { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.pom-magazyn-link {
+  flex: 1 1 9rem; display: flex; flex-direction: column; gap: 2px;
+  background: var(--ink); border: 1px solid var(--vein); border-radius: var(--radius);
+  padding: 11px 13px; text-decoration: none; transition: border-color .15s, background .15s;
+}
+.pom-magazyn-link:hover { background: var(--line); }
+.pom-magazyn-nazwa { color: var(--vein); font-family: var(--serif); font-size: 15px; }
+.pom-magazyn-opis { color: var(--muted); font-family: var(--sans); font-size: 12px; line-height: 1.45; }
+
 /* Wybór konkretnej płyty kamienia naturalnego — kod, wymiar, cena, zapas.
    Wiersz jest przyciskiem: klient wybiera płytę jednym kliknięciem. */
 .pom-plyty { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }

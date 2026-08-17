@@ -2,6 +2,7 @@ import { h, uprosc } from './dom.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { normalizujKodPlyty } from './plyta-kod.js';
+import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
@@ -458,40 +459,116 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
  * „kamień naturalny", szedł prosto do wymiarów i nie miał jak wskazać płyty —
  * a bez wskazanej płyty nie policzymy wyceny.
  */
-export function pomocnikKamien(szukaj) {
+export function pomocnikKamien(szukaj, podajKod) {
   const POPULARNE = ['Calacatta', 'Taj Mahal', 'Verde Guatemala', 'Nero Assoluto', 'Patagonia'];
 
-  const pole = h('input', {
+  const poleKod = h('input', {
+    class: 'pom-pole pom-pole-kod',
+    type: 'text',
+    placeholder: 'STON000334-84224',
+    'aria-label': 'Kod płyty z magazynu',
+    autocapitalize: 'characters',
+    spellcheck: 'false',
+  });
+  const bladKod = h('span', { class: 'pom-podpowiedz pom-blad' }, '');
+  const zKodu = () => {
+    const kod = normalizujKodPlyty(poleKod.value);
+    if (!kod) {
+      bladKod.textContent = 'Kod ma postać STON000334-84224 — proszę sprawdzić zapis.';
+      poleKod.focus();
+      return;
+    }
+    bladKod.textContent = '';
+    podajKod(kod);
+  };
+  poleKod.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      zKodu();
+    }
+  });
+
+  const poleNazwa = h('input', {
     class: 'pom-pole pom-pole-kamien',
     type: 'search',
     placeholder: 'np. Calacatta',
     'aria-label': 'Nazwa kamienia',
   });
-  const zPola = () => {
-    const nazwa = pole.value.trim();
+  const zNazwy = () => {
+    const nazwa = poleNazwa.value.trim();
     if (nazwa.length >= 2) szukaj(nazwa);
-    else pole.focus();
+    else poleNazwa.focus();
   };
-  pole.addEventListener('keydown', (e) => {
+  poleNazwa.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      zPola();
+      zNazwy();
     }
   });
 
   return ramka(
-    'Jaki kamień naturalny?',
+    'Wybierz płytę w magazynie',
+    /*
+     * Instrukcja idzie PIERWSZA i mówi wprost, skąd wziąć kod. Wcześniej krok
+     * pytał od razu o nazwę kamienia, a klient nie miał skąd wiedzieć, że
+     * gdziekolwiek jest jakiś kod ani gdzie go szukać (zgłoszenie Dawida).
+     */
     h(
-      'p',
-      { class: 'pom-podpowiedz' },
-      'Podamy, które płyty tego wzoru leżą teraz w magazynie — z wymiarem, ceną i dostępnością.'
+      'ol',
+      { class: 'pom-kroki' },
+      h('li', {}, 'Wejdź na magazyn i obejrzyj płyty — poniżej wybierz rodzaj kamienia.'),
+      h('li', {}, 'Znajdź płytę, która Ci się podoba.'),
+      h(
+        'li',
+        {},
+        'Przepisz jej kod — stoi przy zdjęciu płyty i wygląda tak: ',
+        h('b', {}, 'STON000334-84224'),
+        '.'
+      )
     ),
-    h('div', { class: 'pom-narzedzia' }, pole, h('button', { class: 'btn', type: 'button', onclick: zPola }, 'Szukaj')),
     h(
       'div',
-      { class: 'o-warianty' },
-      POPULARNE.map((n) =>
-        h('button', { class: 'wariant', type: 'button', onclick: () => szukaj(n) }, n)
+      { class: 'pom-magazyn' },
+      RODZAJE_KAMIENIA.map((r) =>
+        h(
+          'a',
+          {
+            class: 'pom-magazyn-link',
+            href: linkRodzaju(r.id),
+            target: '_blank',
+            rel: 'noopener',
+          },
+          h('span', { class: 'pom-magazyn-nazwa' }, '↗ ' + r.nazwa),
+          h('span', { class: 'pom-magazyn-opis' }, r.opis)
+        )
+      )
+    ),
+    h(
+      'div',
+      { class: 'pom-grupa' },
+      h('span', { class: 'pom-grupa-label' }, 'Masz już kod płyty? Wpisz go tutaj'),
+      h(
+        'div',
+        { class: 'pom-narzedzia' },
+        poleKod,
+        h('button', { class: 'btn', type: 'button', onclick: zKodu }, 'Policz z tej płyty')
+      ),
+      bladKod
+    ),
+    h(
+      'div',
+      { class: 'pom-grupa' },
+      h('span', { class: 'pom-grupa-label' }, 'Albo podaj nazwę — pokażę dostępne płyty'),
+      h(
+        'div',
+        { class: 'pom-narzedzia' },
+        poleNazwa,
+        h('button', { class: 'link-btn', type: 'button', onclick: zNazwy }, 'Szukaj')
+      ),
+      h(
+        'div',
+        { class: 'o-warianty' },
+        POPULARNE.map((n) => h('button', { class: 'wariant', type: 'button', onclick: () => szukaj(n) }, n))
       )
     ),
     h(
