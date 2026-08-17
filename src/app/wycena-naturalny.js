@@ -50,6 +50,15 @@ export const ZASTRZEZENIE_INNE =
   'Wycena wstępna, na podstawie aktualnej dostępności magazynowej — ostateczną cenę ' +
   'potwierdzamy po rezerwacji płyty i pomiarze.';
 
+/** „Kamień Naturalny" → „kamien naturalny" — do porównywania nazw. */
+function uprosc(s) {
+  return String(s ?? '')
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '');
+}
+
 /** Czy wariant z magazynu to kamień naturalny (a nie konglomerat/spiek). */
 export function jestNaturalny(wariant) {
   return /kamie/i.test(uprosc(wariant?.rodzaj || ''));

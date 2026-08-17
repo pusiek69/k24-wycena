@@ -24,6 +24,11 @@ export async function wczytajSilnik() {
   // Wejście omija src/firms/index.js — to jedyny plik z import.meta.glob.
   const wejscie = [
     `export { wycen } from ${JSON.stringify(path.join(ROOT, 'src/engine/wycena.js'))};`,
+    // Ścieżka kamienia naturalnego też musi dać się uruchomić w teście. Jej
+    // moduł importuje firms/index.js, więc pod ten adres podstawiamy zastępnik
+    // (niżej, w pluginie) — inaczej testy w ogóle jej nie widzą, a właśnie tam
+    // zdarzyło się wywalić `uprosc is not defined` prosto na produkcję.
+    `export { wycenZMagazynu, firmaZWariantu, jestNaturalny } from ${JSON.stringify(path.join(ROOT, 'src/app/wycena-naturalny.js'))};`,
     ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
     `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}]`,
     `  .filter((f) => f.aktywna !== false)`,
@@ -33,7 +38,17 @@ export async function wczytajSilnik() {
   const katalog = fs.mkdtempSync(path.join(os.tmpdir(), 'k24-silnik-'));
   const wejsciePlik = path.join(katalog, 'wejscie.mjs');
   const wyjscie = path.join(katalog, 'silnik.mjs');
+  const zastepnikFirm = path.join(katalog, 'firms-index.mjs');
   fs.writeFileSync(wejsciePlik, wejscie, 'utf8');
+  fs.writeFileSync(
+    zastepnikFirm,
+    [
+      ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
+      `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}];`,
+      `export const firmaWgSlug = (s) => FIRMY.find((f) => f.slug === s);`,
+    ].join('\n'),
+    'utf8'
+  );
 
   await build({
     entryPoints: [wejsciePlik],
@@ -42,6 +57,14 @@ export async function wczytajSilnik() {
     platform: 'node',
     outfile: wyjscie,
     logLevel: 'silent',
+    plugins: [
+      {
+        name: 'zastepnik-firm',
+        setup(b) {
+          b.onResolve({ filter: /firms[\\/]index\.js$/ }, () => ({ path: zastepnikFirm }));
+        },
+      },
+    ],
   });
 
   const modul = await import('file:///' + wyjscie.replace(/\\/g, '/'));

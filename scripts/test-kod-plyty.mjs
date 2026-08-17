@@ -16,6 +16,7 @@ import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE } from '../src/firms/_domyslne.js';
 import { normalizujKod, znajdzPoKodzie, wygladaJakKod } from '../worker/magazyn.js';
 import { wariantZPlyty } from '../src/app/plyta-kod.js';
+import { wczytajSilnik } from './lib/silnik.mjs';
 
 const NATURALNY = {
   slug: 'test-naturalny',
@@ -45,6 +46,17 @@ const KONGLOMERAT = {
 const ODCINKI = [{ gl: 60, dl: 120 }];
 const OPCJE_BAZOWE = { zlew: 'podblat', plyta: 'brak', otwory: 1, dostawa: 'montaz' };
 const KOD = 'STON000334-84224';
+
+/** Prawdziwa płyta ze stanu magazynowego — kształt jak po wariantZPlyty. */
+const PLYTA = {
+  kod: 'STON000596-85645',
+  nazwa: 'CALACATTA PAONAZZINO',
+  rodzaj: 'Kamień naturalny',
+  cenaBruttoM2: 1665,
+  gruboscMm: 20,
+  dostepneM2: 6.33,
+  plytaCm: { dl: 333, gl: 190 },
+};
 
 const liczNaturalny = (dodatkowe = {}) =>
   wycen(NATURALNY, { odcinki: ODCINKI, opcje: OPCJE_BAZOWE, cenaRecznaM2: 1400, ...dodatkowe });
@@ -135,6 +147,50 @@ test('płyta z magazynu dostaje wymiar dłuższym bokiem naprzód', () => {
 test('płyta bez formatu nie przechodzi dalej', () => {
   assert.equal(wariantZPlyty({ kod: KOD, nazwa: 'X' }), null);
   assert.equal(wariantZPlyty(null), null);
+});
+
+/* ─────────── cała ścieżka naturalnego, na prawdziwych modułach aplikacji
+
+   Te testy ładują wycena-naturalny.js przez ten sam mechanizm co reszta
+   skryptów. Wcześniej moduł był poza zasięgiem testów (ciągnie firms/index.js
+   z import.meta.glob) i właśnie tam pojechał na produkcję `uprosc is not
+   defined` — funkcja zniknęła przy przenoszeniu sąsiednich helperów.
+   Odtąd każda wycena naturalnego przechodzi tędy w teście.                */
+
+test('wskazana płyta przechodzi całą ścieżkę i daje kwotę', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const w = wycenZMagazynu(PLYTA, {
+    odcinki: [{ gl: 60, dl: 300 }],
+    opcje: { zlew: 'podblat', plyta: 'nakladana', otwory: 1, dostawa: 'montaz' },
+    grubosc: '20',
+  });
+  assert.equal(w.ok, true, w.blad);
+  assert.ok(w.razem > 0);
+  assert.equal(w.kodPlyty, 'STON000596-85645');
+});
+
+test('rozpoznanie kamienia naturalnego działa', async () => {
+  const { jestNaturalny } = await wczytajSilnik();
+  assert.equal(jestNaturalny(PLYTA), true);
+  assert.equal(jestNaturalny({ rodzaj: 'Konglomerat kwarcowy' }), false);
+  assert.equal(jestNaturalny({}), false);
+});
+
+test('konfiguracja z płyty wymusza kod tylko przy naturalnym', async () => {
+  const { firmaZWariantu } = await wczytajSilnik();
+  assert.equal(firmaZWariantu(PLYTA).wymagaKoduPlyty, true);
+  assert.equal(firmaZWariantu({ ...PLYTA, rodzaj: 'Konglomerat' }).wymagaKoduPlyty, false);
+});
+
+test('bez kodu ta sama płyta nie przechodzi', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const w = wycenZMagazynu({ ...PLYTA, kod: null }, {
+    odcinki: [{ gl: 60, dl: 300 }],
+    opcje: { zlew: 'podblat', plyta: 'nakladana', otwory: 1, dostawa: 'montaz' },
+    grubosc: '20',
+  });
+  assert.equal(w.ok, false);
+  assert.equal(w.brakKoduPlyty, true);
 });
 
 test('szukanie płyty po kodzie ignoruje różnice zapisu', () => {
