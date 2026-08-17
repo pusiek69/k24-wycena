@@ -181,6 +181,22 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
   const firma = firmaZWariantu(wariant);
   if (!firma) return { ok: false, blad: 'Brak danych płyty.' };
 
+  /*
+   * Cena i wymiar MUSZĄ pochodzić ze wskazanej sztuki — nie z konfiguracji
+   * firmy ani z „typowego" formatu. Przy kamieniu naturalnym różnica między
+   * blokami sięga kilkuset złotych za m², a płyty tego samego wzoru bywają
+   * o 20 cm krótsze, co decyduje o łączeniu blatu. Gdyby ceny zabrakło,
+   * silnik policzyłby materiał „do ustalenia" i wyszłaby cicho zaniżona
+   * kwota — dlatego wolimy odmówić.
+   */
+  if (firma.wymagaKoduPlyty && !(wariant.cenaBruttoM2 > 0)) {
+    return {
+      ok: false,
+      blad: 'Magazyn nie podaje ceny tej płyty — prosimy wybrać inną albo zadzwonić.',
+      brakCenyPlyty: true,
+    };
+  }
+
   const w = wycen(firma, {
     dekor: wariant.nazwa,
     grubosc: String(grubosc || wariant.gruboscMm || 20),

@@ -48,6 +48,24 @@ export const ROBOCIZNA = [
     wCenie: true,
   },
   /*
+   * POMIAR CYFROWY PROLINEREM — 1000 zł, raz na zlecenie, TYLKO KUCHNIA.
+   *
+   * Blat kuchenny jest łączony, wchodzi między ściany i musi trafić w zabudowę
+   * co do milimetra — bez pomiaru cyfrowego nie da się go zrobić dobrze.
+   * Blat łazienkowy to zwykle jeden prostokąt pod umywalkę: pomiaru Prolinerem
+   * tam nie robimy, więc i nie doliczamy (decyzja Dawida, 17.08.2026).
+   *
+   * `tylkoZMontazem` dla porządku: odbiór własny to jawnie brak pomiaru.
+   * W praktyce nie ma kolizji, bo odbiór własny jest wariantem łazienkowym.
+   */
+  {
+    id: 'pomiar',
+    label: 'Pomiar cyfrowy Proliner',
+    cena: 1000,
+    tylkoKuchnia: true,
+    tylkoZMontazem: true,
+  },
+  /*
    * MONTAŻ: baza raz na zamówienie + stawka od powierzchni blatu.
    *
    * Wcześniej było 150 zł od metra bieżącego. To zakładało, że koszt wyjazdu

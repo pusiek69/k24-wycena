@@ -41,6 +41,7 @@ const poz = (w, wzor) => w.pozycje.find((p) => wzor.test(p.nazwa));
 // Stawki w konfiguracji są NETTO — silnik dolicza VAT wg wariantu.
 const CENA_PLYTY = 250; // netto, wycięcie pod płytę nakładaną
 const CENA_ZLEWU = 650; // netto, wycięcie + montaż zlewu podblatowego
+const CENA_POMIARU = 1000; // pomiar Prolinerem — tylko kuchnia
 const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 // Stawki w konfiguracji są brutto przy 23% — patrz test-montaz.mjs.
 const nettoStawki = (bruttoDwadziesciaTrzy) => bruttoDwadziesciaTrzy / 1.23;
@@ -57,10 +58,16 @@ test('kuchnia dostaje wycięcie pod płytę', () => {
   assert.ok(poz(w, /płyt[ęy] nakładan/i));
 });
 
-test('ta sama łazienka jest o wycięcie pod płytę tańsza niż wyceniona jak kuchnia', () => {
+test('ta sama łazienka jako kuchnia jest droższa o płytę grzewczą i pomiar', () => {
   const jakLazienka = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const jakKuchnia = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
-  assert.ok(Math.abs(jakKuchnia.razemNetto - jakLazienka.razemNetto - nettoStawki(CENA_PLYTY)) < 0.01);
+  // Kuchnia różni się dwiema pozycjami: wycięciem pod płytę grzewczą
+  // i pomiarem Prolinerem (1000 zł brutto 23%).
+  const oczekiwana = nettoStawki(CENA_PLYTY) + nettoStawki(CENA_POMIARU);
+  assert.ok(
+    Math.abs(jakKuchnia.razemNetto - jakLazienka.razemNetto - oczekiwana) < 0.01,
+    `różnica ${jakKuchnia.razemNetto - jakLazienka.razemNetto}`
+  );
 });
 
 test('konsultant nie może doliczyć indukcji w łazience, nawet gdy poda pole', () => {

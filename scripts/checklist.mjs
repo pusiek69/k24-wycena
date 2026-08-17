@@ -339,5 +339,28 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
   );
 }
 
+/* 21. Pomiar Prolinerem tylko przy kuchni
+   1000 zł to zauważalna kwota — jeśli reguła się rozjedzie, łazienki zaczną
+   ją płacić po cichu. Pilnujemy jej w silniku, nie w opisie. */
+{
+  const dom = czytaj('src/firms/_domyslne.js');
+  const silnik = czytaj('src/engine/wycena.js');
+  const par = czytaj('src/app/parametry.js');
+  const braki = [];
+
+  if (!/id: 'pomiar'[\s\S]{0,200}tylkoKuchnia: true/.test(dom))
+    braki.push('pozycja pomiaru bez ograniczenia do kuchni');
+  if (!/r\.tylkoKuchnia && lazienka/.test(silnik)) braki.push('silnik nie odcina pomiaru w łazience');
+  if (!/pomieszczenie: lazienka \? 'lazienka' : 'kuchnia'/.test(par))
+    braki.push('pomieszczenie nie dociera do silnika');
+
+  ok(
+    21,
+    'pomiar Prolinerem naliczany tylko przy blatach kuchennych',
+    braki.length === 0,
+    braki.join('; ') || 'kuchnia płaci, łazienka nie — pilnuje tego silnik'
+  );
+}
+
 console.log(bledy ? `\n✗ Niezgodności: ${bledy}` : '\n✓ Checklista §8 — wszystko zgodne ze specyfikacją');
 process.exit(bledy ? 1 : 0);

@@ -31,7 +31,9 @@ const FIRMA = {
 };
 
 const LAZIENKA = [{ gl: 60, dl: 120 }];
-const OPCJE_BAZOWE = { zlew: 'podblat', plyta: 'nakladana', otwory: 1 };
+// Odbiór własny jest wariantem łazienkowym — pomieszczenie ma znaczenie,
+// bo pomiar Prolinerem dotyczy tylko kuchni.
+const OPCJE_BAZOWE = { pomieszczenie: 'lazienka', zlew: 'podblat', plyta: 'nakladana', otwory: 1 };
 
 const licz = (odcinki, dostawa) =>
   wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje: { ...OPCJE_BAZOWE, dostawa } });

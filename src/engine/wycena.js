@@ -161,8 +161,15 @@ export function wycen(firma, w, dataISO) {
   // Odbiór własny z zakładu: klient sam odbiera gotowy blat. Odpada wtedy
   // wszystko, co dotyczy dojazdu i montażu — reszta produkcji bez zmian.
   // (`odbiorWlasny` policzone na górze, bo decyduje też o stawce VAT.)
+  // Część pozycji dotyczy tylko kuchni (pomiar Prolinerem). Brak wskazanego
+  // pomieszczenia traktujemy jak kuchnię — tak samo jak reszta aplikacji.
+  const lazienka = String((w.opcje || {}).pomieszczenie || '')
+    .toLowerCase()
+    .startsWith('lazienk');
+
   for (const r of firma.robocizna || []) {
     if (r.tylkoZMontazem && odbiorWlasny) continue;
+    if (r.tylkoKuchnia && lazienka) continue;
 
     // `m2blatu` to powierzchnia samych elementów blatu — bez ścinki, którą
     // klient i tak kupuje w cenie płyty. `m2` liczy metraż płatny (z płytą).

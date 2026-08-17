@@ -193,6 +193,56 @@ test('bez kodu ta sama płyta nie przechodzi', async () => {
   assert.equal(w.brakKoduPlyty, true);
 });
 
+/* ───────── rozkrój i cena z konkretnej sztuki, nie z domyślnych */
+
+test('wymiar rozkroju bierze się z płyty, nie z konfiguracji firmy', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const dla = (dl, gl) =>
+    wycenZMagazynu(
+      { ...PLYTA, plytaCm: { dl, gl } },
+      { odcinki: [{ gl: 60, dl: 300 }], opcje: { zlew: 'podblat', otwory: 1 }, grubosc: '20' }
+    );
+  const krotka = dla(290, 195);
+  const dluga = dla(310, 195);
+
+  // Interstone ma w konfiguracji domyślne 300×180. Gdyby wchodziło w grę,
+  // obie wyceny miałyby ten sam materiał.
+  assert.notEqual(krotka.pak.m2Kupione, dluga.pak.m2Kupione);
+  assert.ok(Math.abs(krotka.pak.m2Kupione - (290 * 195) / 10000) < 0.01);
+  assert.ok(Math.abs(dluga.pak.m2Kupione - (310 * 195) / 10000) < 0.01);
+});
+
+test('za krótka płyta daje ostrzeżenie o łączeniu, a nie cichy rozkrój', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const w = wycenZMagazynu(
+    { ...PLYTA, plytaCm: { dl: 290, gl: 195 } },
+    { odcinki: [{ gl: 60, dl: 300 }], opcje: { zlew: 'podblat', otwory: 1 }, grubosc: '20' }
+  );
+  assert.ok(w.ostrzezenia.some((o) => /łączon/i.test(o)), JSON.stringify(w.ostrzezenia));
+});
+
+test('cena materiału bierze się z ceny tej sztuki', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const dla = (cena) =>
+    wycenZMagazynu(
+      { ...PLYTA, cenaBruttoM2: cena },
+      { odcinki: [{ gl: 60, dl: 300 }], opcje: { zlew: 'podblat', otwory: 1 }, grubosc: '20' }
+    );
+  const tania = dla(1000);
+  const droga = dla(2000);
+  assert.ok(Math.abs(droga.materialBrutto / tania.materialBrutto - 2) < 0.001);
+});
+
+test('płyta bez ceny w magazynie nie przechodzi — zamiast „do ustalenia"', async () => {
+  const { wycenZMagazynu } = await wczytajSilnik();
+  const w = wycenZMagazynu(
+    { ...PLYTA, cenaBruttoM2: 0 },
+    { odcinki: [{ gl: 60, dl: 300 }], opcje: { zlew: 'podblat', otwory: 1 }, grubosc: '20' }
+  );
+  assert.equal(w.ok, false);
+  assert.equal(w.brakCenyPlyty, true);
+});
+
 test('szukanie płyty po kodzie ignoruje różnice zapisu', () => {
   const plyty = [
     { kod: 'STON000111 - 11111', nazwa: 'A', dostepneM2: 5 },

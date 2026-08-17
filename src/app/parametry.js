@@ -51,6 +51,9 @@ export function toLazienka(pomieszczenie) {
 export function opcjeZParametrow(params) {
   const lazienka = toLazienka(params?.pomieszczenie);
   return {
+    // Pomieszczenie w postaci znormalizowanej — silnik po nim poznaje, czy
+    // doliczyć pomiar Prolinerem (tylko kuchnia).
+    pomieszczenie: lazienka ? 'lazienka' : 'kuchnia',
     // Wycięcie pod zlew jest w każdej wycenie — w łazience pod umywalkę.
     // `zlew_podwieszany` to starsze pole; czytamy je nadal, żeby odpowiedź
     // konsultanta sprzed zmiany nie wywróciła wyceny.
@@ -78,6 +81,7 @@ export function opcjeZParametrow(params) {
 export function opcjeZeSzczegolow(szczegoly = {}, pomieszczenie) {
   const lazienka = toLazienka(pomieszczenie);
   return {
+    pomieszczenie: lazienka ? 'lazienka' : 'kuchnia',
     zlew: szczegoly.nablatowy ? 'nablat' : 'podblat',
     zlewy: Math.max(1, Math.round(Number(szczegoly.zlewy) || 1)),
     plyta: lazienka ? 'brak' : szczegoly.licowana ? 'licowana' : 'nakladana',
