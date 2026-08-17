@@ -408,11 +408,14 @@ export function uruchomCzat(root, akcje = {}) {
       return;
     }
 
-    stan.kodPlyty = kod;
+    // Wejściem mógł być sam numer albo adres — właściwy kod znamy dopiero
+    // z odpowiedzi magazynu.
+    const kodPlyty = odp.kod || kod;
+    stan.kodPlyty = kodPlyty;
     stan.nazwaKamienia = odp.plyta.nazwa || stan.nazwaKamienia;
     if (odp.plyta.nazwa) stan.dekor = odp.plyta.nazwa;
     stan.wyborPlyty = null;
-    rozmowa.append(kartaWybranejPlyty(odp.plyta, kod));
+    rozmowa.append(kartaWybranejPlyty(odp.plyta, kodPlyty));
     przewin();
 
     /*
@@ -424,7 +427,7 @@ export function uruchomCzat(root, akcje = {}) {
     historia.push({
       rola: 'user',
       tresc:
-        `Wybieram płytę ${kod} — ${odp.plyta.nazwa || 'kamień naturalny'}` +
+        `Wybieram płytę ${kodPlyty} — ${odp.plyta.nazwa || 'kamień naturalny'}` +
         (odp.plyta.cenaBruttoM2 ? `, ${odp.plyta.cenaBruttoM2} zł/m² brutto` : '') +
         (odp.plyta.dostepneM2 ? `, wolne ${odp.plyta.dostepneM2} m²` : '') +
         '. Płyta jest dostępna, sprawdziłem ją w magazynie — nie sprawdzaj ponownie.',

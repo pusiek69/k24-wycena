@@ -338,3 +338,24 @@ test('numer płyty wyciągamy z każdej postaci kodu', () => {
   assert.equal(numerPlytyZKodu('ston000623_86421'), '86421');
   assert.equal(numerPlytyZKodu('bzdura'), '');
 });
+
+test('front rozkłada wejście tak samo jak worker', async () => {
+  const { rozlozKodPlyty, doWyszukania } = await import('../src/app/plyta-kod.js');
+  const wejscia = [
+    'STON000623 - 86421',
+    'ston000623_86421',
+    'STON00062386421',
+    '86421',
+    'https://www.interstone.pl/content/uploads/images/stock/STON000623/86421/86421-3.jpg',
+    'bzdura',
+    '300',
+    '',
+  ];
+  for (const w of wejscia) {
+    assert.deepEqual(rozlozKodPlyty(w), rozlozKod(w), `wejście: ${JSON.stringify(w)}`);
+  }
+  // To, co realnie leci do wyszukiwania.
+  assert.equal(doWyszukania('STON000623 - 86421'), 'STON000623-86421');
+  assert.equal(doWyszukania('86421'), '86421');
+  assert.equal(doWyszukania('bzdura'), '');
+});

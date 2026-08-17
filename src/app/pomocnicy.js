@@ -1,7 +1,7 @@
 import { h, uprosc } from './dom.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
-import { normalizujKodPlyty } from './plyta-kod.js';
+import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 
 /**
@@ -472,14 +472,18 @@ export function pomocnikKamien(szukaj, podajKod) {
   });
   const bladKod = h('span', { class: 'pom-podpowiedz pom-blad' }, '');
   const zKodu = () => {
-    const kod = normalizujKodPlyty(poleKod.value);
-    if (!kod) {
-      bladKod.textContent = 'Kod ma postać STON000334-84224 — proszę sprawdzić zapis.';
+    // Przyjmujemy pełny kod, sam numer płyty i adres zdjęcia ze strony
+    // magazynu — dokładnie to samo, co rozumie wyszukiwanie po stronie serwera.
+    const szukane = doWyszukania(poleKod.value);
+    if (!szukane) {
+      bladKod.textContent =
+        'To nie wygląda na kod płyty. Kod stoi przy zdjęciu (STON000334-84224) — ' +
+        'można też wkleić sam numer z końca albo adres zdjęcia.';
       poleKod.focus();
       return;
     }
     bladKod.textContent = '';
-    podajKod(kod);
+    podajKod(szukane);
   };
   poleKod.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -613,14 +617,16 @@ export function pomocnikPlyty(plyty, nazwa, wybierz) {
   const blad = h('span', { class: 'pom-podpowiedz pom-blad' }, '');
 
   const zPola = () => {
-    const kod = normalizujKodPlyty(pole.value);
-    if (!kod) {
-      blad.textContent = 'Kod ma postać STON000334-84224 — proszę sprawdzić zapis.';
+    const szukane = doWyszukania(pole.value);
+    if (!szukane) {
+      blad.textContent =
+        'To nie wygląda na kod płyty. Kod stoi przy zdjęciu (STON000334-84224) — ' +
+        'można też wkleić sam numer albo adres zdjęcia.';
       pole.focus();
       return;
     }
     blad.textContent = '';
-    wybierz(kod);
+    wybierz(szukane);
   };
 
   const wiersz = (p) => {

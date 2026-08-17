@@ -57,3 +57,41 @@ export function wariantZPlyty(plyta) {
     plytaCm: { dl: Math.max(wys, szer), gl: Math.min(wys, szer) },
   };
 }
+
+/**
+ * ROZŁOŻENIE WEJŚCIA OD KLIENTA — kopia zasady z worker/magazyn.js.
+ *
+ * Front musi znać ją tak samo jak worker, bo to on decyduje, czy w ogóle
+ * wysłać zapytanie. Wcześniej pole akceptowało wyłącznie pełny kod
+ * i odrzucało adres zdjęcia oraz sam numer płyty — mimo że worker
+ * radził sobie z jednym i drugim.
+ *
+ * Zwraca { pelny, blok, numer } albo null. `pelny` bywa null przy samym numerze.
+ */
+export function rozlozKodPlyty(wejscie) {
+  const surowe = String(wejscie ?? '').trim();
+  if (!surowe) return null;
+
+  const zUrl = surowe.match(/stock\/([A-Za-z]{2,6}\d{4,})\/(\d{3,})/);
+  if (zUrl) {
+    const blok = zUrl[1].toUpperCase();
+    return { pelny: `${blok}-${zUrl[2]}`, blok, numer: zUrl[2] };
+  }
+
+  const pelny = normalizujKodPlyty(surowe);
+  if (pelny) {
+    const [blok, numer] = pelny.split('-');
+    return { pelny, blok, numer };
+  }
+
+  const samNumer = surowe.replace(/\s/g, '');
+  if (/^\d{4,6}$/.test(samNumer)) return { pelny: null, blok: null, numer: samNumer };
+
+  return null;
+}
+
+/** To, co wysyłamy do wyszukiwania: pełny kod albo sam numer płyty. */
+export function doWyszukania(wejscie) {
+  const c = rozlozKodPlyty(wejscie);
+  return c ? c.pelny || c.numer : '';
+}
