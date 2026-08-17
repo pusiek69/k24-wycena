@@ -67,6 +67,20 @@ export const NOTA_ODBIOR =
  * wariantu „bez". Klient wybiera tylko rodzaj. Zlewów nie sprzedajemy:
  * wycinamy otwór pod sprzęt, który klient kupuje sam.
  */
+
+/*
+ * Zlew podblatowy wymaga wypolerowania krawędzi otworu na gotowo — ta krawędź
+ * zostaje widoczna i dotykalna. Przy zlewie nablatowym kołnierz sprzętu ją
+ * zakrywa, więc obróbka jest prostsza i kosztuje POŁOWĘ (decyzja Dawida,
+ * 17.08.2026). Stawka nablatowego jest liczona, a nie wpisana z ręki —
+ * zmiana ceny podblatowego ma automatycznie pociągnąć nablatowy.
+ *
+ * Dotyczy tak samo zlewu w kuchni, jak umywalki w łazience, i mnoży się
+ * przez liczbę sztuk (`iloscZ` niżej).
+ */
+export const ZLEW_PODBLATOWY = 650;
+export const UDZIAL_NABLATOWEGO = 0.5;
+
 export const OPCJE = [
   {
     id: 'zlew',
@@ -80,8 +94,8 @@ export const OPCJE = [
     domyslnie: 'podblat',
     wymagane: true,
     warianty: [
-      { id: 'podblat', label: 'Wycięcie + montaż zlewu podblatowego', cena: 650 },
-      { id: 'nablat', label: 'Wycięcie pod zlew nablatowy', cena: 300 },
+      { id: 'podblat', label: 'Wycięcie + montaż zlewu podblatowego', cena: ZLEW_PODBLATOWY },
+      { id: 'nablat', label: 'Wycięcie pod zlew nablatowy', cena: ZLEW_PODBLATOWY * UDZIAL_NABLATOWEGO },
     ],
   },
   {

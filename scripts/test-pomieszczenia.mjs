@@ -111,10 +111,66 @@ test('brak liczby umywalek znaczy jedna', () => {
   assert.equal(opcjeZeSzczegolow({}, 'lazienka').zlewy, 1);
 });
 
-test('umywalka nablatowa jest tańsza od podwieszanej', () => {
+/* ────────────────────────── nablatowy kosztuje połowę tego, co podblatowy */
+
+const wyciecie = (w) => w.pozycje.find((p) => /Wycięcie/.test(p.nazwa) && /zlew/i.test(p.nazwa));
+
+test('umywalka nablatowa to dokładnie połowa ceny podwieszanej', () => {
   const pod = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const nad = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', zlew_nablatowy: true, otwory: 1 }));
-  assert.ok(nad.razem < pod.razem);
+  assert.ok(Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01);
+  assert.ok(Math.abs(wyciecie(pod).brutto - CENA_ZLEWU) < 0.01, 'podblatowy bez zmian');
+});
+
+test('w kuchni zlew nablatowy liczy się tak samo', () => {
+  const pod = licz(KUCHNIA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
+  const nad = licz(KUCHNIA, opcjeZParametrow({ pomieszczenie: 'kuchnia', zlew_nablatowy: true, otwory: 1 }));
+  assert.ok(Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01);
+  assert.ok(Math.abs(pod.razem - nad.razem - CENA_ZLEWU * 0.5) < 0.01);
+});
+
+test('relacja 50% trzyma się przy kilku sztukach', () => {
+  for (const sztuk of [1, 2, 3]) {
+    const pod = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', umywalki: sztuk, otwory: 1 }));
+    const nad = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', umywalki: sztuk, zlew_nablatowy: true, otwory: 1 }));
+    assert.ok(
+      Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01,
+      `${sztuk} szt.: ${wyciecie(nad).brutto} ≠ połowa z ${wyciecie(pod).brutto}`
+    );
+    assert.ok(Math.abs(wyciecie(nad).brutto - CENA_ZLEWU * 0.5 * sztuk) < 0.01, `${sztuk} szt. × 325 zł`);
+  }
+});
+
+test('stawka nablatowego jest liczona z podblatowego, nie wpisana osobno', () => {
+  // Gdyby ktoś podniósł cenę podblatowego, nablatowy ma pójść za nią sam.
+  const droga = OPCJE.map((o) =>
+    o.id === 'zlew'
+      ? { ...o, warianty: o.warianty.map((w) => ({ ...w, cena: w.cena * 2 })) }
+      : o
+  );
+  const firmaDroga = { ...FIRMA, opcje: droga };
+  const dane = (nablat) => ({
+    dekor: 'Testowy',
+    grubosc: '20',
+    odcinki: LAZIENKA,
+    opcje: opcjeZParametrow({ pomieszczenie: 'lazienka', zlew_nablatowy: nablat, otwory: 1 }),
+  });
+  const pod = wycen(firmaDroga, dane(false));
+  const nad = wycen(firmaDroga, dane(true));
+  assert.ok(Math.abs(wyciecie(nad).brutto - wyciecie(pod).brutto * 0.5) < 0.01);
+});
+
+test('klient nie widzi stawki wycięcia — ani przy jednej, ani przy kilku sztukach', () => {
+  const jedna = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', zlew_nablatowy: true, otwory: 1 }));
+  const dwie = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', zlew_nablatowy: true, umywalki: 2, otwory: 1 }));
+  // Sama liczba sztuk, bez stawki. (Pozycje typu „liczba", np. otwory, mają
+  // stawkę w `detal` od zawsze — kartę i mail klienta przycina `opisPozycji`,
+  // który ucina wszystko po „×". Tutaj sprawdzamy to, za co odpowiada silnik.)
+  assert.equal(wyciecie(jedna).detal, undefined);
+  assert.equal(wyciecie(dwie).detal, '2 szt.');
+  for (const w of [jedna, dwie]) {
+    assert.doesNotMatch(String(wyciecie(w).detal), /zł/);
+  }
 });
 
 /* ────────────────────────────────── odczyt tego, co klient wyklikał */
