@@ -412,6 +412,16 @@ export function uruchomCzat(root, akcje = {}) {
     rozmowa.append(kartaWybranejPlyty(odp.plyta, kod));
     przewin();
 
+    // Dopisujemy do historii, CO to za płyta. Bez tego konsultant szukałby
+    // jej sam po kodzie i mógłby nie trafić — a my mamy już komplet danych.
+    historia.push({
+      rola: 'assistant',
+      tresc:
+        `Klient wskazał płytę ${kod}: ${odp.plyta.nazwa || 'kamień naturalny'}` +
+        (odp.plyta.cenaBruttoM2 ? `, ${odp.plyta.cenaBruttoM2} zł/m² brutto` : '') +
+        `. Płyta jest dostępna — nie sprawdzaj jej ponownie, przejdź do wymiarów i wyceny.`,
+    });
+
     await odpowiedzKonsultanta();
   }
 

@@ -162,7 +162,10 @@ async function wykonajNarzedzie(blok, ctx) {
   let tresc;
   try {
     if (blok.name === 'sprawdz_magazyn') {
-      tresc = opiszPlyty(await pobierzMagazyn(blok.input?.fraza, ctx));
+      // Klient często podaje KOD płyty, a nie nazwę kamienia. Magazyn znajdzie
+      // go po samym numerze — pełny kod tokenizuje inaczej i gubi trafienie.
+      const fraza = numerPlytyZKodu(blok.input?.fraza) || blok.input?.fraza;
+      tresc = opiszPlyty(await pobierzMagazyn(fraza, ctx));
     } else {
       tresc = `NIEDOSTĘPNE: Nieznane narzędzie „${blok.name}".`;
     }
