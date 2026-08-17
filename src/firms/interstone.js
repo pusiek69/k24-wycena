@@ -44,16 +44,14 @@ export default {
     'wybiera się na żywo — zapraszamy do Tarnobrzega albo wysyłamy zdjęcia konkretnych płyt. ' +
     'Cenę materiału podajemy po wskazaniu płyty.',
 
+  // Jedyny adres, który podajemy przy kamieniu naturalnym: stan magazynowy.
+  // Folder na Dysku Google z „przykładowymi płytami" był nieaktualny i został
+  // usunięty (17.08.2026) — klient i tak wybiera konkretną płytę z magazynu,
+  // a kreator pokazuje mu ją z wymiarem, ceną i dostępnością.
   linkDekory: {
     url: 'https://www.interstone.pl/stan-magazynowy',
     label: 'Zobacz płyty dostępne w magazynie',
   },
-  linkiDodatkowe: [
-    {
-      url: 'https://drive.google.com/drive/u/0/folders/12IQfkunhX_hiY-92gJQNIELMUoKn0-K8',
-      label: 'Przykładowe płyty — zdjęcia',
-    },
-  ],
 
   vat: VAT,
   /*
