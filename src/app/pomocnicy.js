@@ -1,6 +1,7 @@
 import { h, uprosc } from './dom.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
+import { normalizujKodPlyty } from './wycena-naturalny.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
@@ -448,7 +449,99 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
   );
 }
 
+/**
+ * WYBÓR KONKRETNEJ PŁYTY — kamień naturalny.
+ *
+ * Kamienia naturalnego nie da się wycenić „ogólnie": ten sam wzór to
+ * kilkanaście bloków o różnej cenie, wymiarze i dostępności. Klient wskazuje
+ * więc jedną płytę — klikając w liście albo wpisując kod ze strony magazynu.
+ *
+ * Lista pokazuje to, co realnie decyduje o wyborze: wymiar (czy odcinek
+ * zmieści się bez łączenia), cenę za m² i ile metrów zostało.
+ */
+export function pomocnikPlyty(plyty, nazwa, wybierz) {
+  const dostepne = (plyty || [])
+    .filter((p) => p.kod && p.dostepneM2 > 0 && p.cenaBruttoM2 > 0 && p.formatCm)
+    .sort((a, b) => b.cenaBruttoM2 - a.cenaBruttoM2 || 0)
+    .slice(0, 24);
+
+  const pole = h('input', {
+    class: 'pom-pole pom-pole-kod',
+    type: 'text',
+    placeholder: 'STON000334-84224',
+    'aria-label': 'Kod płyty z magazynu',
+    autocapitalize: 'characters',
+    spellcheck: 'false',
+  });
+  const blad = h('span', { class: 'pom-podpowiedz pom-blad' }, '');
+
+  const zPola = () => {
+    const kod = normalizujKodPlyty(pole.value);
+    if (!kod) {
+      blad.textContent = 'Kod ma postać STON000334-84224 — proszę sprawdzić zapis.';
+      pole.focus();
+      return;
+    }
+    blad.textContent = '';
+    wybierz(kod);
+  };
+
+  const wiersz = (p) => {
+    const dl = Math.max(p.formatCm.wys, p.formatCm.szer);
+    const gl = Math.min(p.formatCm.wys, p.formatCm.szer);
+    const kod = normalizujKodPlyty(p.kod) || p.kod;
+    return h(
+      'button',
+      { class: 'pom-plyta', type: 'button', onclick: () => wybierz(kod) },
+      h('span', { class: 'pom-plyta-nazwa' }, p.nazwa),
+      h(
+        'span',
+        { class: 'pom-plyta-dane' },
+        `${liczbaPL(dl)} × ${liczbaPL(gl)} cm` +
+          (p.gruboscMm ? ` · ${liczbaPL(p.gruboscMm)} mm` : '') +
+          ` · ${liczbaPL(p.cenaBruttoM2)} zł/m²` +
+          ` · wolne ${liczbaPL(p.dostepneM2)} m²`
+      ),
+      h('span', { class: 'pom-plyta-kod' }, kod)
+    );
+  };
+
+  const link = plyty?.find((p) => p.link)?.link;
+
+  return ramka(
+    nazwa ? `Wybierz płytę — ${nazwa}` : 'Wybierz konkretną płytę',
+    h(
+      'p',
+      { class: 'pom-podpowiedz' },
+      'Każdy blok kamienia naturalnego ma własną cenę i wymiar, dlatego wycenę ' +
+        'liczymy z konkretnej płyty.'
+    ),
+    dostepne.length
+      ? h('div', { class: 'pom-plyty' }, dostepne.map(wiersz))
+      : h(
+          'p',
+          { class: 'pusto' },
+          'Nie widzę teraz wolnych płyt tego wzoru. Proszę wpisać kod ze strony magazynu albo zadzwonić.'
+        ),
+    h(
+      'div',
+      { class: 'pom-grupa' },
+      h('span', { class: 'pom-grupa-label' }, 'Albo wpisz kod płyty'),
+      h('div', { class: 'pom-narzedzia' }, pole, h('button', { class: 'btn', type: 'button', onclick: zPola }, 'Sprawdź')),
+      blad
+    ),
+    link
+      ? h('a', { class: 'link-btn', href: link, target: '_blank', rel: 'noopener' }, '↗ Zobacz płyty w magazynie')
+      : null
+  );
+}
+
 /* ------------------------------------------------------------ pomocnicze */
+
+/** Liczba po polsku, bez zbędnych zer po przecinku. */
+function liczbaPL(n) {
+  return (Math.round(Number(n) * 10) / 10).toLocaleString('pl-PL');
+}
 
 function ramka(tytul, ...tresc) {
   return h('div', { class: 'pomocnik' }, h('div', { class: 'pom-tytul' }, tytul), tresc);

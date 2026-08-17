@@ -3,7 +3,7 @@ import { FIRMY, firmaWgSlug, gruboscDomyslna } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { bramkaWyceny, bramkaKontaktu } from './bramka.js';
 import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
-import { wybierzWariant, wycenZMagazynu } from './wycena-naturalny.js';
+import { wybierzWariant, wycenZMagazynu, normalizujKodPlyty } from './wycena-naturalny.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import {
   odcinkiZParametrow,
@@ -21,6 +21,7 @@ import {
   pomocnikDekor,
   pomocnikWymiary,
   pomocnikSzczegoly,
+  pomocnikPlyty,
 } from './pomocnicy.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 
@@ -208,20 +209,23 @@ export function uruchomCzat(root, akcje = {}) {
     const odcinki = odcinkiZParametrow(params);
     if (!nazwa || !odcinki.length) return false;
 
-    const { warianty } = await sprawdzMagazyn(nazwa);
-    if (!warianty.length) return false;
+    /*
+     * Kamień naturalny liczymy WYŁĄCZNIE ze wskazanej płyty (decyzja Dawida,
+     * 17.08.2026). Każdy blok ma własną cenę i wymiar, więc „wstępna" wycena
+     * z metra systematycznie zaniżała kwotę. Bez kodu pokazujemy klientowi
+     * listę płyt do wyboru zamiast liczyć cokolwiek.
+     */
+    const kod = normalizujKodPlyty(params?.kod_plyty || stan.kodPlyty);
+    const odp = await sprawdzMagazyn(nazwa, kod || undefined);
+    if (!odp.ok) return false;
 
-    const wariant = wybierzWariant(warianty, {
-      grubosc: params.grubosc,
-      najdluzszyOdcinek: Math.max(...odcinki.map((o) => Math.max(o.dl, o.gl))),
-      // Zgrubny metraż z zapasem — żeby nie wybrać bloku, w którym została
-      // jedna płyta, gdy blat potrzebuje dwóch.
-      m2Potrzebne: odcinki.reduce((a, o) => a + (o.dl * o.gl) / 10000, 0) * 1.15,
-      wykonczenie: params.wykonczenie,
-    });
-    if (!wariant) return false;
+    if (!kod || !odp.plyta) {
+      pokazWyborPlyty(nazwa, odp, params, kod);
+      return true;
+    }
 
-    const w = wycenZMagazynu(wariant, {
+    stan.kodPlyty = kod;
+    const w = wycenZMagazynu(odp.plyta, {
       odcinki,
       opcje: opcjeZParametrow(params),
       grubosc: params.grubosc,
@@ -231,9 +235,40 @@ export function uruchomCzat(root, akcje = {}) {
     stan.szczegoly = true;
     rozmowa.querySelector('.pomocnik')?.remove();
     rozmowa.append(bramkaWyceny(w, { transkrypcja }));
-    zdarzenie('wycena_naturalny', { kamien: wariant.nazwa });
+    zdarzenie('wycena_naturalny', { kamien: odp.plyta.nazwa, kod });
     przewin();
     return true;
+  }
+
+  /**
+   * Wybór płyty: lista konkretnych bloków z magazynu albo pole na kod.
+   * Pokazujemy ją zamiast wyceny — świadomie, bo bez płyty nie ma ceny.
+   */
+  function pokazWyborPlyty(nazwa, odp, params, kod) {
+    rozmowa.querySelector('.pomocnik')?.remove();
+    dodajWiadomosc('konsultant', komunikatKodu(odp.powodKodu, kod, odp));
+    rozmowa.append(
+      pomocnikPlyty(odp.plyty, nazwa, (wybrany) => {
+        stan.kodPlyty = wybrany;
+        // Ta sama droga co zwykle: wiadomość klienta wraca do konsultanta,
+        // a wycena rusza dopiero z kodem.
+        wyslij(`Wybieram płytę ${wybrany}.`);
+      })
+    );
+    przewin();
+  }
+
+  /** Co powiedzieć, gdy kodu brak albo jest zły. */
+  function komunikatKodu(powod, kod, odp) {
+    if (powod === 'zly-format' || (kod === '' && odp.powodKodu === null && stan.kodPlyty))
+      return 'Ten kod nie wygląda na kod płyty. Powinien mieć postać STON000334-84224 — proszę sprawdzić i wpisać jeszcze raz albo wybrać płytę z listy.';
+    if (powod === 'nie-znaleziono')
+      return 'Nie znalazłem tej płyty wśród dostępnych. Mogła zostać sprzedana — proszę wybrać inną z listy poniżej.';
+    if (powod === 'brak-dostepnosci')
+      return 'Ta płyta jest już zarezerwowana w całości. Proszę wybrać inną z listy poniżej.';
+    if (powod === 'brak-ceny')
+      return 'Przy tej płycie magazyn nie podaje ceny — proszę wybrać inną albo zadzwonić, potwierdzimy ją u dostawcy.';
+    return 'Kamień naturalny wyceniam z konkretnej płyty — każdy blok ma własną cenę i wymiar. Proszę wskazać płytę z listy albo wpisać jej kod.';
   }
 
   function pokazBramke(w) {

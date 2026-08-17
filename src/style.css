@@ -610,6 +610,30 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   color: var(--muted); font-family: var(--sans); font-size: 12px;
 }
 
+/* Wybór konkretnej płyty kamienia naturalnego — kod, wymiar, cena, zapas.
+   Wiersz jest przyciskiem: klient wybiera płytę jednym kliknięciem. */
+.pom-plyty { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.pom-plyta {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--cream); padding: 10px 12px; cursor: pointer; text-align: left;
+  transition: border-color .15s;
+}
+.pom-plyta:hover { border-color: var(--vein); }
+.pom-plyta-nazwa { font-family: var(--serif); font-size: 15px; }
+.pom-plyta-dane {
+  grid-column: 1 / -1; color: var(--muted); font-family: var(--sans); font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pom-plyta-kod {
+  grid-row: 1; grid-column: 2; align-self: start;
+  color: var(--vein); font-family: var(--sans); font-size: 11px; letter-spacing: .04em;
+  white-space: nowrap;
+}
+.pom-pole-kod { flex: 1; min-width: 11rem; text-transform: uppercase; letter-spacing: .04em; }
+.pom-blad:empty { display: none; }
+.pom-blad { color: #d98a76; }
+
 .pom-odcinki { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
 .pom-odcinek { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pom-nr { font-family: var(--sans); font-size: 12px; color: var(--dim); width: 16px; }

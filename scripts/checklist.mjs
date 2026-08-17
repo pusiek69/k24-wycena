@@ -314,5 +314,30 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
   );
 }
 
+/* 20. Kamień naturalny tylko ze wskazaną płytą
+   Każdy blok ma własną cenę — wycena „z metra" zaniżała kwotę. Wymóg musi
+   trzymać w SILNIKU, nie tylko w wytycznych: model bywa nieprecyzyjny,
+   a to jest różnica kilkuset złotych za metr. */
+{
+  const silnik = czytaj('src/engine/wycena.js');
+  const naturalny = czytaj('src/app/wycena-naturalny.js');
+  const braki = [];
+
+  if (!/wymagaKoduPlyty && !w\.kodPlyty/.test(silnik))
+    braki.push('silnik liczy naturalny bez kodu płyty');
+  if (!/brakKoduPlyty: true/.test(silnik)) braki.push('front nie pozna powodu odmowy');
+  if (!/wymagaKoduPlyty: naturalny/.test(naturalny)) braki.push('wymóg nie jest wpięty przy naturalnych');
+  if (!/kodPlyty/.test(czytaj('src/app/bramka.js'))) braki.push('kod nie idzie do maili');
+  if (!/s\.kodPlyty/.test(czytaj('worker/worker.template.js'))) braki.push('kodu nie ma w temacie zgłoszenia');
+  if (prompt !== null && !prompt.includes('kod_plyty')) braki.push('konsultant nie zna pola kod_plyty');
+
+  ok(
+    20,
+    'kamień naturalny wyceniany tylko ze wskazaną płytą',
+    braki.length === 0,
+    braki.join('; ') || 'silnik odmawia bez kodu, kod idzie na kartę i w temat maila'
+  );
+}
+
 console.log(bledy ? `\n✗ Niezgodności: ${bledy}` : '\n✓ Checklista §8 — wszystko zgodne ze specyfikacją');
 process.exit(bledy ? 1 : 0);

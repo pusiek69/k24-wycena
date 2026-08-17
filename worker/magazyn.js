@@ -160,6 +160,43 @@ export function oczyscFraze(fraza) {
   return s.length >= 2 ? s : '';
 }
 
+/* ─────────────────────────────────────────────── kod konkretnej płyty */
+
+/**
+ * KOD PŁYTY (matnr) — np. „STON000334 - 84224".
+ *
+ * Magazyn zapisuje go ze spacjami wokół myślnika, klient przepisuje bez nich,
+ * czasem małymi literami i z myślnikiem innego rodzaju. Do porównań
+ * sprowadzamy wszystko do jednej postaci: WIELKIE LITERY, jeden dywiz,
+ * bez spacji.
+ *
+ * ⚠ Wyszukiwarka Interstone NIE znajduje płyt po kodzie — `search=STON000244`
+ * zwraca zero wyników. Kodu nie da się więc sprawdzić samego z siebie;
+ * zawsze potrzebujemy nazwy kamienia, po której pobieramy płyty tego wzoru
+ * i dopiero wśród nich szukamy kodu. Stąd `znajdzPoKodzie(plyty, kod)`,
+ * a nie „pobierz płytę po kodzie".
+ */
+export function normalizujKod(kod) {
+  const s = String(kod ?? '')
+    .toUpperCase()
+    .replace(/[‐-―−]/g, '-') // myślniki typograficzne → dywiz
+    .replace(/[^A-Z0-9-]/g, '')
+    .replace(/-+/g, '-');
+  return /^STON\d{4,}-\d{3,}$/.test(s) ? s : '';
+}
+
+/** Czy tekst wygląda na kod płyty (sam format, bez sprawdzania magazynu). */
+export function wygladaJakKod(kod) {
+  return normalizujKod(kod) !== '';
+}
+
+/** Płyta o podanym kodzie spośród pobranych. Zwraca null, gdy jej nie ma. */
+export function znajdzPoKodzie(plyty, kod) {
+  const szukany = normalizujKod(kod);
+  if (!szukany) return null;
+  return (plyty || []).find((p) => normalizujKod(p.kod) === szukany) || null;
+}
+
 /* ─────────────────────────────────── link do magazynu dla klienta */
 
 /**
@@ -590,10 +627,39 @@ export function opiszPlyty(wynik) {
     if (linki.length >= 4) break;
   }
 
+  /*
+   * KODY KONKRETNYCH PŁYT.
+   *
+   * Kamienia naturalnego nie wyceniamy „ogólnie" — potrzebny jest kod
+   * wskazanej płyty (patrz normalizujKod). Konsultant musi więc mieć skąd go
+   * wziąć: poniżej najlepsze dostępne płyty z kodami, cenami i wymiarami.
+   * Bez tej listy model podawałby kody z pamięci, czyli zmyślone.
+   */
+  const konkretne = (wynik.plyty || [])
+    .filter((p) => p.kod && p.dostepneM2 > 0 && p.cenaBruttoM2 > 0 && p.formatCm)
+    .sort((a, b) => dluzszyBok(b.formatCm) - dluzszyBok(a.formatCm))
+    .slice(0, 8)
+    .map((p) => {
+      const dl = Math.max(p.formatCm.wys, p.formatCm.szer);
+      const gl = Math.min(p.formatCm.wys, p.formatCm.szer);
+      return `- ${normalizujKod(p.kod) || p.kod} | ${p.nazwa} | ${pl(dl)} × ${pl(gl)} cm | ` +
+        `${p.gruboscMm != null ? `${pl(p.gruboscMm)} mm | ` : ''}${pl(p.cenaBruttoM2)} zł/m² brutto | ` +
+        `wolne ${pl(p.dostepneM2)} m²`;
+    });
+
   return [
     `Magazyn Interstone — „${wynik.fraza}": ${mnoga(wynik.plyty.length, ['płyta', 'płyty', 'płyt'])} ` +
       `w ${mnoga(lista.length, ['wariancie', 'wariantach', 'wariantach'])}.`,
     ...wiersze,
+    ...(konkretne.length
+      ? [
+          '',
+          'KONKRETNE PŁYTY (kod | nazwa | wymiar | grubość | cena | dostępność).',
+          'Wyceny kamienia naturalnego NIE DA SIĘ policzyć bez kodu płyty — podaj',
+          'klientowi te kody i poproś o wskazanie jednego. Kody przepisuj DOKŁADNIE:',
+          ...konkretne,
+        ]
+      : []),
     ...(linki.length
       ? ['', 'Klient może sam obejrzeć i wybrać płytę — WKLEJ ten adres bez zmian:', ...linki]
       : []),

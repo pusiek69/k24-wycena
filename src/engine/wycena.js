@@ -49,6 +49,24 @@ export function wycen(firma, w, dataISO) {
 
   let materialDoUstalenia = false;
 
+  /*
+   * KAMIEŃ NATURALNY TYLKO ZE WSKAZANĄ PŁYTĄ.
+   *
+   * Każdy blok kamienia naturalnego ma własną cenę, wymiar i dostępność —
+   * różnica między blokami tego samego wzoru sięga kilkuset złotych za m².
+   * Wycena „z metra", bez wskazania płyty, wychodziła przez to systematycznie
+   * poniżej realnej ceny i klient dowiadywał się prawdy dopiero na placu.
+   * Dlatego bez kodu płyty (np. STON000334-84224) nie liczymy nic
+   * (decyzja Dawida, 17.08.2026).
+   */
+  if (firma.wymagaKoduPlyty && !w.kodPlyty) {
+    return {
+      ok: false,
+      blad: 'Do wyceny kamienia naturalnego potrzebny jest kod konkretnej płyty z magazynu.',
+      brakKoduPlyty: true,
+    };
+  }
+
   if (firma.trybCeny === 'reczna') {
     // Kamień naturalny — cena konkretnej płyty, wpisywana ręcznie.
     // Bez ceny też liczymy: pokazujemy samą obróbkę i montaż.
@@ -125,7 +143,10 @@ export function wycen(firma, w, dataISO) {
   pozycje.push({
     grupa: 'materiał',
     nazwa: firma.trybCeny === 'reczna'
-      ? `${firma.nazwa} — ${dekorNazwa || 'wybrany kamień'}`
+      ? `${firma.nazwa} — ${dekorNazwa || 'wybrany kamień'}` +
+        // Kod płyty na karcie i w mailach: klient ma wiedzieć, którą dokładnie
+        // płytę wycenialiśmy, a Dawid — którą zarezerwować.
+        (w.kodPlyty ? ` (płyta ${w.kodPlyty})` : '')
       : `${firma.nazwa} — ${dekorNazwa}, grubość ${w.grubosc} mm`,
     detal: materialDoUstalenia
       ? `${round1(m2Platne)} m² materiału — cenę podamy po wybraniu płyty`
@@ -259,6 +280,9 @@ export function wycen(firma, w, dataISO) {
     // Zmienia nazwę drugiej kwoty na karcie i dokłada zastrzeżenie
     // o odpowiedzialności za wymiary — patrz firms/_domyslne.js.
     odbiorWlasny,
+    // Kod wskazanej płyty — trafia na kartę, do maila klienta i w temat
+    // zgłoszenia do firmy, żeby dało się ją zarezerwować bez dopytywania.
+    kodPlyty: w.kodPlyty || null,
     razem,
     // Rozbicie podatkowe dla maila firmowego. Wszystkie pozycje są brutto
     // przy tej samej stawce, więc netto liczy się jednym dzieleniem.

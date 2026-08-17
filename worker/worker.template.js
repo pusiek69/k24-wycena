@@ -23,7 +23,7 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
-import { pobierzMagazyn, opiszPlyty, pogrupuj } from './magazyn.js';
+import { pobierzMagazyn, opiszPlyty, pogrupuj, wygladaJakKod, znajdzPoKodzie } from './magazyn.js';
 
 const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 1000;
@@ -218,10 +218,28 @@ async function anthropic(env, messages, narzedzia) {
 async function obsluzMagazyn(request, cors, ctx) {
   const dane = await request.json().catch(() => null);
   const wynik = await pobierzMagazyn(dane?.fraza, ctx);
+
+  // Kod konkretnej płyty sprawdzamy WŚRÓD pobranych — wyszukiwarka Interstone
+  // nie umie znaleźć płyty po kodzie, więc nazwa kamienia jest niezbędna.
+  let plyta = null;
+  let powodKodu = null;
+  if (dane?.kod) {
+    if (!wygladaJakKod(dane.kod)) powodKodu = 'zly-format';
+    else if (!wynik.ok) powodKodu = 'magazyn-niedostepny';
+    else {
+      plyta = znajdzPoKodzie(wynik.plyty, dane.kod);
+      if (!plyta) powodKodu = 'nie-znaleziono';
+      else if (!(plyta.dostepneM2 > 0)) powodKodu = 'brak-dostepnosci';
+      else if (!(plyta.cenaBruttoM2 > 0)) powodKodu = 'brak-ceny';
+    }
+  }
+
   return json(
     {
       ...wynik,
       warianty: wynik.ok ? pogrupuj(wynik.plyty) : [],
+      plyta: powodKodu ? null : plyta,
+      powodKodu,
       opis: opiszPlyty(wynik),
     },
     wynik.ok ? 200 : wynik.powod === 'pusta-fraza' ? 400 : 503,
@@ -363,6 +381,9 @@ function tematLeada(klient, s, wycenaTekst) {
   }
   if (s?.firma) czesci.push([s.firma, s.dekor].filter(Boolean).join(' '));
   else if (wycenaTekst) czesci.push(wycenaTekst.split('·')[0].trim());
+  // Kod płyty w temacie: przy kamieniu naturalnym to jedyna informacja,
+  // po której Dawid zarezerwuje właściwy blok, nie otwierając maila.
+  if (s?.kodPlyty) czesci.push(s.kodPlyty);
   return czesci.join(' — ').slice(0, 180);
 }
 

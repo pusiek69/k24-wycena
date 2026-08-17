@@ -45,18 +45,26 @@ export async function zapytajKonsultanta(messages) {
  * Zwraca `{ ok, warianty: [...] }`. Gdy magazyn nie odpowiada, oddajemy
  * `{ ok: false }` zamiast rzucać — brak danych nie może przerwać rozmowy.
  */
-export async function sprawdzMagazyn(fraza) {
+export async function sprawdzMagazyn(fraza, kod) {
   try {
     const odp = await fetch(`${API_BASE}/magazyn`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ fraza }),
+      body: JSON.stringify(kod ? { fraza, kod } : { fraza }),
     });
     const dane = await odp.json().catch(() => null);
-    if (!odp.ok || !dane?.ok) return { ok: false, warianty: [] };
-    return { ok: true, warianty: Array.isArray(dane.warianty) ? dane.warianty : [] };
+    if (!odp.ok || !dane?.ok) return { ok: false, warianty: [], plyty: [] };
+    return {
+      ok: true,
+      warianty: Array.isArray(dane.warianty) ? dane.warianty : [],
+      // Pojedyncze płyty z kodami — z nich budujemy listę do wyboru.
+      plyty: Array.isArray(dane.plyty) ? dane.plyty : [],
+      // Wypełnione tylko wtedy, gdy pytaliśmy o konkretny kod.
+      plyta: dane.plyta || null,
+      powodKodu: dane.powodKodu || null,
+    };
   } catch {
-    return { ok: false, warianty: [] };
+    return { ok: false, warianty: [], plyty: [] };
   }
 }
 

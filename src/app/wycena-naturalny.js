@@ -51,6 +51,25 @@ export function jestNaturalny(wariant) {
   return /kamie/i.test(uprosc(wariant?.rodzaj || ''));
 }
 
+/**
+ * KOD PŁYTY — „STON000334 - 84224" → „STON000334-84224".
+ *
+ * Ta sama zasada co w worker/magazyn.js: magazyn zapisuje kod ze spacjami,
+ * klient przepisuje go bez nich, czasem z myślnikiem typograficznym.
+ * Kod poza formatem zwraca pusty łańcuch — wtedy wycena się nie zaczyna.
+ *
+ * Front potrzebuje własnej kopii, bo sprawdza format ZANIM ruszy do sieci:
+ * literówkę widać od razu, bez czekania na odpowiedź magazynu.
+ */
+export function normalizujKodPlyty(kod) {
+  const s = String(kod ?? '')
+    .toUpperCase()
+    .replace(/[‐-―−]/g, '-')
+    .replace(/[^A-Z0-9-]/g, '')
+    .replace(/-+/g, '-');
+  return /^STON\d{4,}-\d{3,}$/.test(s) ? s : '';
+}
+
 function uprosc(s) {
   return String(s ?? '')
     .toLowerCase()
@@ -148,6 +167,11 @@ export function firmaZWariantu(wariant) {
     // pęknięcia. Konglomerat i spiek z Interstone tną się jak każde inne.
     narzutOdpad: naturalny ? 0.15 : 0.1,
 
+    // Kamień naturalny wyceniamy WYŁĄCZNIE ze wskazanej płyty — silnik
+    // odmówi wyceny bez kodu. Konglomerat InterQ i spieki Laminam sprzedaje
+    // się z katalogu, więc ich ten wymóg nie dotyczy.
+    wymagaKoduPlyty: naturalny,
+
     notaKlient: naturalny ? ZASTRZEZENIE : ZASTRZEZENIE_INNE,
 
     // Klient ogląda i wybiera płytę sam — na stronie magazynu widzi zdjęcia
@@ -177,6 +201,9 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
     odcinki,
     opcje,
     cenaRecznaM2: wariant.cenaBruttoM2,
+    // Kod wskazanej płyty. Przy kamieniu naturalnym silnik bez niego
+    // odmówi wyceny — patrz `wymagaKoduPlyty`.
+    kodPlyty: normalizujKodPlyty(wariant.kod),
   });
   if (!w.ok) return w;
 

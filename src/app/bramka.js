@@ -295,6 +295,8 @@ export function szczegolyWyceny(w) {
     // Zamówienie bez montażu — Dawid musi to zobaczyć od razu, bo zmienia
     // sposób obsługi (brak pomiaru, brak wyjazdu, odbiór w zakładzie).
     odbiorWlasny: !!w.odbiorWlasny,
+    // Kod wskazanej płyty kamienia naturalnego — trafia też w temat maila.
+    kodPlyty: w.kodPlyty || null,
     pozycje: (w.pozycje || []).map((p) => ({
       grupa: p.grupa,
       nazwa: p.nazwa,
