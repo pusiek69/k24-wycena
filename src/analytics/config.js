@@ -19,7 +19,7 @@
  */
 export const POMIAR = {
   ga4: '',
-  googleAds: '',
+  googleAds: 'AW-18396227572',
   konwersjaLead: '',
   konwersjaTelefon: '',
   metaPixel: '',

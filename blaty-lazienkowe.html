@@ -1,6 +1,30 @@
 <!doctype html>
 <html lang="pl">
 <head>
+  <!-- Google tag (gtag.js) — Google Ads AW-18396227572.
+       Zgody MUSZĄ stać przed wczytaniem gtag.js: Consent Mode v2 czyta
+       ustawienie domyślne w momencie startu tagu. Baner (src/analytics/zgody.js)
+       tylko je AKTUALIZUJE po wyborze klienta. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+      functionality_storage: 'granted',
+      security_storage: 'granted',
+      wait_for_update: 500
+    });
+    gtag('set', 'ads_data_redaction', true);
+    gtag('set', 'url_passthrough', true);
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18396227572"></script>
+  <script>
+    gtag('js', new Date());
+    gtag('config', 'AW-18396227572');
+  </script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Blaty łazienkowe z kamienia — który materiał wybrać</title>

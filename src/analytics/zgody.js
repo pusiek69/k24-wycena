@@ -9,7 +9,8 @@ import { POMIAR, pomiarWlaczony } from './config.js';
  * a docelowo mogą zostać ograniczone.
  *
  * Co robimy:
- *   1. Zanim cokolwiek się wczyta — ustawiamy domyślnie WSZYSTKO ZABRONIONE.
+ *   1. Domyślne zgody (wszystko zabronione) ustawia wstawka w <head>
+ *      każdej strony — musi tam być, zanim wystartuje gtag.js.
  *   2. Pokazujemy baner z realnym wyborem (zgoda / tylko niezbędne).
  *   3. Po zgodzie: aktualizujemy Consent Mode i dopiero wtedy ładujemy piksele.
  *   4. Wybór pamiętamy 12 miesięcy; da się go zmienić linkiem w stopce.
@@ -17,13 +18,6 @@ import { POMIAR, pomiarWlaczony } from './config.js';
 
 const KLUCZ = 'k24h-zgody';
 const WAZNOSC_DNI = 365;
-
-const ZABRONIONE = {
-  ad_storage: 'denied',
-  ad_user_data: 'denied',
-  ad_personalization: 'denied',
-  analytics_storage: 'denied',
-};
 
 const DOZWOLONE = {
   ad_storage: 'granted',
@@ -44,15 +38,17 @@ export function inicjujZgody() {
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || gtag;
 
-  // Domyślnie: nic nie wolno. Musi być PRZED wczytaniem gtag.js.
-  gtag('consent', 'default', {
-    ...ZABRONIONE,
-    functionality_storage: 'granted',
-    security_storage: 'granted',
-    wait_for_update: 500,
-  });
-  gtag('set', 'ads_data_redaction', true);
-  gtag('set', 'url_passthrough', true);
+  /*
+   * Domyślne zgody (wszystko zabronione) ustawia wstawka w <head> KAŻDEJ
+   * strony — razem z wczytaniem gtag.js dla Google Ads. Tak wymaga Consent
+   * Mode v2: ustawienie domyślne musi istnieć, zanim tag wystartuje, a tag
+   * ma startować od razu, żeby Ads dostał choćby bezciasteczkowy sygnał.
+   *
+   * Tutaj zostaje więc tylko to, co dzieje się PÓŹNIEJ: baner, aktualizacja
+   * zgody po wyborze klienta i skrypty, które nie mają Consent Mode (Meta).
+   * Nie ustawiamy defaultów drugi raz i nie ładujemy gtag.js ponownie —
+   * dwa razy ten sam tag to podwójne odsłony w statystykach.
+   */
 
   if (!pomiarWlaczony()) return; // nic nie skonfigurowane — brak banera, brak ciasteczek
 
@@ -136,25 +132,16 @@ function zaladujSkrypty() {
   if (zaladowane) return;
   zaladowane = true;
 
-  const idGoogle = POMIAR.ga4 || POMIAR.googleAds;
-  if (idGoogle) {
-    wstawSkrypt(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(idGoogle)}`);
-    gtag('js', new Date());
-    if (POMIAR.ga4) gtag('config', POMIAR.ga4, { anonymize_ip: true });
-    if (POMIAR.googleAds) gtag('config', POMIAR.googleAds);
+  // gtag.js jest już wczytany ze wstawki w <head>, razem z konfiguracją
+  // Google Ads. Zostaje GA4 — dokładamy je do tego samego tagu.
+  if (POMIAR.ga4) {
+    gtag('config', POMIAR.ga4, { anonymize_ip: true });
   }
 
   // Meta Pixel ładujemy dopiero po zgodzie — nie ma odpowiednika Consent Mode.
   if (POMIAR.metaPixel && odczytajWybor() === 'wszystkie') {
     zaladujMeta(POMIAR.metaPixel);
   }
-}
-
-function wstawSkrypt(src) {
-  const s = document.createElement('script');
-  s.async = true;
-  s.src = src;
-  document.head.appendChild(s);
 }
 
 function zaladujMeta(id) {
