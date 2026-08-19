@@ -3,6 +3,8 @@ import { kartaWyceny, opisOdcinkow } from './wynik-widok.js';
 import { wyslijLead, wyslijLeadZapasowo } from '../api.js';
 import { zdarzenie, zdarzenieWycena, konwersjaLead } from '../analytics/zdarzenia.js';
 import { zrodloLeada } from './zrodlo.js';
+import { panelFeedbacku } from './feedback.js';
+import { rodzajMaterialu } from '../engine/alternatywy.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -162,12 +164,12 @@ function formularzBramki(w, box, opcje) {
 
     try {
       await wyslijLead(zgloszenie);
-      odsloniecie(w, box, { mailWyslany: true });
+      odsloniecie(w, box, { mailWyslany: true, dane });
     } catch {
       // Worker nie odpowiada — nie tracimy kontaktu, próbujemy formularzem Netlify.
       try {
         await wyslijLeadZapasowo(zgloszenie);
-        odsloniecie(w, box, { mailWyslany: false });
+        odsloniecie(w, box, { mailWyslany: false, dane });
       } catch {
         przycisk.disabled = false;
         przycisk.textContent = 'Spróbuj ponownie';
@@ -224,7 +226,7 @@ function formularzBramki(w, box, opcje) {
 }
 
 /** Po wysłaniu: karta z ceną + potwierdzenie. */
-function odsloniecie(w, box, { mailWyslany }) {
+function odsloniecie(w, box, { mailWyslany, dane = {} }) {
   konwersjaLead(Math.round(w?.razemZaokr || 0));
   box.replaceChildren(
     h(
@@ -240,6 +242,9 @@ function odsloniecie(w, box, { mailWyslany }) {
           : 'Oddzwonimy w godzinach 8–18 i prześlemy wycenę mailem.'
       )
     ),
+    // Jedno dotknięcie zamiast czekania na telefon: pasuje / za drogo /
+    // zastanowię się. Rysuje się tylko przy pokazanej wycenie.
+    w ? panelFeedbacku(w, dane) : null,
     w ? kartaWyceny(w) : null
   );
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -296,6 +301,9 @@ export function szczegolyWyceny(w) {
   const plyta = w.firma?.plyta || {};
   return {
     firma: w.firma?.nazwa || '',
+    // Rodzaj materiału (konglomerat/spiek/naturalny) — baza klientów grupuje
+    // po nim statystykę odpowiedzi na wycenę.
+    rodzaj: rodzajMaterialu(w.firma),
     dekor: w.dekor || '',
     grubosc: w.grubosc || '',
     odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),

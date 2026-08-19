@@ -27,6 +27,11 @@ CREATE TABLE IF NOT EXISTS klienci (
   zrodlo_szczegol TEXT NOT NULL DEFAULT '',
   -- Automatyczne podejrzenia (JSON: ["test","dubel"]) — szara flaga, nie wyrok.
   flagi           TEXT NOT NULL DEFAULT '[]',
+  -- Odpowiedź klienta na pokazaną wycenę: '' | 'pasuje' | 'za_drogo' | 'zastanowi'.
+  feedback        TEXT NOT NULL DEFAULT '',
+  -- Budżet z pytania przy „za drogo" (dobrowolny) i pora kontaktu przy „pasuje".
+  budzet          TEXT NOT NULL DEFAULT '',
+  pora            TEXT NOT NULL DEFAULT '',
   wycen           INTEGER NOT NULL DEFAULT 0,
   kwota_ostatnia  INTEGER NOT NULL DEFAULT 0,
   kwota_max       INTEGER NOT NULL DEFAULT 0,
@@ -54,7 +59,13 @@ CREATE TABLE IF NOT EXISTS wyceny (
   pomieszczenie TEXT NOT NULL DEFAULT '',
   odbior       INTEGER NOT NULL DEFAULT 0,
   kod_plyty    TEXT NOT NULL DEFAULT '',
-  opis         TEXT NOT NULL DEFAULT ''
+  opis         TEXT NOT NULL DEFAULT '',
+  -- Rodzaj materiału (konglomerat / spiek / naturalny) — po nim grupuje się
+  -- statystyka odpowiedzi klientów na wyceny.
+  kategoria    TEXT NOT NULL DEFAULT '',
+  -- Odpowiedź klienta przypięta do tej konkretnej wyceny (ostatniej w chwili
+  -- kliknięcia) — z tego liczy się % pasuje/za drogo/zastanowi per materiał.
+  feedback     TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS wyceny_klient ON wyceny (klient_id);

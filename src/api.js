@@ -82,6 +82,20 @@ export async function sprawdzMagazyn(fraza, kod) {
   }
 }
 
+/**
+ * Odpowiedź klienta na pokazaną wycenę (pasuje / za drogo / zastanowi się).
+ * Zawsze w tle: feedback to bonus, więc błąd sieci ma zniknąć bez śladu,
+ * zamiast pokazywać klientowi cokolwiek.
+ */
+export function wyslijFeedback(dane) {
+  return fetch(`${API_BASE}/feedback`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(dane),
+    keepalive: true,
+  }).catch(() => null);
+}
+
 /** Zgłoszenie: wycena mailem do klienta + lead do firmy. */
 export async function wyslijLead(dane) {
   const odp = await fetch(`${API_BASE}/lead`, {

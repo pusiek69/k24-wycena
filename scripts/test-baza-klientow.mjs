@@ -14,6 +14,8 @@ import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import {
   zapiszLead,
+  zapiszFeedback,
+  statystykaFeedbacku,
   lista,
   karta,
   podsumowanie,
@@ -67,7 +69,10 @@ const LEAD = {
   miejscowosc: 'Tarnobrzeg',
   kwota: 9900,
   opis: 'Florim Stone · Marble — Statuario poler',
-  szczegoly: { firma: 'Florim Stone', dekor: 'Marble — Statuario poler', grubosc: '12', m2Blatu: 1.8, mb: 3 },
+  szczegoly: {
+    firma: 'Florim Stone', rodzaj: 'spiek', dekor: 'Marble — Statuario poler',
+    grubosc: '12', m2Blatu: 1.8, mb: 3,
+  },
   zrodlo: { typ: 'ads', gclid: 'abc123', utm_campaign: 'blaty-tarnobrzeg' },
 };
 
@@ -280,6 +285,93 @@ test('filtrowanie po statusie, kwocie i szukajce', async () => {
   assert.deepEqual((await lista(env, { szukaj: 'Sandomierz' })).map((k) => k.imie), ['Piotr']);
   assert.deepEqual((await lista(env, { szukaj: '600 700' })).map((k) => k.imie), ['Piotr']);
   assert.equal((await lista(env, { status: 'fake' })).length, 0);
+});
+
+/* ───────────────────────────────────────────── feedback po wycenie */
+
+test('„pasuje mi" podnosi status na ciepły i zapisuje porę', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wynik = await zapiszFeedback(env, {
+    telefon: '+48 796 123 456', // inny zapis tego samego numeru
+    email: '',
+    feedback: 'pasuje',
+    pora: 'Po 16:00',
+  });
+  assert.equal(wynik.klientId, klientId);
+
+  const k = await karta(env, klientId);
+  assert.equal(k.status, 'cieply');
+  assert.equal(k.feedback, 'pasuje');
+  assert.equal(k.pora, 'Po 16:00');
+  assert.match(k.notatki[0].tresc, /Pasuje mi/);
+});
+
+test('klik klienta nie cofa statusu ustawionego przez Dawida', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await ustawStatus(env, klientId, 'oferta');
+  await zapiszFeedback(env, { telefon: LEAD.telefon, feedback: 'pasuje' });
+  assert.equal((await karta(env, klientId)).status, 'oferta', 'oferta zostaje');
+});
+
+test('„za drogo" z budżetem zapisuje etykietę, bez zmiany statusu', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszFeedback(env, { email: LEAD.email, feedback: 'za_drogo', budzet: '8–12 tys.' });
+
+  const k = await karta(env, klientId);
+  assert.equal(k.status, 'nowy');
+  assert.equal(k.feedback, 'za_drogo');
+  assert.equal(k.budzet, '8–12 tys.');
+  assert.match(k.notatki[0].tresc, /Cena za wysoka \(budżet: 8–12 tys\.\)/);
+});
+
+test('feedback przypina się do ostatniej wyceny — statystyka liczy per materiał', async () => {
+  const env = nowaBaza();
+  await zapiszLead(env, LEAD); // spiek
+  await zapiszFeedback(env, { telefon: LEAD.telefon, feedback: 'za_drogo' });
+
+  const KONGLOMERAT = {
+    ...LEAD, telefon: '600 700 800', email: 'k@x.pl',
+    szczegoly: { ...LEAD.szczegoly, firma: 'Avant Quartz', rodzaj: 'konglomerat' },
+  };
+  await zapiszLead(env, KONGLOMERAT);
+  await zapiszFeedback(env, { telefon: '600 700 800', feedback: 'pasuje' });
+
+  const stat = await statystykaFeedbacku(env);
+  assert.equal(stat.spiek.za_drogo, 1);
+  assert.equal(stat.spiek.razem, 1);
+  assert.equal(stat.konglomerat.pasuje, 1);
+  assert.equal(stat.konglomerat.razem, 1);
+});
+
+test('kolejny klik nadpisuje poprzednią odpowiedź', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszFeedback(env, { telefon: LEAD.telefon, feedback: 'za_drogo' });
+  await zapiszFeedback(env, { telefon: LEAD.telefon, feedback: 'za_drogo', budzet: 'do 8 tys.' });
+  const k = await karta(env, klientId);
+  assert.equal(k.budzet, 'do 8 tys.');
+});
+
+test('feedback od nieznanego klienta albo z błędną wartością ginie po cichu', async () => {
+  const env = nowaBaza();
+  assert.equal(await zapiszFeedback(env, { telefon: '111 222 333', feedback: 'pasuje' }), null);
+  const { klientId } = await zapiszLead(env, LEAD);
+  assert.equal(await zapiszFeedback(env, { telefon: LEAD.telefon, feedback: 'wymyslony' }), null);
+  assert.equal((await karta(env, klientId)).feedback, '');
+});
+
+test('klient z „pasuje mi" wisi na górze listy', async () => {
+  const env = nowaBaza();
+  await zapiszLead(env, LEAD);
+  const b = await zapiszLead(env, { ...LEAD, imie: 'Piotr', telefon: '600 700 800', email: 'p@x.pl' });
+  // Anna jest świeższa (późniejszy ruch)…
+  await dodajNotatke(env, (await lista(env, {}))[0].id, 'ruch');
+  await zapiszFeedback(env, { telefon: '600 700 800', feedback: 'pasuje' });
+  // …ale to Piotr prosi o kontakt, więc idzie pierwszy.
+  assert.equal((await lista(env, {}))[0].id, b.klientId);
 });
 
 /* ─────────────────────────────────────────────── kasowanie i retencja */

@@ -9,6 +9,7 @@
  *  Co robi:
  *    POST /chat     — rozmowa z konsultantem (klucz Anthropic zostaje tutaj)
  *    POST /lead     — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
+ *    POST /feedback — odpowiedź klienta na pokazaną wycenę (do bazy klientów)
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
  *                     odczyt, z którego korzysta konsultant przez narzędzie)
  *    GET  /panel    — baza klientów dla Dawida (worker/panel.js), za hasłem
@@ -26,7 +27,7 @@
  */
 
 import { obsluzPanel } from './panel.js';
-import { zapiszLead } from './baza.js';
+import { zapiszLead, zapiszFeedback } from './baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -96,6 +97,7 @@ export default {
     try {
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
+      if (sciezka === '/feedback') return await obsluzFeedback(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
@@ -387,6 +389,32 @@ async function obsluzLead(request, env, cors) {
     doFirmyOdp ? 200 : 502,
     cors
   );
+}
+
+/* ─────────────────────────────────────────────────────────────── /feedback */
+
+/**
+ * Klient klika pod wyceną „pasuje mi / za drogo / zastanowię się".
+ * Zero danych wrażliwych poza tym, co już mamy z bramki; zapis do bazy
+ * klientów, żaden mail nie leci. Odpowiadamy zawsze 200 — feedback to
+ * bonus i przeglądarka nie ma z nim nic do roboty.
+ */
+async function obsluzFeedback(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!d) return json({ ok: false }, 400, cors);
+  try {
+    const wynik = await zapiszFeedback(env, {
+      telefon: String(d.telefon || '').slice(0, 40),
+      email: String(d.email || '').slice(0, 120),
+      feedback: String(d.feedback || ''),
+      budzet: String(d.budzet || '').slice(0, 40),
+      pora: String(d.pora || '').slice(0, 40),
+    });
+    return json({ ok: !!wynik }, 200, cors);
+  } catch (e) {
+    console.error('feedback', e?.message || e);
+    return json({ ok: false }, 200, cors);
+  }
 }
 
 async function resend(env, wiadomosc) {

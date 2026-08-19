@@ -28,6 +28,7 @@ import {
   skasujKlienta,
   posprzataj,
   csv,
+  statystykaFeedbacku,
   odczytajMeta,
   zapiszMeta,
 } from './baza.js';
@@ -171,17 +172,25 @@ async function apiDane(request, env) {
     kwotaOd: p.get('kwotaOd') || '',
   };
 
-  const [suma, naDzis, wszystkie] = await Promise.all([
+  const [suma, naDzis, wszystkie, feedback] = await Promise.all([
     podsumowanie(env),
     lista(env, { naDzis: true }),
     lista(env, filtry),
+    statystykaFeedbacku(env),
   ]);
 
   // Licznik „nowych od ostatniego wejścia" przesuwamy dopiero po odczycie,
   // żeby Dawid zobaczył liczbę, zanim się wyzeruje.
   await zapiszMeta(env.BAZA, 'ostatnie-wejscie', new Date().toISOString());
 
-  return json({ podsumowanie: suma, naDzis, lista: wszystkie, statusy: STATUSY, wLejku: W_LEJKU });
+  return json({
+    podsumowanie: suma,
+    naDzis,
+    lista: wszystkie,
+    statusy: STATUSY,
+    wLejku: W_LEJKU,
+    feedback,
+  });
 }
 
 async function apiKarta(request, env) {
@@ -278,6 +287,12 @@ padding:.75rem .9rem;margin-top:.6rem}
 .karta{background:var(--karta);border:1px solid var(--linia);border-radius:12px;
 padding:.75rem .85rem;margin-bottom:.6rem}
 .karta.dzis{border-left:4px solid var(--akcent)}
+.karta.goracy{border-left:4px solid var(--zielony)}
+.znacznik.dobry{border-color:var(--zielony);color:var(--zielony)}
+table.reakcje{width:100%;border-collapse:collapse;font-size:.88rem}
+table.reakcje th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--szary);
+font-weight:600;text-align:left;padding:.15rem .5rem .3rem 0}
+table.reakcje td{padding:.25rem .5rem .25rem 0;border-top:1px solid var(--linia);font-variant-numeric:tabular-nums}
 .gora{display:flex;gap:.5rem;align-items:flex-start}
 .gora .kto{flex:1;min-width:0}
 .kto b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -339,6 +354,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
 <main>
   <section id="podsumowanie"></section>
   <section id="dzis"></section>
+  <section id="reakcje"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
@@ -406,6 +422,8 @@ function rysuj(){
     (dane.naDzis.length ? dane.naDzis.map(function(k){ return kartaHtml(k, true); }).join('')
                         : '<p class="pusto">Nikogo nie trzeba dziś oddzwaniać.</p>');
 
+  document.getElementById('reakcje').innerHTML = reakcjeHtml(dane.feedback);
+
   document.getElementById('lista').innerHTML =
     dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
                       : '<p class="pusto">Brak zgłoszeń dla tych filtrów.</p>';
@@ -415,7 +433,9 @@ function rysuj(){
 
 function kartaHtml(k, dzis){
   var flagi = (k.flagi||[]).map(function(f){ return '<span class="znacznik flaga">' + esc(opisFlagi(f)) + '</span>'; }).join('');
-  return '<article class="karta' + (dzis ? ' dzis' : '') + '" data-id="' + k.id + '">' +
+  if(k.feedback) flagi = znacznikFeedbacku(k) + flagi;
+  var goracy = k.feedback === 'pasuje' && (k.status === 'nowy' || k.status === 'cieply');
+  return '<article class="karta' + (dzis ? ' dzis' : '') + (goracy ? ' goracy' : '') + '" data-id="' + k.id + '">' +
     '<div class="gora"><div class="kto"><b>' + esc(k.imie || 'Klient') + ' · ' + esc(k.miejscowosc || '—') + '</b>' +
     '<span class="mini">' + esc(k.statusNazwa) + ' · ' + dzien(k.utworzono) +
     (k.wycen > 1 ? ' · ' + k.wycen + ' wyceny' : '') +
@@ -428,6 +448,31 @@ function kartaHtml(k, dzis){
       '<a href="mailto:' + esc(k.email) + '">Mail</a>' +
       '<button type="button" data-rozwin="' + k.id + '">Szczegóły</button>' +
     '</div><div class="szczegoly" id="sz-' + k.id + '" hidden></div></article>';
+}
+
+function znacznikFeedbacku(k){
+  if(k.feedback === 'pasuje')
+    return '<span class="znacznik dobry">✓ prosi o kontakt' + (k.pora ? ': ' + esc(k.pora.toLowerCase()) : '') + '</span>';
+  if(k.feedback === 'za_drogo')
+    return '<span class="znacznik">za drogo' + (k.budzet ? ' · budżet ' + esc(k.budzet) : '') + '</span>';
+  if(k.feedback === 'zastanowi') return '<span class="znacznik">zastanawia się</span>';
+  return '';
+}
+
+function reakcjeHtml(fb){
+  var kategorie = Object.keys(fb || {});
+  if(!kategorie.length) return '';
+  var NAZWY = {konglomerat:'Konglomerat', spiek:'Spiek / gres', naturalny:'Kamień naturalny', inne:'Inne'};
+  var wiersze = kategorie.map(function(kat){
+    var w = fb[kat];
+    var proc = function(x){ return w.razem ? Math.round(100 * (x||0) / w.razem) + '%' : '—'; };
+    return '<tr><td>' + esc(NAZWY[kat] || kat) + '</td>' +
+      '<td>' + proc(w.pasuje) + '</td><td>' + proc(w.za_drogo) + '</td>' +
+      '<td>' + proc(w.zastanowi) + '</td><td class="mini">' + w.razem + '</td></tr>';
+  }).join('');
+  return '<h2>Reakcje na wycenę</h2><div class="lejek" style="margin-top:0;overflow-x:auto">' +
+    '<table class="reakcje"><thead><tr><th>Materiał</th><th>Pasuje</th><th>Za drogo</th>' +
+    '<th>Zastanawia się</th><th class="mini">odp.</th></tr></thead><tbody>' + wiersze + '</tbody></table></div>';
 }
 
 function opisFlagi(f){

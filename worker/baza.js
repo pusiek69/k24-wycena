@@ -155,8 +155,8 @@ export async function zapiszLead(env, lead) {
   await baza
     .prepare(
       `INSERT INTO wyceny (klient_id, utworzono, kwota, firma, dekor, grubosc,
-                           m2, mb, pomieszczenie, odbior, kod_plyty, opis)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                           m2, mb, pomieszczenie, odbior, kod_plyty, opis, kategoria)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       klientId,
@@ -170,7 +170,8 @@ export async function zapiszLead(env, lead) {
       String(lead.pomieszczenie || s.pomieszczenie || ''),
       s.odbiorWlasny ? 1 : 0,
       String(s.kodPlyty || ''),
-      String(lead.opis || '').slice(0, 500)
+      String(lead.opis || '').slice(0, 500),
+      String(s.rodzaj || '')
     )
     .run();
 
@@ -327,7 +328,10 @@ export async function lista(env, filtry = {}) {
   }
 
   const gdzie = warunki.length ? `WHERE ${warunki.join(' AND ')}` : '';
-  const porzadek = filtry.naDzis ? `oddzwonic ASC, ruch DESC` : `ruch DESC`;
+  // Klient, który kliknął „pasuje mi", wisi na górze, dopóki sprawa jest
+  // otwarta (nowy/ciepły) — to najgorętszy telefon do wykonania.
+  const przypiete = `CASE WHEN feedback = 'pasuje' AND status IN ('nowy','cieply') THEN 0 ELSE 1 END`;
+  const porzadek = filtry.naDzis ? `oddzwonic ASC, ruch DESC` : `${przypiete}, ruch DESC`;
   const limit = Math.min(Number(filtry.limit) || 200, 500);
 
   const wynik = await env.BAZA.prepare(
@@ -351,6 +355,9 @@ const kartaSkrocona = (k) => ({
   zrodlo: k.zrodlo,
   zrodloSzczegol: k.zrodlo_szczegol,
   flagi: bezpieczneFlagi(k.flagi),
+  feedback: k.feedback || '',
+  budzet: k.budzet || '',
+  pora: k.pora || '',
   wycen: k.wycen,
   kwota: k.kwota_ostatnia,
   kwotaMax: k.kwota_max,
@@ -423,6 +430,88 @@ export async function skasujKlienta(env, id) {
   await env.BAZA.prepare(`DELETE FROM wyceny WHERE klient_id = ?`).bind(id).run();
   await env.BAZA.prepare(`DELETE FROM klienci WHERE id = ?`).bind(id).run();
   return true;
+}
+
+/* ─────────────────────────────────────────────────── feedback po wycenie */
+
+const FEEDBACKI = ['pasuje', 'za_drogo', 'zastanowi'];
+const OPIS_FEEDBACKU = {
+  pasuje: 'Pasuje mi — proszę o kontakt',
+  za_drogo: 'Cena za wysoka',
+  zastanowi: 'Muszę się zastanowić',
+};
+
+/**
+ * Odpowiedź klienta na pokazaną wycenę. Klienta rozpoznajemy po telefonie
+ * albo mailu — dokładnie tych, które przed chwilą zostawił w bramce.
+ *
+ * „Pasuje mi" podnosi status na CIEPŁY, ale wyłącznie z „nowy" — jeśli
+ * Dawid zdążył już coś ustawić (pomiar, oferta), klik klienta tego nie cofa.
+ * Feedback zapisuje się też przy ostatniej wycenie, bo z tego liczy się
+ * statystyka „ile procent uznało cenę za wysoką" per rodzaj materiału.
+ */
+export async function zapiszFeedback(env, dane) {
+  const baza = env.BAZA;
+  if (!baza) return null;
+
+  const feedback = String(dane.feedback || '');
+  if (!FEEDBACKI.includes(feedback)) return null;
+
+  const klient = await znajdzKlienta(baza, kluczTelefonu(dane.telefon), kluczEmaila(dane.email));
+  if (!klient?.id) return null;
+
+  const budzet = String(dane.budzet || '').slice(0, 40);
+  const pora = String(dane.pora || '').slice(0, 40);
+
+  await baza
+    .prepare(
+      `UPDATE klienci SET feedback = ?,
+                          budzet = COALESCE(NULLIF(?, ''), budzet),
+                          pora = COALESCE(NULLIF(?, ''), pora),
+                          status = CASE WHEN ? = 'pasuje' AND status = 'nowy' THEN 'cieply' ELSE status END,
+                          ruch = ?
+       WHERE id = ?`
+    )
+    .bind(feedback, budzet, pora, feedback, teraz(), klient.id)
+    .run();
+
+  await baza
+    .prepare(
+      `UPDATE wyceny SET feedback = ? WHERE id =
+         (SELECT id FROM wyceny WHERE klient_id = ? ORDER BY utworzono DESC, id DESC LIMIT 1)`
+    )
+    .bind(feedback, klient.id)
+    .run();
+
+  const szczegol = [pora && `pora: ${pora}`, budzet && `budżet: ${budzet}`].filter(Boolean).join(', ');
+  await dopiszNotatke(
+    baza,
+    klient.id,
+    'system',
+    `Klient po wycenie: ${OPIS_FEEDBACKU[feedback]}${szczegol ? ` (${szczegol})` : ''}`
+  );
+
+  return { klientId: klient.id };
+}
+
+/**
+ * Ile procent klientów uznało cenę za dobrą / za wysoką / do przemyślenia —
+ * osobno dla konglomeratu, spieku i kamienia naturalnego. Z tego Dawid
+ * ocenia, czy poziom cen w danym materiale trzyma się rynku.
+ */
+export async function statystykaFeedbacku(env) {
+  const wiersze = await env.BAZA.prepare(
+    `SELECT kategoria, feedback, COUNT(*) AS ile FROM wyceny WHERE feedback != '' GROUP BY kategoria, feedback`
+  ).all();
+
+  const wg = {};
+  for (const w of wiersze.results || []) {
+    const kat = w.kategoria || 'inne';
+    wg[kat] = wg[kat] || { razem: 0, pasuje: 0, za_drogo: 0, zastanowi: 0 };
+    wg[kat][w.feedback] = w.ile;
+    wg[kat].razem += w.ile;
+  }
+  return wg;
 }
 
 /* ─────────────────────────────────────────────────────── meta i sprzątanie */
