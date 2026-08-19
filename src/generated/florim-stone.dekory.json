@@ -1,0 +1,227 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/florim-stone.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "florim-stone",
+  "_wygenerowano": "2026-08-19",
+  "_dekorow": 73,
+  "dekory": {
+    "Color — White mat": {
+      "12": 940
+    },
+    "Color — White poler": {
+      "12": 1100
+    },
+    "Color — Black mat": {
+      "12": 940
+    },
+    "Color — Black poler": {
+      "12": 1100
+    },
+    "Stone — Gris mat": {
+      "12": 1000
+    },
+    "Stone — Noir mat": {
+      "12": 1000
+    },
+    "Stone — Brown mat": {
+      "12": 1000
+    },
+    "Stone — Plimatech 01 White mat": {
+      "12": 1000
+    },
+    "Stone — Sand Ivory mat": {
+      "12": 1000
+    },
+    "Stone — Sand Grey mat": {
+      "12": 1000
+    },
+    "Stone — Sand Brown mat": {
+      "12": 1000
+    },
+    "Stone — Marfil mat": {
+      "12": 1000
+    },
+    "Stone — Marfil poler": {
+      "12": 1150
+    },
+    "Stone — Stone 01 mat": {
+      "12": 1000
+    },
+    "Stone — Black Ganite mat/leather": {
+      "12": 1000
+    },
+    "Stone — Blue Granite mat/leather": {
+      "12": 1000
+    },
+    "Stone — Chalbis mat/leather": {
+      "12": 1000
+    },
+    "Stone — Dordogne mat/leather": {
+      "12": 1000
+    },
+    "Stone — Gold Travertine mat/leather": {
+      "12": 1000
+    },
+    "Stone — Jura mat/silk": {
+      "12": 1000
+    },
+    "Stone — Montpellier mat/leather": {
+      "12": 1000
+    },
+    "Stone — Pearl Travertine mat/leather": {
+      "12": 1000
+    },
+    "Stone — Shake Travertine mat/leather": {
+      "12": 1000
+    },
+    "Stone — Purple Stone mat/silk": {
+      "12": 1000
+    },
+    "Stone — Marble Aubisque mat/silk": {
+      "12": 1000
+    },
+    "Stone — Stone Etna Grey mat/lithos": {
+      "12": 1000
+    },
+    "Stone — Stone Etna Black mat/lithos": {
+      "12": 1000
+    },
+    "Stone — Stone Dijon mat/lithos": {
+      "12": 1000
+    },
+    "Stone — Stone Lucania mat/leather": {
+      "12": 1000
+    },
+    "Stone — Stone Grana Cotone mat/lithos": {
+      "12": 1000
+    },
+    "Cement — Ivory mat": {
+      "12": 940
+    },
+    "Cement — Light Gray mat": {
+      "12": 940
+    },
+    "Cement — Dark Gray velvet": {
+      "12": 940
+    },
+    "Metal — Burnished mat": {
+      "12": 1000
+    },
+    "Marble — Gray mat": {
+      "12": 1050
+    },
+    "Marble — Gray poler": {
+      "12": 1150
+    },
+    "Marble — Marquina mat": {
+      "12": 1050
+    },
+    "Marble — Marquina poler": {
+      "12": 1150
+    },
+    "Marble — Laurent mat": {
+      "12": 1050
+    },
+    "Marble — Laurent poler": {
+      "12": 1150
+    },
+    "Marble — Statuario mat": {
+      "12": 1050
+    },
+    "Marble — Statuario poler": {
+      "12": 1150
+    },
+    "Marble — Calacatta Gold mat": {
+      "12": 1050
+    },
+    "Marble — Calacatta Gold poler": {
+      "12": 1150
+    },
+    "Marble — Calacatta mat": {
+      "12": 1050
+    },
+    "Marble — Calacatta poler": {
+      "12": 1150
+    },
+    "Marble — Calacatta velvet": {
+      "12": 1050
+    },
+    "Marble — Capraia mat": {
+      "12": 1050
+    },
+    "Marble — Capraia poler": {
+      "12": 1150
+    },
+    "Marble — Bianco Lasa mat": {
+      "12": 1050
+    },
+    "Marble — Bianco Lasa poler": {
+      "12": 1150
+    },
+    "Marble — Eternal Gold mat": {
+      "12": 1050
+    },
+    "Marble — Eternal Gold poler": {
+      "12": 1150
+    },
+    "Marble — Breach White mat": {
+      "12": 1050
+    },
+    "Marble — Breach White poler": {
+      "12": 1150
+    },
+    "Marble — Yamuna mat": {
+      "12": 1050
+    },
+    "Marble — Yamuna poler": {
+      "12": 1150
+    },
+    "Marble — Mountain Peak mat": {
+      "12": 1050
+    },
+    "Marble — Mountain Peak poler": {
+      "12": 1150
+    },
+    "Marble — Tundra mat": {
+      "12": 1050
+    },
+    "Marble — Tundra poler": {
+      "12": 1150
+    },
+    "Marble — Sahara Noir mat": {
+      "12": 1050
+    },
+    "Marble — Sahara Noir poler": {
+      "12": 1150
+    },
+    "Marble — Verde Alpi mat": {
+      "12": 1050
+    },
+    "Marble — Verde Alpi poler": {
+      "12": 1150
+    },
+    "Marble — Mahal mat": {
+      "12": 1050
+    },
+    "Marble — Yamuna Opal mat": {
+      "12": 1050
+    },
+    "Marble — Yamuna Opal poler": {
+      "12": 1150
+    },
+    "Marble — Yamuna Moka mat": {
+      "12": 1050
+    },
+    "Marble — Yamuna Moka poler": {
+      "12": 1150
+    },
+    "Marble — Beryl mat": {
+      "12": 1050
+    },
+    "Marble — Brun mat": {
+      "12": 1050
+    },
+    "Marble — Sequoia mat": {
+      "12": 1050
+    }
+  }
+}

@@ -22,6 +22,9 @@ const MATERIALY = {
   atlasplan: 'atlas-plan',
   atlas: 'atlas-plan',
   laminam: 'laminam',
+  florim_stone: 'florim-stone',
+  'florim-stone': 'florim-stone',
+  florim: 'florim-stone',
   kamien_naturalny: 'interstone',
   interstone: 'interstone',
 };
