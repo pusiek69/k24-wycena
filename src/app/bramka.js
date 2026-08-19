@@ -38,7 +38,13 @@ export function bramkaWyceny(w, opcje = {}) {
 
 function formularzBramki(w, box, opcje) {
   const bledy = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
-  const przycisk = h('button', { class: 'btn', type: 'submit' }, 'Pokaż wycenę i wyślij mailem');
+  // Bez wyceny (kamień naturalny bez płyty, wzór po skończonej promocji)
+  // nie ma czego pokazywać — przycisk nie może obiecywać kwoty.
+  const przycisk = h(
+    'button',
+    { class: 'btn', type: 'submit' },
+    w ? 'Pokaż wycenę i wyślij mailem' : 'Wyślij zapytanie'
+  );
   const plikOpis = h('span', { class: 'plik-opis' }, 'Projekt kuchni lub zdjęcie (opcjonalnie, do 8 MB)');
   const plik = h('input', { type: 'file', accept: 'image/*,application/pdf,.pdf', hidden: true, id: 'b-plik' });
 
@@ -88,7 +94,13 @@ function formularzBramki(w, box, opcje) {
       'div',
       { class: 'nav' },
       przycisk,
-      h('span', { class: 'form-nota' }, 'Wycena trafi na Pana/Pani e-mail. Oddzwaniamy w godzinach 8–18.')
+      h(
+        'span',
+        { class: 'form-nota' },
+        w
+          ? 'Wycena trafi na Pana/Pani e-mail. Oddzwaniamy w godzinach 8–18.'
+          : 'Odezwiemy się z ceną. Oddzwaniamy w godzinach 8–18.'
+      )
     )
   );
 
