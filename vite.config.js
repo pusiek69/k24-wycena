@@ -47,6 +47,7 @@ export default defineConfig({
         o_mnie: resolve(import.meta.dirname, 'o-mnie.html'),
         czesto_zadawane_pytania: resolve(import.meta.dirname, 'czesto-zadawane-pytania.html'),
         polityka_prywatnosci: resolve(import.meta.dirname, 'polityka-prywatnosci.html'),
+        licencja_zdjec: resolve(import.meta.dirname, 'licencja-zdjec.html'),
         dziekujemy: resolve(import.meta.dirname, 'dziekujemy.html'),
         nieznaleziono: resolve(import.meta.dirname, '404.html'),
       },

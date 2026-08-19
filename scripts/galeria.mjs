@@ -300,6 +300,13 @@ ${poz.map((r, i) => kafel(r, g.id === 'granit' && i < 3)).join('\n')}
     </div>`;
 }).join('\n\n');
 
+/*
+ * Pola licencyjne wymagane przez Google (Search Console zgłaszała ich brak
+ * w sierpniu 2026): license i acquireLicensePage wskazują naszą podstronę
+ * /licencja-zdjec, a creator musi być pełnym obiektem Organization —
+ * odwołanie przez @id Google traktował jako „nieprawidłowy typ obiektu".
+ */
+const LICENCJA = 'https://kam24h.pl/licencja-zdjec';
 const obrazyLd = wynik.map((r) => ({
   '@type': 'ImageObject',
   contentUrl: `https://kam24h.pl/realizacje/${r.slug}.jpg`,
@@ -308,7 +315,11 @@ const obrazyLd = wynik.map((r) => ({
   height: r.h,
   name: `${r.material} — blat kuchenny`,
   description: r.opis,
-  creator: { '@id': 'https://kam24h.pl/#firma' },
+  creator: { '@type': 'Organization', name: 'Kamieniarstwo 24h' },
+  creditText: 'Kamieniarstwo 24h',
+  copyrightNotice: '© 2026 Kamieniarstwo 24h Dawid Ząbek',
+  license: LICENCJA,
+  acquireLicensePage: LICENCJA,
   contentLocation: { '@type': 'Place', name: 'Tarnobrzeg' },
 }));
 
