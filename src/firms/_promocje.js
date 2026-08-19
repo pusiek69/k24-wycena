@@ -33,7 +33,13 @@ export function dekoryZKampaniami(dekory, kampanie, dataISO) {
       // Jest w cenniku podstawowym — nic nie robimy, silnik sam podmieni cenę.
       if (wynik[nazwa]?.[grubosc] != null) continue;
 
-      wynik[nazwa] = { ...(wynik[nazwa] || {}), [grubosc]: cena };
+      /*
+       * Zapisujemy DATĘ KOŃCA kampanii razem z ceną. Lista dekorów powstaje
+       * raz, przy starcie strony — bez tego znacznika karta otwarta przed
+       * końcem promocji liczyłaby po cenie promocyjnej także później,
+       * a silnik nie miałby jak tego rozpoznać.
+       */
+      wynik[nazwa] = { ...(wynik[nazwa] || {}), [grubosc]: { cena, promocyjnyDo: k.do } };
     }
   }
 

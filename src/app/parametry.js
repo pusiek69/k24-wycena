@@ -21,6 +21,7 @@ const MATERIALY = {
   'atlas-plan': 'atlas-plan',
   atlasplan: 'atlas-plan',
   atlas: 'atlas-plan',
+  laminam: 'laminam',
   kamien_naturalny: 'interstone',
   interstone: 'interstone',
 };

@@ -81,7 +81,25 @@ export function wycen(firma, w, dataISO) {
     }
   } else {
     const dekor = firma.dekory?.[w.dekor];
-    if (!dekor) return { ok: false, blad: `Nie znam dekoru „${w.dekor}".` };
+    if (!dekor) {
+      /*
+       * Dekor mógł istnieć wyłącznie w promocji, która już się skończyła —
+       * np. ceny Laminamu z gwiazdką, ważne do 31.12.2026. Nie udajemy wtedy,
+       * że wzoru nie znamy: mówimy wprost, że cena wygasła i wyceniamy go
+       * indywidualnie. Klient dostaje formularz kontaktowy zamiast ślepego
+       * zaułka, a Dawid — sygnał, że ktoś pytał o wycofaną promocję.
+       */
+      if (byloWWygaslejPromocji(firma, w.dekor, dataISO)) {
+        return {
+          ok: false,
+          blad:
+            `Dekor „${w.dekor}" był w cenie promocyjnej, która już się skończyła. ` +
+            'Ten wzór wyceniamy indywidualnie — prosimy o kontakt.',
+          wycenaIndywidualna: true,
+        };
+      }
+      return { ok: false, blad: `Nie znam dekoru „${w.dekor}".` };
+    }
 
     // Grubości nieblatowe podnosimy, zamiast odmawiać wyceny:
     // spiek 6 mm jest za cienki na blat, więc liczymy 12 mm.
@@ -105,6 +123,25 @@ export function wycen(firma, w, dataISO) {
     // Wpis cennika to zwykle sama cena, ale bywa obiektem {cena, plyta} —
     // Atlas Plan tnie 12 mm z płyt 162 × 324, a 20 mm z 159 × 324.
     const wpis = dekor[gr];
+
+    /*
+     * Wzór dołożony przez kampanię ma zapisaną datę jej końca. Po tej dacie
+     * nie honorujemy ceny promocyjnej, a innej dla niego nie mamy — więc
+     * zamiast policzyć po nieaktualnej stawce, kierujemy do wyceny
+     * indywidualnej. Sprawdzamy to tutaj, a nie na liście dekorów, bo lista
+     * powstaje raz przy starcie strony i mogła zostać zbudowana wcześniej.
+     */
+    const dzisiaj = dataISO || new Date().toISOString().slice(0, 10);
+    if (wpis?.promocyjnyDo && dzisiaj > wpis.promocyjnyDo) {
+      return {
+        ok: false,
+        blad:
+          `Dekor „${w.dekor}" w grubości ${gr} mm był w cenie promocyjnej, która już się skończyła. ` +
+          'Ten wzór wyceniamy indywidualnie — prosimy o kontakt.',
+        wycenaIndywidualna: true,
+      };
+    }
+
     cenaM2Netto = typeof wpis === 'number' ? wpis : wpis?.cena;
     plytaDekoru = typeof wpis === 'number' ? null : wpis?.plyta || null;
 
@@ -374,6 +411,21 @@ function mnoznik(o, pak, m2Platne) {
  * Dzięki temu kampania może zmienić format płyty albo znieść dopłatę
  * za mat, nie zmieniając niczego w konfiguracji firmy.
  */
+/**
+ * Czy dekor występował w kampanii, która JUŻ SIĘ SKOŃCZYŁA?
+ *
+ * Wzory obecne wyłącznie w promocji znikają z listy po jej wygaśnięciu
+ * (patrz firms/_promocje.js). Gdy klient mimo to o taki zapyta — bo pamięta
+ * go z jesieni albo ma stary link — chcemy odpowiedzieć konkretnie,
+ * a nie „nie znam takiego dekoru".
+ */
+function byloWWygaslejPromocji(firma, dekor, dataISO) {
+  const d = dataISO || new Date().toISOString().slice(0, 10);
+  return (firma.promocje || []).some(
+    (p) => d > p.do && Object.keys(p.ceny || {}).some((k) => k.slice(0, k.lastIndexOf('||')) === dekor)
+  );
+}
+
 function znajdzPromocje(firma, dekor, grubosc, dataISO) {
   const d = dataISO || new Date().toISOString().slice(0, 10);
   for (const p of firma.promocje || []) {

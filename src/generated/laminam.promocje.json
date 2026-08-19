@@ -1,0 +1,48 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
+  "kampanie": [
+    {
+      "nazwa": "Laminam — ceny promocyjne do końca 2026",
+      "od": "2026-07-13",
+      "do": "2026-12-31",
+      "ceny": {
+        "DIAMOND — CRISTALLO MACCHIA VECCHIA B.M. Naturale||12": 782,
+        "FOKOS — GRAFITE Naturale||12": 782,
+        "FOKOS — GRAFITE Naturale||20": 946,
+        "FOKOS — SALE Naturale||12": 782,
+        "FOKOS — SALE Naturale||20": 946,
+        "FOKOS — TALCO Naturale||12": 782,
+        "HADO — TRAVERTINO BEIGE Bocciardato||12": 782,
+        "HADO — TRAVERTINO BIANCO Bocciardato||12": 782,
+        "HADO — TRAVERTINO BIANCO Bocciardato||20": 946,
+        "I NATURALI — ARDESIA BIANCO a Spacco||12": 782,
+        "I NATURALI — ARDESIA BIANCO a Spacco||20": 946,
+        "I NATURALI — ARDESIA NERO a Spacco||12": 782,
+        "I NATURALI — ARDESIA NERO a Spacco||20": 946,
+        "I NATURALI — BIANCO LASA Naturale||12": 782,
+        "I NATURALI — BIANCO LASA Naturale||20": 946,
+        "I NATURALI — BIANCO STATUARIO VENATO B.M. Soft Touch||12": 782,
+        "I NATURALI — CALACATTA ORO VENATO B.M. Soft Touch||12": 782,
+        "I NATURALI — CALACATTA ORO VENATO B.M. Soft Touch||20": 946,
+        "I NATURALI — FUSION WHITE Naturale||12": 782,
+        "I NATURALI — FUSION WHITE Naturale||20": 946,
+        "I NATURALI — NERO GRECO Naturale||12": 782,
+        "I NATURALI — NERO GRECO Naturale||20": 946,
+        "I NATURALI — NOIR DESIR B.M. Naturale||12": 782,
+        "I NATURALI — NOIR DESIR B.M. Naturale||20": 946,
+        "I NATURALI — NOIR DESIR Naturale||12": 782,
+        "I NATURALI — NOIR DESIR Naturale||20": 946,
+        "I NATURALI — PIETRA DI SAVOIA ANTRACITE Bocciardato||12": 782,
+        "I NATURALI — PIETRA DI SAVOIA ANTRACITE Bocciardato||20": 946,
+        "I NATURALI — PIETRA DI SAVOIA GRIGIA Bocciardato||12": 782,
+        "I NATURALI — PIETRA DI SAVOIA GRIGIA Bocciardato||20": 946,
+        "I NATURALI — PIETRA DI SAVOIA PERLA Bocciardato||12": 782,
+        "I NATURALI — PIETRA DI SAVOIA PERLA Bocciardato||20": 946,
+        "I NATURALI — PIETRA GREY Naturale||12": 782,
+        "I NATURALI — PIETRA GREY Naturale||20": 946,
+        "SLATE — ALASKA Slate||12": 782,
+        "SLATE — ANKARA Slate||12": 782
+      }
+    }
+  ]
+}

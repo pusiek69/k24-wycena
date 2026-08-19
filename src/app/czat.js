@@ -197,6 +197,13 @@ export function uruchomCzat(root, akcje = {}) {
 
     const w = wycen(firma, wybor.dane);
     if (!w.ok) {
+      // Wzór po wygasłej promocji: nie ma czego doprecyzowywać, jest za to
+      // konkretna sprawa dla Dawida — pokazujemy formularz kontaktowy.
+      if (w.wycenaIndywidualna) {
+        dodajWiadomosc('konsultant', `${w.blad} Proszę zostawić kontakt — odezwiemy się z ceną.`);
+        pokazBramke(null);
+        return;
+      }
       dodajWiadomosc('konsultant', 'Potrzebuję jeszcze doprecyzować wymiary. ' + w.blad);
       return;
     }

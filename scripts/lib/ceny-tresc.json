@@ -4,7 +4,7 @@
     "Służą do znalezienia ich przy następnej zmianie cennika — nie edytuj ręcznie.",
     "\"historia\" to kwoty już wycofane — checklista pilnuje, żeby nie wróciły."
   ],
-  "_zapisano": "2026-08-17",
+  "_zapisano": "2026-08-19",
   "kwoty": {
     "konglomeratProste": 5050,
     "konglomeratL": 6500,
@@ -13,12 +13,13 @@
     "spiekProste": 5150,
     "spiekL": 6950,
     "spiekM2Od": 671,
-    "spiekM2Do": 1683
+    "spiekM2Do": 2110
   },
   "historia": [
     629,
     764,
     1593,
+    1683,
     1916,
     2306,
     3600,

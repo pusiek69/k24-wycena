@@ -1,0 +1,311 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/laminam.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "laminam",
+  "_wygenerowano": "2026-08-19",
+  "_dekorow": 87,
+  "dekory": {
+    "CALCE — ANTRACITE Strutturato": {
+      "12": 931,
+      "20": 1219
+    },
+    "CALCE — AVORIO Strutturato": {
+      "12": 931
+    },
+    "CALCE — BIANCO Strutturato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "CALCE — GRIGIO Strutturato": {
+      "12": 931,
+      "20": 1219
+    },
+    "CALCE — NERO Strutturato": {
+      "12": 931,
+      "20": 1219
+    },
+    "CALCE — TORTORA Strutturato": {
+      "12": 931
+    },
+    "COLLECTION — BIANCO ASSOLUTO Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "COLLECTION — BIANCO ASSOLUTO Naturale": {
+      "12": 1179,
+      "20": 1495
+    },
+    "COLLECTION — NERO ASSOLUTO Naturale": {
+      "12": 1179,
+      "20": 1495
+    },
+    "DIAMOND — CALACATTA BLACK B.M. Bocciardato": {
+      "12": 1179,
+      "20": 1495
+    },
+    "DIAMOND — CALACATTA BLACK B.M. Lucidato Starlit": {
+      "12": 1266
+    },
+    "DIAMOND — CRISTALLO GOLD B.M. Caress": {
+      "12": 1179,
+      "20": 1495
+    },
+    "DIAMOND — CRISTALLO GOLD B.M. Lucidato Starlit": {
+      "12": 1266
+    },
+    "DIAMOND — ONICE GRIGIO Lucidato Starlit": {
+      "12": 1266
+    },
+    "FLUIDOSOLIDO — BLU Lucidato": {
+      "12": 1954
+    },
+    "FOKOS — PIOMBO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "FOKOS — ROCCIA Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "FOKOS — TERRA Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "GEMINI — ACERO Gemini": {
+      "12": 1042
+    },
+    "GEMINI — GRANO Gemini": {
+      "12": 1042
+    },
+    "GEMINI — LUCE Gemini": {
+      "12": 1042
+    },
+    "GEMINI — MUSCHIO Gemini": {
+      "12": 1042
+    },
+    "GEMINI — PELLE Gemini": {
+      "12": 1042
+    },
+    "HADO — TRAVERTINO BIANCO Rain": {
+      "12": 1152,
+      "20": 1462
+    },
+    "HADO — TRAVERTINO NOCE Bocciardato": {
+      "12": 1042
+    },
+    "HADO — TRAVERTINO NOCE Rain": {
+      "12": 1152
+    },
+    "HADO — TRAVERTINO SILVER Bocciardato": {
+      "12": 1042
+    },
+    "HADO — TRAVERTINO SILVER Rain": {
+      "12": 1152
+    },
+    "I NATURALI — BIANCO LASA Lucidato": {
+      "12": 1179
+    },
+    "I NATURALI — BIANCO STATUARIO VENATO B.M. Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — CALACATTA MEDICEO B.M. Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — CALACATTA MEDICEO B.M. Soft Touch": {
+      "12": 1179
+    },
+    "I NATURALI — CALACATTA MICHELANGELO B.M. Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — CALACATTA MICHELANGELO B.M. Naturale": {
+      "12": 1152,
+      "20": 1462
+    },
+    "I NATURALI — CALACATTA MICHELANGELO B.M. Soft Touch": {
+      "12": 1179,
+      "20": 1495
+    },
+    "I NATURALI — CALACATTA ORO VENATO B.M. Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — CALACATTA VIOLA B.M. Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — CALACATTA VIOLA B.M. Naturale": {
+      "12": 1179
+    },
+    "I NATURALI — DIAMOND CREAM Lucidato": {
+      "12": 1179,
+      "20": 1495
+    },
+    "I NATURALI — DIAMOND CREAM Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "I NATURALI — EMPERADOR EXTRA Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — EMPERADOR EXTRA Naturale": {
+      "12": 1152
+    },
+    "I NATURALI — FUSION WHITE Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — NERO GRECO Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — NOIR DESIR B.M. Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — NOIR DESIR Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — PIETRA GREY Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — SAHARA NOIR EXTRA B.M. Bocciardato": {
+      "12": 1152,
+      "20": 1462
+    },
+    "I NATURALI — SAHARA NOIR EXTRA B.M. Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — STATUARIETTO B.M. Lucidato": {
+      "12": 1266
+    },
+    "I NATURALI — STATUARIETTO B.M. Naturale": {
+      "12": 1152
+    },
+    "I NATURALI — STATUARIO ALTISSIMO B.M. Lucidato": {
+      "12": 1266,
+      "20": 1575
+    },
+    "I NATURALI — STATUARIO ALTISSIMO B.M. Naturale": {
+      "12": 1152,
+      "20": 1462
+    },
+    "I NATURALI — STATUARIO ALTISSIMO B.M. Soft Touch": {
+      "12": 1179
+    },
+    "I NATURALI — TRAVERTINO GRIGIO VENATO Bocciardato": {
+      "12": 1042
+    },
+    "I NATURALI — VERDE ALPI B.M. Bocciardato": {
+      "12": 1152
+    },
+    "I NATURALI — VERDE ALPI B.M. Lucidato": {
+      "12": 1266
+    },
+    "IN-SIDE — PIETRA DI CARDOSO GRIGIO Fiammato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA DI CARDOSO GRIGIO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA DI CARDOSO NERO Fiammato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA DI CARDOSO NERO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA PIASENTINA GRIGIO Fiammato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA PIASENTINA GRIGIO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA PIASENTINA TAUPE Fiammato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PIETRA PIASENTINA TAUPE Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PORFIDO MARRONE Fiammato": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — PORFIDO MARRONE Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "IN-SIDE — TERRA DI MATERA Fiammato": {
+      "12": 1042
+    },
+    "IN-SIDE — TERRA DI MATERA Naturale": {
+      "12": 1042
+    },
+    "IN-SIDE — TERRA DI POMPEI Fiammato": {
+      "12": 1042
+    },
+    "IN-SIDE — TERRA DI POMPEI Naturale": {
+      "12": 1042
+    },
+    "IN-SIDE — TERRA DI SATURNIA Fiammato": {
+      "12": 1042
+    },
+    "IN-SIDE — TERRA DI SATURNIA Naturale": {
+      "12": 1042
+    },
+    "LEGNO VENEZIA — SABBIA Naturale": {
+      "12": 1042
+    },
+    "OSSIDO — BRUNO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "OSSIDO — NERO Naturale": {
+      "12": 1042,
+      "20": 1329
+    },
+    "OSSIDO — VERDERAME Naturale": {
+      "12": 1042
+    },
+    "RARE — MARFIL DNA": {
+      "12": 1179,
+      "20": 1495
+    },
+    "RARE — MONT BLANC B.M. DNA": {
+      "12": 1179,
+      "20": 1495
+    },
+    "RARE — PIETRA DI GRE DNA": {
+      "12": 1179,
+      "20": 1495
+    },
+    "RARE — PIETRA DI GRE FINE DNA": {
+      "12": 1179
+    },
+    "RARE — TAJ MAHAL B.M. DNA": {
+      "12": 1179,
+      "20": 1495
+    },
+    "RARE — TAJ MAHAL B.M. Lucidato": {
+      "12": 1266
+    },
+    "RARE — TAJ MAHAL B.M. Naturale": {
+      "12": 1152,
+      "20": 1462
+    },
+    "SLATE — AMAZZONIA Slate": {
+      "12": 1152
+    },
+    "SLATE — BURGUNDY Slate": {
+      "12": 1152
+    },
+    "SLATE — VULCANO Slate": {
+      "12": 1152
+    }
+  }
+}
