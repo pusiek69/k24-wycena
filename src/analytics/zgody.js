@@ -82,6 +82,15 @@ function zapiszWybor(wybor) {
   }
 }
 
+/**
+ * Czy klient zgodził się na marketing. Pyta o to app/zrodlo.js, zanim
+ * dołoży do zgłoszenia identyfikator kliknięcia w reklamę — format zapisu
+ * zgody ma być znany w JEDNYM miejscu, tutaj.
+ */
+export function zgodaMarketingowa() {
+  return odczytajWybor() === 'wszystkie';
+}
+
 /** Wywoływane z linku „Ustawienia cookies" w stopce. */
 export function zmienZgody() {
   try {
@@ -165,8 +174,4 @@ function zaladujMeta(id) {
   /* eslint-enable */
   window.fbq('init', id);
   window.fbq('track', 'PageView');
-}
-
-export function zgodaMarketingowa() {
-  return odczytajWybor() === 'wszystkie';
 }

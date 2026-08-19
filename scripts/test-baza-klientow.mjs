@@ -1,0 +1,347 @@
+/**
+ * BAZA KLIENTÓW — deduplikacja, flagi, lejek, retencja.
+ *
+ *   node --test scripts/test-baza-klientow.mjs
+ *
+ * Testy chodzą po prawdziwym SQLu — na node:sqlite opakowanym w atrapę
+ * interfejsu D1 (prepare/bind/run/first/all). Dzięki temu sprawdzamy
+ * zapytania, a nie własne wyobrażenie o nich: literówka w SQL wywala test,
+ * zamiast wyjść dopiero na produkcji.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import {
+  zapiszLead,
+  lista,
+  karta,
+  podsumowanie,
+  ustawStatus,
+  ustawOddzwonic,
+  dodajNotatke,
+  skasujKlienta,
+  posprzataj,
+  csv,
+  kluczTelefonu,
+  STATUSY,
+  W_LEJKU,
+} from '../worker/baza.js';
+
+const SCHEMAT = fs.readFileSync(new URL('../worker/schema.sql', import.meta.url), 'utf8');
+
+/** Atrapa D1 na node:sqlite — tyle interfejsu, ile używa worker/baza.js. */
+function nowaBaza() {
+  const db = new DatabaseSync(':memory:');
+  db.exec(SCHEMAT);
+  const baza = {
+    prepare(sql) {
+      let dane = [];
+      const stmt = db.prepare(sql);
+      const api = {
+        bind(...args) {
+          dane = args.map((a) => (a === undefined ? null : typeof a === 'boolean' ? Number(a) : a));
+          return api;
+        },
+        async run() {
+          const w = stmt.run(...dane);
+          return { meta: { last_row_id: Number(w.lastInsertRowid), changes: Number(w.changes) } };
+        },
+        async first() {
+          return stmt.get(...dane) ?? null;
+        },
+        async all() {
+          return { results: stmt.all(...dane) };
+        },
+      };
+      return api;
+    },
+  };
+  return { BAZA: baza, _db: db };
+}
+
+const LEAD = {
+  imie: 'Anna',
+  telefon: '796 123 456',
+  email: 'anna@example.com',
+  miejscowosc: 'Tarnobrzeg',
+  kwota: 9900,
+  opis: 'Florim Stone · Marble — Statuario poler',
+  szczegoly: { firma: 'Florim Stone', dekor: 'Marble — Statuario poler', grubosc: '12', m2Blatu: 1.8, mb: 3 },
+  zrodlo: { typ: 'ads', gclid: 'abc123', utm_campaign: 'blaty-tarnobrzeg' },
+};
+
+/* ────────────────────────────────────────────────── normalizacja numeru */
+
+test('numer telefonu sprowadzamy do 9 cyfr', () => {
+  const oczekiwane = '796123456';
+  for (const zapis of ['796123456', '796 123 456', '+48 796 123 456', '0048796123456', '796-123-456']) {
+    assert.equal(kluczTelefonu(zapis), oczekiwane, zapis);
+  }
+});
+
+/* ─────────────────────────────────────────────────────── deduplikacja */
+
+test('pierwsze zgłoszenie zakłada kartę', async () => {
+  const env = nowaBaza();
+  const wynik = await zapiszLead(env, LEAD);
+  assert.equal(wynik.nowy, true);
+
+  const k = await karta(env, wynik.klientId);
+  assert.equal(k.imie, 'Anna');
+  assert.equal(k.status, 'nowy');
+  assert.equal(k.wycen, 1);
+  assert.equal(k.kwota, 9900);
+  assert.equal(k.zrodlo, 'ads');
+  assert.equal(k.wyceny.length, 1);
+  assert.equal(k.wyceny[0].dekor, 'Marble — Statuario poler');
+});
+
+test('ten sam telefon dokleja wycenę zamiast zakładać duplikat', async () => {
+  const env = nowaBaza();
+  const pierwszy = await zapiszLead(env, LEAD);
+  const drugi = await zapiszLead(env, {
+    ...LEAD,
+    telefon: '+48 796 123 456', // ten sam numer, inny zapis
+    email: 'anna.prywatnie@example.com',
+    kwota: 12500,
+  });
+
+  assert.equal(drugi.nowy, false);
+  assert.equal(drugi.klientId, pierwszy.klientId);
+
+  const k = await karta(env, pierwszy.klientId);
+  assert.equal(k.wycen, 2);
+  assert.equal(k.wyceny.length, 2);
+  assert.equal(k.kwota, 12500, 'kwota ostatniej wyceny');
+  assert.equal(k.kwotaMax, 12500);
+  assert.equal((await lista(env, {})).length, 1, 'na liście jeden klient');
+});
+
+test('ten sam mail przy innym numerze też trafia na tę samą kartę', async () => {
+  const env = nowaBaza();
+  const pierwszy = await zapiszLead(env, LEAD);
+  const drugi = await zapiszLead(env, { ...LEAD, telefon: '600 700 800' });
+  assert.equal(drugi.klientId, pierwszy.klientId);
+  assert.equal((await lista(env, {})).length, 1);
+});
+
+test('dwaj różni klienci to dwie karty', async () => {
+  const env = nowaBaza();
+  await zapiszLead(env, LEAD);
+  await zapiszLead(env, { ...LEAD, imie: 'Piotr', telefon: '600 700 800', email: 'piotr@example.com' });
+  assert.equal((await lista(env, {})).length, 2);
+});
+
+test('kolejna wycena zostawia ślad w notatkach', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszLead(env, { ...LEAD, kwota: 12500 });
+  const k = await karta(env, klientId);
+  const systemowe = k.notatki.filter((n) => n.autor === 'system');
+  assert.equal(systemowe.length, 1);
+  assert.match(systemowe[0].tresc, /Kolejna wycena/);
+});
+
+/* ─────────────────────────────────────────────────────────── antyfake */
+
+test('mail testowy Dawida dostaje szarą flagę, ale nie status fake', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, { ...LEAD, email: 'kamieniarstwo24h@gmail.com' });
+  const k = await karta(env, klientId);
+  assert.ok(k.flagi.includes('test'));
+  assert.equal(k.status, 'nowy', 'decyzję o fake podejmuje Dawid');
+});
+
+test('numer bez dziewięciu cyfr dostaje flagę', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, { ...LEAD, telefon: '+4851581645' });
+  assert.ok((await karta(env, klientId)).flagi.includes('telefon'));
+});
+
+test('drugie zgłoszenie w kwadrans to dubel', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszLead(env, LEAD);
+  assert.ok((await karta(env, klientId)).flagi.includes('dubel'));
+});
+
+test('zwykły klient nie ma żadnej flagi', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  assert.deepEqual((await karta(env, klientId)).flagi, []);
+});
+
+test('bez zgody marketingowej źródło zostaje nieznane', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, { ...LEAD, zrodlo: { typ: 'nieznane' } });
+  const k = await karta(env, klientId);
+  assert.equal(k.zrodlo, 'nieznane');
+  assert.equal(k.zrodloSzczegol, '', 'nie zapisujemy gclid bez zgody');
+});
+
+/* ──────────────────────────────────────────────── statusy, lejek, „na dziś" */
+
+test('zmiana statusu zapisuje się w logu notatek', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  assert.equal(await ustawStatus(env, klientId, 'cieply'), true);
+
+  const k = await karta(env, klientId);
+  assert.equal(k.status, 'cieply');
+  assert.match(k.notatki[0].tresc, /Nowy → Ciepły/);
+});
+
+test('nieznanego statusu nie przyjmujemy', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  assert.equal(await ustawStatus(env, klientId, 'wymyslony'), false);
+  assert.equal((await karta(env, klientId)).status, 'nowy');
+});
+
+test('lejek sumuje kwoty ciepłych i wysłanych ofert', async () => {
+  const env = nowaBaza();
+  const a = await zapiszLead(env, LEAD); // 9900
+  const b = await zapiszLead(env, { ...LEAD, telefon: '600 700 800', email: 'b@x.pl', kwota: 5000 });
+  const c = await zapiszLead(env, { ...LEAD, telefon: '600 700 801', email: 'c@x.pl', kwota: 30000 });
+
+  await ustawStatus(env, a.klientId, 'cieply');
+  await ustawStatus(env, b.klientId, 'oferta');
+  await ustawStatus(env, c.klientId, 'przegrany');
+
+  const p = await podsumowanie(env);
+  assert.equal(p.wLejku, 14900, 'przegrany nie wisi w lejku');
+  assert.equal(p.statusy.cieply.ile, 1);
+  assert.equal(p.statusy.przegrany.ile, 1);
+  assert.deepEqual(W_LEJKU, ['cieply', 'oferta']);
+});
+
+test('„na dziś" bierze zaległe i dzisiejsze terminy, pomija przyszłe', async () => {
+  const env = nowaBaza();
+  const wczoraj = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const dzis = new Date().toISOString().slice(0, 10);
+  const zaTydzien = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+
+  const a = await zapiszLead(env, LEAD);
+  const b = await zapiszLead(env, { ...LEAD, telefon: '600 700 800', email: 'b@x.pl' });
+  const c = await zapiszLead(env, { ...LEAD, telefon: '600 700 801', email: 'c@x.pl' });
+
+  await ustawOddzwonic(env, a.klientId, wczoraj);
+  await ustawOddzwonic(env, b.klientId, dzis);
+  await ustawOddzwonic(env, c.klientId, zaTydzien);
+
+  const naDzis = await lista(env, { naDzis: true });
+  assert.deepEqual(naDzis.map((k) => k.id), [a.klientId, b.klientId], 'zaległy pierwszy');
+  assert.equal((await podsumowanie(env)).naDzis, 2);
+});
+
+test('termin kontaktu da się zdjąć', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await ustawOddzwonic(env, klientId, '2026-09-01');
+  await ustawOddzwonic(env, klientId, '');
+  assert.equal((await karta(env, klientId)).oddzwonic, null);
+  assert.equal((await lista(env, { naDzis: true })).length, 0);
+});
+
+/* ──────────────────────────────────────────────────── notatki i filtry */
+
+test('notatki dopisują się, a nie nadpisują', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await dodajNotatke(env, klientId, 'Prosi o kontakt po 16.');
+  await dodajNotatke(env, klientId, 'Zdecydowana na poler.');
+
+  const k = await karta(env, klientId);
+  const moje = k.notatki.filter((n) => n.autor === 'dawid');
+  assert.equal(moje.length, 2);
+  assert.equal(moje[0].tresc, 'Zdecydowana na poler.', 'najnowsza na górze');
+  assert.ok(moje.every((n) => n.utworzono), 'każdy wpis ma znacznik czasu');
+});
+
+test('pusta notatka nie zaśmieca logu', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  assert.equal(await dodajNotatke(env, klientId, '   '), false);
+  assert.equal((await karta(env, klientId)).notatki.length, 0);
+});
+
+test('filtrowanie po statusie, kwocie i szukajce', async () => {
+  const env = nowaBaza();
+  const a = await zapiszLead(env, LEAD);
+  await zapiszLead(env, {
+    ...LEAD, imie: 'Piotr', telefon: '600 700 800', email: 'piotr@example.com',
+    miejscowosc: 'Sandomierz', kwota: 4000,
+  });
+  await ustawStatus(env, a.klientId, 'cieply');
+
+  assert.deepEqual((await lista(env, { status: 'cieply' })).map((k) => k.imie), ['Anna']);
+  assert.deepEqual((await lista(env, { kwotaOd: 5000 })).map((k) => k.imie), ['Anna']);
+  assert.deepEqual((await lista(env, { szukaj: 'Sandomierz' })).map((k) => k.imie), ['Piotr']);
+  assert.deepEqual((await lista(env, { szukaj: '600 700' })).map((k) => k.imie), ['Piotr']);
+  assert.equal((await lista(env, { status: 'fake' })).length, 0);
+});
+
+/* ─────────────────────────────────────────────── kasowanie i retencja */
+
+test('kasowanie karty zabiera wyceny i notatki', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await dodajNotatke(env, klientId, 'cokolwiek');
+  await skasujKlienta(env, klientId);
+
+  assert.equal(await karta(env, klientId), null);
+  assert.equal(env._db.prepare('SELECT COUNT(*) AS i FROM wyceny').get().i, 0);
+  assert.equal(env._db.prepare('SELECT COUNT(*) AS i FROM notatki').get().i, 0);
+});
+
+test('karta bez ruchu przez 24 miesiące kasuje się sama', async () => {
+  const env = nowaBaza();
+  const stary = await zapiszLead(env, LEAD);
+  const swiezy = await zapiszLead(env, { ...LEAD, telefon: '600 700 800', email: 'b@x.pl' });
+
+  const dawno = new Date(Date.now() - 800 * 86400000).toISOString();
+  env._db.prepare('UPDATE klienci SET ruch = ? WHERE id = ?').run(dawno, stary.klientId);
+
+  assert.equal(await posprzataj(env), 1);
+  assert.equal(await karta(env, stary.klientId), null);
+  assert.ok(await karta(env, swiezy.klientId), 'świeża karta zostaje');
+});
+
+test('sprzątanie odpala się raz dziennie', async () => {
+  const env = nowaBaza();
+  await zapiszLead(env, LEAD);
+  await posprzataj(env);
+  assert.equal(await posprzataj(env), 0, 'drugie wejście tego samego dnia nic nie robi');
+});
+
+/* ──────────────────────────────────────────────────────────────── CSV */
+
+test('eksport CSV ma nagłówki, dane i BOM dla Excela', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await ustawStatus(env, klientId, 'cieply');
+
+  const plik = await csv(env);
+  assert.ok(plik.startsWith('﻿'), 'bez BOM Excel robi krzaki');
+  const [naglowek, wiersz] = plik.replace('﻿', '').split('\r\n');
+  assert.match(naglowek, /^id;utworzono;imie;telefon;email;miejscowosc;status/);
+  assert.match(wiersz, /"Anna"/);
+  assert.match(wiersz, /"Ciepły"/);
+});
+
+test('średnik i cudzysłów w danych nie rozjeżdżają kolumn', async () => {
+  const env = nowaBaza();
+  await zapiszLead(env, { ...LEAD, imie: 'Anna "Ania"; Kowalska' });
+  const wiersz = (await csv(env)).split('\r\n')[1];
+  assert.match(wiersz, /"Anna ""Ania""; Kowalska"/);
+});
+
+/* ────────────────────────────────────────────────────────────── lejek */
+
+test('lejek ma statusy w kolejności sprzedażowej', () => {
+  assert.deepEqual(
+    STATUSY.map((s) => s.id),
+    ['nowy', 'cieply', 'pomiar', 'oferta', 'wygrany', 'przegrany', 'fake']
+  );
+});

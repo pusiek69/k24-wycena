@@ -5,10 +5,13 @@ import { uruchom as uruchomKreator } from './app/wizard.js';
 import { FIRMY } from './firms/index.js';
 import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
+import { zapamietajZrodlo } from './app/zrodlo.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
 sledzTelefony();
+// Znaczniki kampanii z adresu — do oceny, czy reklama się zwraca.
+zapamietajZrodlo();
 
 document.getElementById('cookies')?.addEventListener('click', (e) => {
   e.preventDefault();

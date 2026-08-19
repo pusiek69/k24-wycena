@@ -40,3 +40,11 @@ enabled = true
 
 [observability.logs]
 enabled = true
+
+# Baza klientów (CRM) — Cloudflare D1, region EEUR.
+# Schemat: worker/schema.sql
+#   npx wrangler d1 execute k24h-crm --remote --file=worker/schema.sql
+[[d1_databases]]
+binding = "BAZA"
+database_name = "k24h-crm"
+database_id = "ef8cf85e-b185-4c1c-84b8-c1d62e03a023"

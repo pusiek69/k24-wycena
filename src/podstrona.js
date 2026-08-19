@@ -7,9 +7,12 @@
 import './style.css';
 import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony } from './analytics/zdarzenia.js';
+import { zapamietajZrodlo } from './app/zrodlo.js';
 
 inicjujZgody();
 sledzTelefony();
+// Klient często ląduje z reklamy na podstronie, a kalkulator otwiera potem.
+zapamietajZrodlo();
 
 document.getElementById('cookies')?.addEventListener('click', (e) => {
   e.preventDefault();

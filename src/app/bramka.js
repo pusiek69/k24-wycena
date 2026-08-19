@@ -2,6 +2,7 @@ import { h, zl, liczba } from './dom.js';
 import { kartaWyceny, opisOdcinkow } from './wynik-widok.js';
 import { wyslijLead, wyslijLeadZapasowo } from '../api.js';
 import { zdarzenie, zdarzenieWycena, konwersjaLead } from '../analytics/zdarzenia.js';
+import { zrodloLeada } from './zrodlo.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -142,6 +143,9 @@ function formularzBramki(w, box, opcje) {
       // co klient widzi na karcie — bez tego trzeba było odtwarzać wycenę
       // z jednozdaniowego podsumowania i transkryptu rozmowy.
       szczegoly: w?.ok ? szczegolyWyceny(w) : null,
+      // Do bazy klientów: skąd klient przyszedł. Bez zgody marketingowej
+      // leci samo „nieznane" — patrz app/zrodlo.js.
+      zrodlo: zrodloLeada(),
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
 
@@ -307,6 +311,9 @@ export function szczegolyWyceny(w) {
     // Zamówienie bez montażu — Dawid musi to zobaczyć od razu, bo zmienia
     // sposób obsługi (brak pomiaru, brak wyjazdu, odbiór w zakładzie).
     odbiorWlasny: !!w.odbiorWlasny,
+    // Kuchnia czy łazienka — w mailu widać to po pozycjach, ale baza
+    // klientów zapisuje to wprost, żeby dało się filtrować.
+    pomieszczenie: (w.opcje || {}).pomieszczenie || 'kuchnia',
     // Kod wskazanej płyty kamienia naturalnego — trafia też w temat maila.
     kodPlyty: w.kodPlyty || null,
     pozycje: (w.pozycje || []).map((p) => ({

@@ -11,11 +11,13 @@
  *    POST /lead     — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
  *                     odczyt, z którego korzysta konsultant przez narzędzie)
+ *    GET  /panel    — baza klientów dla Dawida (worker/panel.js), za hasłem
  *
  *  Sekrety (Cloudflare → Settings → Variables and Secrets):
  *    ANTHROPIC_API_KEY   klucz do Anthropic
  *    RESEND_API_KEY      klucz do Resend
  *    LEAD_EMAIL          kamieniarstwo24h@gmail.com
+ *    PANEL_HASLO         hasło do panelu bazy klientów
  *    ALLOWED_ORIGIN      https://kam24h.pl  (można podać kilka po przecinku)
  *    MAIL_FROM           opcjonalnie, domyślnie onboarding@resend.dev
  *
@@ -23,6 +25,8 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
+import { obsluzPanel } from './panel.js';
+import { zapiszLead } from './baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -72,9 +76,22 @@ export default {
     const cors = naglowkiCors(request, env);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
 
     const sciezka = new URL(request.url).pathname.replace(/\/$/, '');
+
+    // Panel bazy klientów to jedyna część workera odpytywana z przeglądarki
+    // przez GET — i jedyna z własnym logowaniem. Idzie przed regułą „tylko
+    // POST", bo Dawid wchodzi tu zwykłym kliknięciem w zakładkę.
+    if (sciezka === '/panel' || sciezka.startsWith('/panel/')) {
+      try {
+        return await obsluzPanel(request, env);
+      } catch (e) {
+        console.error('panel', e?.message || e);
+        return json({ error: 'Błąd panelu.' }, 500);
+      }
+    }
+
+    if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
 
     try {
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
@@ -318,7 +335,10 @@ async function obsluzLead(request, env, cors) {
     zalaczniki.push({ filename: String(d.filename).slice(0, 120), content: String(d.file) });
   }
 
+  // Pole przychodzi z przeglądarki — ktoś może wysłać obiekt bez `pozycje`
+  // ręcznym POST-em i taki brak nie ma prawa wywrócić wysyłki maili.
   const szczegoly = d.szczegoly && typeof d.szczegoly === 'object' ? d.szczegoly : null;
+  if (szczegoly && !Array.isArray(szczegoly.pozycje)) szczegoly.pozycje = [];
   const klient = { imie, telefon, email, miejscowosc, uwagi: String(d.uwagi || '').trim() };
 
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
@@ -340,6 +360,27 @@ async function obsluzLead(request, env, cors) {
     subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
     html: mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
   });
+
+  /*
+   * BAZA KLIENTÓW — dopiero po mailach i w pełni „na własne ryzyko".
+   * Zgłoszenie ma dojechać do Dawida nawet wtedy, gdy baza akurat nie
+   * odpowiada; dlatego wynik zapisu nie wpływa na odpowiedź dla przeglądarki.
+   */
+  try {
+    await zapiszLead(env, {
+      imie: imie === 'Klient' ? '' : imie,
+      telefon,
+      email,
+      miejscowosc,
+      kwota: d.kwota,
+      opis: wycena,
+      szczegoly,
+      pomieszczenie: szczegoly?.pomieszczenie || '',
+      zrodlo: d.zrodlo,
+    });
+  } catch (e) {
+    console.error('baza', e?.message || e);
+  }
 
   return json(
     { ok: true, doFirmy: doFirmyOdp, doKlienta: doKlientaOdp },
