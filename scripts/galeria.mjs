@@ -544,7 +544,8 @@ ${sekcje}
     <div class="foot-dane">
       <p>
         <strong>Kamieniarstwo 24h</strong> · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg ·
-        NIP 8672241748 · tel. <a href="tel:+48796991128">796 991 128</a>
+        NIP 8672241748 · tel. <a href="tel:+48796991128">796 991 128</a> ·
+        <a href="https://k24h.kamieniarstwo24h.workers.dev/panel" rel="nofollow noopener" title="Panel firmowy — tylko dla właściciela">Panel</a>
       </p>
     </div>
   </footer>
