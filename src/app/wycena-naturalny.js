@@ -231,3 +231,58 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
 function liczba(n) {
   return (Math.round(n * 10) / 10).toLocaleString('pl-PL');
 }
+
+/* ─────────────────────────────────────── tryb właściciela („Powtórz wycenę") */
+
+/**
+ * Pseudo-wariant dla płyty podanej RĘCZNIE przez Dawida — spoza magazynu
+ * Interstone albo z inną ceną. Liczy się identycznie jak płyta magazynowa:
+ * całe płyty, obrzeże, odpad 15%, dodatek za obróbkę naturalnego.
+ */
+export function wariantReczny({ nazwa, kod = '', cenaBruttoM2, plytaCm, gruboscMm }) {
+  return {
+    nazwa: String(nazwa || 'Kamień naturalny').trim(),
+    rodzaj: 'Kamień naturalny',
+    kod: String(kod || ''),
+    cenaBruttoM2: Number(cenaBruttoM2) || 0,
+    plytaCm: { dl: Number(plytaCm?.dl) || 0, gl: Number(plytaCm?.gl) || 0 },
+    gruboscMm: Number(gruboscMm) || 20,
+    // Płyta spoza magazynu — dostępności nie znamy, więc nie straszymy
+    // ostrzeżeniem o brakujących metrach.
+    dostepneM2: Infinity,
+    jakosc: '',
+    wykonczenie: '',
+    link: null,
+  };
+}
+
+/**
+ * Wycena dla TRYBU WŁAŚCICIELA: jak `wycenZMagazynu`, ale bez wymogu kodu
+ * płyty. Wymóg kodu chroni wyceny robione KLIENTOM (żeby kwota brała się
+ * z konkretnej, istniejącej sztuki) — Dawid, wpisując cenę ręcznie, sam
+ * jest źródłem prawdy. Ekran właściciela jest osiągalny wyłącznie
+ * z podpisanego linku z panelu, więc klient tędy nie przejdzie.
+ */
+export function wycenWlasciciela(wariant, { odcinki, opcje = {}, grubosc }) {
+  const firma = firmaZWariantu(wariant);
+  if (!firma) return { ok: false, blad: 'Brak danych płyty.' };
+  if (!(wariant.cenaBruttoM2 > 0)) {
+    return { ok: false, blad: 'Podaj cenę materiału za m².' };
+  }
+  if (!(wariant.plytaCm?.dl > 0) || !(wariant.plytaCm?.gl > 0)) {
+    return { ok: false, blad: 'Podaj wymiar płyty.' };
+  }
+
+  const kod = normalizujKodPlyty(wariant.kod || '');
+  return wycen(
+    { ...firma, wymagaKoduPlyty: false },
+    {
+      dekor: wariant.nazwa,
+      grubosc: String(grubosc || wariant.gruboscMm || 20),
+      odcinki,
+      opcje,
+      cenaRecznaM2: wariant.cenaBruttoM2,
+      kodPlyty: kod || null,
+    }
+  );
+}

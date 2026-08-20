@@ -330,6 +330,17 @@ export function szczegolyWyceny(w) {
       grubosc: w.grubosc || '',
       odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),
       opcje: w.opcje || {},
+      // Kamień naturalny: kod i dane wskazanej płyty — bez nich „Powtórz
+      // wycenę" nie miałoby z czego odtworzyć ceny (cennika tu nie ma).
+      ...(w.kodPlyty ? { kodPlyty: w.kodPlyty } : {}),
+      ...(w.wariant
+        ? {
+            nazwa: w.wariant.nazwa || '',
+            cenaM2: w.wariant.cenaBruttoM2 || 0,
+            plytaCm: w.wariant.plytaCm || null,
+            gruboscMm: w.wariant.gruboscMm || 20,
+          }
+        : {}),
     },
     // Kod wskazanej płyty kamienia naturalnego — trafia też w temat maila.
     kodPlyty: w.kodPlyty || null,

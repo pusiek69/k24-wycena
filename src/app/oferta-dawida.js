@@ -16,8 +16,13 @@
 import { h, zl, liczba } from './dom.js';
 import { wycen } from '../engine/wycena.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
-import { API_BASE } from '../api.js';
+import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
+import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
+import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
+
+/** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
+const NATURALNY = '__naturalny';
 
 /** Fragment #powtorz=… → paczka z panelu albo null. */
 export function paczkaPowtorki() {
@@ -34,12 +39,30 @@ export function paczkaPowtorki() {
 }
 
 export function uruchomOferteDawida(root, paczka) {
+  const p = paczka.parametry;
+  // Wycena klienta na kamieniu naturalnym ma firmę „interstone" — edytor
+  // startuje wtedy w trybie naturalnym, z kodem płyty z leada.
+  const naturalny = p.firma === 'interstone';
+
   const stan = {
-    firma: paczka.parametry.firma || FIRMY[0]?.slug,
-    dekor: paczka.parametry.dekor || '',
-    grubosc: String(paczka.parametry.grubosc || ''),
-    odcinki: (paczka.parametry.odcinki || []).map((o) => ({ gl: Number(o.gl), dl: Number(o.dl) })),
-    opcje: { ...(paczka.parametry.opcje || {}) },
+    firma: naturalny ? NATURALNY : p.firma || FIRMY[0]?.slug,
+    dekor: p.dekor || '',
+    grubosc: String(p.grubosc || ''),
+    odcinki: (p.odcinki || []).map((o) => ({ gl: Number(o.gl), dl: Number(o.dl) })),
+    opcje: { ...(p.opcje || {}) },
+    // kamień naturalny (tryb właściciela)
+    nat: {
+      kod: String(p.kodPlyty || ''),
+      wariant: null, // płyta z magazynu po lookupie
+      komunikat: '',
+      szukam: false,
+      // ręczne nadpisania Dawida — działają też bez płyty z magazynu
+      cenaM2: 0,
+      nazwa: String(p.nazwa || p.dekor || ''),
+      plytaDl: Number(p.plytaCm?.dl) || 320,
+      plytaGl: Number(p.plytaCm?.gl) || 190,
+      grubosc: String(p.gruboscMm || p.grubosc || '20').replace(/\D/g, '') || '20',
+    },
     // pasek właściciela
     korektaTyp: 'brak', // brak | procent | kwota | nadpisz
     korektaWartosc: 0,
@@ -51,15 +74,81 @@ export function uruchomOferteDawida(root, paczka) {
   const box = h('div', { class: 'panel oferta-dawida' });
   root.replaceChildren(box);
   rysuj(box, stan, paczka);
+
+  // Prefill z leada naturalnego: od razu dociągamy świeżą cenę z magazynu.
+  if (naturalny && stan.nat.kod) pobierzPlyte(box, stan, paczka);
+}
+
+/** Lookup płyty po kodzie — ta sama droga co w kalkulatorze klienta. */
+async function pobierzPlyte(box, stan, paczka) {
+  const kod = stan.nat.kod.trim();
+  if (!kod) {
+    stan.nat.komunikat = 'Wpisz kod płyty z magazynu Interstone.';
+    return rysuj(box, stan, paczka);
+  }
+  stan.nat.szukam = true;
+  stan.nat.komunikat = '';
+  rysuj(box, stan, paczka);
+
+  try {
+    const fraza = doWyszukania(kod) || kod;
+    const odp = await sprawdzMagazyn(fraza, kod);
+    if (odp?.plyta) {
+      stan.nat.wariant = wariantZPlyty(odp.plyta);
+      stan.nat.nazwa = stan.nat.wariant?.nazwa || stan.nat.nazwa;
+      stan.nat.komunikat = '';
+    } else {
+      stan.nat.wariant = null;
+      stan.nat.komunikat =
+        (odp?.powodKodu || 'Nie znalazłem tej płyty w magazynie.') +
+        ' Możesz policzyć z ceną wpisaną ręcznie poniżej.';
+    }
+  } catch {
+    stan.nat.wariant = null;
+    stan.nat.komunikat = 'Magazyn nie odpowiada — policz z ceną ręczną albo spróbuj ponownie.';
+  }
+  stan.nat.szukam = false;
+  rysuj(box, stan, paczka);
 }
 
 /* ─────────────────────────────────────────────────────────── liczenie */
 
 function policz(stan) {
-  const firma = firmaWgSlug(stan.firma);
-  if (!firma) return { ok: false, blad: 'Nieznana firma.' };
   const odcinki = stan.odcinki.filter((o) => o.gl > 0 && o.dl > 0);
   if (!odcinki.length) return { ok: false, blad: 'Podaj wymiary odcinków.' };
+
+  if (stan.firma === NATURALNY) {
+    const n = stan.nat;
+    // Płyta z magazynu; ręczna cena (jeśli wpisana) nadpisuje magazynową.
+    if (n.wariant) {
+      const wariant = n.cenaM2 > 0 ? { ...n.wariant, cenaBruttoM2: n.cenaM2 } : n.wariant;
+      return wycenZMagazynu(wariant, {
+        odcinki,
+        opcje: stan.opcje,
+        grubosc: n.wariant.gruboscMm,
+      });
+    }
+    // Płyta spoza magazynu: wszystko z rąk Dawida.
+    if (!(n.cenaM2 > 0)) {
+      return {
+        ok: false,
+        blad: 'Pobierz płytę z magazynu (kod) albo wpisz cenę materiału ręcznie.',
+      };
+    }
+    return wycenWlasciciela(
+      wariantReczny({
+        nazwa: n.nazwa,
+        kod: n.kod,
+        cenaBruttoM2: n.cenaM2,
+        plytaCm: { dl: n.plytaDl, gl: n.plytaGl },
+        gruboscMm: n.grubosc,
+      }),
+      { odcinki, opcje: stan.opcje, grubosc: n.grubosc }
+    );
+  }
+
+  const firma = firmaWgSlug(stan.firma);
+  if (!firma) return { ok: false, blad: 'Nieznana firma.' };
   return wycen(firma, { dekor: stan.dekor, grubosc: stan.grubosc, odcinki, opcje: stan.opcje });
 }
 
@@ -115,7 +204,9 @@ function zamrozOferte(stan, w) {
       .join('; ');
   }
 
-  const firma = firmaWgSlug(stan.firma);
+  // Firma prosto z wyniku silnika — przy kamieniu naturalnym to konfiguracja
+  // zbudowana z konkretnej płyty, nie wpis z listy kolekcji.
+  const firma = w.firma;
   return {
     opis: [firma?.nazwa, w.dekor, w.grubosc ? `${w.grubosc} mm` : '', opisOdcinkow(stan.odcinki)]
       .filter(Boolean)
@@ -134,13 +225,29 @@ function zamrozOferte(stan, w) {
     mb: w.pak?.mb ?? 0,
     pomieszczenie: stan.opcje.pomieszczenie || 'kuchnia',
     kategoria: rodzajMaterialu(firma),
-    parametry: {
-      firma: stan.firma,
-      dekor: stan.dekor,
-      grubosc: stan.grubosc,
-      odcinki: stan.odcinki,
-      opcje: stan.opcje,
-    },
+    parametry:
+      stan.firma === NATURALNY
+        ? {
+            firma: 'interstone',
+            dekor: w.dekor,
+            grubosc: w.grubosc,
+            odcinki: stan.odcinki,
+            opcje: stan.opcje,
+            kodPlyty: w.kodPlyty || stan.nat.kod || null,
+            nazwa: stan.nat.nazwa,
+            cenaM2: stan.nat.wariant && !(stan.nat.cenaM2 > 0)
+              ? stan.nat.wariant.cenaBruttoM2
+              : stan.nat.cenaM2,
+            plytaCm: stan.nat.wariant?.plytaCm || { dl: stan.nat.plytaDl, gl: stan.nat.plytaGl },
+            gruboscMm: Number(w.grubosc) || 20,
+          }
+        : {
+            firma: stan.firma,
+            dekor: stan.dekor,
+            grubosc: stan.grubosc,
+            odcinki: stan.odcinki,
+            opcje: stan.opcje,
+          },
   };
 }
 
@@ -149,12 +256,17 @@ const opisOdcinkow = (odcinki) => odcinki.map((o) => `${o.gl}×${o.dl}`).join(' 
 /* ──────────────────────────────────────────────────────────── widok */
 
 function rysuj(box, stan, paczka) {
-  const firma = firmaWgSlug(stan.firma) || FIRMY[0];
-  stan.firma = firma.slug;
-  const dekory = Object.keys(firma.dekory || {});
-  if (!dekory.includes(stan.dekor)) stan.dekor = dekory[0] || '';
-  const grubosci = grubosciDekoru(firma, stan.dekor);
-  if (!grubosci.includes(stan.grubosc)) stan.grubosc = grubosci[0] || '';
+  const naturalny = stan.firma === NATURALNY;
+  let dekory = [];
+  let grubosci = [];
+  if (!naturalny) {
+    const firma = firmaWgSlug(stan.firma) || FIRMY[0];
+    stan.firma = firma.slug;
+    dekory = Object.keys(firma.dekory || {});
+    if (!dekory.includes(stan.dekor)) stan.dekor = dekory[0] || '';
+    grubosci = grubosciDekoru(firma, stan.dekor);
+    if (!grubosci.includes(stan.grubosc)) stan.grubosc = grubosci[0] || '';
+  }
 
   const w = policz(stan);
   const oferta = w.ok ? zamrozOferte(stan, w) : null;
@@ -171,14 +283,26 @@ function rysuj(box, stan, paczka) {
       h(
         'div',
         { class: 'od-siatka' },
-        pole('Kolekcja', wybor(FIRMY.filter((f) => f.trybCeny === 'katalog').map((f) => [f.slug, f.nazwa]), stan.firma, (v) => {
-          stan.firma = v;
-          const nowa = firmaWgSlug(v);
-          stan.dekor = Object.keys(nowa?.dekory || {})[0] || '';
-          odswiez();
-        })),
-        pole('Dekor', wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => ((stan.dekor = v), odswiez()))),
-        pole('Grubość', wybor(grubosci.map((g) => [g, g + ' mm']), stan.grubosc, (v) => ((stan.grubosc = v), odswiez()))),
+        pole(
+          'Kolekcja',
+          wybor(
+            [
+              ...FIRMY.filter((f) => f.trybCeny === 'katalog').map((f) => [f.slug, f.nazwa]),
+              [NATURALNY, 'Kamień naturalny (płyta z magazynu)'],
+            ],
+            stan.firma,
+            (v) => {
+              stan.firma = v;
+              if (v !== NATURALNY) {
+                const nowa = firmaWgSlug(v);
+                stan.dekor = Object.keys(nowa?.dekory || {})[0] || '';
+              }
+              odswiez();
+            }
+          )
+        ),
+        naturalny ? null : pole('Dekor', wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => ((stan.dekor = v), odswiez()))),
+        naturalny ? null : pole('Grubość', wybor(grubosci.map((g) => [g, g + ' mm']), stan.grubosc, (v) => ((stan.grubosc = v), odswiez()))),
         pole('Pomieszczenie', wybor([['kuchnia', 'kuchnia'], ['lazienka', 'łazienka']], stan.opcje.pomieszczenie || 'kuchnia', (v) => {
           stan.opcje.pomieszczenie = v;
           odswiez();
@@ -193,6 +317,9 @@ function rysuj(box, stan, paczka) {
           : pole('Umywalki (szt.)', licznik(stan.opcje.umywalki ?? 1, 1, (v) => ((stan.opcje.umywalki = v), odswiez()))),
         pole('Otwory (szt.)', licznik(stan.opcje.otwory ?? 1, 0, (v) => ((stan.opcje.otwory = v), odswiez())))
       ),
+
+      /* ── kamień naturalny: płyta z magazynu albo cena ręczna ── */
+      naturalny ? blokNaturalny(stan, paczka, box, odswiez) : null,
 
       /* ── odcinki ── */
       h('div', { class: 'q-kicker', style: 'margin-top:16px' }, 'Odcinki blatu (głębokość × długość, cm)'),
@@ -232,6 +359,88 @@ function rysuj(box, stan, paczka) {
       w.ok ? wysylka(stan, oferta, paczka, box) : null
     )
   );
+}
+
+function blokNaturalny(stan, paczka, box, odswiez) {
+  const n = stan.nat;
+  const kodPole = h('input', {
+    type: 'text',
+    value: n.kod,
+    placeholder: 'np. STON000334-84224',
+    onchange: (e) => (n.kod = e.target.value),
+  });
+
+  const wiersze = [
+    h('div', { class: 'q-kicker', style: 'margin-top:16px' }, 'Płyta z magazynu Interstone'),
+    h(
+      'div',
+      { class: 'od-odcinek' },
+      kodPole,
+      h(
+        'button',
+        { class: 'btn cichy', type: 'button', disabled: n.szukam ? 'disabled' : undefined,
+          onclick: () => { n.kod = kodPole.value; pobierzPlyte(box, stan, paczka); } },
+        n.szukam ? 'Szukam…' : 'Pobierz z magazynu'
+      )
+    ),
+  ];
+
+  if (n.wariant) {
+    const p = n.wariant;
+    wiersze.push(
+      h(
+        'p',
+        { class: 'form-nota', style: 'margin:6px 0 0' },
+        `✓ ${p.nazwa} · ${p.rodzaj || ''} · ${p.gruboscMm} mm · płyta ` +
+          `${liczba(p.plytaCm.dl)}×${liczba(p.plytaCm.gl)} cm · ` +
+          `${zl(p.cenaBruttoM2)}/m² · dostępne ${liczba(p.dostepneM2)} m²`
+      )
+    );
+  } else if (n.komunikat) {
+    wiersze.push(h('p', { class: 'form-blad', style: 'margin:6px 0 0' }, n.komunikat));
+  }
+
+  wiersze.push(
+    h('div', { class: 'q-kicker', style: 'margin-top:14px' }, 'Cena ręczna (widzi tylko Dawid)'),
+    h(
+      'div',
+      { class: 'od-siatka' },
+      pole(
+        n.wariant ? 'Cena materiału zł/m² (nadpisuje magazyn)' : 'Cena materiału zł/m² (brutto)',
+        h('input', {
+          type: 'number', inputmode: 'numeric', value: n.cenaM2 || '',
+          placeholder: n.wariant ? String(n.wariant.cenaBruttoM2) : 'jak na interstone.pl',
+          onchange: (e) => ((n.cenaM2 = Number(e.target.value) || 0), odswiez()),
+        })
+      ),
+      n.wariant
+        ? null
+        : pole('Nazwa kamienia', h('input', {
+            type: 'text', value: n.nazwa,
+            onchange: (e) => ((n.nazwa = e.target.value), odswiez()),
+          })),
+      n.wariant
+        ? null
+        : pole('Płyta: długość (cm)', h('input', {
+            type: 'number', inputmode: 'numeric', value: n.plytaDl,
+            onchange: (e) => ((n.plytaDl = Number(e.target.value) || 0), odswiez()),
+          })),
+      n.wariant
+        ? null
+        : pole('Płyta: głębokość (cm)', h('input', {
+            type: 'number', inputmode: 'numeric', value: n.plytaGl,
+            onchange: (e) => ((n.plytaGl = Number(e.target.value) || 0), odswiez()),
+          })),
+      n.wariant
+        ? null
+        : pole('Grubość (mm)', h('input', {
+            type: 'number', inputmode: 'numeric', value: n.grubosc,
+            onchange: (e) => ((n.grubosc = String(Number(e.target.value) || 20)), odswiez()),
+          }))
+    )
+  );
+
+  return h('div', {}, ...wiersze);
 }
 
 function podgladPozycji(stan, oferta, odswiez) {
