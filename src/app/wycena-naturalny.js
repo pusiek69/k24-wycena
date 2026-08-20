@@ -214,18 +214,64 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
   });
   if (!w.ok) return w;
 
-  // Nie obiecujemy więcej, niż leży w magazynie. Klient ma to wiedzieć
-  // ZANIM zadzwoni — inaczej rozczarowanie spada na Dawida.
-  if (w.pak.m2Kupione > wariant.dostepneM2 + 0.01) {
+  /*
+   * DOSTĘPNOŚĆ LICZYMY BLOKIEM, nie pojedynczą płytą. Blok to jeden kamień
+   * przecięty na płyty — identyczny wzór i usłojenie. Przy blacie na więcej
+   * niż jedną płytę wolno dobierać WYŁĄCZNIE płyty z tabeli „produkty o tym
+   * samym bloku" (pozycje zarezerwowane i „w drodze" parser odrzuca już
+   * w workerze). Klient ma to wiedzieć ZANIM zadzwoni — i to w obie strony:
+   * że materiału starczy i że wzór będzie spójny, albo że bloku nie starcza.
+   */
+  const blok = dostepnoscBloku(wariant);
+  if (w.pak.m2Kupione > blok.razemM2 + 0.01) {
     w.ostrzezenia = [
       ...w.ostrzezenia,
-      `W magazynie jest teraz ${liczba(wariant.dostepneM2)} m² tego kamienia, a ten blat ` +
+      `W magazynie jest teraz ${liczba(blok.razemM2)} m² z tego bloku` +
+        `${blok.plyty.length > 1 ? ` (${blok.plyty.length} płyt)` : ''}, a ten blat ` +
         `wymaga ${liczba(w.pak.m2Kupione)} m². Sprawdzimy termin dostawy kolejnych płyt.`,
+    ];
+  } else if (w.pak.plytyPelne > 1 || w.pak.m2Kupione > wariant.dostepneM2 + 0.01) {
+    const symbole = dobierzSymbole(blok, wariant, w.pak.m2Kupione);
+    w.ostrzezenia = [
+      ...w.ostrzezenia,
+      `Blat wymaga ${w.pak.plytyPelne} płyt — wszystkie z TEGO SAMEGO bloku` +
+        `${symbole.length ? ` (nr ${symbole.join(', ')})` : ''}, więc wzór i usłojenie będą spójne.`,
     ];
   }
 
   w.wariant = wariant;
   return w;
+}
+
+/** Łączna dostępność bloku: wskazana płyta + reszta z tabeli bloku. */
+function dostepnoscBloku(wariant) {
+  const wlasnySymbol = (String(wariant.kod || '').match(/(\d+)\s*$/) || [])[1] || null;
+  const zTabeli = (wariant.blokPlyty?.plyty || []).filter((p) => p.dostepneM2 > 0);
+  const inne = zTabeli.filter((p) => String(p.symbol) !== wlasnySymbol);
+  return {
+    wlasnySymbol,
+    plyty: zTabeli.length ? zTabeli : [{ symbol: wlasnySymbol, dostepneM2: wariant.dostepneM2 }],
+    razemM2: wariant.dostepneM2 + inne.reduce((suma, p) => suma + p.dostepneM2, 0),
+  };
+}
+
+/** Które symbole z bloku pokrywają potrzebny metraż — wskazana płyta pierwsza. */
+function dobierzSymbole(blok, wariant, m2Potrzebne) {
+  const wybrane = [];
+  let suma = 0;
+  const kolejnosc = [
+    { symbol: blok.wlasnySymbol, dostepneM2: wariant.dostepneM2 },
+    ...blok.plyty
+      .filter((p) => String(p.symbol) !== blok.wlasnySymbol)
+      .sort((a, b) => b.dostepneM2 - a.dostepneM2),
+  ];
+  for (const p of kolejnosc) {
+    if (!p.symbol) continue;
+    wybrane.push(p.symbol);
+    suma += p.dostepneM2;
+    if (suma + 0.01 >= m2Potrzebne) break;
+  }
+  return wybrane;
 }
 
 function liczba(n) {

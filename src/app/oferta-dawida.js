@@ -396,6 +396,44 @@ function blokNaturalny(stan, paczka, box, odswiez) {
           `${zl(p.cenaBruttoM2)}/m² · dostępne ${liczba(p.dostepneM2)} m²`
       )
     );
+
+    /*
+     * Płyty z TEGO SAMEGO bloku (spójny wzór) — z tabeli na karcie płyty
+     * w Interstone. Pozycje zarezerwowane odpadają już w workerze.
+     * Klik przełącza wycenę na wskazaną płytę.
+     */
+    const bl = p.blokPlyty;
+    if (bl && bl.plyty.length > 1) {
+      const wlasny = (String(p.kod || '').match(/(\d+)\s*$/) || [])[1];
+      const stonCzesc = (String(p.kod || '').match(/^[A-Za-z]+\d+/) || [''])[0];
+      wiersze.push(
+        h('div', { class: 'q-kicker', style: 'margin-top:12px' },
+          `Płyty z tego samego bloku (razem ${liczba(bl.razemM2)} m²) — spójny wzór`),
+        ...bl.plyty.map((b) =>
+          h(
+            'div',
+            { class: 'od-odcinek', style: 'font-size:13px' },
+            h(
+              'span',
+              { style: 'flex:1' },
+              `${b.symbol}${String(b.symbol) === wlasny ? ' (wybrana)' : ''} · ` +
+                `${b.wymiarCm ? `${b.wymiarCm.dl}×${b.wymiarCm.gl} cm · ` : ''}` +
+                `${liczba(b.dostepneM2)} m²${b.magazyn ? ` · ${b.magazyn}` : ''}`
+            ),
+            String(b.symbol) !== wlasny && stonCzesc
+              ? h(
+                  'button',
+                  {
+                    class: 'link-btn', type: 'button',
+                    onclick: () => { n.kod = `${stonCzesc}-${b.symbol}`; pobierzPlyte(box, stan, paczka); },
+                  },
+                  'Licz z tej płyty →'
+                )
+              : null
+          )
+        )
+      );
+    }
   } else if (n.komunikat) {
     wiersze.push(h('p', { class: 'form-blad', style: 'margin:6px 0 0' }, n.komunikat));
   }

@@ -164,6 +164,48 @@ function wybierzZdjecia(lista) {
   };
 }
 
+/**
+ * „PRODUKTY O TYM SAMYM BLOKU" — tabela osadzona w każdej karcie listingu
+ * (Status / Magazyn / Symbol / Opis / Stan). Blok to jeden kamień przecięty
+ * na płyty: identyczny wzór i usłojenie. Przy blacie na więcej niż jedną
+ * płytę wolno mieszać WYŁĄCZNIE płyty z tej tabeli.
+ *
+ * Bierzemy tylko wiersze realnie dostępne: status „Na stanie" i stan w m².
+ * „Rezerwacja" i „W drodze" odpadają — nie wolno ich obiecywać klientowi.
+ *
+ * Opis w rodzaju „pol_2x325x180 dp_" niesie wymiar płyty: grubość 2 cm,
+ * 325 × 180 cm — czytamy go, bo tabela nie ma osobnej kolumny z formatem.
+ */
+export function tabelaBloku(karta) {
+  const wzor =
+    /<div class="table-row">\s*<div>\s*<span>([^<]*)<\/span>\s*<\/div>\s*<div>\s*<span>([^<]*)<\/span>\s*<\/div>\s*<div>\s*<span>([^<]*)<\/span>\s*<\/div>\s*<div>\s*<span>([^<]*)<\/span>\s*<\/div>\s*<div>\s*<span>([^<]*)<\/span>\s*<\/div>/g;
+
+  const plyty = [];
+  let razemM2 = 0;
+  let m;
+  while ((m = wzor.exec(karta)) !== null) {
+    const [, status, magazyn, symbol, opis, stan] = m.map((x) => String(x ?? '').trim());
+    if (!/na stanie/i.test(status)) continue; // „W drodze" nie obiecujemy
+    const m2 = liczba(stan);
+    if (!(m2 > 0)) continue; // „Rezerwacja" — zajęta
+    const wym = opis.match(/(\d+(?:[.,]\d+)?)x(\d{2,3})x(\d{2,3})/);
+    plyty.push({
+      symbol,
+      magazyn: magazyn || null,
+      opis: opis || null,
+      // Z opisu „pol_2x325x180 dp_": grubość 2 cm, płyta 325 × 180 cm.
+      wymiarCm: wym ? { dl: Number(wym[2]), gl: Number(wym[3]) } : null,
+      gruboscCm: wym ? Number(wym[1].replace(',', '.')) : null,
+      dostepneM2: m2,
+    });
+    razemM2 += m2;
+  }
+
+  if (!plyty.length) return null;
+  plyty.sort((a, b) => b.dostepneM2 - a.dostepneM2);
+  return { razemM2: Math.round(razemM2 * 100) / 100, plyty };
+}
+
 export function parsujMagazyn(html) {
   const czysty = odescapuj(html);
   const zdjecia = zdjeciaWgPlyty(czysty);
@@ -171,7 +213,9 @@ export function parsujMagazyn(html) {
   const plyty = [];
 
   for (let i = 1; i < czesci.length; i++) {
-    const karta = czesci[i].slice(0, 12000);
+    // 20 000 znaków: tabela „tym samym bloku" stoi ~5 kB w głąb karty
+    // i rośnie z liczbą płyt bloku — 12 kB bywało na styk.
+    const karta = czesci[i].slice(0, 20000);
 
     const nazwa = zlap(karta, /l-single-inventory__title[^>]*>([\s\S]*?)<\/div>/);
     if (!nazwa) continue;
@@ -200,6 +244,9 @@ export function parsujMagazyn(html) {
       gruboscMm: liczba(c['Grubość']),
       jakosc: c['Jakość'] || null,
       cenaBruttoM2: liczba(zlap(karta, /l-single-inventory__price"[^>]*>([\s\S]*?)<\/div>/)),
+      // Płyty z tego samego bloku (spójny wzór) — do liczenia dostępności
+      // zleceń na więcej niż jedną płytę i do wyboru w trybie właściciela.
+      blokPlyty: tabelaBloku(karta),
       stanM2: liczba(c['Stan rzeczywisty']),
       rezerwacjaM2: liczba(c['Rezerwacja']),
       dostepneM2: liczba(c['Dostępne']),
@@ -635,7 +682,7 @@ async function wszystkieStrony(fraza, opcje) {
  * błędne wyniki. Kosztowało nas to raz: po naprawie paginacji konsultant
  * dalej twierdził, że nie ma naturalnego Taj Mahal, bo czytał cache.
  */
-const WERSJA_CACHE = 5; // 5: osobna ścieżka wyszukiwania po kodzie (17.08.2026)
+const WERSJA_CACHE = 6; // 6: tabela płyt z tego samego bloku (20.08.2026)
 
 const kluczCache = (fraza) =>
   new Request(
