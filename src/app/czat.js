@@ -14,6 +14,7 @@ import {
   opcjeZeSzczegolow,
   przelozParametry,
   slugMaterialu,
+  rozdziel,
 } from './parametry.js';
 import {
   pomocnikPomieszczenie,
@@ -756,29 +757,6 @@ export function uruchomCzat(root, akcje = {}) {
 
 /* ------------------------------------------------------------ tłumaczenia */
 
-/**
- * Konsultant pisze zwykły tekst, a polecenie dokleja jako JSON.
- * Wyciągamy je i zostawiamy klientowi samą wiadomość.
- */
-export function rozdziel(surowa) {
-  const tekstCalosc = String(surowa || '').trim();
-  const start = tekstCalosc.indexOf('{');
-  const koniec = tekstCalosc.lastIndexOf('}');
-  if (start === -1 || koniec <= start) return { tekst: tekstCalosc, akcja: null };
-
-  let akcja = null;
-  try {
-    akcja = JSON.parse(tekstCalosc.slice(start, koniec + 1));
-  } catch {
-    return { tekst: tekstCalosc, akcja: null };
-  }
-  if (!akcja || (akcja.action !== 'quote' && akcja.action !== 'lead')) {
-    return { tekst: tekstCalosc, akcja: null };
-  }
-
-  const pozaJsonem = (tekstCalosc.slice(0, start) + ' ' + tekstCalosc.slice(koniec + 1)).trim();
-  return { tekst: String(akcja.message || pozaJsonem || '').trim(), akcja };
-}
 
 function akapity(tekst) {
   return String(tekst)

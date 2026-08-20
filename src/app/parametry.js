@@ -172,3 +172,64 @@ export function odczytajSzczegoly(wiadomosc) {
 export function slugMaterialu(nazwa) {
   return MATERIALY[String(nazwa || '').toLowerCase()];
 }
+
+/**
+ * Konsultant pisze zwykły tekst (funkcja mieszka tu, bo jest czysta
+ * i testowalna w gołym node — czat.js tylko jej używa), a polecenie dokleja jako JSON.
+ * Wyciągamy je i zostawiamy klientowi samą wiadomość.
+ */
+export function rozdziel(surowa) {
+  const tekstCalosc = String(surowa || '').trim();
+
+  /*
+   * Model potrafi dokleić WIĘCEJ niż jeden obiekt akcji — np. „policzę oba
+   * warianty" z dwiema wycenami w jednej wiadomości. Cięcie od pierwszego
+   * `{` do ostatniego `}` skleja wtedy dwa JSON-y w nieparsowalną zbitkę
+   * i klient widzi surowy JSON w rozmowie (błąd z 20.08.2026, InterQ
+   * 20/30 mm). Dlatego wyszukujemy KAŻDY zbalansowany blok osobno:
+   * wykonujemy ostatnią akcję (najświeższy wariant), a wszystkie bloki
+   * znikają z tekstu dla klienta.
+   */
+  const bloki = [];
+  let glebokosc = 0;
+  let start = -1;
+  for (let i = 0; i < tekstCalosc.length; i++) {
+    const znak = tekstCalosc[i];
+    if (znak === '{') {
+      if (glebokosc === 0) start = i;
+      glebokosc++;
+    } else if (znak === '}') {
+      if (glebokosc > 0) glebokosc--;
+      if (glebokosc === 0 && start !== -1) {
+        bloki.push([start, i + 1]);
+        start = -1;
+      }
+    }
+  }
+
+  let akcja = null;
+  const doUsuniecia = [];
+  for (const [od, po] of bloki) {
+    try {
+      const kandydat = JSON.parse(tekstCalosc.slice(od, po));
+      if (kandydat && (kandydat.action === 'quote' || kandydat.action === 'lead')) {
+        akcja = kandydat; // ostatnia wygrywa
+        doUsuniecia.push([od, po]);
+      }
+    } catch {
+      /* zwykły nawias klamrowy w tekście — zostaje */
+    }
+  }
+  if (!akcja) return { tekst: tekstCalosc, akcja: null };
+
+  let pozaJsonem = '';
+  let ostatni = 0;
+  for (const [od, po] of doUsuniecia) {
+    pozaJsonem += tekstCalosc.slice(ostatni, od) + ' ';
+    ostatni = po;
+  }
+  pozaJsonem = (pozaJsonem + tekstCalosc.slice(ostatni)).replace(/\s+/g, ' ').trim();
+
+  return { tekst: String(akcja.message || pozaJsonem || '').trim(), akcja };
+}
+
