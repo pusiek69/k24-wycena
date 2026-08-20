@@ -88,7 +88,13 @@ function zamrozOferte(stan, w) {
   ];
 
   const przed = Math.round(w.razemZaokr || w.razem);
-  const poGratisach = widoczne.reduce((suma, p) => suma + p.brutto, 0);
+  // Punktem wyjścia jest kwota z karty klienta (z jej zaokrągleniem),
+  // pomniejszona o wyzerowane pozycje — a nie surowa suma pozycji, która
+  // przez zaokrąglenie potrafi różnić się o złotówkę i udawać upust.
+  const wyzerowane = w.pozycje
+    .filter((p) => !p.wCenie && stan.gratisy.has(p.nazwa))
+    .reduce((suma, p) => suma + Math.round(p.brutto), 0);
+  const poGratisach = przed - wyzerowane;
   let razem = poGratisach;
   let korektaOpis = '';
 
