@@ -6,9 +6,9 @@
   ],
   "_zapisano": "2026-08-20",
   "kwoty": {
-    "konglomeratProste": 5050,
-    "konglomeratL": 6500,
-    "konglomeratM2Od": 552,
+    "konglomeratProste": 4850,
+    "konglomeratL": 6350,
+    "konglomeratM2Od": 505,
     "konglomeratM2Do": 2103,
     "spiekProste": 5150,
     "spiekL": 6950,
@@ -16,6 +16,7 @@
     "spiekM2Do": 2110
   },
   "historia": [
+    552,
     629,
     764,
     1593,
@@ -30,8 +31,8 @@
     4250,
     4400,
     4500,
-    4850,
     5000,
+    5050,
     5200,
     5250,
     5450,
@@ -40,6 +41,7 @@
     5900,
     6050,
     6400,
+    6500,
     6700,
     7200,
     7300,

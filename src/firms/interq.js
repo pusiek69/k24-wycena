@@ -5,15 +5,21 @@ import { VAT, ROBOCIZNA, OPCJE, PLYTA_STANDARD } from './_domyslne.js';
  * INTERQ — konglomerat kwarcowy (kategoria dostawcy: „kwarco-granity")
  *
  * ⚠ Bez rabatów i cen zakupowych — patrz komentarz w avant-quartz.js.
- *   Przelicznik z cennika detalicznego dostawcy na cenę dla klienta
- *   siedzi w pricing/zrodla/interq.zasady.json (poza gitem).
+ *   Sposób dojścia do cen klienta siedzi w pricing/zrodla/interq.zasady.json
+ *   (poza gitem) — cennik ma DWIE części o różnych zasadach, więc w źródle
+ *   stoją już kwoty końcowe (juzPrzeliczone).
  *
  * Konwencja netto/VAT jak przy Laminam i Florim: w `generated` stoi cena
  * końcowa NETTO za m², a VAT (8% z montażem / 23% odbiór) dolicza silnik.
  *
- * Cennik z 20.08.2026: wyłącznie grubość 20 mm, płyta 1600 × 3200 mm.
- * Wykończenie (Polished/Brushed) jest częścią nazwy dekoru — Marfil
- * i Taj Mahal występują w obu, każde w innej cenie.
+ * Cennik z 20.08.2026 (dwa obrazki od Dawida): część 1 to katalog dostawcy,
+ * część 2 to dekory NA STANIE W POLSCE (krótszy termin). Płyta 1600 × 3200 mm,
+ * grubości 20 mm i — przy pojedynczych wzorach ze stanu — 30 mm.
+ * Wykończenie (Polished/Brushed) jest częścią nazwy dekoru — Marfil,
+ * Taj Mahal i Harmony występują w dwóch wersjach, każda w innej cenie.
+ * Angel White Polished łączy obie części: 20 mm z katalogu, 30 mm ze stanu
+ * (stąd nietypowo trzydziestka jest tańsza od dwudziestki — inna podstawa
+ * cenowa, świadoma decyzja Dawida z 20.08.2026).
  */
 export default {
   slug: 'interq',
@@ -43,10 +49,10 @@ export default {
   plyta: { ...PLYTA_STANDARD },
   narzutOdpad: 0.1,
 
-  // Cennik ma tylko dwudziestkę.
   gruboscDomyslna: '20',
   opisGrubosci: {
-    20: '20 mm — jedyna grubość w tym cenniku',
+    20: '20 mm — standard na blat z konglomeratu',
+    30: '30 mm — grubszy, masywniejszy (wybrane wzory ze stanu w Polsce)',
   },
 
   robocizna: ROBOCIZNA,
