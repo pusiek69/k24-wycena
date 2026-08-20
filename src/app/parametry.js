@@ -14,6 +14,8 @@ const MATERIALY = {
   'avant-quartz': 'avant-quartz',
   caesarstone: 'caesarstone',
   technistone: 'technistone',
+  interq: 'interq',
+  inter_q: 'interq',
   keralini: 'keralini',
   marazzi: 'marazzi',
   grande: 'marazzi',

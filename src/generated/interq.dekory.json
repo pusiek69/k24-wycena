@@ -1,0 +1,74 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/interq.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "interq",
+  "_wygenerowano": "2026-08-20",
+  "_dekorow": 22,
+  "dekory": {
+    "Almond Milk Polished": {
+      "20": 1131
+    },
+    "Angel White Polished": {
+      "20": 988
+    },
+    "Bianco Carrara Polished": {
+      "20": 1326
+    },
+    "Biancone Polished": {
+      "20": 1326
+    },
+    "Calacatta Bella Polished": {
+      "20": 1326
+    },
+    "Calacatta Oro Polished": {
+      "20": 1578
+    },
+    "Carrara Oro Polished": {
+      "20": 1119
+    },
+    "Cremo Perlato Polished": {
+      "20": 1102
+    },
+    "Dune White Polished": {
+      "20": 1326
+    },
+    "Fantasy Frost Polished": {
+      "20": 1293
+    },
+    "Lincoln White Polished": {
+      "20": 1326
+    },
+    "Marfil Brushed": {
+      "20": 1364
+    },
+    "Marfil Polished": {
+      "20": 1326
+    },
+    "Marmorino Polished": {
+      "20": 1326
+    },
+    "Mystic White Polished": {
+      "20": 1131
+    },
+    "Patagonia Polished": {
+      "20": 1728
+    },
+    "Perla Santana Polished": {
+      "20": 1578
+    },
+    "Sahara Polished": {
+      "20": 1578
+    },
+    "Taj Mahal Brushed": {
+      "20": 1947
+    },
+    "Taj Mahal Polished": {
+      "20": 1781
+    },
+    "Venatino Polished": {
+      "20": 1131
+    },
+    "White Frost Polished": {
+      "20": 1326
+    }
+  }
+}
