@@ -16,6 +16,8 @@ import {
   zapiszLead,
   zapiszFeedback,
   statystykaFeedbacku,
+  zapiszOferte,
+  ofertaPoTokenie,
   lista,
   karta,
   podsumowanie,
@@ -72,6 +74,11 @@ const LEAD = {
   szczegoly: {
     firma: 'Florim Stone', rodzaj: 'spiek', dekor: 'Marble — Statuario poler',
     grubosc: '12', m2Blatu: 1.8, mb: 3,
+    parametry: {
+      firma: 'florim-stone', dekor: 'Marble — Statuario poler', grubosc: '12',
+      odcinki: [{ gl: 60, dl: 300 }],
+      opcje: { zlew: 'podblat', plyta: 'nakladana', otwory: 2, pomieszczenie: 'kuchnia' },
+    },
   },
   zrodlo: { typ: 'ads', gclid: 'abc123', utm_campaign: 'blaty-tarnobrzeg' },
 };
@@ -372,6 +379,98 @@ test('klient z „pasuje mi" wisi na górze listy', async () => {
   await zapiszFeedback(env, { telefon: '600 700 800', feedback: 'pasuje' });
   // …ale to Piotr prosi o kontakt, więc idzie pierwszy.
   assert.equal((await lista(env, {}))[0].id, b.klientId);
+});
+
+/* ─────────────────────────────── oferty Dawida („Powtórz wycenę") */
+
+const TOKEN = 'a'.repeat(32);
+const OFERTA = {
+  opis: 'Florim Stone · Marble — Statuario poler · 12 mm · 60×300 cm',
+  pozycje: [
+    { nazwa: 'Materiał', detal: '1 płyta', brutto: 6000, gratis: false },
+    { nazwa: 'Transport i montaż u klienta', detal: '', brutto: 0, gratis: true },
+  ],
+  razemPrzed: 9900, razem: 8500, korektaOpis: 'upust 14%; gratis: montaż',
+  przekresl: true, stawkaVat: 0.08, odbiorWlasny: false,
+  firma: 'Florim Stone', dekor: 'Marble — Statuario poler', grubosc: '12',
+  m2: 1.8, mb: 3, pomieszczenie: 'kuchnia', kategoria: 'spiek',
+};
+
+test('parametry wyceny klienta zapisują się do „Powtórz wycenę"', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const k = await karta(env, klientId);
+  assert.equal(k.wyceny[0].dane.firma, 'florim-stone');
+  assert.deepEqual(k.wyceny[0].dane.odcinki, [{ gl: 60, dl: 300 }]);
+  assert.equal(k.wyceny[0].dane.opcje.otwory, 2);
+});
+
+test('oferta Dawida to NOWY wiersz — oryginał klienta nietknięty', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+
+  const k = await karta(env, klientId);
+  assert.equal(k.wyceny.length, 2);
+  const [dawida, klienta] = k.wyceny; // najnowsza pierwsza
+  assert.equal(dawida.wersja, 'dawid');
+  assert.equal(dawida.kwota, 8500);
+  assert.equal(klienta.wersja, '');
+  assert.equal(klienta.kwota, 9900, 'wycena klienta bez zmian');
+  assert.match(k.notatki[0].tresc, /Wysłano ofertę od Dawida/);
+  assert.match(k.notatki[0].tresc, /upust 14%/);
+});
+
+test('wysyłka oferty ustawia status „oferta", ale nie cofa wygranego', async () => {
+  const env = nowaBaza();
+  const a = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, a.klientId, OFERTA, TOKEN);
+  assert.equal((await karta(env, a.klientId)).status, 'oferta');
+
+  const b = await zapiszLead(env, { ...LEAD, telefon: '600 700 800', email: 'b@x.pl' });
+  await ustawStatus(env, b.klientId, 'wygrany');
+  await zapiszOferte(env, b.klientId, OFERTA, 'b'.repeat(32));
+  assert.equal((await karta(env, b.klientId)).status, 'wygrany', 'wygranego nie ruszamy');
+});
+
+test('wycena online po tokenie liczy otwarcia klienta, podgląd Dawida nie', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+
+  const podglad = await ofertaPoTokenie(env, TOKEN, { podglad: true });
+  assert.equal(podglad.oferta.razem, 8500);
+  assert.equal(podglad.klientId, klientId);
+
+  await ofertaPoTokenie(env, TOKEN);
+  await ofertaPoTokenie(env, TOKEN);
+
+  const k = await karta(env, klientId);
+  const wersjaDawida = k.wyceny.find((w) => w.wersja === 'dawid');
+  assert.equal(wersjaDawida.otwarcia, 2, 'podgląd z panelu nie liczy się');
+  assert.ok(wersjaDawida.ostatnie_otwarcie);
+});
+
+test('zły albo obcy token nie zwraca niczego', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  assert.equal(await ofertaPoTokenie(env, 'z'.repeat(32)), null, 'niehex');
+  assert.equal(await ofertaPoTokenie(env, 'b'.repeat(32)), null, 'nieistniejący');
+  assert.equal(await ofertaPoTokenie(env, ''), null);
+});
+
+test('feedback ze strony oferty (po klientId) trafia na kartę', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  const zTokenu = await ofertaPoTokenie(env, TOKEN, { podglad: true });
+
+  await zapiszFeedback(env, { klientId: zTokenu.klientId, feedback: 'pasuje', pora: 'Po 16:00' });
+  const k = await karta(env, klientId);
+  assert.equal(k.feedback, 'pasuje');
+  assert.equal(k.status, 'oferta', '„pasuje" nie cofa statusu oferta');
+  assert.equal(k.pora, 'Po 16:00');
 });
 
 /* ─────────────────────────────────────────────── kasowanie i retencja */

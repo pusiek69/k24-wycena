@@ -71,7 +71,7 @@ export async function obsluzPanel(request, env) {
  * Nie ma sesji w bazie: znajomość hasła jest jedynym sekretem, a zmiana
  * hasła unieważnia wszystkie wydane ciasteczka.
  */
-async function podpisz(sekret, tekst) {
+export async function podpisz(sekret, tekst) {
   const klucz = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(sekret),
@@ -196,7 +196,27 @@ async function apiDane(request, env) {
 async function apiKarta(request, env) {
   const id = Number(new URL(request.url).searchParams.get('id'));
   const k = id ? await karta(env, id) : null;
-  return k ? json(k) : json({ error: 'Nie ma takiej karty.' }, 404);
+  if (!k) return json({ error: 'Nie ma takiej karty.' }, 404);
+
+  /*
+   * „Powtórz wycenę": link do kalkulatora z wczytanymi parametrami tej
+   * wyceny i podpisem właściciela (HMAC z hasła panelu, ważny 7 dni).
+   * Parametry jadą we FRAGMENCIE adresu (#…) — fragment nie wychodzi
+   * w referrerze ani do statystyk, więc podpis nigdzie nie wycieka.
+   */
+  const exp = Date.now() + 7 * 86400000;
+  const sig = await podpisz(env.PANEL_HASLO, `oferta|${k.id}|${exp}`);
+  for (const w of k.wyceny) {
+    if (w.wersja || !w.dane || !w.dane.firma) continue; // tylko wyceny klienta z parametrami
+    const paczka = { leadId: k.id, exp, podpis: sig, parametry: w.dane, imie: k.imie };
+    w.powtorz =
+      'https://kam24h.pl/#powtorz=' +
+      btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(paczka))))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+  }
+  return json(k);
 }
 
 async function apiZmien(request, env) {
@@ -316,6 +336,7 @@ cursor:pointer;font-weight:600}
 .log li{border-top:1px solid var(--linia);padding:.4rem 0}
 .log .kiedy{color:var(--szary);font-size:.76rem}
 .log li.system{color:var(--szary)}
+.log li.od-dawida{border-left:3px solid var(--akcent);padding-left:.5rem}
 .filtry{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 .filtry .szeroko{grid-column:1/-1}
 .pusto{color:var(--szary);padding:.6rem 0}
@@ -491,12 +512,25 @@ async function pokazSzczegoly(id, cicho){
     return '<option value="' + s.id + '"' + (s.id === k.status ? ' selected' : '') + '>' + esc(s.nazwa) + '</option>';
   }).join('');
 
-  var wyceny = k.wyceny.map(function(w){
-    return '<li><span class="kiedy">' + godzina(w.utworzono) + '</span><br>' +
+  var licznik = 0;
+  var wyceny = k.wyceny.slice().reverse().map(function(w){
+    licznik += 1;
+    var naglowek = 'Wycena #' + licznik + (w.wersja === 'dawid' ? ' — od Dawida' : '');
+    var obejrzenia = '';
+    if (w.wersja === 'dawid') {
+      obejrzenia = w.otwarcia
+        ? '<br><span class="mini">👁 klient obejrzał ' + w.otwarcia + '×, ostatnio ' + godzina(w.ostatnie_otwarcie) + '</span>'
+        : '<br><span class="mini">jeszcze nie otwarta przez klienta</span>';
+    }
+    var powtorz = w.powtorz
+      ? ' · <a href="' + esc(w.powtorz) + '" target="_blank" rel="noopener">Powtórz wycenę ↗</a>'
+      : '';
+    return '<li' + (w.wersja === 'dawid' ? ' class="od-dawida"' : '') + '>' +
+      '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + '</li>';
-  }).join('') || '<li class="mini">Brak zapisanych wycen.</li>';
+      (w.odbior ? ' · odbiór własny' : '') + powtorz + obejrzenia + '</li>';
+  }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
 
   var notatki = k.notatki.map(function(n){
     return '<li class="' + (n.autor === 'system' ? 'system' : '') + '"><span class="kiedy">' +

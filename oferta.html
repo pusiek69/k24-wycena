@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <!-- Google tag (gtag.js) — Google Ads AW-18396227572.
+       Zgody MUSZĄ stać przed wczytaniem gtag.js: Consent Mode v2 czyta
+       ustawienie domyślne w momencie startu tagu. Baner (src/analytics/zgody.js)
+       tylko je AKTUALIZUJE po wyborze klienta. -->
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('consent', 'default', {
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      analytics_storage: 'denied',
+      functionality_storage: 'granted',
+      security_storage: 'granted',
+      wait_for_update: 500
+    });
+    gtag('set', 'ads_data_redaction', true);
+    gtag('set', 'url_passthrough', true);
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18396227572"></script>
+  <script>
+    gtag('js', new Date());
+    gtag('config', 'AW-18396227572');
+  </script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Twoja wycena — Kamieniarstwo 24h</title>
+  <meta name="description" content="Indywidualna wycena blatu przygotowana przez Kamieniarstwo 24h." />
+  <!-- Strona dostępna wyłącznie z tokenizowanego linku w mailu — nie dla wyszukiwarek. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#13110f" />
+  <link rel="icon" href="/logo-k24h.png" />
+</head>
+<body>
+  <header class="wrap">
+    <div class="topbar">
+      <a class="logo" href="/">
+        <img class="logo-img" src="/logo-k24h.png" width="42" height="54" alt="Kamieniarstwo 24h" />
+      </a>
+      <a class="phone-btn" href="tel:+48796991128" data-miejsce="oferta">
+        <span class="ph-ico" aria-hidden="true">☎</span>
+        <span class="ph-txt">
+          <span class="ph-lbl">Zadzwoń teraz</span>
+          <span class="ph-num">796 991 128</span>
+        </span>
+      </a>
+    </div>
+    <h1>Twoja wycena</h1>
+    <p class="sub">Przygotowana indywidualnie przez Dawida Ząbka. Ważna 30 dni.</p>
+  </header>
+
+  <main class="wrap">
+    <div id="oferta">
+      <p class="sub" id="oferta-status">Wczytuję wycenę…</p>
+    </div>
+  </main>
+
+  <footer class="wrap">
+    <p class="foot-line">
+      Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748 ·
+      tel. <a href="tel:+48796991128" data-miejsce="stopka">796 991 128</a> ·
+      pon.–pt. 8:00–18:00 ·
+      <a href="/polityka-prywatnosci">Polityka prywatności</a>
+    </p>
+  </footer>
+
+  <script type="module" src="/src/oferta.js"></script>
+</body>
+</html>

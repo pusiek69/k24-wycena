@@ -65,8 +65,21 @@ CREATE TABLE IF NOT EXISTS wyceny (
   kategoria    TEXT NOT NULL DEFAULT '',
   -- Odpowiedź klienta przypięta do tej konkretnej wyceny (ostatniej w chwili
   -- kliknięcia) — z tego liczy się % pasuje/za drogo/zastanowi per materiał.
-  feedback     TEXT NOT NULL DEFAULT ''
+  feedback     TEXT NOT NULL DEFAULT '',
+  -- '' = wycena klienta z kalkulatora; 'dawid' = wersja przygotowana w panelu
+  -- („Powtórz wycenę"). Oryginał klienta nigdy nie jest nadpisywany.
+  wersja       TEXT NOT NULL DEFAULT '',
+  -- JSON: zamrożone pozycje i kwoty (wersja Dawida) albo parametry wejściowe
+  -- (wycena klienta — z nich „Powtórz wycenę" odtwarza kalkulator).
+  dane         TEXT NOT NULL DEFAULT '',
+  -- Losowy token linku wyceny online dla klienta (wersje Dawida).
+  token        TEXT NOT NULL DEFAULT '',
+  -- „Klient obejrzał": licznik i data ostatniego otwarcia linku.
+  otwarcia     INTEGER NOT NULL DEFAULT 0,
+  ostatnie_otwarcie TEXT
 );
+
+CREATE INDEX IF NOT EXISTS wyceny_token ON wyceny (token);
 
 CREATE INDEX IF NOT EXISTS wyceny_klient ON wyceny (klient_id);
 

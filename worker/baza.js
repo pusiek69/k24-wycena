@@ -175,6 +175,22 @@ export async function zapiszLead(env, lead) {
     )
     .run();
 
+  // Parametry wejściowe wyceny — z nich „Powtórz wycenę" w panelu odtwarza
+  // kalkulator. Osobny UPDATE, żeby nie ruszać zgodności INSERT-u wyżej.
+  if (s.parametry && typeof s.parametry === 'object') {
+    try {
+      await baza
+        .prepare(
+          `UPDATE wyceny SET dane = ? WHERE id =
+             (SELECT id FROM wyceny WHERE klient_id = ? ORDER BY utworzono DESC, id DESC LIMIT 1)`
+        )
+        .bind(JSON.stringify(s.parametry).slice(0, 4000), klientId)
+        .run();
+    } catch {
+      /* parametry to bonus — bez nich lead i tak jest kompletny */
+    }
+  }
+
   if (!nowy) {
     await dopiszNotatke(baza, klientId, 'system', `Kolejna wycena: ${opisWyceny(s, kwota)}`);
   }
@@ -381,7 +397,14 @@ export async function karta(env, id) {
     .bind(id)
     .all();
 
-  return { ...kartaSkrocona(k), wyceny: wyceny.results || [], notatki: notatki.results || [] };
+  return {
+    ...kartaSkrocona(k),
+    wyceny: (wyceny.results || []).map((w) => ({
+      ...w,
+      dane: bezpiecznyJson(w.dane),
+    })),
+    notatki: notatki.results || [],
+  };
 }
 
 /* ───────────────────────────────────────────────────────────────── zmiany */
@@ -432,6 +455,116 @@ export async function skasujKlienta(env, id) {
   return true;
 }
 
+const bezpiecznyJson = (t) => {
+  try {
+    const x = JSON.parse(t || 'null');
+    return x && typeof x === 'object' ? x : null;
+  } catch {
+    return null;
+  }
+};
+
+/* ───────────────────────────────────── oferty Dawida („Powtórz wycenę") */
+
+/**
+ * Zapisuje wersję wyceny przygotowaną przez Dawida — jako KOLEJNY wiersz,
+ * nigdy nadpisanie: oryginał klienta zostaje nietknięty. Zwraca token
+ * linku wyceny online.
+ */
+export async function zapiszOferte(env, klientId, oferta, token) {
+  const baza = env.BAZA;
+  const czas = teraz();
+  const kwota = liczba(oferta.razem);
+
+  await baza
+    .prepare(
+      `INSERT INTO wyceny (klient_id, utworzono, kwota, firma, dekor, grubosc,
+                           m2, mb, pomieszczenie, odbior, kod_plyty, opis,
+                           kategoria, wersja, dane, token)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'dawid', ?, ?)`
+    )
+    .bind(
+      klientId,
+      czas,
+      kwota,
+      String(oferta.firma || ''),
+      String(oferta.dekor || ''),
+      String(oferta.grubosc || ''),
+      Number(oferta.m2 || 0),
+      Number(oferta.mb || 0),
+      String(oferta.pomieszczenie || ''),
+      oferta.odbiorWlasny ? 1 : 0,
+      '',
+      String(oferta.opis || '').slice(0, 500),
+      String(oferta.kategoria || ''),
+      JSON.stringify(oferta).slice(0, 16000),
+      token
+    )
+    .run();
+
+  /*
+   * Status idzie na „Oferta wysłana" tylko z wcześniejszych etapów lejka.
+   * Wygranego, przegranego ani fake nie cofamy — klik w panelu nie może
+   * odkręcić decyzji, którą Dawid już podjął.
+   */
+  const stary = await baza.prepare(`SELECT status FROM klienci WHERE id = ?`).bind(klientId).first();
+  const wolno = ['nowy', 'cieply', 'pomiar'];
+  if (stary && wolno.includes(stary.status)) {
+    await baza
+      .prepare(`UPDATE klienci SET status = 'oferta', kwota_ostatnia = ?, ruch = ? WHERE id = ?`)
+      .bind(kwota, czas, klientId)
+      .run();
+  } else {
+    await baza
+      .prepare(`UPDATE klienci SET kwota_ostatnia = ?, ruch = ? WHERE id = ?`)
+      .bind(kwota, czas, klientId)
+      .run();
+  }
+
+  await dopiszNotatke(
+    baza,
+    klientId,
+    'system',
+    `Wysłano ofertę od Dawida: ${oferta.opis || ''} — ${kwota} zł` +
+      (oferta.korektaOpis ? ` (${oferta.korektaOpis})` : '')
+  );
+
+  return token;
+}
+
+/**
+ * Wycena online po tokenie z linku. Każde otwarcie przez klienta podbija
+ * licznik „klient obejrzał" (z datą); podgląd z panelu licznika nie rusza.
+ */
+export async function ofertaPoTokenie(env, token, { podglad = false } = {}) {
+  const czysty = String(token || '').trim();
+  if (!/^[a-f0-9]{32,64}$/.test(czysty)) return null;
+
+  const w = await env.BAZA.prepare(`SELECT * FROM wyceny WHERE token = ? LIMIT 1`)
+    .bind(czysty)
+    .first();
+  if (!w) return null;
+
+  if (!podglad) {
+    await env.BAZA.prepare(
+      `UPDATE wyceny SET otwarcia = otwarcia + 1, ostatnie_otwarcie = ? WHERE id = ?`
+    )
+      .bind(teraz(), w.id)
+      .run();
+  }
+
+  const klient = await env.BAZA.prepare(`SELECT imie FROM klienci WHERE id = ?`)
+    .bind(w.klient_id)
+    .first();
+
+  return {
+    klientId: w.klient_id,
+    imie: klient?.imie || '',
+    utworzono: w.utworzono,
+    oferta: bezpiecznyJson(w.dane),
+  };
+}
+
 /* ─────────────────────────────────────────────────── feedback po wycenie */
 
 const FEEDBACKI = ['pasuje', 'za_drogo', 'zastanowi'];
@@ -457,7 +590,11 @@ export async function zapiszFeedback(env, dane) {
   const feedback = String(dane.feedback || '');
   if (!FEEDBACKI.includes(feedback)) return null;
 
-  const klient = await znajdzKlienta(baza, kluczTelefonu(dane.telefon), kluczEmaila(dane.email));
+  // Ze strony wyceny online klient jest znany wprost (token → klientId);
+  // z kalkulatora rozpoznajemy go po telefonie albo mailu z bramki.
+  const klient = dane.klientId
+    ? await baza.prepare(`SELECT id FROM klienci WHERE id = ?`).bind(Number(dane.klientId)).first()
+    : await znajdzKlienta(baza, kluczTelefonu(dane.telefon), kluczEmaila(dane.email));
   if (!klient?.id) return null;
 
   const budzet = String(dane.budzet || '').slice(0, 40);

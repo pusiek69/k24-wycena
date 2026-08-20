@@ -322,6 +322,15 @@ export function szczegolyWyceny(w) {
     // Kuchnia czy łazienka — w mailu widać to po pozycjach, ale baza
     // klientów zapisuje to wprost, żeby dało się filtrować.
     pomieszczenie: (w.opcje || {}).pomieszczenie || 'kuchnia',
+    // Komplet parametrów wejściowych — z nich „Powtórz wycenę" w panelu
+    // Dawida odtwarza kalkulator z dokładnie tą konfiguracją klienta.
+    parametry: {
+      firma: w.firma?.slug || '',
+      dekor: w.dekor || '',
+      grubosc: w.grubosc || '',
+      odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),
+      opcje: w.opcje || {},
+    },
     // Kod wskazanej płyty kamienia naturalnego — trafia też w temat maila.
     kodPlyty: w.kodPlyty || null,
     pozycje: (w.pozycje || []).map((p) => ({

@@ -756,6 +756,37 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   padding: 22px; animation: fade .35s ease both;
 }
 
+/* Wycena online (strona /oferta z linku w mailu od Dawida). */
+.oferta-pozycje { margin: 18px 0 0; border-top: 1px solid var(--line-hi); }
+.oferta-poz {
+  display: flex; justify-content: space-between; gap: 14px; align-items: baseline;
+  padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.45;
+}
+.oferta-poz small { display: block; color: var(--dim); font-family: var(--sans); font-size: 11px; margin-top: 2px; }
+.oferta-poz b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.oferta-poz.gratis b { color: var(--ok); letter-spacing: .06em; }
+.oferta-suma {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 14px 0 4px; font-size: 17px;
+}
+.oferta-suma b { font-size: 24px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.oferta-stara { color: var(--dim); margin-right: 10px; font-size: 15px; }
+
+/* Tryb właściciela („Powtórz wycenę" z panelu). */
+.od-siatka { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+@media (max-width: 560px) { .od-siatka { grid-template-columns: 1fr; } }
+.od-siatka .pole label { display: block; font-family: var(--sans); font-size: 11px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--vein); margin-bottom: 4px; }
+.od-siatka select, .od-siatka input, .od-odcinek input {
+  width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-hi);
+  border-radius: var(--radius); color: var(--cream); font-family: var(--sans); font-size: 15px;
+}
+.od-odcinek { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+.od-odcinek input { max-width: 120px; }
+.od-akcje-poz { display: flex; gap: 10px; align-items: baseline; white-space: nowrap; }
+.od-pasek { margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--line-hi);
+  border-radius: var(--radius); background: rgba(201, 168, 106, .05); }
+
 /* Feedback po wycenie: trzy duże przyciski, wygodne kciukiem. */
 .feedback {
   background: var(--slab); border: 1px solid var(--line-hi); border-radius: var(--radius);

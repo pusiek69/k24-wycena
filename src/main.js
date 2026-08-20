@@ -6,6 +6,7 @@ import { FIRMY } from './firms/index.js';
 import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
+import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
@@ -41,10 +42,19 @@ function przyklejonyPrzycisk() {
 }
 przyklejonyPrzycisk();
 
+/*
+ * „Powtórz wycenę" z panelu Dawida: fragment #powtorz=… przełącza kalkulator
+ * w tryb właściciela (edycja parametrów + rabaty + wysyłka oferty).
+ * Zwykły klient nigdy tu nie trafia — fragment wymaga podpisanego linku
+ * z panelu, a bez ważnego podpisu worker i tak odmówi wysyłki.
+ */
+const powtorka = paczkaPowtorki();
 if (!FIRMY.length) {
   root.innerHTML =
     '<div class="card"><p class="q-title">Brak skonfigurowanych firm.</p>' +
     '<p class="q-hint">Dodaj plik do src/firms/ — patrz pricing/README.md.</p></div>';
+} else if (powtorka) {
+  uruchomOferteDawida(root, powtorka);
 } else {
   uruchomAplikacje(root);
 }

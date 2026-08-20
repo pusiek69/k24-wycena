@@ -10,6 +10,8 @@
  *    POST /chat     — rozmowa z konsultantem (klucz Anthropic zostaje tutaj)
  *    POST /lead     — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
  *    POST /feedback — odpowiedź klienta na pokazaną wycenę (do bazy klientów)
+ *    POST /oferta/dane   — wycena online po tokenie (strona /oferta na kam24h.pl)
+ *    POST /oferta/wyslij — zapis wersji Dawida + mail do klienta (token z panelu)
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
  *                     odczyt, z którego korzysta konsultant przez narzędzie)
  *    GET  /panel    — baza klientów dla Dawida (worker/panel.js), za hasłem
@@ -26,8 +28,8 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
-import { obsluzPanel } from './panel.js';
-import { zapiszLead, zapiszFeedback } from './baza.js';
+import { obsluzPanel, podpisz } from './panel.js';
+import { zapiszLead, zapiszFeedback, zapiszOferte, ofertaPoTokenie } from './baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -98,6 +100,8 @@ export default {
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
       if (sciezka === '/feedback') return await obsluzFeedback(request, env, cors);
+      if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
+      if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
@@ -391,6 +395,115 @@ async function obsluzLead(request, env, cors) {
   );
 }
 
+/* ─────────────────────────────────────────────── /oferta („Powtórz wycenę") */
+
+/**
+ * Autoryzacja trybu właściciela: panel podpisuje `oferta|leadId|exp`
+ * HMAC-em z hasła panelu i wkleja podpis do linku „Powtórz wycenę".
+ * Zmiana hasła unieważnia wszystkie stare linki — tak jak ciasteczka.
+ */
+async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
+  if (!env.PANEL_HASLO) return false;
+  if (!leadId || !exp || Number(exp) < Date.now()) return false;
+  const wzor = await podpisz(env.PANEL_HASLO, `oferta|${leadId}|${exp}`);
+  const podany = String(podpisKlienta || '');
+  if (podany.length !== wzor.length) return false;
+  let r = 0;
+  for (let i = 0; i < wzor.length; i++) r |= wzor.charCodeAt(i) ^ podany.charCodeAt(i);
+  return r === 0;
+}
+
+/** Wycena online: dane po tokenie. Otwarcie klienta podbija licznik. */
+async function obsluzOfertaDane(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!d?.token) return json({ ok: false }, 400, cors);
+  try {
+    // Podgląd z edytora Dawida nie liczy się jako „klient obejrzał" —
+    // wymaga ważnego podpisu właściciela, więc klient go nie podrobi.
+    const podglad = !!d.podglad && (await tokenWlasciciela(env, d.leadId, d.exp, d.podpis));
+    const wynik = await ofertaPoTokenie(env, d.token, { podglad });
+    if (!wynik?.oferta) return json({ ok: false }, 404, cors);
+    return json(
+      { ok: true, imie: wynik.imie, utworzono: wynik.utworzono, oferta: wynik.oferta },
+      200,
+      cors
+    );
+  } catch (e) {
+    console.error('oferta/dane', e?.message || e);
+    return json({ ok: false }, 500, cors);
+  }
+}
+
+/**
+ * Zapis wersji Dawida + mail do klienta z linkiem do wyceny online.
+ * Wymaga podpisu właściciela z panelu — z kalkulatora bez panelu nie da
+ * się tego wywołać, więc klient nigdy nie wyśle sobie sam oferty.
+ */
+async function obsluzOfertaWyslij(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!d) return json({ error: 'Niepoprawne dane.' }, 400, cors);
+  if (!(await tokenWlasciciela(env, d.leadId, d.exp, d.podpis)))
+    return json({ error: 'Brak autoryzacji.' }, 401, cors);
+
+  const o = d.oferta && typeof d.oferta === 'object' ? d.oferta : null;
+  if (!o || !Array.isArray(o.pozycje) || !o.pozycje.length || !(Number(o.razem) > 0))
+    return json({ error: 'Pusta oferta.' }, 400, cors);
+
+  const klient = await env.BAZA.prepare(`SELECT id, imie, email FROM klienci WHERE id = ?`)
+    .bind(Number(d.leadId))
+    .first();
+  if (!klient?.email) return json({ error: 'Karta bez adresu e-mail.' }, 404, cors);
+
+  // Token linku: 32 znaki hex z generatora kryptograficznego.
+  const bajty = new Uint8Array(16);
+  crypto.getRandomValues(bajty);
+  const token = [...bajty].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  await zapiszOferte(env, klient.id, o, token);
+
+  const link = `https://kam24h.pl/oferta#${token}`;
+  const wyslany = await resend(env, {
+    from: env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>',
+    to: [klient.email],
+    reply_to: env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com',
+    subject: 'Wycena przygotowana przez Dawida Ząbka — Kamieniarstwo 24h',
+    html: mailOferty(klient.imie, o, link),
+  });
+
+  return json({ ok: true, token, link, mail: wyslany }, 200, cors);
+}
+
+/** Mail z ofertą — spójny z mailem wyceny, ale podpisany osobiście. */
+function mailOferty(imie, o, link) {
+  const kwota = zl(o.razem);
+  const rabat =
+    o.przekresl && Number(o.razemPrzed) > Number(o.razem)
+      ? `<span style="text-decoration:line-through;color:#8a8578;font-size:16px">${zl(o.razemPrzed)}</span> `
+      : '';
+  const gratisy = (o.pozycje || [])
+    .filter((p) => p.gratis)
+    .map((p) => `<li style="margin:4px 0">${eskapuj(p.nazwa)} — <b>gratis</b></li>`)
+    .join('');
+
+  return `<!doctype html><html lang="pl"><body style="margin:0;background:#f5f3ef;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#2b2823">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e4e0d6;border-radius:12px;padding:28px">
+    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578">Kamieniarstwo 24h</p>
+    <h1 style="margin:0 0 16px;font-size:20px">Wycena przygotowana przez Dawida Ząbka</h1>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.6">${imie ? `Pan(i) ${eskapuj(imie)} — p` : 'P'}rzygotowałem indywidualną wycenę blatu: <b>${eskapuj(o.opis || '')}</b>.</p>
+    <p style="margin:0 0 6px;font-size:15px">Kwota całkowita brutto:</p>
+    <p style="margin:0 0 18px;font-size:28px;font-weight:bold">${rabat}${kwota}</p>
+    ${gratisy ? `<ul style="margin:0 0 18px;padding-left:20px;font-size:14px">${gratisy}</ul>` : ''}
+    <p style="margin:0 0 22px"><a href="${link}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Zobacz pełne rozbicie wyceny →</a></p>
+    <p style="margin:0 0 6px;font-size:13px;color:#6d6a60">Wycena przygotowana indywidualnie, ważna 30 dni.</p>
+    <p style="margin:0;font-size:13px;color:#6d6a60">Pytania? Proszę śmiało dzwonić: <a href="tel:+48796991128" style="color:#8a6a2f">796 991 128</a> (pon.–pt. 8:00–18:00) albo odpisać na tę wiadomość.</p>
+  </div>
+  <p style="max-width:560px;margin:14px auto 0;font-size:11px;color:#8a8578;text-align:center">Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748</p>
+</body></html>`;
+}
+
+const eskapuj = (t) =>
+  String(t ?? '').replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
+
 /* ─────────────────────────────────────────────────────────────── /feedback */
 
 /**
@@ -403,7 +516,16 @@ async function obsluzFeedback(request, env, cors) {
   const d = await request.json().catch(() => null);
   if (!d) return json({ ok: false }, 400, cors);
   try {
+    // Ze strony wyceny online przychodzi token oferty zamiast telefonu —
+    // rozwiązujemy go na kartę klienta po stronie serwera.
+    let klientId = 0;
+    if (d.oferta) {
+      const zTokenu = await ofertaPoTokenie(env, String(d.oferta), { podglad: true });
+      klientId = zTokenu?.klientId || 0;
+      if (!klientId) return json({ ok: false }, 200, cors);
+    }
     const wynik = await zapiszFeedback(env, {
+      klientId,
       telefon: String(d.telefon || '').slice(0, 40),
       email: String(d.email || '').slice(0, 120),
       feedback: String(d.feedback || ''),
