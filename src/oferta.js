@@ -89,6 +89,7 @@ function widok({ imie, utworzono, oferta: o }) {
         )
       ),
 
+      ...(o.noty || []).map((nota) => h('div', { class: 'info' }, nota)),
       h(
         'div',
         { class: 'info' },

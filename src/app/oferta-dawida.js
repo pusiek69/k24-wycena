@@ -218,6 +218,9 @@ function zamrozOferte(stan, w) {
     przekresl: !!stan.przekresl && razem < przed,
     stawkaVat: w.stawkaVat ?? 0.08,
     odbiorWlasny: !!w.odbiorWlasny,
+    // Noty silnika — m.in. „N płyt z tego samego bloku, spójny wzór"
+    // i zastrzeżenia o dostępności. Klient widzi je też na stronie oferty.
+    noty: w.ostrzezenia || [],
     firma: firma?.nazwa || '',
     dekor: w.dekor,
     grubosc: w.grubosc,
@@ -511,6 +514,9 @@ function podgladPozycji(stan, oferta, odswiez) {
             : null
         )
       )
+    ),
+    ...(oferta.noty || []).map((nota) =>
+      h('p', { class: 'form-nota', style: 'margin:8px 0 0' }, nota)
     ),
     h(
       'div',
