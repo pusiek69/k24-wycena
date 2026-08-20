@@ -44,9 +44,10 @@ export default {
   vat: VAT,
   cenyUslug: 'brutto',
 
-  // Płyta 1600 × 3200 mm — format standardowy konglomeratów; tak jak przy
-  // Avant Quartz i Caesarstone można kupić połówkę płyty.
-  plyta: { ...PLYTA_STANDARD },
+  // Płyta 1600 × 3200 mm. Dostawca sprzedaje WYŁĄCZNIE pełne płyty —
+  // bez połówek, także 30 mm ze stanu (korekta Dawida, 21.08.2026;
+  // wcześniej błędnie przyjęliśmy zasadę Avant/Caesarstone).
+  plyta: { ...PLYTA_STANDARD, polowkaDozwolona: false },
   narzutOdpad: 0.1,
 
   gruboscDomyslna: '20',

@@ -12,7 +12,8 @@
  *   • konwencja netto/VAT jak Laminam/Florim: katalog trzyma netto,
  *     VAT dolicza silnik wg wariantu,
  *   • grubości 20 i 30 mm (trzydziestka tylko przy wzorach ze stanu),
- *     płyta 160 × 320 cm, połówki dozwolone (jak Avant i Caesarstone).
+ *     płyta 160 × 320 cm, WYŁĄCZNIE pełne płyty — bez połówek
+ *     (korekta Dawida, 21.08.2026).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +32,7 @@ const FIRMA = {
   aktywna: true,
   trybCeny: 'katalog',
   cenyUslug: 'brutto',
-  plyta: { ...PLYTA_STANDARD },
+  plyta: { ...PLYTA_STANDARD, polowkaDozwolona: false },
   narzutOdpad: 0.1,
   gruboscDomyslna: '20',
   robocizna: ROBOCIZNA,
@@ -143,11 +144,38 @@ test('ceny są NETTO — VAT dolicza silnik wg wariantu', () => {
 
 /* ─────────────────────── płyta 160 × 320, połówki dozwolone */
 
-test('krótki blat schodzi z połówki płyty', () => {
+test('sprzedaż tylko pełnymi płytami — krótki blat płaci za całą', () => {
   const w = licz('Taj Mahal Polished');
-  // Blat 0,6 × 3 m = 1,8 m² → połówka płyty 2,56 m², nie cała 5,12 m².
-  assert.ok(w.pak.polowka, 'połówka ma być dozwolona jak przy Avant/Caesarstone');
-  assert.ok(Math.abs(w.pak.m2Kupione - 2.56) < 0.01, `m² kupione ${w.pak.m2Kupione}`);
+  // Blat 0,6 × 3 m = 1,8 m² → CAŁA płyta 5,12 m², nie połówka 2,56 m²
+  // (korekta Dawida, 21.08.2026: dostawca INTERQ nie tnie płyt).
+  assert.ok(!w.pak.polowka, 'połówek nie ma');
+  assert.ok(Math.abs(w.pak.m2Kupione - 5.12) < 0.01, `m² kupione ${w.pak.m2Kupione}`);
+});
+
+test('zapotrzebowanie zaokrągla się do pełnych płyt — także w 30 mm', () => {
+  // Duży blat: 2 odcinki po 0,6 × 3 m z zapasem 10% ≈ 4 m² materiału,
+  // ale kupujemy wielokrotność całej płyty 5,12 m².
+  const duzy = wycen(FIRMA, {
+    dekor: 'Taj Mahal Polished',
+    grubosc: '20',
+    odcinki: [{ gl: 60, dl: 300 }, { gl: 60, dl: 300 }],
+    opcje: OPCJE_BAZOWE,
+  });
+  assert.equal(duzy.ok, true, duzy.blad);
+  assert.equal(duzy.pak.m2Kupione % 5.12 < 0.01 || 5.12 - (duzy.pak.m2Kupione % 5.12) < 0.01, true,
+    `m² kupione ${duzy.pak.m2Kupione} nie jest wielokrotnością płyty`);
+  assert.ok(!duzy.pak.polowka);
+
+  // Angel White 30 mm ze stanu — ta sama zasada pełnych płyt.
+  const trzydziestka = wycen(FIRMA, {
+    dekor: 'Angel White Polished',
+    grubosc: '30',
+    odcinki: KUCHNIA,
+    opcje: OPCJE_BAZOWE,
+  });
+  assert.equal(trzydziestka.ok, true, trzydziestka.blad);
+  assert.ok(!trzydziestka.pak.polowka, '30 mm też bez połówek');
+  assert.ok(Math.abs(trzydziestka.pak.m2Kupione - 5.12) < 0.01);
 });
 
 test('pytanie o 12 mm spada na jedyną dwudziestkę', () => {
