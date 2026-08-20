@@ -1,0 +1,168 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Promocja na kamień naturalny: ceny KOŃCOWE netto/m² dla klienta. Nie ma tu cen zakupowych.",
+  "kampania": {
+    "nazwa": "Sezon Letnich Okazji",
+    "od": "2026-08-20",
+    "do": "2026-09-30"
+  },
+  "pozycje": [
+    {
+      "nazwa": "BLACK PEARL",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 20,
+      "cenaNettoM2": 332
+    },
+    {
+      "nazwa": "BLACK PEARL",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 30,
+      "cenaNettoM2": 411
+    },
+    {
+      "nazwa": "BLACK PEARL",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 442
+    },
+    {
+      "nazwa": "CANYON GOLD",
+      "wykonczenie": "poler",
+      "gruboscMm": 30,
+      "cenaNettoM2": 546
+    },
+    {
+      "nazwa": "CANYON GOLD",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 20,
+      "cenaNettoM2": 442
+    },
+    {
+      "nazwa": "CANYON GOLD",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 30,
+      "cenaNettoM2": 546
+    },
+    {
+      "nazwa": "COSMIC GOLD",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 663
+    },
+    {
+      "nazwa": "CREMA MARFIL",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 429
+    },
+    {
+      "nazwa": "CRYSTALLO SNOW",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 1547
+    },
+    {
+      "nazwa": "GIALLO SANTA CECYLIA",
+      "wykonczenie": "plomien",
+      "gruboscMm": 20,
+      "cenaNettoM2": 325
+    },
+    {
+      "nazwa": "GIALLO SANTA CECYLIA",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 319
+    },
+    {
+      "nazwa": "IVORY FANTASY",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 403
+    },
+    {
+      "nazwa": "JET BLACK",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 421
+    },
+    {
+      "nazwa": "JET BLACK",
+      "wykonczenie": "poler",
+      "gruboscMm": 30,
+      "cenaNettoM2": 525
+    },
+    {
+      "nazwa": "NEGRESCO",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 20,
+      "cenaNettoM2": 746
+    },
+    {
+      "nazwa": "PATAGONIA",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "blok": "42",
+      "cenaNettoM2": 2139
+    },
+    {
+      "nazwa": "PATAGONIA",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "blok": "44",
+      "cenaNettoM2": 1875
+    },
+    {
+      "nazwa": "SILK",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 715
+    },
+    {
+      "nazwa": "SUBLIME",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 962
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "poler",
+      "gruboscMm": 30,
+      "cenaNettoM2": 351
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "plomien",
+      "gruboscMm": 20,
+      "cenaNettoM2": 338
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 20,
+      "cenaNettoM2": 338
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "lapato",
+      "gruboscMm": 20,
+      "cenaNettoM2": 338
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "szczotka",
+      "gruboscMm": 30,
+      "cenaNettoM2": 403
+    },
+    {
+      "nazwa": "TAN BROWN",
+      "wykonczenie": "lapato",
+      "gruboscMm": 30,
+      "cenaNettoM2": 403
+    },
+    {
+      "nazwa": "TITANIUM GOLD",
+      "wykonczenie": "poler",
+      "gruboscMm": 20,
+      "cenaNettoM2": 551
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { firmaWgSlug } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
+import promocjaNaturalna from '../generated/naturalny.promocje.json';
 // Czyste funkcje kodu płyty siedzą osobno, żeby dało się je testować
 // bez ciągnięcia firms/index.js (import.meta.glob Vite).
 export { normalizujKodPlyty, wariantZPlyty } from './plyta-kod.js';
@@ -182,6 +183,42 @@ export function firmaZWariantu(wariant) {
  * Pełna wstępna wycena blatu z płyty magazynowej.
  * Zwraca wynik silnika (`w.ok`) wzbogacony o `wariant`.
  */
+/**
+ * PROMOCJA NA KAMIEŃ NATURALNY (np. „Sezon Letnich Okazji").
+ *
+ * Naturalny liczy się z ceny płyty magazynowej — promocja podmienia CENĘ
+ * MATERIAŁU, gdy nazwa, wykończenie i grubość (a przy Patagonii także BLOK)
+ * pasują do wskazanej płyty. Ceny w generated są KOŃCOWE netto/m²;
+ * obowiązuje tańsza z dwóch — gdy magazyn i tak jest tańszy, zostaje magazyn.
+ */
+export function znajdzPromocjeNaturalna(wariant, dataISO) {
+  const k = promocjaNaturalna?.kampania;
+  if (!k) return null;
+  const dzis = dataISO || new Date().toISOString().slice(0, 10);
+  if (dzis < k.od || dzis > k.do) return null;
+
+  const nazwa = uprosc(wariant?.nazwa || '');
+  const wykonczenie = uprosc(wariant?.wykonczenie || '');
+  const grubosc = Number(wariant?.gruboscMm) || 0;
+  const blok = String(wariant?.blok ?? '').trim();
+
+  for (const poz of promocjaNaturalna.pozycje || []) {
+    if (uprosc(poz.nazwa) !== nazwa) continue;
+    if (Number(poz.gruboscMm) !== grubosc) continue;
+    // „poler" łapie „Polerowana", „szczotka" → „Szczotkowana" itd.
+    if (!wykonczenie.includes(uprosc(poz.wykonczenie).slice(0, 6))) continue;
+    // Patagonia jest wyceniona per blok — bez zgodności bloku nie ma promocji.
+    if (poz.blok && String(poz.blok) !== blok) continue;
+    return { cenaNettoM2: poz.cenaNettoM2, nazwa: k.nazwa, do: k.do };
+  }
+  return null;
+}
+
+export const NOTA_PROMOCJI_NATURALNEJ =
+  'Cena promocyjna „Sezon Letnich Okazji" — obowiązuje do 30.09.2026 ' +
+  'lub do wyczerpania zapasów; dostępność płyty potwierdzimy u opiekuna ' +
+  'handlowego przed rezerwacją.';
+
 export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
   const firma = firmaZWariantu(wariant);
   if (!firma) return { ok: false, blad: 'Brak danych płyty.' };
@@ -202,17 +239,35 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
     };
   }
 
-  const w = wycen(firma, {
-    dekor: wariant.nazwa,
-    grubosc: String(grubosc || wariant.gruboscMm || 20),
-    odcinki,
-    opcje,
-    cenaRecznaM2: wariant.cenaBruttoM2,
-    // Kod wskazanej płyty. Przy kamieniu naturalnym silnik bez niego
-    // odmówi wyceny — patrz `wymagaKoduPlyty`.
-    kodPlyty: normalizujKodPlyty(wariant.kod),
-  });
+  /*
+   * Promocja podmienia cenę materiału, ale tylko gdy wychodzi TANIEJ niż
+   * cena magazynowa (ceny promocyjne są netto, magazynowe brutto przy 23%).
+   * Reszta wyceny — obróbka naturalnego, całe płyty, montaż — bez zmian.
+   */
+  const promo = znajdzPromocjeNaturalna(wariant);
+  const magazynNettoM2 = wariant.cenaBruttoM2 / 1.23;
+  const zPromocja = promo && promo.cenaNettoM2 < magazynNettoM2 - 0.005;
+
+  const w = wycen(
+    zPromocja ? { ...firma, cenaRecznaJest: 'netto' } : firma,
+    {
+      dekor: wariant.nazwa,
+      grubosc: String(grubosc || wariant.gruboscMm || 20),
+      odcinki,
+      opcje,
+      cenaRecznaM2: zPromocja ? promo.cenaNettoM2 : wariant.cenaBruttoM2,
+      // Kod wskazanej płyty. Przy kamieniu naturalnym silnik bez niego
+      // odmówi wyceny — patrz `wymagaKoduPlyty`.
+      kodPlyty: normalizujKodPlyty(wariant.kod),
+    }
+  );
   if (!w.ok) return w;
+
+  if (zPromocja) {
+    // Plakietka promocji na karcie + dopisek o potwierdzeniu dostępności.
+    w.promo = { nazwa: promo.nazwa, do: promo.do };
+    w.ostrzezenia = [...w.ostrzezenia, NOTA_PROMOCJI_NATURALNEJ];
+  }
 
   /*
    * DOSTĘPNOŚĆ LICZYMY BLOKIEM, nie pojedynczą płytą. Blok to jeden kamień

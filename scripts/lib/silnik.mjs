@@ -28,7 +28,7 @@ export async function wczytajSilnik() {
     // moduł importuje firms/index.js, więc pod ten adres podstawiamy zastępnik
     // (niżej, w pluginie) — inaczej testy w ogóle jej nie widzą, a właśnie tam
     // zdarzyło się wywalić `uprosc is not defined` prosto na produkcję.
-    `export { wycenZMagazynu, firmaZWariantu, jestNaturalny, wariantReczny, wycenWlasciciela } from ${JSON.stringify(path.join(ROOT, 'src/app/wycena-naturalny.js'))};`,
+    `export { wycenZMagazynu, firmaZWariantu, jestNaturalny, wariantReczny, wycenWlasciciela, znajdzPromocjeNaturalna } from ${JSON.stringify(path.join(ROOT, 'src/app/wycena-naturalny.js'))};`,
     ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
     `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}]`,
     `  .filter((f) => f.aktywna !== false)`,

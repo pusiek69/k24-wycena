@@ -1,4 +1,5 @@
 import dekory from '../generated/interq.dekory.json';
+import promocje from '../generated/interq.promocje.json';
 import { VAT, ROBOCIZNA, OPCJE, PLYTA_STANDARD } from './_domyslne.js';
 
 /**
@@ -58,6 +59,7 @@ export default {
 
   robocizna: ROBOCIZNA,
   opcje: OPCJE,
+  promocje: promocje.kampanie,
 
   dekory: dekory.dekory,
 };

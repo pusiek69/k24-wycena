@@ -30,8 +30,19 @@ export function dekoryZKampaniami(dekory, kampanie, dataISO) {
       const cena = typeof wpis === 'number' ? wpis : wpis?.cena;
       if (!(cena > 0)) continue;
 
+      const istnieje = wynik[nazwa]?.[grubosc];
       // Jest w cenniku podstawowym — nic nie robimy, silnik sam podmieni cenę.
-      if (wynik[nazwa]?.[grubosc] != null) continue;
+      if (typeof istnieje === 'number' || (istnieje && !istnieje.promocyjnyDo)) continue;
+      /*
+       * Dekor promocyjny w DWÓCH nakładających się kampaniach (np. „Sezon
+       * Letnich Okazji" do 30.09 i kampania cennikowa do 31.12): na liście
+       * ma zostać NAJPÓŹNIEJSZA data końca — po 30.09 wzór dalej istnieje
+       * w drugiej kampanii i silnik policzy go z jej ceny.
+       */
+      if (istnieje?.promocyjnyDo) {
+        if (k.do > istnieje.promocyjnyDo) istnieje.promocyjnyDo = k.do;
+        continue;
+      }
 
       /*
        * Zapisujemy DATĘ KOŃCA kampanii razem z ceną. Lista dekorów powstaje

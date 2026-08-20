@@ -219,6 +219,56 @@ for (const plik of plikiPromo) {
   }
 }
 
+/* ────────────────────────────── promocja na kamień naturalny (magazynowy) */
+
+/*
+ * Kamień naturalny nie ma cennika — liczy się z ceny płyty magazynowej.
+ * Kampania promocyjna (np. „Sezon Letnich Okazji") podmienia CENĘ MATERIAŁU,
+ * gdy nazwa + wykończenie + grubość (i blok, jeśli podany) pasują do płyty.
+ * Źródło pricing/zrodla/_naturalny.promo.json trzyma ceny ZAKUPOWE i mnożnik;
+ * do generated trafiają wyłącznie ceny końcowe netto dla klienta.
+ */
+const zrodloNaturalny = path.join(ZRODLA, '_naturalny.promo.json');
+if (fs.existsSync(zrodloNaturalny)) {
+  try {
+    const z = JSON.parse(fs.readFileSync(zrodloNaturalny, 'utf8'));
+    const mnoznikNat = Number(z.mnoznik);
+    if (!(mnoznikNat > 0)) throw new Error('brak poprawnego "mnoznik"');
+    const pozycjeNat = (z.pozycje || []).map((poz) => {
+      if (!(poz.zakup > 0)) throw new Error('"' + poz.nazwa + '" — cena musi być liczbą > 0');
+      return {
+        nazwa: String(poz.nazwa),
+        wykonczenie: String(poz.wykonczenie),
+        gruboscMm: Number(poz.gruboscMm),
+        ...(poz.blok ? { blok: String(poz.blok) } : {}),
+        cenaNettoM2: Math.round(poz.zakup * mnoznikNat),
+      };
+    });
+    const wynikNat = {
+      _info:
+        'PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. ' +
+        'Promocja na kamień naturalny: ceny KOŃCOWE netto/m² dla klienta. ' +
+        'Nie ma tu cen zakupowych.',
+      kampania: z.kampania,
+      pozycje: pozycjeNat,
+    };
+    if (!tylkoSprawdz) {
+      fs.writeFileSync(
+        path.join(CEL, 'naturalny.promocje.json'),
+        JSON.stringify(wynikNat, null, 2) + '\n',
+        'utf8'
+      );
+      console.log(
+        '✓ ' + 'naturalny'.padEnd(14) + ' promocja „' + (z.kampania && z.kampania.nazwa) +
+          '" — ' + pozycjeNat.length + ' pozycji, do ' + (z.kampania && z.kampania.do)
+      );
+    }
+  } catch (e) {
+    console.error('✗ _naturalny.promo.json: ' + e.message);
+    bledy++;
+  }
+}
+
 if (bledy) {
   console.error(`\n✗ Zakończono z ${bledy} błędem/błędami.`);
   process.exit(1);

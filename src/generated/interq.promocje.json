@@ -1,0 +1,21 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
+  "kampanie": [
+    {
+      "nazwa": "Sezon Letnich Okazji",
+      "od": "2026-08-20",
+      "do": "2026-09-30",
+      "ceny": {
+        "Taj Mahal Polished||20": 741,
+        "Taj Mahal Brushed||20": 774,
+        "Angel White Polished||20": 420,
+        "Neve Brushed||20": 420,
+        "Patagonia Polished||20": 728,
+        "Marfil Polished||20": 528,
+        "Calacatta Bella Polished||20": 503,
+        "Carrara Liberty Polished||20": 488,
+        "Marmorino Polished||20": 517
+      }
+    }
+  ]
+}

@@ -2,6 +2,28 @@
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Kampanie promocyjne: ceny KOŃCOWE netto/m² dla klienta. Silnik sprawdza wszystkie aktywne naraz. Nie ma tu cen zakupowych.",
   "kampanie": [
     {
+      "nazwa": "Sezon Letnich Okazji",
+      "od": "2026-08-20",
+      "do": "2026-09-30",
+      "ceny": {
+        "RARE — TAJ MAHAL B.M. Naturale||12": 519,
+        "RARE — TAJ MAHAL B.M. Naturale||20": 831,
+        "HADO — TRAVERTINO BIANCO Bocciardato||12": 480,
+        "HADO — TRAVERTINO BIANCO Bocciardato||20": 618,
+        "DIAMOND — PATAGONIA BIANCO Caress||12": 454,
+        "DIAMOND — PATAGONIA BIANCO Caress||20": 603,
+        "FOKOS — SALE Naturale||12": 480,
+        "FOKOS — SALE Naturale||20": 618,
+        "I NATURALI — CALACATTA VIOLA B.M. Naturale||12": 610,
+        "I NATURALI — PIETRA GREY Naturale||12": 506,
+        "I NATURALI — PIETRA GREY Naturale||20": 631,
+        "I NATURALI — NOIR DESIR Naturale||12": 506,
+        "I NATURALI — NOIR DESIR Naturale||20": 631,
+        "MARMOREA — BRUNA Naturale||12": 454,
+        "MARMOREA — BRUNA Naturale||20": 603
+      }
+    },
+    {
       "nazwa": "Laminam — ceny promocyjne do końca 2026",
       "od": "2026-07-13",
       "do": "2026-12-31",

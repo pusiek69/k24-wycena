@@ -20,7 +20,10 @@ import { VAT_MONTAZ, VAT_TOWAR, ROBOCIZNA, OPCJE } from '../src/firms/_domyslne.
 const czytaj = (p) => JSON.parse(fs.readFileSync(new URL(p, import.meta.url), 'utf8'));
 const KATALOG = czytaj('../src/generated/laminam.dekory.json');
 const PROMOCJE = czytaj('../src/generated/laminam.promocje.json');
-const KAMPANIA = PROMOCJE.kampanie[0];
+// Od 20.08.2026 kampanii są dwie — cennikową (gwiazdki, do 31.12) wybieramy
+// po nazwie, bo „Sezon Letnich Okazji" (do 30.09) stoi pierwszy.
+const KAMPANIA = PROMOCJE.kampanie.find((k) => k.nazwa.includes('ceny promocyjne'));
+const SEZON = PROMOCJE.kampanie.find((k) => k.nazwa === 'Sezon Letnich Okazji');
 
 const W_PROMOCJI = '2026-08-19';
 const PO_PROMOCJI = '2027-01-01';
@@ -51,10 +54,46 @@ const material = (w) => w.pozycje.find((p) => p.grupa === 'materiał');
 
 /* ─────────────────────────────────────────── dane z cennika */
 
-test('cennik ma 87 dekorów regularnych, a promocja 36 pozycji', () => {
+test('cennik ma 87 dekorów regularnych, a promocja cennikowa 36 pozycji', () => {
   assert.equal(Object.keys(KATALOG.dekory).length, 87);
   assert.equal(Object.keys(KAMPANIA.ceny).length, 36);
   assert.equal(KAMPANIA.do, '2026-12-31');
+});
+
+test('„Sezon Letnich Okazji" stoi PIERWSZY i kończy się 30.09', () => {
+  // Silnik bierze pierwszą pasującą kampanię — sezonowa musi wyprzedzać
+  // cennikową, bo wszystkie jej ceny są niższe.
+  assert.equal(PROMOCJE.kampanie[0].nazwa, 'Sezon Letnich Okazji');
+  assert.equal(SEZON.do, '2026-09-30');
+  assert.equal(Object.keys(SEZON.ceny).length, 15);
+});
+
+test('sezonowa cena wygrywa z cennikową, a po 30.09 wraca cennikowa', () => {
+  const licz = (dzien) =>
+    wycen(firmaNaDzien(dzien), {
+      dekor: 'FOKOS — SALE Naturale', grubosc: '12', odcinki: KUCHNIA, opcje: OPCJE_BAZOWE,
+    }, dzien);
+  const wSezonie = licz('2026-09-01');
+  const poSezonie = licz('2026-10-15');
+  const netto = (w) => {
+    const m = w.pozycje.find((p) => p.grupa === 'materiał');
+    return m.brutto / (1 + w.stawkaVat) / w.m2Platne;
+  };
+  assert.ok(Math.abs(netto(wSezonie) - 480) < 0.01, `sezon: ${netto(wSezonie)}`);
+  assert.ok(Math.abs(netto(poSezonie) - 782) < 0.01, `po sezonie: ${netto(poSezonie)}`);
+  assert.equal(wSezonie.promo.nazwa, 'Sezon Letnich Okazji');
+});
+
+test('dekor sezonowy spoza cennika znika po 30.09, dekor z obu kampanii zostaje', () => {
+  const wSezonie = firmaNaDzien('2026-09-01').dekory;
+  const poSezonie = firmaNaDzien('2026-10-15').dekory;
+  // Tylko w sezonowej: znika razem z nią.
+  assert.ok(wSezonie['DIAMOND — PATAGONIA BIANCO Caress']);
+  assert.equal(poSezonie['DIAMOND — PATAGONIA BIANCO Caress'], undefined);
+  // W obu kampaniach: po 30.09 dalej jest (kampania cennikowa trwa do 31.12),
+  // a lista budowana w sezonie nosi PÓŹNIEJSZĄ datę końca.
+  assert.ok(poSezonie['FOKOS — SALE Naturale']);
+  assert.equal(wSezonie['FOKOS — SALE Naturale']['12'].promocyjnyDo, '2026-12-31');
 });
 
 test('w cenniku są wyłącznie grubości 12 i 20 mm', () => {
@@ -147,9 +186,9 @@ test('lista zbudowana w promocji nie liczy po starej cenie w 2027', () => {
   assert.equal(w.wycenaIndywidualna, true);
 });
 
-test('w tym cenniku gwiazdka obejmuje cały wiersz — nie ma mieszanek', () => {
-  // Ani jeden dekor nie ma jednej grubości promocyjnej, a drugiej regularnej:
-  // 21 wzorów jest w całości promocyjnych, 87 w całości regularnych.
+test('w cenniku z gwiazdkami promocja obejmuje cały wiersz — nie ma mieszanek', () => {
+  // Dotyczy kampanii CENNIKOWEJ. Sezonowa celowo nakłada się na katalog
+  // (przecenia też dekory regularne), więc jej to nie obowiązuje.
   for (const klucz of Object.keys(KAMPANIA.ceny)) {
     const nazwa = klucz.slice(0, klucz.lastIndexOf('||'));
     assert.equal(KATALOG.dekory[nazwa], undefined, `${nazwa} jest i tu, i tam`);
