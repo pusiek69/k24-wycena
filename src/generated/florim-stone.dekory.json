@@ -1,7 +1,7 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/florim-stone.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "florim-stone",
-  "_wygenerowano": "2026-08-19",
+  "_wygenerowano": "2026-08-20",
   "_dekorow": 73,
   "dekory": {
     "Color — White mat": {
@@ -46,7 +46,7 @@
     "Stone — Stone 01 mat": {
       "12": 1000
     },
-    "Stone — Black Ganite mat/leather": {
+    "Stone — Black Granite mat/leather": {
       "12": 1000
     },
     "Stone — Blue Granite mat/leather": {
