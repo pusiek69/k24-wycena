@@ -788,12 +788,15 @@ function przyciskRozrysu(stan, w, paczka, box) {
  * margines, usłojenie) zostają, bo to preferencje warsztatu, a nie
  * pochodna wymiarów.
  *
- * Zwraca `true`, gdy elementy zostały przeliczone — widok mówi o tym
- * wprost, żeby ręczne zmiany nie znikały bez słowa.
+ * O fakcie przeliczenia zostawiamy ślad w `stan.rozrysPrzeliczony`, a nie
+ * w wartości zwracanej: unieważnienie wypada zwykle przy przerysowaniu
+ * WYCENY (idąc przez ścieżkę wysyłki), czyli na długo przed tym, jak Dawid
+ * otworzy rozrys. Flaga czeka do otwarcia i dopiero tam się melduje —
+ * inaczej ręcznie dodane elementy znikałyby bez słowa.
  */
 function zapewnijRozrys(stan) {
   const podpis = podpisWyceny(stan.odcinki);
-  if (stan.rozrys && stan.rozrys.zrodlo === podpis) return false;
+  if (stan.rozrys && stan.rozrys.zrodlo === podpis) return;
 
   const poprzedni = stan.rozrys;
   stan.rozrys = {
@@ -804,11 +807,15 @@ function zapewnijRozrys(stan) {
     rotacja: poprzedni?.rotacja ?? stan.firma !== NATURALNY,
     zrodlo: podpis,
   };
-  return !!poprzedni;
+  if (poprzedni) stan.rozrysPrzeliczony = true;
 }
 
 function pokazRozrys(stan, w, paczka, box) {
-  const przeliczono = zapewnijRozrys(stan);
+  zapewnijRozrys(stan);
+  // Flaga jest jednorazowa: po pokazaniu komunikatu gasimy ją, żeby nie
+  // straszyła przy każdym kolejnym wejściu w rozrys.
+  const przeliczono = !!stan.rozrysPrzeliczony;
+  stan.rozrysPrzeliczony = false;
 
   const widok = widokRozrysu(
     {
