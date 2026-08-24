@@ -580,6 +580,18 @@ async function resend(env, wiadomosc) {
 /* ──────────────────────────────────── mail leadowy do firmy (dla Dawida) */
 
 const zl = (n) => Math.round(Number(n) || 0).toLocaleString('pl-PL') + ' zł';
+
+/**
+ * Widełki ±10% do maila firmowego.
+ *
+ * `widelki` przychodzi z przeglądarki i teoretycznie może go zabraknąć —
+ * a sięganie po `s.widelki.od` w ciemno wywracało CAŁĄ obsługę zgłoszenia:
+ * mail nie wychodził, lead nie zapisywał się w bazie, a klient dostawał
+ * „spróbuj ponownie". Jeden brakujący klucz nie ma prawa kosztować leada,
+ * więc gdy widełek nie ma, pokazujemy samo wyliczenie.
+ */
+const widelki = (s) =>
+  s?.widelki?.od > 0 ? `${zl(s.widelki.od)} – ${zl(s.widelki.do)}` : zl(s?.razem);
 /** 1 płyta / 2 płyty / 5 płyt — mail czyta człowiek, nie parser. */
 function mnogaPlyt(n) {
   const d = n % 10;
@@ -782,7 +794,7 @@ function mailDoFirmy(klient, s, extra) {
     </div>
     <div style="margin-top:12px;padding:12px 14px;background:#f7f4ee;border-left:3px solid #c9a86a;border-radius:4px">
       <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8c7040">Razem brutto</span><br>
-      <span style="font-size:26px;font-weight:bold">${zl(s.widelki.od)} – ${zl(s.widelki.do)}</span><br>
+      <span style="font-size:26px;font-weight:bold">${widelki(s)}</span><br>
       <span style="color:#6b6459;font-size:13px">wyliczenie: ${zl(s.razem)} · widełki ±10%</span>
       ${s.promo ? `<br><span style="color:#1d6b3a;font-size:13px">promocja „${esc(s.promo.nazwa)}" — klient oszczędza ${zl(s.oszczednosc)}</span>` : ''}
     </div>
@@ -860,7 +872,7 @@ function leadTekstem(klient, s, extra) {
     l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
     l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
     if (s.odbiorWlasny) l.push('*** ODBIÓR WŁASNY — BEZ MONTAŻU (brak pomiaru i wyjazdu) ***');
-    l.push(`RAZEM: ${zl(s.widelki.od)} – ${zl(s.widelki.do)} brutto (wyliczenie ${zl(s.razem)})`);
+    l.push(`RAZEM: ${widelki(s)} brutto (wyliczenie ${zl(s.razem)})`);
     {
       const procent = Math.round((s.stawkaVat ?? 0.23) * 100);
       const netto = s.razemNetto ?? Math.round(s.razem / (1 + (s.stawkaVat ?? 0.23)));
