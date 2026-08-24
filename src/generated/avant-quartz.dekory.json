@@ -1,202 +1,202 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/avant-quartz.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "avant-quartz",
-  "_wygenerowano": "2026-08-20",
+  "_wygenerowano": "2026-08-24",
   "_dekorow": 61,
   "dekory": {
     "Dijon": {
-      "20": 685,
-      "30": 973
+      "20": 891,
+      "30": 1265
     },
     "Blanche": {
-      "20": 791,
-      "30": 1122
+      "20": 1028,
+      "30": 1459
     },
     "Blanche L": {
-      "20": 833
+      "20": 1083
     },
     "White Quartz": {
-      "15": 587,
-      "20": 635,
-      "30": 831
+      "15": 763,
+      "20": 826,
+      "30": 1080
     },
     "Amiens": {
-      "15": 587,
-      "20": 635,
-      "30": 831
+      "15": 763,
+      "20": 826,
+      "30": 1080
     },
     "Reims": {
-      "20": 635
+      "20": 826
     },
     "Clermont": {
-      "20": 576
+      "20": 749
     },
     "Lumiere": {
-      "20": 635
+      "20": 826
     },
     "Botticino Bourges": {
-      "20": 833
+      "20": 1083
     },
     "Champagne": {
-      "20": 833
+      "20": 1083
     },
     "Loiret": {
-      "20": 833
+      "20": 1083
     },
     "Montmartre": {
-      "20": 833
+      "20": 1083
     },
     "Azur Creme": {
-      "20": 833
+      "20": 1083
     },
     "Nimes Marfil": {
-      "20": 833
+      "20": 1083
     },
     "Taj Amelie": {
-      "20": 1225
+      "20": 1593
     },
     "Calacatta Normandie": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Riviera": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Chery": {
-      "20": 1225
+      "20": 1593
     },
     "Calacatta Besson": {
-      "20": 1225
+      "20": 1593
     },
     "Calacatta Aveyron": {
-      "20": 1225
+      "20": 1593
     },
     "Calacatta Viviez": {
-      "20": 1225
+      "20": 1593
     },
     "Gordes": {
-      "20": 833
+      "20": 1083
     },
     "Calacatta Chenonceau": {
-      "20": 1225
+      "20": 1593
     },
     "Calacatta Mont Saint Michel": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Versailles": {
-      "20": 1068
+      "20": 1388
     },
     "Aquitaine Blanca": {
-      "20": 1068,
-      "30": 1506
+      "20": 1388,
+      "30": 1958
     },
     "Calacatta Dauphine": {
-      "20": 1068,
-      "30": 1506
+      "20": 1388,
+      "30": 1958
     },
     "Calacatta Venato": {
-      "20": 833
+      "20": 1083
     },
     "Calacatta Bianco": {
-      "20": 833
+      "20": 1083
     },
     "Calacatta Bearn": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Arras": {
-      "20": 1068,
-      "30": 1506
+      "20": 1388,
+      "30": 1958
     },
     "Calacatta Concorde": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Cannes Gold": {
-      "20": 1225,
-      "30": 1745
+      "20": 1593,
+      "30": 2269
     },
     "Calacatta Cannes Gold H": {
-      "20": 1292
+      "20": 1680
     },
     "Calacatta Monaco": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Pantin": {
-      "20": 1068
+      "20": 1388
     },
     "Calacatta Troyes": {
-      "20": 1068
+      "20": 1388
     },
     "Nantes": {
-      "20": 1068
+      "20": 1388
     },
     "Mulen": {
-      "20": 1106,
-      "30": 1575
+      "20": 1438,
+      "30": 2048
     },
     "Tarn": {
-      "20": 1068
+      "20": 1388
     },
     "Chamonix": {
-      "20": 1225
+      "20": 1593
     },
     "Cassis": {
-      "20": 1225
+      "20": 1593
     },
     "Reze": {
-      "20": 1068
+      "20": 1388
     },
     "Bretagne": {
-      "20": 900
+      "20": 1170
     },
     "Bourbonnais": {
-      "20": 833
+      "20": 1083
     },
     "Corsica": {
-      "20": 833
+      "20": 1083
     },
     "Royal Beige": {
-      "20": 1068
+      "20": 1388
     },
     "Gris Fonce": {
-      "20": 833
+      "20": 1083
     },
     "Patagonia Martinica": {
-      "20": 1225
+      "20": 1593
     },
     "Arabescato Alencon": {
-      "20": 1068
+      "20": 1388
     },
     "Blave": {
-      "20": 1068
+      "20": 1388
     },
     "Perisian Perl": {
-      "20": 794
+      "20": 1032
     },
     "Bergerac": {
-      "20": 602
+      "20": 783
     },
     "Chantilly": {
-      "20": 545
+      "20": 709
     },
     "Sorbona": {
-      "20": 602
+      "20": 783
     },
     "Anel": {
-      "20": 602
+      "20": 783
     },
     "Calacatta Eno": {
-      "20": 1022
+      "20": 1329
     },
     "Statuario Lille": {
-      "20": 1022
+      "20": 1329
     },
     "Calacatta Bron": {
-      "20": 1059
+      "20": 1377
     },
     "Calacatta Cassel": {
-      "20": 1022
+      "20": 1329
     },
     "Calacatta Marseille": {
-      "20": 1022
+      "20": 1329
     }
   }
 }

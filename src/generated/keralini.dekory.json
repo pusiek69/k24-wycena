@@ -1,168 +1,168 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/keralini.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "keralini",
-  "_wygenerowano": "2026-08-20",
+  "_wygenerowano": "2026-08-24",
   "_dekorow": 49,
   "dekory": {
     "Absolute": {
-      "12": 792
+      "12": 1030
     },
     "Absolute Black": {
-      "12": 792
+      "12": 1030
     },
     "Absolute Grey": {
-      "12": 792
+      "12": 1030
     },
     "Absolute White": {
-      "12": 792
+      "12": 1030
     },
     "Arabescato Viola": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Ballet": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Boulevard Black": {
-      "12": 792
+      "12": 1030
     },
     "Breccia Stone Beige": {
-      "12": 792
+      "12": 1030
     },
     "Calacatta Dorato": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Calacatta Oro": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Camargue Arena": {
-      "12": 929
+      "12": 1208
     },
     "Canela Roma": {
-      "12": 929
+      "12": 1208
     },
     "Carrara Gold": {
-      "20": 1295
+      "20": 1684
     },
     "Crystal Cream": {
-      "12": 792
+      "12": 1030
     },
     "Fior Di Bosco": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Hermon": {
-      "12": 792
+      "12": 1030
     },
     "Icelanic White": {
-      "20": 1295
+      "20": 1684
     },
     "Kenya": {
-      "12": 792
+      "12": 1030
     },
     "Lasa White": {
-      "12": 792
+      "12": 1030
     },
     "Laurent": {
-      "20": 1295
+      "20": 1684
     },
     "Light Red Calacatta": {
-      "12": 792
+      "12": 1030
     },
     "Macaubas Beige": {
-      "12": 792
+      "12": 1030
     },
     "Makrana": {
-      "12": 792
+      "12": 1030
     },
     "Marmo Antico": {
-      "12": 792
+      "12": 1030
     },
     "Meraki": {
-      "12": 792
+      "12": 1030
     },
     "Monte Bianco": {
-      "12": 792
+      "12": 1030
     },
     "Negev": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Nero Marquina": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Noir Laurent": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Pandora": {
-      "12": 792
+      "12": 1030
     },
     "Patagonia": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Pietra Brown": {
-      "12": 792
+      "12": 1030
     },
     "Pietra Grigia": {
-      "12": 792
+      "12": 1030
     },
     "Portoro": {
-      "12": 792
+      "12": 1030
     },
     "Pulpis Ivory": {
-      "12": 792
+      "12": 1030
     },
     "Saturnia": {
-      "12": 792
+      "12": 1030
     },
     "Statuario Leonardo": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Statuario Raffaello": {
-      "12": 792
+      "12": 1030
     },
     "Taj Mahal": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Tinta Unita Bianco": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Tinta Unita Nero": {
-      "6": 411,
-      "12": 792
+      "6": 534,
+      "12": 1030
     },
     "Travertino Stone Beige": {
-      "12": 792
+      "12": 1030
     },
     "Travertino White": {
-      "12": 792
+      "12": 1030
     },
     "Aurora Black": {
-      "12": 777
+      "12": 1010
     },
     "Black Diamond": {
-      "12": 777
+      "12": 1010
     },
     "Blue Stone Negro": {
-      "12": 914
+      "12": 1188
     },
     "Distrito Marfil": {
-      "12": 914
+      "12": 1188
     },
     "Grey Soap": {
-      "12": 777
+      "12": 1010
     },
     "Basaltina Grigia": {
-      "12": 777
+      "12": 1010
     }
   }
 }

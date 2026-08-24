@@ -1,80 +1,80 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/caesarstone.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "caesarstone",
-  "_wygenerowano": "2026-08-20",
+  "_wygenerowano": "2026-08-24",
   "_dekorow": 24,
   "dekory": {
     "Pure White": {
-      "20": 973
+      "20": 1265
     },
     "Snow": {
-      "20": 862
+      "20": 1121
     },
     "Cloudburst Concrete": {
-      "20": 1100
+      "20": 1430
     },
     "Topus Concrete": {
-      "20": 1100
+      "20": 1430
     },
     "Airy Concrete": {
-      "20": 1100
+      "20": 1430
     },
     "Clamshell": {
-      "20": 996
+      "20": 1295
     },
     "Shitake": {
-      "20": 996
+      "20": 1295
     },
     "Organic White": {
-      "20": 996
+      "20": 1295
     },
     "Piatra Grey": {
-      "20": 1019
+      "20": 1325
     },
     "Vanilla Noir": {
-      "20": 1100
+      "20": 1430
     },
     "Alpine Mist": {
-      "20": 1019
+      "20": 1325
     },
     "Symphony Grey": {
-      "20": 1100
+      "20": 1430
     },
     "Frosty Carrina": {
-      "20": 1100
+      "20": 1430
     },
     "White Attica": {
-      "20": 1100
+      "20": 1430
     },
     "Taj Royale": {
-      "20": 1019
+      "20": 1325
     },
     "Black Tempal": {
-      "20": 1100
+      "20": 1430
     },
     "Coastal Grey": {
-      "20": 1019
+      "20": 1325
     },
     "Moorland Fog": {
-      "20": 1100
+      "20": 1430
     },
     "Bianco Drift": {
-      "20": 1100
+      "20": 1430
     },
     "Woodlands": {
-      "20": 1019
+      "20": 1325
     },
     "Raven": {
-      "20": 934
+      "20": 1214
     },
     "Raven MAT": {
-      "20": 974
+      "20": 1266
     },
     "White Attica MAT": {
-      "20": 1079
+      "20": 1403
     },
     "Noble Grey": {
-      "20": 956
+      "20": 1243
     }
   }
 }
