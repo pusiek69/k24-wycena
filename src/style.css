@@ -1224,53 +1224,99 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   .owner-foto { max-width: 240px; }
 }
 
-/* ══ Wiadomość od Dawida i rozmowa pod ofertą (zlecenie z 24.08.2026) ══ */
+/* ══ Wiadomość od Dawida i rozmowa pod ofertą (zlecenie z 24.08.2026) ══
+ *
+ * UWAGA NA KOLORY (bug od Dawida, 25.08.2026): pierwsza wersja dawała
+ * dymkom JASNE tło i nie ustawiała koloru tekstu. Strona jest ciemna
+ * (--ink / --cream), więc dymki dziedziczyły kremowy tekst i wychodziło
+ * jasne na jasnym — treści nie było widać w ogóle.
+ *
+ * Dlatego tu KAŻDY element rozmowy ma jawnie podane `background` i
+ * `color`. Nic nie dziedziczy koloru z motywu strony.
+ */
 
-/* Osobisty dopisek nad cenami — ta sama forma co dymek w mailu. */
+/* Osobisty dopisek nad cenami. */
 .wiadomosc-dawida {
   margin: 14px 0 18px;
   padding: 13px 15px;
-  background: #f7f5f1;
-  border-left: 3px solid var(--zloty, #8a6a2f);
-  border-radius: 8px;
+  background: var(--stone);
+  color: var(--cream);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--vein);
+  border-radius: var(--radius);
 }
 .wiadomosc-kto {
-  font-size: 12px;
-  letter-spacing: 0.08em;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #8a8578;
-  margin-bottom: 5px;
+  color: var(--vein);
+  margin-bottom: 6px;
 }
 /* pre-wrap: akapity, które Dawid wpisał, mają zostać akapitami. */
-.wiadomosc-tresc { margin: 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; }
+.wiadomosc-tresc { margin: 0; color: var(--cream); font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
 
-/* Wątek: dymki jak w czacie — klient z prawej, Dawid z lewej. */
-.watek-sekcja { margin-top: 26px; padding-top: 20px; border-top: 1px solid #e4e0d6; }
-.watek-tytul { margin: 0 0 6px; font-size: 17px; }
-.watek-wstep { margin: 0 0 14px; font-size: 14px; line-height: 1.55; color: #6d6a60; }
+/* Wątek: dymki jak w czacie — Dawid z lewej, klient (czyli „ja") z prawej. */
+.watek-sekcja { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); }
+.watek-tytul { margin: 0 0 6px; color: var(--cream); font-size: 19px; }
+.watek-wstep { margin: 0 0 14px; color: var(--muted); font-size: 15px; line-height: 1.55; }
+.watek-wstep a { color: var(--vein); }
 
-.watek { margin: 0 0 14px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.watek { margin: 0 0 16px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
 .watek li {
   max-width: 85%;
   padding: 10px 13px;
-  border-radius: 13px;
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 16px;
   line-height: 1.55;
+  /* Kolor i tło ustawiamy przy każdej stronie osobno — patrz niżej. */
 }
-.watek .od-dawida { align-self: flex-start; background: #f0ede7; border-bottom-left-radius: 3px; }
-.watek .od-klienta { align-self: flex-end; background: #e8ddc4; border-bottom-right-radius: 3px; }
-.watek .watek-pusto { align-self: stretch; max-width: none; background: none; padding: 0; font-size: 14px; color: #8a8578; }
-.watek-kto { display: block; font-size: 12px; color: #6d6a60; margin-bottom: 3px; }
+.watek .od-dawida {
+  align-self: flex-start;
+  background: var(--stone);
+  color: var(--cream);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 3px;
+}
+.watek .od-klienta {
+  align-self: flex-end;
+  /* Własne wiadomości ze złotym odcieniem — od razu widać, kto pisał. */
+  background: #2f2717;
+  color: var(--cream);
+  border: 1px solid var(--line-hi);
+  border-bottom-right-radius: 3px;
+}
+.watek .watek-pusto {
+  align-self: stretch;
+  max-width: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--dim);
+  font-size: 15px;
+}
+.watek-kto { display: block; color: var(--dim); font-size: 12px; margin-bottom: 4px; }
 /* Treść od klienta bywa wklejona z enterami — zachowujemy je. */
-.watek-tresc { display: block; white-space: pre-wrap; word-break: break-word; }
+.watek-tresc { display: block; color: inherit; white-space: pre-wrap; word-break: break-word; }
 
-.watek-etykieta { display: block; font-size: 14px; font-weight: bold; margin-bottom: 5px; }
-.watek-pole { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #d8d3c8; border-radius: 8px; resize: vertical; }
+.watek-etykieta { display: block; color: var(--cream); font-size: 15px; margin-bottom: 6px; }
+.watek-pole {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  background: var(--slab);
+  color: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+.watek-pole::placeholder { color: var(--dim); }
+.watek-pole:focus { outline: none; border-color: var(--line-hi); }
 .watek-akcje { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
-.watek-licznik { font-size: 13px; color: #8a8578; }
-.watek-info { margin: 10px 0 0; font-size: 14px; line-height: 1.5; }
-.watek-info.udane { color: #4f7a5c; }
-.watek-info.blad { color: #8a5a5a; }
+.watek-licznik { color: var(--dim); font-size: 14px; }
+.watek-info { margin: 10px 0 0; font-size: 15px; line-height: 1.5; }
+.watek-info.udane { color: var(--ok); }
+.watek-info.blad { color: #e08a76; }
 
 /* Pole-pułapka na boty: człowiek go nie widzi i nie dojdzie do niego tabem. */
 .watek-pulapka {
@@ -1282,5 +1328,16 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   pointer-events: none;
 }
 
-/* Dopisek Dawida w edytorze właściciela. */
-.od-wiadomosc { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #d8d3c8; border-radius: 8px; resize: vertical; }
+/* Dopisek Dawida w edytorze właściciela — ta sama, ciemna strona. */
+.od-wiadomosc {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  background: var(--slab);
+  color: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+.od-wiadomosc::placeholder { color: var(--dim); }
+.od-wiadomosc:focus { outline: none; border-color: var(--line-hi); }

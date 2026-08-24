@@ -427,15 +427,34 @@ async function stronaPanelu(env) {
 }
 
 const STYL = `
-/* Rozmowa pod ofertą — dymki jak w czacie: klient z lewej, Dawid z prawej. */
+/* Rozmowa pod ofertą — dymki jak w czacie: klient z lewej, Dawid z prawej.
+ *
+ * UWAGA NA KOLORY (bug od Dawida, 25.08.2026): pierwsza wersja dawała
+ * dymkom sztywne JASNE tło (#f0ede7) i nie ustawiała koloru tekstu.
+ * Panel ma tryb ciemny (prefers-color-scheme), w którym --tekst jest
+ * jasny — wychodziło jasne na jasnym i treści nie było widać.
+ *
+ * Teraz: tła bierzemy ze ZMIENNYCH motywu (działają w obu trybach),
+ * a kolor tekstu podajemy JAWNIE przy każdym dymku.
+ *
+ * Dymki to <li> wewnątrz .log, więc najpierw kasujemy kreski i wcięcia,
+ * które .log li na nie nakłada.
+ */
 .watek{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-.watek li{max-width:82%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
-.watek .od-klienta{align-self:flex-start;background:#f0ede7;border-bottom-left-radius:3px}
-.watek .od-dawida{align-self:flex-end;background:#e8ddc4;border-bottom-right-radius:3px}
-.watek .kiedy{display:block;font-size:11px;color:#8a8578;margin-bottom:3px}
+.watek li{max-width:82%;padding:9px 12px;border-top:0;border-left:0;border-radius:12px;
+font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:var(--tekst)}
+.watek .od-klienta{align-self:flex-start;background:var(--tlo);color:var(--tekst);
+border:1px solid var(--linia);border-bottom-left-radius:3px}
+/* Złoty odcień przez przezroczystość — dobrze siada i na białym, i na ciemnym. */
+.watek .od-dawida{align-self:flex-end;background:rgba(138,106,47,.16);color:var(--tekst);
+border:1px solid var(--akcent);border-left:1px solid var(--akcent);padding-left:12px;
+border-bottom-right-radius:3px}
+.watek .kiedy{display:block;font-size:11px;color:var(--szary);margin-bottom:3px}
+.watek .pusto{align-self:stretch;max-width:none;background:none;border:0;padding:0;color:var(--szary)}
 .odpowiedz{margin-top:10px}
-.odpowiedz textarea{width:100%;min-height:64px}
-.nowa-wiad{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#8a6a2f;color:#fff;font-size:11px;font-weight:bold}
+.odpowiedz textarea{width:100%;min-height:64px;background:var(--pole);color:var(--tekst)}
+.nowa-wiad{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;
+background:var(--akcent);color:#fff;font-size:11px;font-weight:bold}
 
 :root{--tlo:#f4f4f2;--karta:#fff;--tekst:#17150f;--szary:#6d6a60;--linia:#e2e0d8;
 --akcent:#8a6a2f;--zielony:#2f6b3a;--czerwony:#9a3524;--pole:#fff}
@@ -767,7 +786,7 @@ function watekHtml(w){
 
   return '<div class="odpowiedz">' + naglowek +
     (dymki ? '<ul class="watek">' + dymki + '</ul>'
-           : '<p class="mini">Jeszcze nikt tu nie pisał.</p>') +
+           : '<ul class="watek"><li class="pusto">Jeszcze nikt tu nie pisał.</li></ul>') +
     '<textarea id="ws-' + w.id + '" placeholder="Odpisz klientowi…"></textarea>' +
     '<p><button class="btn cichy" type="button" data-odpisz="' + w.id + '">Wyślij odpowiedź</button> ' +
     '<span class="mini" id="wsi-' + w.id + '"></span></p></div>';
