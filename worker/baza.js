@@ -751,6 +751,10 @@ export async function zapiszFeedback(env, dane) {
 
   const budzet = String(dane.budzet || '').slice(0, 40);
   const pora = String(dane.pora || '').slice(0, 40);
+  // Który wariant materiałowy wskazał klient (zlecenie z 25.08.2026).
+  // To jest NAJWAŻNIEJSZA informacja z całego feedbacku: mówi wprost,
+  // na czym Dawid ma oprzeć rozmowę, więc ląduje w notatce.
+  const wariant = String(dane.wariant || '').slice(0, 120);
 
   await baza
     .prepare(
@@ -772,7 +776,13 @@ export async function zapiszFeedback(env, dane) {
     .bind(feedback, klient.id)
     .run();
 
-  const szczegol = [pora && `pora: ${pora}`, budzet && `budżet: ${budzet}`].filter(Boolean).join(', ');
+  const szczegol = [
+    wariant && `wybrał wariant: ${wariant}`,
+    pora && `pora: ${pora}`,
+    budzet && `budżet: ${budzet}`,
+  ]
+    .filter(Boolean)
+    .join(', ');
   await dopiszNotatke(
     baza,
     klient.id,

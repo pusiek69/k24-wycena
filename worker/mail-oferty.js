@@ -22,6 +22,34 @@ const zl = (n) =>
   String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' zł';
 
 /**
+ * WARIANTY W MAILU — sama tabelka cen.
+ *
+ * Bez kart i bez kolorów: klienci pocztowi tną wszystko poza tabelą,
+ * a to i tak ma być tylko zachętą do kliknięcia w link. Pełne porównanie
+ * żyje na stronie oferty.
+ */
+function wariantyWMailu(o) {
+  const lista = Array.isArray(o?.warianty) ? o.warianty : [];
+  if (!lista.length) return '';
+
+  const wiersze = [...lista]
+    .sort((a, b) => (a.razem || 0) - (b.razem || 0))
+    .map(
+      (w) => `<tr>
+        <td style="padding:7px 10px 7px 0;font-size:14px;color:#2b2823">${eskapuj(w.opis || w.material)}</td>
+        <td style="padding:7px 0;font-size:14px;font-weight:bold;text-align:right;white-space:nowrap">${zl(w.razem)}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `<div style="margin:0 0 18px;padding:14px 16px;background:#f7f5f1;border:1px solid #e4e0d6;border-radius:8px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578;margin-bottom:8px">Inne materiały — ta sama kuchnia</div>
+      <table role="presentation" style="width:100%;border-collapse:collapse">${wiersze}</table>
+      <p style="margin:8px 0 0;font-size:13px;color:#6d6a60">Te same wymiary i prace, inny kamień. Szczegóły pod linkiem poniżej.</p>
+    </div>`;
+}
+
+/**
  * ROZRYS W MAILU — zajawka, nie rysunek.
  *
  * SVG w mailu to loteria: Gmail wycina go w całości, Outlook renderuje
@@ -87,6 +115,7 @@ export function mailOferty(imie, o, link) {
     ${gratisy ? `<ul style="margin:0 0 18px;padding-left:20px;font-size:14px">${gratisy}</ul>` : ''}
     ${wiadomoscDawida(o.wiadomosc)}
     ${rozrysZajawka(o)}
+    ${wariantyWMailu(o)}
     <p style="margin:0 0 22px"><a href="${link}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Zobacz pełne rozbicie wyceny →</a></p>
     <p style="margin:0 0 6px;font-size:13px;color:#6d6a60">Wycena przygotowana indywidualnie, ważna 30 dni.</p>
     <p style="margin:0;font-size:13px;color:#6d6a60">Pytania? Proszę śmiało dzwonić: <a href="tel:+48796991128" style="color:#8a6a2f">796 991 128</a> (pon.–pt. 8:00–18:00) albo odpisać na tę wiadomość.</p>

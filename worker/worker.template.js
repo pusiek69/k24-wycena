@@ -640,6 +640,9 @@ async function obsluzFeedback(request, env, cors) {
       feedback: String(d.feedback || ''),
       budzet: String(d.budzet || '').slice(0, 40),
       pora: String(d.pora || '').slice(0, 40),
+      // Który wariant materiałowy wskazał klient — opis, nie indeks:
+      // ma być czytelny wprost w notatce na karcie.
+      wariant: String(d.wariant || '').slice(0, 120),
     });
     return json({ ok: !!wynik }, 200, cors);
   } catch (e) {

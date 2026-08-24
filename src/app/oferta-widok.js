@@ -13,6 +13,7 @@
  * tutaj tylko wyświetlamy to, co siedzi w zamrożonej ofercie.
  */
 import { h, zl, liczba } from './dom.js';
+import { poCenie, roznica } from './warianty.js';
 import { svgPlyty, tytulPlyty } from './rozrys-svg.js';
 import {
   rozbicieDlaKlienta,
@@ -21,7 +22,7 @@ import {
   ETYKIETA_PRAC,
 } from './pozycje-klienta.js';
 
-export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
+export function kartaOferty(o, { imie = '', utworzono = null, naWybor = null } = {}) {
   const data = new Date(utworzono || Date.now()).toLocaleDateString('pl-PL');
   const r = rozbicieDlaKlienta(o.pozycje, { odbiorWlasny: o.odbiorWlasny });
 
@@ -92,6 +93,9 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
     // To najlepsze wytłumaczenie, czemu płacimy za CAŁE płyty.
     sekcjaRozrysu(o.rozrys),
 
+    // Warianty materiałowe — ten sam blat na innym kamieniu, do porównania.
+    sekcjaWariantow(o.warianty, o.razem, naWybor),
+
     h(
       'div',
       { class: 'nav' },
@@ -127,6 +131,70 @@ export function wiadomoscOdDawida(tresc) {
     { class: 'wiadomosc-dawida' },
     h('div', { class: 'wiadomosc-kto' }, 'Od Dawida Ząbka'),
     h('p', { class: 'wiadomosc-tresc' }, t)
+  );
+}
+
+/**
+ * WARIANTY DO PORÓWNANIA (zlecenie Dawida, 25.08.2026).
+ *
+ * Klient widzi ofertę główną w pełni (materiał, prace, suma), a pod nią
+ * kilka kart: ten sam blat na innym kamieniu i SAMA kwota łączna. Żadnego
+ * rozbicia i żadnego rozrysu — warianty są po to, żeby porównać cenę
+ * materiału, a nie żeby wyceniać cztery kuchnie naraz.
+ *
+ * Porządkujemy od najtańszego: tak się czyta cenniki.
+ */
+export function sekcjaWariantow(warianty, glownaRazem, naWybor) {
+  const lista = poCenie(warianty);
+  if (!lista.length) return null;
+
+  return h(
+    'section',
+    { class: 'warianty' },
+    h('h4', { class: 'warianty-tytul' }, 'Inne materiały — ta sama kuchnia'),
+    h(
+      'p',
+      { class: 'warianty-wstep' },
+      'Te same wymiary i te same prace kamieniarskie, tylko inny kamień. ' +
+        'Kwoty są końcowe, brutto.'
+    ),
+    h(
+      'div',
+      { class: 'warianty-karty' },
+      ...lista.map((w) => kartaWariantu(w, glownaRazem, naWybor))
+    )
+  );
+}
+
+function kartaWariantu(w, glownaRazem, naWybor) {
+  const r = glownaRazem > 0 ? roznica(w.razem, glownaRazem) : null;
+
+  return h(
+    'div',
+    { class: 'wariant-karta' },
+    h('div', { class: 'wariant-material' }, w.material || w.opis),
+    w.typ ? h('div', { class: 'wariant-typ' }, w.typ) : null,
+    h('div', { class: 'wariant-opis' }, w.opis),
+    h(
+      'div',
+      { class: 'wariant-cena' },
+      w.razemPrzed ? h('s', { class: 'oferta-stara' }, zl(w.razemPrzed)) : null,
+      h('b', {}, zl(w.razem))
+    ),
+    r && r.znak !== '='
+      ? h('div', { class: 'wariant-roznica ' + (r.znak === '-' ? 'taniej' : 'drozej') }, r.opis)
+      : null,
+    naWybor
+      ? h(
+          'button',
+          {
+            class: 'btn ghost wariant-wybor',
+            type: 'button',
+            onclick: () => naWybor(w),
+          },
+          'Ta wersja mnie interesuje'
+        )
+      : null
   );
 }
 

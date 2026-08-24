@@ -26,6 +26,15 @@ import { kartaOferty } from './oferta-widok.js';
 import { widokRozrysu, elementyZOdcinkow, podpisWyceny } from './rozrys.js';
 import { rozrysuj } from '../engine/nesting.js';
 import { DOMYSLNE } from './ustawienia.js';
+import {
+  MAKS_WARIANTOW,
+  TRYBY_UPUSTU,
+  upustGlownej,
+  cenaWariantu,
+  opisUpustu,
+  zamrozWariant,
+  roznica,
+} from './warianty.js';
 
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
@@ -80,6 +89,8 @@ export function uruchomOferteDawida(root, paczka) {
     przekresl: false,
     // Osobisty dopisek do klienta — idzie do maila i na stronę oferty.
     wiadomosc: '',
+    // Warianty materiałowe do porównania (do trzech, dobierane ręcznie).
+    warianty: [],
   };
   if (!stan.odcinki.length) stan.odcinki = [{ gl: 60, dl: 300 }];
 
@@ -242,6 +253,9 @@ function zamrozOferte(stan, w) {
     wiadomosc: String(stan.wiadomosc || '').trim().slice(0, MAKS_WIADOMOSCI),
     stawkaVat: w.stawkaVat ?? 0.08,
     odbiorWlasny: !!w.odbiorWlasny,
+    // Warianty porównawcze — sama kwota łączna per materiał.
+    // Dokładane na końcu (patrz niżej): potrzebują gotowej ceny głównej,
+    // żeby wiedzieć, jaki upust dziedziczą.
     // Rozrys ZAMROŻONY w chwili wysyłki: klient ma zobaczyć dokładnie ten
     // układ, który zatwierdził Dawid — razem z jego ręcznymi zmianami
     // elementów. Strona oferty niczego nie przelicza.
@@ -321,6 +335,19 @@ function zamrozRozrys(stan, w) {
 
 /* ──────────────────────────────────────────────────────────── widok */
 
+/**
+ * Oferta razem z wariantami.
+ *
+ * Warianty muszą powstać PO głównej, bo dziedziczą jej upust — stąd
+ * osobny krok zamiast pola w `zamrozOferte`.
+ */
+function ofertaZWariantami(stan, w) {
+  const oferta = zamrozOferte(stan, w);
+  if (!oferta) return oferta;
+  const warianty = zamrozWarianty(stan, oferta);
+  return warianty.length ? { ...oferta, warianty } : oferta;
+}
+
 function rysuj(box, stan, paczka) {
   const naturalny = stan.firma === NATURALNY;
   let dekory = [];
@@ -335,7 +362,7 @@ function rysuj(box, stan, paczka) {
   }
 
   const w = policz(stan);
-  const oferta = w.ok ? zamrozOferte(stan, w) : null;
+  const oferta = w.ok ? ofertaZWariantami(stan, w) : null;
   const odswiez = () => rysuj(box, stan, paczka);
 
   box.replaceChildren(
@@ -429,6 +456,9 @@ function rysuj(box, stan, paczka) {
 
       /* ── rozrys płyt: narzędzie warsztatowe, nie część oferty ── */
       w.ok ? h('div', { class: 'nav', style: 'margin-top:10px' }, przyciskRozrysu(stan, w, paczka, box)) : null,
+
+      /* ── warianty do porównania (nie w wycenie testowej) ── */
+      w.ok && !paczka.test ? blokWariantow(stan, oferta, odswiez) : null,
 
       /* ── wiadomość od Dawida: tylko gdy jest do kogo pisać ── */
       w.ok && !paczka.test ? blokWiadomosci(stan) : null,
@@ -647,6 +677,224 @@ function blokWiadomosci(stan) {
         + 'Puste pole = oferta bez dopisku. Zobaczysz to w podglądzie przed wysłaniem.'
     )
   );
+}
+
+/* ────────────────────────────── warianty materiałowe do porównania */
+
+/**
+ * Firmy, z których można złożyć wariant.
+ *
+ * Bez kamienia naturalnego: tam cena wynika z KONKRETNEJ płyty w magazynie
+ * (każda ma inny wymiar i inną cenę), więc wariantu nie da się złożyć
+ * samym wyborem „materiału". Kamień naturalny nadaje się na ofertę
+ * GŁÓWNĄ — i tam działa jak dotąd.
+ */
+const FIRMY_WARIANTOW = () => FIRMY.filter((f) => f.slug !== 'interstone');
+
+/**
+ * Cena wariantu: TEN SAM blat, ten sam silnik, inny materiał.
+ *
+ * Podmieniamy w stanie wyłącznie materiał i wołamy `policz` — dzięki temu
+ * wymiary, otwory, montaż i stawki z panelu są gwarantowanie identyczne
+ * jak w ofercie głównej. Inaczej porównanie by kłamało.
+ */
+function policzWariant(stan, wariant) {
+  const w = policz({
+    ...stan,
+    firma: wariant.firma,
+    dekor: wariant.dekor,
+    grubosc: wariant.grubosc,
+  });
+  if (!w.ok) return { ok: false, blad: w.blad };
+  return { ok: true, bazowa: Math.round(w.razemZaokr || w.razem), w };
+}
+
+/** Domyślny wariant: pierwsza firma inna niż główna, pierwszy dekor. */
+function nowyWariant(stan) {
+  const kandydaci = FIRMY_WARIANTOW();
+  const uzyte = new Set([stan.firma, ...stan.warianty.map((w) => w.firma)]);
+  const firma = kandydaci.find((f) => !uzyte.has(f.slug)) || kandydaci[0];
+  const dekor = Object.keys(firma?.dekory || {})[0] || '';
+  return {
+    firma: firma?.slug || '',
+    dekor,
+    grubosc: (grubosciDekoru(firma, dekor) || [])[0] || '',
+    upustTyp: 'dziedziczy',
+    upustProc: 0,
+  };
+}
+
+/**
+ * WARIANTY DO PORÓWNANIA (zlecenie Dawida, 25.08.2026).
+ *
+ * „Jedną tę główną i 3x takie do porównania cen" — dobór jest w pełni
+ * ręczny, bo to Dawid wie, co danemu klientowi warto pokazać obok siebie.
+ * Cena każdego wariantu liczy się tym samym silnikiem co główna.
+ */
+function blokWariantow(stan, oferta, odswiez) {
+  const upustGl = oferta ? upustGlownej(oferta) : 0;
+
+  const wiersze = stan.warianty.map((wariant, i) => {
+    const firma = firmaWgSlug(wariant.firma);
+    const dekory = Object.keys(firma?.dekory || {});
+    const grubosci = grubosciDekoru(firma, wariant.dekor) || [];
+    const policzony = policzWariant(stan, wariant);
+    const cena = policzony.ok ? cenaWariantu(policzony.bazowa, wariant, upustGl) : 0;
+    const r = oferta && cena ? roznica(cena, oferta.razem) : null;
+
+    return h(
+      'div',
+      { class: 'od-pasek wariant-wiersz' },
+      h(
+        'div',
+        { class: 'od-siatka' },
+        pole(
+          'Materiał',
+          wybor(
+            FIRMY_WARIANTOW().map((f) => [f.slug, f.nazwa]),
+            wariant.firma,
+            (v) => {
+              const nowa = firmaWgSlug(v);
+              const d = Object.keys(nowa?.dekory || {})[0] || '';
+              zmienWariant(stan, i, {
+                firma: v,
+                dekor: d,
+                grubosc: (grubosciDekoru(nowa, d) || [])[0] || '',
+              });
+              odswiez();
+            }
+          )
+        ),
+        pole(
+          'Dekor',
+          wybor(dekory.map((d) => [d, d]), wariant.dekor, (v) => {
+            zmienWariant(stan, i, {
+              firma: wariant.firma,
+              dekor: v,
+              grubosc: (grubosciDekoru(firma, v) || [])[0] || '',
+            });
+            odswiez();
+          })
+        ),
+        pole(
+          'Grubość',
+          wybor(grubosci.map((g) => [g, `${g} mm`]), wariant.grubosc, (v) => {
+            zmienWariant(stan, i, { ...wariant, grubosc: v });
+            odswiez();
+          })
+        ),
+        pole(
+          'Upust',
+          wybor(TRYBY_UPUSTU, wariant.upustTyp, (v) => {
+            zmienWariant(stan, i, { ...wariant, upustTyp: v });
+            odswiez();
+          })
+        ),
+        wariant.upustTyp === 'wlasny'
+          ? pole(
+              'Ile %',
+              (() => {
+                const inp = h('input', {
+                  type: 'number', min: '0', max: '90', value: wariant.upustProc || 0,
+                });
+                // Wartość zapisujemy na bieżąco, a przeliczamy dopiero po
+                // wyjściu z pola — inaczej ekran przebudowuje się w środku
+                // pisania i wpisana liczba przepada (ta sama pułapka co
+                // w rozrysie, patrz app/rozrys.js).
+                inp.addEventListener('input', () => {
+                  stan.warianty[i] = { ...stan.warianty[i], upustProc: Number(inp.value) || 0 };
+                });
+                inp.addEventListener('change', odswiez);
+                return inp;
+              })()
+            )
+          : null
+      ),
+      h(
+        'div',
+        { class: 'od-akcje-poz wariant-podsumowanie' },
+        policzony.ok
+          ? h(
+              'span',
+              {},
+              h('b', {}, zl(cena)),
+              h('span', { class: 'form-nota' }, ` · ${opisUpustu(wariant, upustGl)}`),
+              r ? h('span', { class: 'form-nota' }, ` · ${r.opis} od głównej`) : null
+            )
+          : h('span', { class: 'form-blad' }, policzony.blad || 'Nie da się policzyć tego wariantu.'),
+        h(
+          'button',
+          {
+            class: 'link-btn', type: 'button', title: 'Usuń wariant',
+            onclick: () => {
+              stan.warianty = stan.warianty.filter((_, j) => j !== i);
+              odswiez();
+            },
+          },
+          '✕ usuń'
+        )
+      )
+    );
+  });
+
+  return h(
+    'div',
+    { class: 'od-pasek', style: 'margin-top:18px' },
+    h('div', { class: 'q-kicker' }, 'Warianty do porównania (widzi je klient)'),
+    ...wiersze,
+    stan.warianty.length < MAKS_WARIANTOW
+      ? h(
+          'button',
+          {
+            class: 'link-btn', type: 'button',
+            onclick: () => {
+              stan.warianty = [...stan.warianty, nowyWariant(stan)];
+              odswiez();
+            },
+          },
+          `+ dodaj wariant (${stan.warianty.length}/${MAKS_WARIANTOW})`
+        )
+      : h('span', { class: 'form-nota' }, `Komplet — ${MAKS_WARIANTOW} warianty to maksimum.`),
+    h(
+      'p',
+      { class: 'form-nota' },
+      'Ten sam blat i te same prace, inny kamień. Klient zobaczy samą kwotę łączną — ' +
+        'bez rozbicia i bez rozrysu, który zostaje przy ofercie głównej. ' +
+        'Kamień naturalny wyceniamy z konkretnej płyty, więc nadaje się na ofertę główną, nie na wariant.'
+    )
+  );
+}
+
+function zmienWariant(stan, i, zmiana) {
+  stan.warianty = stan.warianty.map((w, j) => (i === j ? { ...w, ...zmiana } : w));
+}
+
+/**
+ * Warianty zamrożone do oferty — czyli to, co pojedzie do klienta.
+ * Niepoliczalne po cichu wypadają: lepiej pokazać dwa warianty niż trzy,
+ * z czego jeden pusty.
+ */
+function zamrozWarianty(stan, oferta) {
+  const upustGl = upustGlownej(oferta);
+  return (stan.warianty || [])
+    .map((wariant) => {
+      const policzony = policzWariant(stan, wariant);
+      if (!policzony.ok) return null;
+      const firma = firmaWgSlug(wariant.firma);
+      const bazowa = policzony.bazowa;
+      const cena = cenaWariantu(bazowa, wariant, upustGl);
+      return zamrozWariant({
+        opis: [firma?.nazwa, wariant.dekor, wariant.grubosc ? `${wariant.grubosc} mm` : '']
+          .filter(Boolean)
+          .join(' · '),
+        material: firma?.nazwa || '',
+        typ: firma?.typ || '',
+        razem: cena,
+        razemPrzed: bazowa,
+        stawkaVat: policzony.w?.stawkaVat ?? oferta.stawkaVat,
+      });
+    })
+    .filter(Boolean);
 }
 
 function pasekWlasciciela(stan, oferta, odswiez) {
@@ -942,7 +1190,13 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
       ramka,
 
       h('div', { class: 'q-kicker', style: 'margin-top:18px' }, '2 · Strona wyceny online (spod linku w mailu)'),
-      kartaOferty(oferta, { imie: paczka.imie, utworzono: Date.now() }),
+      // W podglądzie pokazujemy też przycisk wyboru wariantu — Dawid ma
+      // widzieć dokładnie ten ekran co klient. Klik tylko nic nie wysyła.
+      kartaOferty(oferta, {
+        imie: paczka.imie,
+        utworzono: Date.now(),
+        naWybor: () => {},
+      }),
       h(
         'p',
         { class: 'form-nota' },

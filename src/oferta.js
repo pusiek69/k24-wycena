@@ -54,11 +54,43 @@ function widok({ imie, utworzono, oferta: o, rozmowa }) {
   return h(
     'div',
     {},
-    kartaOferty(o, { imie, utworzono }),
+    kartaOferty(o, {
+      imie,
+      utworzono,
+      // Klik w wariancie to najmocniejszy sygnał, jaki klient może dać:
+      // mówi nie tylko że chce, ale NA CZYM. Idzie jako zwykły feedback
+      // „pasuje" z dopisaną nazwą materiału.
+      naWybor: (wariant) => wybierzWariant(wariant),
+    }),
     feedback(),
     // Wątek wisi przy TEJ ofercie — autoryzuje ten sam token, co wycena.
     sekcjaRozmowy(token, rozmowa || [])
   );
+}
+
+/**
+ * Klient wskazał wariant materiałowy.
+ *
+ * Potwierdzenie pokazujemy NA KARCIE tego wariantu, a nie gdzieś na dole —
+ * klient ma zobaczyć reakcję tam, gdzie kliknął.
+ */
+function wybierzWariant(wariant) {
+  zdarzenie('feedback_oferta', { wybor: 'wariant' });
+  wyslijFeedback({ oferta: token, feedback: 'pasuje', wariant: wariant.opis || wariant.material });
+
+  const karty = [...document.querySelectorAll('.wariant-karta')];
+  const karta = karty.find((k) => k.textContent.includes(wariant.opis));
+  if (!karta) return;
+  karta.classList.add('wybrany');
+  const przycisk = karta.querySelector('.wariant-wybor');
+  if (przycisk) {
+    przycisk.replaceWith(
+      h('div', { class: 'wariant-potwierdzenie' }, '✓ Zapisane — odezwiemy się w sprawie tego materiału.')
+    );
+  }
+  for (const inna of karty) {
+    if (inna !== karta) inna.querySelector('.wariant-wybor')?.setAttribute('disabled', 'disabled');
+  }
 }
 
 /* Trzy przyciski — te same co pod wyceną w kalkulatorze; odpowiedź trafia
