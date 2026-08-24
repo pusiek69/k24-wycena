@@ -80,7 +80,16 @@ export function svgPlyty(p) {
     );
   });
 
-  return svg;
+  /*
+   * Rysunek jest szeroki (płyta ~2:1), więc na telefonie zmieściłby się
+   * w 285 px i napisy zeszłyby do kilku pikseli. Zamiast tego dajemy mu
+   * własne przewijanie w poziomie i minimalną szerokość — strona nadal
+   * nie przewija się na boki, a klient ogląda rozrys w czytelnej skali.
+   */
+  const ramka = document.createElement('div');
+  ramka.className = 'rozrys-ramka';
+  ramka.appendChild(svg);
+  return ramka;
 }
 
 /** Podpis nad rysunkiem: numer płyty, materiał, ile elementów i ile m². */
