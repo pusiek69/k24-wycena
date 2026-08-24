@@ -31,6 +31,11 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
     h('div', { class: 'q-kicker' }, `Wycena z dnia ${data}${imie ? ` dla: ${imie}` : ''}`),
     h('h3', { class: 'q-title' }, o.opis || 'Blat z kamienia'),
 
+    // Osobisty dopisek Dawida — stoi NAD cenami, bo to on tłumaczy, czemu
+    // oferta wygląda tak, a nie inaczej („dorzuciłem pomiar", „ten dekor
+    // wchodzi z jednej płyty"). Pusty, gdy Dawid nic nie napisał.
+    wiadomoscOdDawida(o.wiadomosc),
+
     // Klient widzi DWIE kwoty i sumę — bez wyliczania pomiaru, wycięć
     // i montażu z osobna (decyzja Dawida, 21.08.2026).
     h(
@@ -107,6 +112,24 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
  * (to informacja dla Dawida, nie dla klienta). Zostaje procent
  * wykorzystania i odpad — bo one właśnie tłumaczą cenę materiału.
  */
+/**
+ * WIADOMOŚĆ OD DAWIDA — kilka zdań pisanych ręcznie przy wysyłce.
+ *
+ * Renderujemy jako TEKST (`h` wstawia przez textContent), nie jako HTML —
+ * to jest treść z formularza i nie ma prawa nic wykonać na stronie.
+ * `white-space: pre-wrap` w stylach zachowuje akapity Dawida.
+ */
+export function wiadomoscOdDawida(tresc) {
+  const t = String(tresc || '').trim();
+  if (!t) return null;
+  return h(
+    'div',
+    { class: 'wiadomosc-dawida' },
+    h('div', { class: 'wiadomosc-kto' }, 'Od Dawida Ząbka'),
+    h('p', { class: 'wiadomosc-tresc' }, t)
+  );
+}
+
 export function sekcjaRozrysu(rozrys) {
   const plyty = rozrys?.plyty || [];
   if (!plyty.length) return null;

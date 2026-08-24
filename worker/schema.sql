@@ -117,3 +117,28 @@ CREATE TABLE IF NOT EXISTS ustawienia (
   wartosc   TEXT NOT NULL,
   zmieniono TEXT NOT NULL
 );
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  ROZMOWA POD OFERTĄ (zlecenie Dawida, 24.08.2026)
+--
+--  Wątek wisi przy KONKRETNEJ ofercie, nie przy kliencie: ten sam klient
+--  może dostać dwie wyceny (kuchnia i łazienka) i rozmowy nie mogą się
+--  zlewać. W panelu i tak widać je wszystkie na jego karcie.
+--
+--  Klient pisze bez logowania — autoryzuje go token z linku do oferty
+--  (kto ma link, ma wątek). Dlatego `wycena_id` jest tu kluczem, po
+--  którym wszystko chodzi.
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS wiadomosci (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  wycena_id  INTEGER NOT NULL REFERENCES wyceny(id) ON DELETE CASCADE,
+  klient_id  INTEGER NOT NULL REFERENCES klienci(id) ON DELETE CASCADE,
+  -- 'klient' (napisał ze strony oferty) albo 'dawid' (odpisał z panelu)
+  autor      TEXT NOT NULL,
+  tresc      TEXT NOT NULL,
+  utworzono  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS wiadomosci_wycena ON wiadomosci (wycena_id, id);
+
+CREATE INDEX IF NOT EXISTS wiadomosci_klient ON wiadomosci (klient_id, id);

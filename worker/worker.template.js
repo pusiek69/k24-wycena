@@ -30,10 +30,16 @@
 
 import { obsluzPanel, podpisz } from './panel.js';
 import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
+import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
+import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
+import { resend, nadawca, doDawida } from './poczta.js';
 import {
   zapiszLead,
   zapiszFeedback,
   zapiszOferte,
+  rozmowaOferty,
+  kontekstRozmowy,
+  dopiszWiadomosc,
   ofertaPoTokenie,
   odczytajStawki,
 } from './baza.js';
@@ -110,6 +116,7 @@ export default {
       if (sciezka === '/ustawienia') return await obsluzUstawienia(env, cors);
       if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
+      if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
@@ -341,8 +348,8 @@ async function obsluzLead(request, env, cors) {
   const linkPlyty = /^https:\/\/(www\.)?interstone\.pl\//.test(String(d.linkPlyty || ''))
     ? String(d.linkPlyty).slice(0, 400)
     : '';
-  const nadawca = env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>';
-  const doFirmy = env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com';
+  const nadawca = nadawca(env);
+  const doFirmy = doDawida(env);
 
   const zalaczniki = [];
   if (d.file && d.filename) {
@@ -447,7 +454,14 @@ async function obsluzOfertaDane(request, env, cors) {
     const wynik = await ofertaPoTokenie(env, d.token, { podglad });
     if (!wynik?.oferta) return json({ ok: false }, 404, cors);
     return json(
-      { ok: true, imie: wynik.imie, utworzono: wynik.utworzono, oferta: wynik.oferta },
+      {
+        ok: true,
+        imie: wynik.imie,
+        utworzono: wynik.utworzono,
+        oferta: wynik.oferta,
+        // Rozmowa pod ofertą — klient widzi całą historię od razu przy wycenie.
+        rozmowa: wynik.rozmowa || [],
+      },
       200,
       cors
     );
@@ -471,6 +485,14 @@ async function obsluzOfertaWyslij(request, env, cors) {
   const o = d.oferta && typeof d.oferta === 'object' ? d.oferta : null;
   if (!o || !Array.isArray(o.pozycje) || !o.pozycje.length || !(Number(o.razem) > 0))
     return json({ error: 'Pusta oferta.' }, 400, cors);
+
+  /*
+   * WIADOMOŚĆ OD DAWIDA (zlecenie z 24.08.2026) — osobisty dopisek, który
+   * idzie i do maila, i na stronę oferty. Limit tniemy TUTAJ, a nie tylko
+   * w przeglądarce: pole z formularza nie jest żadnym dowodem długości.
+   * Zamrażamy go razem z ofertą, więc późniejsza zmiana go nie ruszy.
+   */
+  o.wiadomosc = String(o.wiadomosc || '').trim().slice(0, MAKS_ZNAKOW);
 
   const klient = await env.BAZA.prepare(`SELECT id, imie, email FROM klienci WHERE id = ?`)
     .bind(Number(d.leadId))
@@ -510,9 +532,9 @@ async function obsluzOfertaWyslij(request, env, cors) {
 
   const link = `https://kam24h.pl/oferta#${token}`;
   const wyslany = await resend(env, {
-    from: env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>',
+    from: nadawca(env),
     to: [klient.email],
-    reply_to: env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com',
+    reply_to: doDawida(env),
     subject: TEMAT_OFERTY,
     html: mailOferty(klient.imie, o, link),
   });
@@ -529,6 +551,76 @@ async function obsluzOfertaWyslij(request, env, cors) {
  * klientów, żaden mail nie leci. Odpowiadamy zawsze 200 — feedback to
  * bonus i przeglądarka nie ma z nim nic do roboty.
  */
+/**
+ * KLIENT PISZE POD SWOJĄ WYCENĄ (/oferta/napisz).
+ *
+ * Bez logowania — autoryzuje token z linku do oferty (kto ma link, ma
+ * wątek; taki sam próg jak przy oglądaniu samej wyceny). Obrona stoi
+ * na treści i tempie: pole-pułapka na boty, limit długości, odstęp
+ * między wiadomościami i sufit na wątek — patrz worker/rozmowa.js.
+ *
+ * Odpowiadamy ZAWSZE całym wątkiem, żeby strona nie musiała zgadywać,
+ * co się zapisało.
+ */
+async function obsluzOfertaNapisz(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!d?.token) return json({ ok: false, powod: 'Brak wyceny.' }, 400, cors);
+
+  try {
+    // `podglad: true` — napisanie wiadomości to nie jest „klient obejrzał
+    // ofertę"; licznik otwarć ma zostać uczciwy.
+    const w = await ofertaPoTokenie(env, String(d.token), { podglad: true });
+    if (!w?.wycenaId) return json({ ok: false, powod: 'Nie znaleźliono tej wyceny.' }, 404, cors);
+
+    const limity = await kontekstRozmowy(env, w.wycenaId);
+    const sprawdzenie = sprawdzWiadomosc(d.tresc, { pulapka: d.pulapka, ...limity });
+    if (!sprawdzenie.ok) {
+      // Botowi nie tłumaczymy, co go zdradziło — dostaje zwykłe „ok",
+      // żeby nie miał czego optymalizować. Nic się nie zapisuje.
+      if (sprawdzenie.spam) return json({ ok: true, rozmowa: w.rozmowa || [] }, 200, cors);
+      return json({ ok: false, powod: sprawdzenie.powod }, 200, cors);
+    }
+
+    await dopiszWiadomosc(env, {
+      wycenaId: w.wycenaId,
+      klientId: w.klientId,
+      autor: 'klient',
+      tresc: sprawdzenie.tresc,
+    });
+
+    const klient = await env.BAZA.prepare(`SELECT imie, telefon, email FROM klienci WHERE id = ?`)
+      .bind(w.klientId)
+      .first();
+
+    // Mail do Dawida leci obok odpowiedzi: klient nie ma czekać na Resend,
+    // żeby zobaczyć swój dymek w rozmowie.
+    const powiadomienie = resend(env, {
+      from: nadawca(env),
+      to: [doDawida(env)],
+      reply_to: klient?.email || undefined,
+      subject: tematDoDawida(klient?.imie, w.oferta?.opis),
+      html: mailDoDawida({
+        imie: klient?.imie,
+        telefon: klient?.telefon,
+        email: klient?.email,
+        opis: w.oferta?.opis,
+        tresc: sprawdzenie.tresc,
+        linkPanelu: `${new URL(request.url).origin}/panel`,
+      }),
+    });
+    if (typeof powiadomienie?.catch === 'function') powiadomienie.catch(() => {});
+
+    return json({ ok: true, rozmowa: await rozmowaOferty(env, w.wycenaId) }, 200, cors);
+  } catch (e) {
+    console.error('oferta/napisz', e?.message || e);
+    return json(
+      { ok: false, powod: 'Nie udało się wysłać. Proszę spróbować za chwilę.' },
+      500,
+      cors
+    );
+  }
+}
+
 async function obsluzFeedback(request, env, cors) {
   const d = await request.json().catch(() => null);
   if (!d) return json({ ok: false }, 400, cors);
@@ -556,26 +648,6 @@ async function obsluzFeedback(request, env, cors) {
   }
 }
 
-async function resend(env, wiadomosc) {
-  try {
-    const odp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${env.RESEND_API_KEY}`,
-      },
-      body: JSON.stringify(wiadomosc),
-    });
-    if (!odp.ok) {
-      console.error('resend', odp.status, await odp.text().catch(() => ''));
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error('resend', e?.message || e);
-    return false;
-  }
-}
 
 /* ──────────────────────────────────── mail leadowy do firmy (dla Dawida) */
 

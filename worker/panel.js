@@ -15,6 +15,10 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
+import { resend, nadawca, doDawida } from './poczta.js';
+import { sprawdzWiadomosc } from './rozmowa.js';
+import { TEMAT_DO_KLIENTA, mailDoKlienta } from './mail-rozmowa.js';
+
 import {
   STATUSY,
   W_LEJKU,
@@ -33,6 +37,8 @@ import {
   zapiszMeta,
   odczytajStawki,
   zapiszStawki,
+  dopiszWiadomosc,
+  rozmowaOferty,
 } from './baza.js';
 
 /*
@@ -93,6 +99,8 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
   if (sciezka === '/panel/api/stawki') return await apiStawki(request, env);
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
+  if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
+    return await apiOdpowiedz(request, env);
 
   return json({ error: 'Nieznany adres panelu.' }, 404);
 }
@@ -321,6 +329,60 @@ async function apiTest(request, env) {
   return json({ ok: true, link: `https://kam24h.pl/#powtorz=${b64}` });
 }
 
+/**
+ * DAWID ODPISUJE W WĄTKU (zlecenie z 24.08.2026).
+ *
+ * Wątek wisi przy konkretnej wycenie, więc przychodzi tu `wycena` — i to
+ * z niej bierzemy klienta oraz token do linku. Adres oferty NIE przychodzi
+ * z przeglądarki: składamy go z tokenu w bazie, żeby nikt nie podstawił
+ * klientowi cudzego linku.
+ */
+async function apiOdpowiedz(request, env) {
+  const d = await request.json().catch(() => null);
+  const wycenaId = Number(d?.wycena);
+  if (!wycenaId) return json({ error: 'Brak wyceny.' }, 400);
+
+  const sprawdzenie = sprawdzWiadomosc(d?.tresc, {});
+  if (!sprawdzenie.ok) return json({ error: sprawdzenie.powod }, 400);
+
+  const w = await env.BAZA.prepare(
+    `SELECT id, klient_id, token, opis FROM wyceny WHERE id = ? LIMIT 1`
+  )
+    .bind(wycenaId)
+    .first();
+  if (!w) return json({ error: 'Nie ma takiej wyceny.' }, 404);
+
+  await dopiszWiadomosc(env, {
+    wycenaId: w.id,
+    klientId: w.klient_id,
+    autor: 'dawid',
+    tresc: sprawdzenie.tresc,
+  });
+
+  const klient = await env.BAZA.prepare(`SELECT imie, email FROM klienci WHERE id = ?`)
+    .bind(w.klient_id)
+    .first();
+
+  // Mail tylko wtedy, gdy jest gdzie i po co: bez adresu albo bez tokenu
+  // odpowiedź zostaje w panelu, a Dawid widzi to po zwróconym `mail:false`.
+  let mail = false;
+  if (klient?.email && w.token) {
+    mail = await resend(env, {
+      from: nadawca(env),
+      to: [klient.email],
+      reply_to: doDawida(env),
+      subject: TEMAT_DO_KLIENTA,
+      html: mailDoKlienta({
+        imie: klient.imie,
+        tresc: sprawdzenie.tresc,
+        link: `https://kam24h.pl/oferta#${w.token}`,
+      }),
+    });
+  }
+
+  return json({ ok: true, mail, rozmowa: await rozmowaOferty(env, w.id) });
+}
+
 async function apiCsv(env) {
   return new Response(await csv(env), {
     headers: {
@@ -365,6 +427,16 @@ async function stronaPanelu(env) {
 }
 
 const STYL = `
+/* Rozmowa pod ofertą — dymki jak w czacie: klient z lewej, Dawid z prawej. */
+.watek{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.watek li{max-width:82%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.watek .od-klienta{align-self:flex-start;background:#f0ede7;border-bottom-left-radius:3px}
+.watek .od-dawida{align-self:flex-end;background:#e8ddc4;border-bottom-right-radius:3px}
+.watek .kiedy{display:block;font-size:11px;color:#8a8578;margin-bottom:3px}
+.odpowiedz{margin-top:10px}
+.odpowiedz textarea{width:100%;min-height:64px}
+.nowa-wiad{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;background:#8a6a2f;color:#fff;font-size:11px;font-weight:bold}
+
 :root{--tlo:#f4f4f2;--karta:#fff;--tekst:#17150f;--szary:#6d6a60;--linia:#e2e0d8;
 --akcent:#8a6a2f;--zielony:#2f6b3a;--czerwony:#9a3524;--pole:#fff}
 @media (prefers-color-scheme:dark){:root{--tlo:#15140f;--karta:#1e1c17;--tekst:#f0eee6;
@@ -651,7 +723,8 @@ async function pokazSzczegoly(id, cicho){
       '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + powtorz + obejrzenia + '</li>';
+      (w.odbior ? ' · odbiór własny' : '') + powtorz + obejrzenia +
+      watekHtml(w) + '</li>';
   }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
 
   var notatki = k.notatki.map(function(n){
@@ -671,6 +744,54 @@ async function pokazSzczegoly(id, cicho){
     ' · źródło: ' + esc(zrodloOpis(k)) + '</p>' +
     '<h2>Wyceny</h2><ul class="log">' + wyceny + '</ul>' +
     '<h2>Notatki</h2><ul class="log">' + notatki + '</ul>';
+}
+
+/**
+ * ROZMOWA POD OFERTĄ — dymki plus okienko odpowiedzi.
+ *
+ * Pokazujemy wątek tylko przy wycenach OD DAWIDA: to one mają link,
+ * który klient dostał, więc tylko pod nimi może cokolwiek napisać.
+ */
+function watekHtml(w){
+  if(w.wersja !== 'dawid') return '';
+  var rozmowa = w.rozmowa || [];
+  var odKlienta = rozmowa.filter(function(m){ return m.autor === 'klient'; }).length;
+  var dymki = rozmowa.map(function(m){
+    var kto = m.autor === 'klient' ? 'Klient' : 'Ty';
+    return '<li class="od-' + (m.autor === 'klient' ? 'klienta' : 'dawida') + '">' +
+      '<span class="kiedy">' + kto + ' · ' + godzina(m.utworzono) + '</span>' + esc(m.tresc) + '</li>';
+  }).join('');
+
+  var naglowek = '<span class="mini">Rozmowa' +
+    (odKlienta ? '<span class="nowa-wiad">' + odKlienta + ' od klienta</span>' : '') + '</span>';
+
+  return '<div class="odpowiedz">' + naglowek +
+    (dymki ? '<ul class="watek">' + dymki + '</ul>'
+           : '<p class="mini">Jeszcze nikt tu nie pisał.</p>') +
+    '<textarea id="ws-' + w.id + '" placeholder="Odpisz klientowi…"></textarea>' +
+    '<p><button class="btn cichy" type="button" data-odpisz="' + w.id + '">Wyślij odpowiedź</button> ' +
+    '<span class="mini" id="wsi-' + w.id + '"></span></p></div>';
+}
+
+async function odpisz(wycenaId){
+  var pole = document.getElementById('ws-' + wycenaId);
+  var info = document.getElementById('wsi-' + wycenaId);
+  var tresc = (pole.value || '').trim();
+  if(!tresc){ info.textContent = 'Pusta wiadomość.'; return; }
+
+  info.textContent = 'Wysyłam…';
+  var odp = await (await fetch('/panel/api/odpowiedz', {
+    method: 'POST',
+    headers: {'content-type':'application/json'},
+    body: JSON.stringify({wycena: Number(wycenaId), tresc: tresc})
+  })).json();
+
+  if(odp.error){ info.textContent = odp.error; return; }
+  pole.value = '';
+  info.textContent = odp.mail ? 'Wysłane — klient dostał maila.'
+                              : 'Zapisane, ale mail nie wyszedł (brak adresu?).';
+  // Odświeżamy kartę, żeby dymek pojawił się w wątku od razu.
+  await pokazSzczegoly(otwarta, true);
 }
 
 function zrodloOpis(k){
@@ -694,6 +815,9 @@ async function zapisz(id){
 }
 
 document.addEventListener('click', function(e){
+  var odp = e.target.closest('[data-odpisz]');
+  if(odp){ odpisz(odp.dataset.odpisz); return; }
+
   var rozwin = e.target.closest('[data-rozwin]');
   if(rozwin){
     var id = Number(rozwin.dataset.rozwin);

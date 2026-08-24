@@ -49,6 +49,22 @@ function rozrysZajawka(o) {
 const liczbaPl = (n, miejsc = 2) =>
   (Math.round((Number(n) || 0) * 10 ** miejsc) / 10 ** miejsc).toString().replace('.', ',');
 
+/**
+ * WIADOMOŚĆ OD DAWIDA — osobisty dopisek do oferty.
+ *
+ * Idzie w mailu NAD przyciskiem, bo to pierwsza rzecz, którą klient ma
+ * przeczytać po kwocie. Ta sama treść stoi na stronie oferty — jedno
+ * źródło, więc mail i strona nie mogą się rozjechać.
+ */
+function wiadomoscDawida(tresc) {
+  const t = String(tresc || '').trim();
+  if (!t) return '';
+  return `<div style="margin:0 0 18px;padding:14px 16px;background:#f7f5f1;border-left:3px solid #8a6a2f;border-radius:8px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578;margin-bottom:6px">Od Dawida</div>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:#2b2823;white-space:pre-wrap">${eskapuj(t)}</p>
+    </div>`;
+}
+
 /** Mail z ofertą — spójny z mailem wyceny, ale podpisany osobiście. */
 export function mailOferty(imie, o, link) {
   const kwota = zl(o.razem);
@@ -69,6 +85,7 @@ export function mailOferty(imie, o, link) {
     <p style="margin:0 0 6px;font-size:15px">Kwota całkowita brutto:</p>
     <p style="margin:0 0 18px;font-size:28px;font-weight:bold">${przekreslona}${kwota}</p>
     ${gratisy ? `<ul style="margin:0 0 18px;padding-left:20px;font-size:14px">${gratisy}</ul>` : ''}
+    ${wiadomoscDawida(o.wiadomosc)}
     ${rozrysZajawka(o)}
     <p style="margin:0 0 22px"><a href="${link}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Zobacz pełne rozbicie wyceny →</a></p>
     <p style="margin:0 0 6px;font-size:13px;color:#6d6a60">Wycena przygotowana indywidualnie, ważna 30 dni.</p>

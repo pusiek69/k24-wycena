@@ -397,11 +397,26 @@ export async function karta(env, id) {
     .bind(id)
     .all();
 
+  // Wszystkie wątki klienta naraz — jedno zapytanie zamiast jednego
+  // na wycenę. Rozdzielamy je niżej po `wycena_id`.
+  const wiadomosci = await env.BAZA.prepare(
+    `SELECT wycena_id, autor, tresc, utworzono FROM wiadomosci
+      WHERE klient_id = ? ORDER BY id ASC`
+  )
+    .bind(id)
+    .all();
+  const watki = new Map();
+  for (const m of wiadomosci.results || []) {
+    if (!watki.has(m.wycena_id)) watki.set(m.wycena_id, []);
+    watki.get(m.wycena_id).push({ autor: m.autor, tresc: m.tresc, utworzono: m.utworzono });
+  }
+
   return {
     ...kartaSkrocona(k),
     wyceny: (wyceny.results || []).map((w) => ({
       ...w,
       dane: bezpiecznyJson(w.dane),
+      rozmowa: watki.get(w.id) || [],
     })),
     notatki: notatki.results || [],
   };
@@ -449,6 +464,10 @@ export async function dodajNotatke(env, id, tresc) {
 }
 
 export async function skasujKlienta(env, id) {
+  // Kasujemy JAWNIE, nie licząc na kaskadę z klucza obcego: SQLite wymusza
+  // ją tylko przy włączonym `PRAGMA foreign_keys`, a na tym nie chcemy
+  // opierać usunięcia danych klienta (RODO liczy się bardziej niż elegancja).
+  await env.BAZA.prepare(`DELETE FROM wiadomosci WHERE klient_id = ?`).bind(id).run();
   await env.BAZA.prepare(`DELETE FROM notatki WHERE klient_id = ?`).bind(id).run();
   await env.BAZA.prepare(`DELETE FROM wyceny WHERE klient_id = ?`).bind(id).run();
   await env.BAZA.prepare(`DELETE FROM klienci WHERE id = ?`).bind(id).run();
@@ -502,6 +521,13 @@ export async function zapiszOferte(env, klientId, oferta, token) {
     )
     .run();
 
+  // ID wyceny jest potrzebne rozmowie: wątek wisi przy KONKRETNEJ ofercie,
+  // żeby dwie wyceny dla tego samego klienta nie zlały się w jeden czat.
+  const swieza = await baza
+    .prepare(`SELECT id FROM wyceny WHERE token = ? LIMIT 1`)
+    .bind(token)
+    .first();
+
   /*
    * Status idzie na „Oferta wysłana" tylko z wcześniejszych etapów lejka.
    * Wygranego, przegranego ani fake nie cofamy — klik w panelu nie może
@@ -529,7 +555,7 @@ export async function zapiszOferte(env, klientId, oferta, token) {
       (oferta.korektaOpis ? ` (${oferta.korektaOpis})` : '')
   );
 
-  return token;
+  return { token, wycenaId: swieza?.id || 0 };
 }
 
 /**
@@ -579,10 +605,71 @@ export async function ofertaPoTokenie(env, token, { podglad = false } = {}) {
 
   return {
     klientId: w.klient_id,
+    wycenaId: w.id,
     imie: klient?.imie || '',
     utworzono: w.utworzono,
     oferta: bezpiecznyJson(w.dane),
+    rozmowa: await rozmowaOferty(env, w.id),
   };
+}
+
+/* ─────────────────────────────────── rozmowa pod ofertą */
+
+/**
+ * ROZMOWA POD OFERTĄ (zlecenie Dawida, 24.08.2026)
+ *
+ * Wątek wisi przy ofercie, nie przy kliencie — ten sam klient może mieć
+ * wycenę kuchni i łazienki, a rozmowy o nich to dwie różne sprawy.
+ * W panelu Dawid i tak widzi je wszystkie na karcie klienta.
+ *
+ * Klient pisze BEZ LOGOWANIA: autoryzuje go token z linku do oferty.
+ */
+export async function rozmowaOferty(env, wycenaId) {
+  if (!env.BAZA || !(wycenaId > 0)) return [];
+  const w = await env.BAZA.prepare(
+    `SELECT autor, tresc, utworzono FROM wiadomosci WHERE wycena_id = ? ORDER BY id ASC`
+  )
+    .bind(wycenaId)
+    .all();
+  return w.results || [];
+}
+
+/**
+ * Dane potrzebne do sprawdzenia, czy klient nie spamuje: ile już napisał
+ * i kiedy ostatnio. Liczymy TYLKO jego wiadomości — odpowiedzi Dawida
+ * nie mogą zużywać limitu klienta.
+ */
+export async function kontekstRozmowy(env, wycenaId) {
+  const pusty = { odKlienta: 0, ostatnia: null };
+  if (!env.BAZA || !(wycenaId > 0)) return pusty;
+  const r = await env.BAZA.prepare(
+    `SELECT COUNT(*) AS ile, MAX(utworzono) AS ostatnia
+       FROM wiadomosci WHERE wycena_id = ? AND autor = 'klient'`
+  )
+    .bind(wycenaId)
+    .first();
+  return { odKlienta: Number(r?.ile || 0), ostatnia: r?.ostatnia || null };
+}
+
+/**
+ * Dopisuje wiadomość do wątku. Treść jest już sprawdzona przez
+ * worker/rozmowa.js — tutaj tylko zapis i ślad w notatkach, żeby wpis
+ * w karcie klienta pokazywał ruch w sprawie.
+ */
+export async function dopiszWiadomosc(env, { wycenaId, klientId, autor, tresc }) {
+  const czas = teraz();
+  await env.BAZA.prepare(
+    `INSERT INTO wiadomosci (wycena_id, klient_id, autor, tresc, utworzono)
+     VALUES (?, ?, ?, ?, ?)`
+  )
+    .bind(wycenaId, klientId, autor, tresc, czas)
+    .run();
+
+  // Ruch w sprawie — żeby klient odezwał się na liście „na dziś", a nie
+  // czekał niezauważony na dole tabeli.
+  await env.BAZA.prepare(`UPDATE klienci SET ruch = ? WHERE id = ?`).bind(czas, klientId).run();
+
+  return { autor, tresc, utworzono: czas };
 }
 
 /* ─────────────────────────────────────────────────── feedback po wycenie */

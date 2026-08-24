@@ -25,6 +25,9 @@ import {
   ustawOddzwonic,
   dodajNotatke,
   skasujKlienta,
+  rozmowaOferty,
+  kontekstRozmowy,
+  dopiszWiadomosc,
   posprzataj,
   csv,
   kluczTelefonu,
@@ -535,4 +538,136 @@ test('lejek ma statusy w kolejności sprzedażowej', () => {
     STATUSY.map((s) => s.id),
     ['nowy', 'cieply', 'pomiar', 'oferta', 'wygrany', 'przegrany', 'fake']
   );
+});
+
+/* ═══════════════ ROZMOWA POD OFERTĄ ═══════════════ */
+
+/** Wysyła ofertę i oddaje jej ID — wątek wisi właśnie przy nim. */
+async function ofertaZTokenem(env, klientId, token) {
+  const { wycenaId } = await zapiszOferte(env, klientId, OFERTA, token);
+  return wycenaId;
+}
+
+test('zapiszOferte oddaje ID wyceny — bez niego nie ma do czego przypiąć wątku', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+  assert.ok(wycenaId > 0, 'brak ID wyceny');
+});
+
+test('wiadomości zapisują się w kolejności rozmowy', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'klient', tresc: 'Czy zdążycie do piątku?' });
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'dawid', tresc: 'Tak, zdążymy.' });
+
+  const w = await rozmowaOferty(env, wycenaId);
+  assert.deepEqual(w.map((m) => m.autor), ['klient', 'dawid']);
+  assert.equal(w[0].tresc, 'Czy zdążycie do piątku?');
+});
+
+test('DWIE oferty tego samego klienta mają OSOBNE wątki', async () => {
+  // Sedno decyzji Dawida: kuchnia i łazienka to dwie sprawy, nie jeden czat.
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const kuchnia = await ofertaZTokenem(env, klientId, TOKEN);
+  const lazienka = await ofertaZTokenem(env, klientId, 'b'.repeat(32));
+
+  await dopiszWiadomosc(env, { wycenaId: kuchnia, klientId, autor: 'klient', tresc: 'pytanie o kuchnię' });
+  await dopiszWiadomosc(env, { wycenaId: lazienka, klientId, autor: 'klient', tresc: 'pytanie o łazienkę' });
+
+  const wKuchni = await rozmowaOferty(env, kuchnia);
+  assert.equal(wKuchni.length, 1);
+  assert.equal(wKuchni[0].tresc, 'pytanie o kuchnię');
+  assert.equal((await rozmowaOferty(env, lazienka))[0].tresc, 'pytanie o łazienkę');
+});
+
+test('w panelu wszystkie wątki są na karcie klienta, każdy przy swojej wycenie', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const kuchnia = await ofertaZTokenem(env, klientId, TOKEN);
+  const lazienka = await ofertaZTokenem(env, klientId, 'b'.repeat(32));
+  await dopiszWiadomosc(env, { wycenaId: kuchnia, klientId, autor: 'klient', tresc: 'o kuchnię' });
+  await dopiszWiadomosc(env, { wycenaId: lazienka, klientId, autor: 'dawid', tresc: 'o łazienkę' });
+
+  const k = await karta(env, klientId);
+  const wg = new Map(k.wyceny.map((w) => [w.id, w.rozmowa || []]));
+  assert.equal(wg.get(kuchnia).length, 1);
+  assert.equal(wg.get(kuchnia)[0].tresc, 'o kuchnię');
+  assert.equal(wg.get(lazienka)[0].autor, 'dawid');
+  // Wycena klienta (bez linku) wątku nie ma — nie ma gdzie na nią odpisać.
+  const klienta = k.wyceny.find((w) => w.wersja !== 'dawid');
+  assert.deepEqual(klienta.rozmowa, []);
+});
+
+test('limit liczy TYLKO wiadomości klienta — odpowiedzi Dawida go nie zjadają', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'klient', tresc: 'raz' });
+  for (let i = 0; i < 5; i += 1) {
+    await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'dawid', tresc: 'odpowiedź ' + i });
+  }
+
+  const kontekst = await kontekstRozmowy(env, wycenaId);
+  assert.equal(kontekst.odKlienta, 1, 'odpowiedzi Dawida nie mogą zużywać limitu klienta');
+  assert.ok(kontekst.ostatnia, 'brak znacznika czasu ostatniej wiadomości klienta');
+});
+
+test('pusty wątek nie wywraca odczytu', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+  assert.deepEqual(await rozmowaOferty(env, wycenaId), []);
+  assert.deepEqual(await kontekstRozmowy(env, wycenaId), { odKlienta: 0, ostatnia: null });
+  assert.deepEqual(await rozmowaOferty(env, 0), []);
+});
+
+test('strona oferty dostaje wątek razem z wyceną', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'dawid', tresc: 'Dzień dobry!' });
+
+  const w = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(w.wycenaId, wycenaId);
+  assert.equal(w.rozmowa.length, 1);
+  assert.equal(w.rozmowa[0].tresc, 'Dzień dobry!');
+});
+
+test('skasowanie karty zabiera też rozmowy — nic nie zostaje sierotą', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'klient', tresc: 'halo' });
+
+  await skasujKlienta(env, klientId);
+  const zostalo = await env.BAZA.prepare('SELECT COUNT(*) AS ile FROM wiadomosci').bind().first();
+  assert.equal(zostalo.ile, 0, 'wiadomości zostały po skasowanej karcie');
+});
+
+test('nowa wiadomość podbija ruch — klient wraca na wierzch listy', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const wycenaId = await ofertaZTokenem(env, klientId, TOKEN);
+  await env.BAZA.prepare("UPDATE klienci SET ruch = '2020-01-01T00:00:00.000Z' WHERE id = ?")
+    .bind(klientId)
+    .run();
+
+  await dopiszWiadomosc(env, { wycenaId, klientId, autor: 'klient', tresc: 'jeszcze jedno pytanie' });
+
+  const k = await env.BAZA.prepare('SELECT ruch FROM klienci WHERE id = ?').bind(klientId).first();
+  assert.notEqual(k.ruch, '2020-01-01T00:00:00.000Z', 'ruch nie został podbity');
+});
+
+test('wiadomość od Dawida zamraża się w ofercie i wraca do klienta', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, { ...OFERTA, wiadomosc: 'Pomiar mam wolny w czwartek.' }, TOKEN);
+
+  const w = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(w.oferta.wiadomosc, 'Pomiar mam wolny w czwartek.');
 });

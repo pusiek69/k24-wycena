@@ -78,6 +78,8 @@ export function uruchomOferteDawida(root, paczka) {
     korektaWartosc: 0,
     gratisy: new Set(), // nazwy wyzerowanych pozycji
     przekresl: false,
+    // Osobisty dopisek do klienta — idzie do maila i na stronę oferty.
+    wiadomosc: '',
   };
   if (!stan.odcinki.length) stan.odcinki = [{ gl: 60, dl: 300 }];
 
@@ -235,6 +237,9 @@ function zamrozOferte(stan, w) {
     razem,
     korektaOpis,
     przekresl: !!stan.przekresl && razem < przed,
+    // Dopisek zamrażamy razem z ofertą: klient zobaczy dokładnie te słowa,
+    // które Dawid zatwierdził w podglądzie.
+    wiadomosc: String(stan.wiadomosc || '').trim().slice(0, MAKS_WIADOMOSCI),
     stawkaVat: w.stawkaVat ?? 0.08,
     odbiorWlasny: !!w.odbiorWlasny,
     // Rozrys ZAMROŻONY w chwili wysyłki: klient ma zobaczyć dokładnie ten
@@ -427,6 +432,9 @@ function rysuj(box, stan, paczka) {
       /* ── rozrys płyt: narzędzie warsztatowe, nie część oferty ── */
       w.ok ? h('div', { class: 'nav', style: 'margin-top:10px' }, przyciskRozrysu(stan, w, paczka, box)) : null,
 
+      /* ── wiadomość od Dawida: tylko gdy jest do kogo pisać ── */
+      w.ok && !paczka.test ? blokWiadomosci(stan) : null,
+
       /* ── wysyłka (w trybie testowym nie ma komu wysyłać) ── */
       w.ok ? (paczka.test ? notaTestowa() : wysylka(stan, oferta, paczka, box)) : null
     )
@@ -601,6 +609,48 @@ function podgladPozycji(stan, oferta, odswiez) {
   );
 }
 
+/** Ten sam limit co w workerze (worker/rozmowa.js) — licznik ma nie kłamać. */
+const MAKS_WIADOMOSCI = 2000;
+
+/**
+ * WIADOMOŚĆ DO KLIENTA (zlecenie Dawida z 24.08.2026).
+ *
+ * „Chciałbym móc przekazywać wiadomość klientowi wraz z wysłaniem nowej
+ * oferty" — kilka zdań od siebie: co zmienił, czemu ta cena, co dalej.
+ *
+ * Pole NIE przeładowuje ekranu przy każdym znaku (żadnego `odswiez`
+ * w `oninput`) — inaczej kursor skakałby na koniec po każdej literze.
+ * Wartość ląduje w `stan` na bieżąco, a podgląd i tak czyta świeży stan.
+ */
+function blokWiadomosci(stan) {
+  const pole = h('textarea', {
+    class: 'od-wiadomosc',
+    id: 'od-wiadomosc',
+    rows: '4',
+    maxlength: String(MAKS_WIADOMOSCI),
+    placeholder:
+      'Np. Dzień dobry, przygotowałem wycenę na płytę, o której rozmawialiśmy. '
+      + 'Pomiar mam wolny w czwartek — dam znać, gdyby pasowało.',
+  });
+  pole.value = stan.wiadomosc || '';
+  pole.addEventListener('input', () => {
+    stan.wiadomosc = pole.value;
+  });
+
+  return h(
+    'div',
+    { class: 'od-pasek', style: 'margin-top:18px' },
+    h('div', { class: 'q-kicker' }, 'Wiadomość od Ciebie (zobaczy ją klient)'),
+    pole,
+    h(
+      'p',
+      { class: 'form-nota' },
+      'Kilka zdań od siebie — trafią do maila z ofertą i na stronę wyceny, nad kwotę. '
+        + 'Puste pole = oferta bez dopisku. Zobaczysz to w podglądzie przed wysłaniem.'
+    )
+  );
+}
+
 function pasekWlasciciela(stan, oferta, odswiez) {
   return h(
     'div',
@@ -677,9 +727,14 @@ function wysylka(stan, oferta, paczka, box) {
 
   // Przełącznik obniżki mógł się zmienić po ostatnim rysowaniu — zamrażamy
   // dokładnie to, co pójdzie do klienta, i tego samego używa podgląd.
+  // Uwaga: `oferta` została zamrożona przy rysowaniu ekranu, a przełącznik
+  // obniżki i pole wiadomości zmieniają się BEZ przerysowania. Dlatego oba
+  // dobieramy tu na świeżo ze `stan` — inaczej do klienta poszłaby wersja
+  // sprzed ostatniego kliknięcia (a dopisek byłby pusty).
   const swieza = () => ({
     ...oferta,
     przekresl: !!stan.przekresl && oferta.razem < oferta.razemPrzed,
+    wiadomosc: String(stan.wiadomosc || '').trim().slice(0, MAKS_WIADOMOSCI),
   });
 
   przycisk.addEventListener('click', async () => {
@@ -687,8 +742,11 @@ function wysylka(stan, oferta, paczka, box) {
     przycisk.textContent = 'Przygotowuję podgląd…';
     wynik.hidden = true;
     try {
-      const dane = await doWorkera(paczka, swieza(), { podglad: true });
-      pokazPodglad(stan, oferta, paczka, box, dane);
+      // Do podglądu i do wysyłki idzie DOKŁADNIE ten sam obiekt — inaczej
+      // „podgląd" przestaje być podglądem.
+      const doWyslania = swieza();
+      const dane = await doWorkera(paczka, doWyslania, { podglad: true });
+      pokazPodglad(stan, doWyslania, paczka, box, dane);
     } catch (e) {
       przycisk.disabled = false;
       przycisk.textContent = 'Pokaż podgląd →';
@@ -812,10 +870,9 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
     wroc.disabled = true;
     wyslij.textContent = 'Wysyłam…';
     try {
-      const odp = await doWorkera(paczka, {
-        ...oferta,
-        przekresl: !!stan.przekresl && oferta.razem < oferta.razemPrzed,
-      });
+      // `oferta` jest tu już wersją pokazaną w podglądzie — wysyłamy ją
+      // bez zmian, żeby klient dostał to, co Dawid przed chwilą zatwierdził.
+      const odp = await doWorkera(paczka, oferta);
       pokazWyslane(box, odp);
     } catch (e) {
       wyslij.disabled = false;
@@ -856,7 +913,9 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
         'p',
         { class: 'form-nota' },
         'Pod wyceną klient ma jeszcze trzy przyciski: „Pasuje mi", „Cena za wysoka", ' +
-          '„Muszę się zastanowić" — odpowiedź trafia do jego karty w panelu.'
+          '„Muszę się zastanowić" — odpowiedź trafia do jego karty w panelu. ' +
+          'Niżej może też napisać wiadomość — przyjdzie do Ciebie mailem, ' +
+          'a odpiszesz z karty klienta w panelu.'
       ),
 
       h('div', { class: 'nav', style: 'margin-top:18px; flex-wrap:wrap' }, wyslij, wroc, wynik)

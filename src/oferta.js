@@ -12,6 +12,7 @@
 import './style.css';
 import { h } from './app/dom.js';
 import { kartaOferty } from './app/oferta-widok.js';
+import { sekcjaRozmowy } from './app/rozmowa-klienta.js';
 import { API_BASE, wyslijFeedback } from './api.js';
 import { zdarzenie } from './analytics/zdarzenia.js';
 
@@ -47,10 +48,17 @@ function blad(tresc) {
   root.replaceChildren(h('div', { class: 'bramka-ok' }, h('span', { class: 'ptak' }, '☎'), h('span', {}, tresc)));
 }
 
-function widok({ imie, utworzono, oferta: o }) {
+function widok({ imie, utworzono, oferta: o, rozmowa }) {
   // Karta jest wspólna z podglądem w trybie właściciela — patrz
-  // app/oferta-widok.js. Tu dokładamy tylko przyciski feedbacku.
-  return h('div', {}, kartaOferty(o, { imie, utworzono }), feedback());
+  // app/oferta-widok.js. Tu dokładamy przyciski feedbacku i rozmowę.
+  return h(
+    'div',
+    {},
+    kartaOferty(o, { imie, utworzono }),
+    feedback(),
+    // Wątek wisi przy TEJ ofercie — autoryzuje ten sam token, co wycena.
+    sekcjaRozmowy(token, rozmowa || [])
+  );
 }
 
 /* Trzy przyciski — te same co pod wyceną w kalkulatorze; odpowiedź trafia
