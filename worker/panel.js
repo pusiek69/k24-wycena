@@ -454,12 +454,14 @@ border-bottom-right-radius:3px}
 .odpowiedz{margin-top:10px}
 .odpowiedz textarea{width:100%;min-height:64px;background:var(--pole);color:var(--tekst)}
 .nowa-wiad{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;
-background:var(--akcent);color:#fff;font-size:11px;font-weight:bold}
+background:var(--akcent);color:var(--naAkcencie);font-size:11px;font-weight:bold}
 
 :root{--tlo:#f4f4f2;--karta:#fff;--tekst:#17150f;--szary:#6d6a60;--linia:#e2e0d8;
---akcent:#8a6a2f;--zielony:#2f6b3a;--czerwony:#9a3524;--pole:#fff}
+--akcent:#8a6a2f;--zielony:#2f6b3a;--czerwony:#9a3524;--pole:#fff;--naAkcencie:#fff;
+color-scheme:light}
 @media (prefers-color-scheme:dark){:root{--tlo:#15140f;--karta:#1e1c17;--tekst:#f0eee6;
---szary:#a09b8e;--linia:#332f26;--akcent:#c9a24a;--zielony:#7fbf8c;--czerwony:#e08a76;--pole:#26241d}}
+--szary:#a09b8e;--linia:#332f26;--akcent:#c9a24a;--zielony:#7fbf8c;--czerwony:#e08a76;
+--pole:#26241d;--naAkcencie:#17150f;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--tlo);color:var(--tekst);
 font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:3rem}
@@ -507,10 +509,17 @@ border-radius:9px;border:1px solid var(--linia);background:var(--pole);color:inh
 .akcje a.dzwon{background:var(--akcent);border-color:var(--akcent);color:#fff;font-weight:600}
 .szczegoly{margin-top:.7rem;border-top:1px solid var(--linia);padding-top:.7rem}
 label{display:block;font-size:.78rem;color:var(--szary);margin:.55rem 0 .2rem}
+/* Kolor podajemy JAWNIE, nie przez inherit — patrz uwaga przy <option>. */
 select,input,textarea{width:100%;padding:.5rem;border:1px solid var(--linia);border-radius:9px;
-background:var(--pole);color:inherit}
+background:var(--pole);color:var(--tekst)}
+/* <option> stylujemy BEZPOŚREDNIO: rozwinięta lista to widżet systemowy,
+   ktory na Windows rysuje sie na bialym tle. W trybie ciemnym --tekst jest
+   jasny — wychodzilo jasne na bialym (kontrast 1,16) i klient Dawida
+   „nie widzial nic w rozwijanych". */
+option,optgroup{background:var(--pole);color:var(--tekst)}
+input::placeholder,textarea::placeholder{color:var(--szary)}
 textarea{min-height:4.2rem;resize:vertical}
-.btn{background:var(--akcent);color:#fff;border:0;border-radius:9px;padding:.55rem 1rem;
+.btn{background:var(--akcent);color:var(--naAkcencie);border:0;border-radius:9px;padding:.55rem 1rem;
 cursor:pointer;font-weight:600}
 .btn.cichy{background:transparent;color:var(--szary);border:1px solid var(--linia);font-weight:400}
 .log{list-style:none;margin:.5rem 0 0;padding:0;font-size:.88rem}

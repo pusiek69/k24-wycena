@@ -778,7 +778,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .od-siatka .pole label { display: block; font-family: var(--sans); font-size: 11px;
   letter-spacing: .08em; text-transform: uppercase; color: var(--vein); margin-bottom: 4px; }
 .od-siatka select, .od-siatka input, .od-odcinek input {
-  width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-hi);
+  width: 100%; padding: 10px 12px; background: var(--slab); border: 1px solid var(--line-hi);
   border-radius: var(--radius); color: var(--cream); font-family: var(--sans); font-size: 15px;
 }
 .od-odcinek { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
@@ -799,7 +799,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .rozrys-wiersz input[type="text"] { flex: 1 1 160px; min-width: 120px; }
 .rozrys-wiersz input[type="number"] { width: 88px; }
 .rozrys-wiersz input {
-  padding: 8px 10px; background: var(--bg); border: 1px solid var(--line-hi);
+  padding: 8px 10px; background: var(--slab); border: 1px solid var(--line-hi);
   border-radius: var(--radius); color: var(--cream); font-family: var(--sans); font-size: 14px;
 }
 .rozrys-plyta { margin-top: 20px; }
@@ -1341,3 +1341,42 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 }
 .od-wiadomosc::placeholder { color: var(--dim); }
 .od-wiadomosc:focus { outline: none; border-color: var(--line-hi); }
+
+/* ══ KONTROLKI: jawne kolory, zero dziedziczenia (bug od Dawida, 25.08.2026)
+ *
+ * Zgłoszenie: „w rozwijanych też nie widać, bo jest wszystko na biało".
+ *
+ * Przyczyna: strona jest ciemna (--ink/--cream), ale ROZWINIĘTA lista
+ * <select> to widżet systemowy. Nie stylowaliśmy <option> ani jedną
+ * regułą, więc popup rysował się na systemowym BIAŁYM tle, a tekst
+ * dziedziczył kremowy kolor ze strony — kremowe na białym, kontrast 1,06.
+ * Widać to dopiero po kliknięciu w select, dlatego przeszło niezauważone.
+ *
+ * Dwie warstwy obrony:
+ *   1. `color-scheme: dark` — mówi przeglądarce, że to ciemna strona, więc
+ *      widżety systemowe (popupy, paski przewijania, kalendarze) rysuje
+ *      w ciemnym wariancie SAMA, także tam, gdzie CSS nie sięga;
+ *   2. jawne color+background na każdej kontrolce ORAZ na <option> —
+ *      bo na to pierwsze nie ma co liczyć w każdej przeglądarce.
+ */
+:root { color-scheme: dark; }
+
+select,
+input,
+textarea {
+  background: var(--slab);
+  color: var(--cream);
+}
+/* <option> stylujemy BEZPOŚREDNIO: dziedziczenie z <select> nie działa
+   w natywnym popupie na Windows — to właśnie tam robiło się biało. */
+option,
+optgroup {
+  background: var(--slab);
+  color: var(--cream);
+}
+input::placeholder,
+textarea::placeholder { color: var(--dim); }
+
+/* Bezpieczna wartość domyślna dla przycisków bez własnej klasy.
+   Klasy (.btn, .feedback-btn, .choice…) mają wyższą wagę i wygrywają. */
+button { color: var(--cream); background: transparent; }
