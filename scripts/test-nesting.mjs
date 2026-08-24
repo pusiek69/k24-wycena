@@ -193,3 +193,47 @@ test('wynik jest powtarzalny — te same dane, ten sam rozrys', () => {
   const b = rozrysuj(dane, PLYTA, BEZ_STRAT);
   assert.deepEqual(a.plyty, b.plyty);
 });
+
+/* ═════════════ PODPIS WYMIARÓW — unieważnianie zapisanego rozrysu ═════════
+ *
+ * Bug od Dawida (25.08.2026): „jak zmienię wymiar płyty albo dodam element,
+ * to później w rozrysie tego nie widać". `stan.rozrys` powstawał raz i nigdy
+ * się nie odświeżał — po zmianie długości blatu w wycenie rozrys (i oferta
+ * wysyłana klientowi!) pokazywały starą migawkę.
+ */
+import { podpisWyceny } from '../src/app/rozrys.js';
+
+test('zmiana długości blatu zmienia podpis — rozrys musi się przeliczyć', () => {
+  const przed = podpisWyceny([{ gl: 60, dl: 300 }]);
+  const po = podpisWyceny([{ gl: 60, dl: 180 }]);
+  assert.notEqual(przed, po, 'skrócenie blatu nie unieważniło rozrysu');
+});
+
+test('zmiana głębokości też unieważnia', () => {
+  assert.notEqual(podpisWyceny([{ gl: 60, dl: 300 }]), podpisWyceny([{ gl: 90, dl: 300 }]));
+});
+
+test('dołożenie odcinka unieważnia', () => {
+  assert.notEqual(
+    podpisWyceny([{ gl: 60, dl: 300 }]),
+    podpisWyceny([{ gl: 60, dl: 300 }, { gl: 60, dl: 120 }])
+  );
+});
+
+test('te same wymiary = ten sam podpis (ręczne zmiany Dawida przeżywają)', () => {
+  assert.equal(podpisWyceny([{ gl: 60, dl: 300 }]), podpisWyceny([{ gl: 60, dl: 300 }]));
+  // Liczba czy tekst — bez znaczenia, wymiar jest ten sam.
+  assert.equal(podpisWyceny([{ gl: '60', dl: '300' }]), podpisWyceny([{ gl: 60, dl: 300 }]));
+});
+
+test('kolejność odcinków ma znaczenie — inny układ to inny rozrys', () => {
+  assert.notEqual(
+    podpisWyceny([{ gl: 60, dl: 300 }, { gl: 60, dl: 120 }]),
+    podpisWyceny([{ gl: 60, dl: 120 }, { gl: 60, dl: 300 }])
+  );
+});
+
+test('brak odcinków nie wywraca podpisu', () => {
+  assert.equal(podpisWyceny([]), podpisWyceny(undefined));
+  assert.equal(typeof podpisWyceny(null), 'string');
+});

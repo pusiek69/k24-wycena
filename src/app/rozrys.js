@@ -25,19 +25,78 @@ import { svgPlyty, tytulPlyty, mm, naM2 } from './rozrys-svg.js';
  * @param {Function} onZmiana  wywoływane po edycji elementów/opcji
  */
 export function widokRozrysu(kontekst, onZmiana) {
-  const { elementy, plyta, rotacja, rzaz, margines, plytZWyceny, opisMaterialu } = kontekst;
-  const wynik = rozrysuj(elementy, plyta, { rotacja, rzaz, margines });
+  /*
+   * PRZERYSOWUJEMY WYNIKI, NIE CAŁY EKRAN (bug od Dawida, 25.08.2026).
+   *
+   * Wcześniej każda zmiana pola przebudowywała cały widok od zera. Skutek
+   * był taki, że edycja „nie działała": <input> zgłasza `change` dopiero
+   * przy utracie ogniska, więc gdy Dawid wpisał wymiar i OD RAZU kliknął
+   * „+ dodaj element", kolejność była taka:
+   *     mousedown → blur pola → change → przebudowa DOM → przycisku już
+   *     nie ma → kliknięcie nie dochodzi.
+   * Raz ginęło kliknięcie, raz wpisana wartość — zależnie od tego, co
+   * zdążyło się wykonać pierwsze.
+   *
+   * Teraz formularz zostaje na miejscu (ognisko i wpisywana wartość też),
+   * a odpowiadają na zmianę tylko: statystyki, ostrzeżenia, rysunki i tabela.
+   * Wiersze elementów przerysowujemy WYŁĄCZNIE przy zmianie strukturalnej
+   * (dodanie/usunięcie), bo tylko wtedy jest ich inna liczba.
+   */
+  let k = { ...kontekst };
+
+  const gora = h('div', { class: 'rozrys-gora' });
+  const wiersze = h('div', { class: 'rozrys-elementy' });
+  const dol = h('div', { class: 'rozrys-dol' });
+
+  const zmiana = (co, { struktura = false } = {}) => {
+    k = { ...k, ...co };
+    onZmiana(co);
+    if (struktura) rysujWiersze();
+    rysujWyniki();
+  };
+
+  function rysujWyniki() {
+    const wynik = rozrysuj(k.elementy, k.plyta, {
+      rotacja: k.rotacja, rzaz: k.rzaz, margines: k.margines,
+    });
+    gora.replaceChildren(
+      naglowek(wynik, k.plyta, k.opisMaterialu),
+      ostrzezenia(wynik, k.plytZWyceny)
+    );
+    dol.replaceChildren(
+      ...wynik.plyty.map((p) =>
+        h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, k.opisMaterialu), svgPlyty(p))
+      ),
+      tabelaElementow(k.elementy, wynik)
+    );
+  }
+
+  function rysujWiersze() {
+    wiersze.replaceChildren(...wierszeElementow(k, zmiana));
+  }
+
+  rysujWiersze();
+  rysujWyniki();
 
   return h(
     'div',
     { class: 'rozrys' },
-    naglowek(wynik, plyta, opisMaterialu),
-    ostrzezenia(wynik, plytZWyceny),
-    ustawieniaCiecia(kontekst, onZmiana),
-    formularzElementow(kontekst, onZmiana),
-    ...wynik.plyty.map((p) => h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, opisMaterialu), svgPlyty(p))),
-    tabelaElementow(elementy, wynik)
+    gora,
+    ustawieniaCiecia(k, zmiana),
+    h('div', { class: 'q-kicker' }, 'Elementy do rozrysu (mm)'),
+    wiersze,
+    dol
   );
+}
+
+/**
+ * Podpis wymiarów blatu z wyceny.
+ *
+ * Po nim poznajemy, czy zapisany rozrys wciąż pasuje do wyceny — patrz
+ * `zapewnijRozrys` w app/oferta-dawida.js.
+ */
+export function podpisWyceny(odcinki) {
+  return JSON.stringify((odcinki || []).map((o) => [Number(o.gl) || 0, Number(o.dl) || 0]));
 }
 
 /* ───────────────────────────────────────────────────── statystyki */
@@ -135,16 +194,20 @@ function ustawieniaCiecia(k, onZmiana) {
   );
 }
 
-function formularzElementow(k, onZmiana) {
+/**
+ * Wiersze elementów. Zwraca TABLICĘ wierszy (nie kontener), żeby widok
+ * mógł je podmieniać samodzielnie przy dodaniu/usunięciu elementu.
+ *
+ * Zmiana wartości w polu NIE jest zmianą strukturalną — wiersze zostają
+ * na miejscu, więc ognisko nie ucieka w środku pisania.
+ */
+function wierszeElementow(k, zmiana) {
   const zmien = (i, pole, wartosc) => {
     const kopia = k.elementy.map((el, j) => (i === j ? { ...el, [pole]: wartosc } : el));
-    onZmiana({ elementy: kopia });
+    zmiana({ elementy: kopia });
   };
 
-  return h(
-    'div',
-    { class: 'rozrys-elementy' },
-    h('div', { class: 'q-kicker' }, 'Elementy do rozrysu (mm)'),
+  return [
     ...k.elementy.map((el, i) =>
       h(
         'div',
@@ -170,7 +233,8 @@ function formularzElementow(k, onZmiana) {
           'button',
           {
             class: 'link-btn', type: 'button', title: 'Usuń element',
-            onclick: () => onZmiana({ elementy: k.elementy.filter((_, j) => j !== i) }),
+            onclick: () =>
+              zmiana({ elementy: k.elementy.filter((_, j) => j !== i) }, { struktura: true }),
           },
           '✕'
         )
@@ -181,13 +245,14 @@ function formularzElementow(k, onZmiana) {
       {
         class: 'link-btn', type: 'button',
         onclick: () =>
-          onZmiana({
-            elementy: [...k.elementy, { nazwa: 'Nowy element', szer: 1000, gl: 600, ilosc: 1 }],
-          }),
+          zmiana(
+            { elementy: [...k.elementy, { nazwa: 'Nowy element', szer: 1000, gl: 600, ilosc: 1 }] },
+            { struktura: true }
+          ),
       },
       '+ dodaj element'
-    )
-  );
+    ),
+  ];
 }
 
 const polePrzy = (etykieta, kontrolka) =>

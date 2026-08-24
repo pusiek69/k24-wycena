@@ -23,7 +23,7 @@ import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
-import { widokRozrysu, elementyZOdcinkow } from './rozrys.js';
+import { widokRozrysu, elementyZOdcinkow, podpisWyceny } from './rozrys.js';
 import { rozrysuj } from '../engine/nesting.js';
 import { DOMYSLNE } from './ustawienia.js';
 
@@ -296,12 +296,10 @@ const opisOdcinkow = (odcinki) => odcinki.map((o) => `${o.gl}×${o.dl}`).join(' 
  */
 function zamrozRozrys(stan, w) {
   try {
-    const ustawienia = stan.rozrys || {
-      elementy: elementyZOdcinkow(stan.odcinki),
-      rzaz: stan.stawki?.rzazMm ?? 3,
-      margines: stan.stawki?.marginesPlytyMm ?? 10,
-      rotacja: stan.firma !== NATURALNY,
-    };
+    // Ta sama gwarancja co przy podglądzie: gdy Dawid zmienił wymiary
+    // w wycenie po otwarciu rozrysu, klient NIE może dostać starej migawki.
+    zapewnijRozrys(stan);
+    const ustawienia = stan.rozrys;
     const plyta = plytaDoRozrysu(stan, w);
     const wynik = rozrysuj(ustawienia.elementy, plyta, {
       rzaz: ustawienia.rzaz,
@@ -776,49 +774,78 @@ function przyciskRozrysu(stan, w, paczka, box) {
   return btn;
 }
 
+/**
+ * ROZRYS ZGODNY Z WYCENĄ (bug od Dawida, 25.08.2026).
+ *
+ * „Jak zmienię wymiar płyty albo dodam element, to później w rozrysie tego
+ * nie widać" — bo `stan.rozrys` powstawał RAZ i już nigdy się nie
+ * odświeżał. Dawid zmieniał długość blatu w wycenie, wracał do rozrysu
+ * i oglądał starą migawkę. Co gorsza, ta sama stara migawka poszłaby
+ * do klienta — `zamrozRozrys` też z niej korzysta.
+ *
+ * Trzymamy więc przy rozrysie PODPIS wymiarów, z których powstał. Gdy
+ * wycena się zmieni, elementy liczymy od nowa; ustawienia cięcia (rzaz,
+ * margines, usłojenie) zostają, bo to preferencje warsztatu, a nie
+ * pochodna wymiarów.
+ *
+ * Zwraca `true`, gdy elementy zostały przeliczone — widok mówi o tym
+ * wprost, żeby ręczne zmiany nie znikały bez słowa.
+ */
+function zapewnijRozrys(stan) {
+  const podpis = podpisWyceny(stan.odcinki);
+  if (stan.rozrys && stan.rozrys.zrodlo === podpis) return false;
+
+  const poprzedni = stan.rozrys;
+  stan.rozrys = {
+    elementy: elementyZOdcinkow(stan.odcinki),
+    rzaz: poprzedni?.rzaz ?? stan.stawki?.rzazMm ?? DOMYSLNE.rzazMm,
+    margines: poprzedni?.margines ?? stan.stawki?.marginesPlytyMm ?? DOMYSLNE.marginesPlytyMm,
+    // Kamień naturalny domyślnie BEZ obrotu — rysunek musi biec zgodnie.
+    rotacja: poprzedni?.rotacja ?? stan.firma !== NATURALNY,
+    zrodlo: podpis,
+  };
+  return !!poprzedni;
+}
+
 function pokazRozrys(stan, w, paczka, box) {
-  if (!stan.rozrys) {
-    stan.rozrys = {
-      elementy: elementyZOdcinkow(stan.odcinki),
-      rzaz: stan.stawki?.rzazMm ?? DOMYSLNE.rzazMm,
-      margines: stan.stawki?.marginesPlytyMm ?? DOMYSLNE.marginesPlytyMm,
-      // Kamień naturalny domyślnie BEZ obrotu — rysunek musi biec zgodnie.
-      rotacja: stan.firma !== NATURALNY,
-    };
-  }
+  const przeliczono = zapewnijRozrys(stan);
 
-  const rysuj2 = () => {
-    const plyta = plytaDoRozrysu(stan, w);
-    const widok = widokRozrysu(
-      {
-        ...stan.rozrys,
-        plyta,
-        plytZWyceny: w.pak?.plytyPelne ?? 0,
-        opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
-      },
-      (zmiana) => {
-        stan.rozrys = { ...stan.rozrys, ...zmiana };
-        rysuj2();
-      }
-    );
+  const widok = widokRozrysu(
+    {
+      ...stan.rozrys,
+      plyta: plytaDoRozrysu(stan, w),
+      plytZWyceny: w.pak?.plytyPelne ?? 0,
+      opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
+    },
+    // Sam widok dba o przerysowanie swoich wyników — tutaj tylko zapisujemy
+    // zmianę w stanie, żeby przetrwała powrót do wyceny i wysyłkę.
+    (zmiana) => {
+      stan.rozrys = { ...stan.rozrys, ...zmiana };
+    }
+  );
 
-    box.replaceChildren(
+  box.replaceChildren(
+    h(
+      'div',
+      { class: 'karta-wyceny' },
+      przeliczono
+        ? h(
+            'div',
+            { class: 'info' },
+            'Wymiary blatu w wycenie się zmieniły, więc elementy zostały policzone od nowa. ' +
+              'Ustawienia cięcia zostały bez zmian.'
+          )
+        : null,
+      widok,
       h(
         'div',
-        { class: 'karta-wyceny' },
-        widok,
-        h(
-          'div',
-          { class: 'nav rozrys-nav', style: 'margin-top:18px; flex-wrap:wrap' },
-          h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Drukuj / zapisz PDF'),
-          h('button', { class: 'btn cichy', type: 'button', onclick: () => rysuj(box, stan, paczka) }, '← Wróć do wyceny')
-        )
+        { class: 'nav rozrys-nav', style: 'margin-top:18px; flex-wrap:wrap' },
+        h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Drukuj / zapisz PDF'),
+        h('button', { class: 'btn cichy', type: 'button', onclick: () => rysuj(box, stan, paczka) }, '← Wróć do wyceny')
       )
-    );
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  rysuj2();
+    )
+  );
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**
