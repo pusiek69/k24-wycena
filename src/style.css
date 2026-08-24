@@ -823,6 +823,10 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   .rozrys-plyta { break-inside: avoid; page-break-inside: avoid; }
 }
 
+/* Rozrys w ofercie klienta — sekcja pod rozbiciem ceny. */
+.oferta-rozrys { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line-hi); }
+.oferta-rozrys .rozrys-staty { margin: 12px 0 6px; }
+
 /* Podgląd maila przed wysyłką (tryb właściciela). */
 .podglad-mail {
   width: 100%; height: 420px; border: 1px solid var(--line-hi);

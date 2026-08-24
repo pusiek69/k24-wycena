@@ -21,6 +21,34 @@ export const TEMAT_OFERTY = 'Wycena przygotowana przez Dawida Ząbka — Kamieni
 const zl = (n) =>
   String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' zł';
 
+/**
+ * ROZRYS W MAILU — zajawka, nie rysunek.
+ *
+ * SVG w mailu to loteria: Gmail wycina go w całości, Outlook renderuje
+ * po swojemu. Zamiast wysyłać obrazek, który u połowy klientów będzie
+ * pustą ramką, mówimy WPROST, co czeka pod linkiem — i podajemy liczby,
+ * które tłumaczą cenę materiału (ile płyt, ile z nich wchodzi w blat).
+ */
+function rozrysZajawka(o) {
+  const r = o?.rozrys;
+  const s = r && r.statystyki;
+  if (!s || !(s.plyt > 0)) return '';
+
+  const plyt = s.plyt === 1 ? '1 płyta' : `${s.plyt} płyty`;
+  return `<div style="margin:0 0 18px;padding:14px 16px;background:#f7f5f1;border:1px solid #e4e0d6;border-radius:8px">
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578;margin-bottom:6px">Rozrys płyt</div>
+      <p style="margin:0;font-size:14px;line-height:1.55;color:#2b2823">
+        Pod linkiem poniżej zobaczą Państwo rysunek: jak elementy blatu układają się na płycie kamienia.
+        Ten blat wymaga <b>${plyt}</b>; powierzchnia blatu to ${liczbaPl(s.elementyM2)} m² z ${liczbaPl(s.plytM2)} m² płyt,
+        co daje ${liczbaPl(s.wykorzystanieProc, 1)}% wykorzystania — reszta to nieunikniony odpad przy cięciu.
+      </p>
+    </div>`;
+}
+
+/** Liczba po polsku, z przecinkiem — bez zależności od ustawień środowiska. */
+const liczbaPl = (n, miejsc = 2) =>
+  (Math.round((Number(n) || 0) * 10 ** miejsc) / 10 ** miejsc).toString().replace('.', ',');
+
 /** Mail z ofertą — spójny z mailem wyceny, ale podpisany osobiście. */
 export function mailOferty(imie, o, link) {
   const kwota = zl(o.razem);
@@ -41,6 +69,7 @@ export function mailOferty(imie, o, link) {
     <p style="margin:0 0 6px;font-size:15px">Kwota całkowita brutto:</p>
     <p style="margin:0 0 18px;font-size:28px;font-weight:bold">${przekreslona}${kwota}</p>
     ${gratisy ? `<ul style="margin:0 0 18px;padding-left:20px;font-size:14px">${gratisy}</ul>` : ''}
+    ${rozrysZajawka(o)}
     <p style="margin:0 0 22px"><a href="${link}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Zobacz pełne rozbicie wyceny →</a></p>
     <p style="margin:0 0 6px;font-size:13px;color:#6d6a60">Wycena przygotowana indywidualnie, ważna 30 dni.</p>
     <p style="margin:0;font-size:13px;color:#6d6a60">Pytania? Proszę śmiało dzwonić: <a href="tel:+48796991128" style="color:#8a6a2f">796 991 128</a> (pon.–pt. 8:00–18:00) albo odpisać na tę wiadomość.</p>

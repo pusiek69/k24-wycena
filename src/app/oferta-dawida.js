@@ -24,6 +24,7 @@ import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
 import { widokRozrysu, elementyZOdcinkow } from './rozrys.js';
+import { rozrysuj } from '../engine/nesting.js';
 import { DOMYSLNE } from './ustawienia.js';
 
 
@@ -236,6 +237,10 @@ function zamrozOferte(stan, w) {
     przekresl: !!stan.przekresl && razem < przed,
     stawkaVat: w.stawkaVat ?? 0.08,
     odbiorWlasny: !!w.odbiorWlasny,
+    // Rozrys ZAMROŻONY w chwili wysyłki: klient ma zobaczyć dokładnie ten
+    // układ, który zatwierdził Dawid — razem z jego ręcznymi zmianami
+    // elementów. Strona oferty niczego nie przelicza.
+    rozrys: zamrozRozrys(stan, w),
     // Noty silnika — m.in. „N płyt z tego samego bloku, spójny wzór"
     // i zastrzeżenia o dostępności. Klient widzi je też na stronie oferty.
     noty: w.ostrzezenia || [],
@@ -273,6 +278,43 @@ function zamrozOferte(stan, w) {
 }
 
 const opisOdcinkow = (odcinki) => odcinki.map((o) => `${o.gl}×${o.dl}`).join(' + ') + ' cm';
+
+/**
+ * Zdjęcie rozrysu do oferty.
+ *
+ * Bierze stan z ekranu „Rozrys płyt", jeśli Dawid go otwierał (łącznie
+ * z dodanymi fartuchami i wyspami), a jeśli nie — liczy domyślny układ
+ * z odcinków wyceny, żeby każda wysłana oferta miała obrazek.
+ *
+ * Do klienta idą wyłącznie ułożone płyty i statystyki. Rzeczy warsztatowe
+ * (parametry cięcia, elementy, które się nie zmieściły) zostają w edytorze.
+ */
+function zamrozRozrys(stan, w) {
+  try {
+    const ustawienia = stan.rozrys || {
+      elementy: elementyZOdcinkow(stan.odcinki),
+      rzaz: stan.stawki?.rzazMm ?? 3,
+      margines: stan.stawki?.marginesPlytyMm ?? 10,
+      rotacja: stan.firma !== NATURALNY,
+    };
+    const plyta = plytaDoRozrysu(stan, w);
+    const wynik = rozrysuj(ustawienia.elementy, plyta, {
+      rzaz: ustawienia.rzaz,
+      margines: ustawienia.margines,
+      rotacja: ustawienia.rotacja,
+    });
+    if (!wynik.plyty.length) return null;
+
+    return {
+      plyty: wynik.plyty,
+      statystyki: wynik.statystyki,
+      opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
+    };
+  } catch {
+    // Rozrys to dodatek do oferty — nie ma prawa zablokować wysyłki.
+    return null;
+  }
+}
 
 /* ──────────────────────────────────────────────────────────── widok */
 

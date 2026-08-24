@@ -497,7 +497,7 @@ export async function zapiszOferte(env, klientId, oferta, token) {
       '',
       String(oferta.opis || '').slice(0, 500),
       String(oferta.kategoria || ''),
-      JSON.stringify(oferta).slice(0, 16000),
+      jsonOferty(oferta),
       token
     )
     .run();
@@ -530,6 +530,26 @@ export async function zapiszOferte(env, klientId, oferta, token) {
   );
 
   return token;
+}
+
+/**
+ * Oferta do zapisu w kolumnie `dane`.
+ *
+ * Wcześniej stało tu `slice(0, 16000)` — i to była pułapka: ucięty JSON
+ * przestaje się parsować, więc strona oferty pokazałaby klientowi pustkę
+ * zamiast wyceny. Od kiedy oferta niesie też rozrys płyt (współrzędne
+ * każdego elementu), limit realnie można dobić.
+ *
+ * Dlatego: próbujemy zapisać całość, a gdy urwałoby się pole — odcinamy
+ * NAJPIERW rozrys (dodatek), zostawiając wycenę w całości.
+ */
+const LIMIT_OFERTY = 200000;
+
+function jsonOferty(oferta) {
+  const pelna = JSON.stringify(oferta);
+  if (pelna.length <= LIMIT_OFERTY) return pelna;
+  const bezRozrysu = JSON.stringify({ ...oferta, rozrys: null });
+  return bezRozrysu.length <= LIMIT_OFERTY ? bezRozrysu : JSON.stringify({ ...oferta, rozrys: null, pozycje: [] });
 }
 
 /**

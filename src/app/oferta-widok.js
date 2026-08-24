@@ -12,7 +12,8 @@
  * Ceny jednostkowe są już wycięte wcześniej (app/oferta-detal.js), więc
  * tutaj tylko wyświetlamy to, co siedzi w zamrożonej ofercie.
  */
-import { h, zl } from './dom.js';
+import { h, zl, liczba } from './dom.js';
+import { svgPlyty, tytulPlyty } from './rozrys-svg.js';
 import {
   rozbicieDlaKlienta,
   opisPrac,
@@ -82,6 +83,10 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
           : 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze.')
     ),
 
+    // Rozrys płyt — klient widzi, jak jego blat układa się na płytach.
+    // To najlepsze wytłumaczenie, czemu płacimy za CAŁE płyty.
+    sekcjaRozrysu(o.rozrys),
+
     h(
       'div',
       { class: 'nav' },
@@ -89,3 +94,47 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
     )
   );
 }
+
+/**
+ * ROZRYS DLA KLIENTA.
+ *
+ * Rysunek jest ZAMROŻONY w chwili wysyłki — pokazujemy dokładnie ten
+ * układ, który zatwierdził Dawid, także po jego ręcznych zmianach
+ * elementów. Nic się tu nie przelicza przy otwarciu strony.
+ *
+ * Wersja kliencka celowo bez rzeczy warsztatowych: bez parametrów cięcia,
+ * bez formularza elementów i bez porównania z liczbą płyt z wyceny
+ * (to informacja dla Dawida, nie dla klienta). Zostaje procent
+ * wykorzystania i odpad — bo one właśnie tłumaczą cenę materiału.
+ */
+export function sekcjaRozrysu(rozrys) {
+  const plyty = rozrys?.plyty || [];
+  if (!plyty.length) return null;
+  const s = rozrys.statystyki || {};
+
+  return h(
+    'div',
+    { class: 'oferta-rozrys' },
+    h('div', { class: 'q-kicker' }, 'Rozrys płyt — tak układa się Państwa blat'),
+    h(
+      'p',
+      { class: 'q-hint' },
+      'Kamień kupujemy w całych płytach i z jednej płyty wycinamy elementy blatu. ' +
+        'Poniżej widać, jak Państwa blat rozkłada się na materiale — i ile z płyty ' +
+        'zostaje jako nieunikniony odpad.'
+    ),
+    h(
+      'div',
+      { class: 'rozrys-staty' },
+      staty('Płyty', s.plyt ?? plyty.length),
+      staty('Powierzchnia płyt', `${liczba(s.plytM2 ?? 0, 2)} m²`),
+      staty('Powierzchnia blatu', `${liczba(s.elementyM2 ?? 0, 2)} m²`),
+      staty('Odpad', `${liczba(s.odpadM2 ?? 0, 2)} m²`),
+      staty('Wykorzystanie płyty', `${liczba(s.wykorzystanieProc ?? 0, 1)}%`)
+    ),
+    ...plyty.map((p) => h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, rozrys.opisMaterialu), svgPlyty(p)))
+  );
+}
+
+const staty = (etykieta, wartosc) =>
+  h('div', { class: 'rozrys-stat' }, h('span', {}, etykieta), h('b', {}, String(wartosc)));
