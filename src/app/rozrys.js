@@ -72,7 +72,7 @@ export function widokRozrysu(kontekst, onZmiana) {
   }
 
   function rysujWiersze() {
-    wiersze.replaceChildren(...wierszeElementow(k, zmiana));
+    wiersze.replaceChildren(...wierszeElementow(() => k, zmiana));
   }
 
   rysujWiersze();
@@ -200,15 +200,20 @@ function ustawieniaCiecia(k, onZmiana) {
  *
  * Zmiana wartości w polu NIE jest zmianą strukturalną — wiersze zostają
  * na miejscu, więc ognisko nie ucieka w środku pisania.
+ *
+ * UWAGA: bierzemy `dajK` (getter), a nie gotowy stan. Wiersze żyją dłużej
+ * niż jedno przeliczenie, więc domknięcie na kopii stanu z chwili budowy
+ * cofałoby późniejsze zmiany: wpisany wymiar znikał, gdy zaraz po nim
+ * kliknąło się „+ dodaj element" (lista składała się ze starych wartości).
  */
-function wierszeElementow(k, zmiana) {
+function wierszeElementow(dajK, zmiana) {
   const zmien = (i, pole, wartosc) => {
-    const kopia = k.elementy.map((el, j) => (i === j ? { ...el, [pole]: wartosc } : el));
+    const kopia = dajK().elementy.map((el, j) => (i === j ? { ...el, [pole]: wartosc } : el));
     zmiana({ elementy: kopia });
   };
 
   return [
-    ...k.elementy.map((el, i) =>
+    ...dajK().elementy.map((el, i) =>
       h(
         'div',
         { class: 'rozrys-wiersz' },
@@ -234,7 +239,7 @@ function wierszeElementow(k, zmiana) {
           {
             class: 'link-btn', type: 'button', title: 'Usuń element',
             onclick: () =>
-              zmiana({ elementy: k.elementy.filter((_, j) => j !== i) }, { struktura: true }),
+              zmiana({ elementy: dajK().elementy.filter((_, j) => j !== i) }, { struktura: true }),
           },
           '✕'
         )
@@ -246,7 +251,7 @@ function wierszeElementow(k, zmiana) {
         class: 'link-btn', type: 'button',
         onclick: () =>
           zmiana(
-            { elementy: [...k.elementy, { nazwa: 'Nowy element', szer: 1000, gl: 600, ilosc: 1 }] },
+            { elementy: [...dajK().elementy, { nazwa: 'Nowy element', szer: 1000, gl: 600, ilosc: 1 }] },
             { struktura: true }
           ),
       },
