@@ -16,6 +16,7 @@
     "worker": "node scripts/build-worker.mjs",
     "checklist": "node scripts/checklist.mjs",
     "cennik:dodaj": "node scripts/cennik-serwer.mjs",
+    "pretest": "node scripts/build-worker.mjs",
     "test": "node --test scripts/test-*.mjs",
     "galeria": "node scripts/galeria.mjs",
     "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz",

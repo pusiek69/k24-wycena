@@ -348,7 +348,7 @@ async function obsluzLead(request, env, cors) {
   const linkPlyty = /^https:\/\/(www\.)?interstone\.pl\//.test(String(d.linkPlyty || ''))
     ? String(d.linkPlyty).slice(0, 400)
     : '';
-  const nadawca = nadawca(env);
+  const odKogo = nadawca(env);
   const doFirmy = doDawida(env);
 
   const zalaczniki = [];
@@ -364,7 +364,7 @@ async function obsluzLead(request, env, cors) {
 
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
-    from: nadawca,
+    from: odKogo,
     to: [doFirmy],
     reply_to: email,
     subject: tematLeada(klient, szczegoly, wycena),
@@ -375,7 +375,7 @@ async function obsluzLead(request, env, cors) {
 
   // 2. wycena do klienta
   const doKlientaOdp = await resend(env, {
-    from: nadawca,
+    from: odKogo,
     to: [email],
     reply_to: doFirmy,
     subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
@@ -570,7 +570,7 @@ async function obsluzOfertaNapisz(request, env, cors) {
     // `podglad: true` — napisanie wiadomości to nie jest „klient obejrzał
     // ofertę"; licznik otwarć ma zostać uczciwy.
     const w = await ofertaPoTokenie(env, String(d.token), { podglad: true });
-    if (!w?.wycenaId) return json({ ok: false, powod: 'Nie znaleźliono tej wyceny.' }, 404, cors);
+    if (!w?.wycenaId) return json({ ok: false, powod: 'Nie znaleźliśmy tej wyceny.' }, 404, cors);
 
     const limity = await kontekstRozmowy(env, w.wycenaId);
     const sprawdzenie = sprawdzWiadomosc(d.tresc, { pulapka: d.pulapka, ...limity });
