@@ -909,13 +909,6 @@ function podsumowanieDlaKlienta(s) {
   const uslugi = s.pozycje.filter((p) => p.grupa === 'usługi');
   const suma = (lista) => lista.reduce((a, p) => a + (Number(p.brutto) || 0), 0);
 
-  // „7,8 m.b. × 350 zł" → „7,8 m.b." — ilość zostaje, stawka znika.
-  const bezStawki = (p) => {
-    if (!p.detal) return esc(p.nazwa);
-    const ilosc = p.detal.includes('×') ? p.detal.split('×')[0].trim() : p.detal.trim();
-    return ilosc ? `${esc(p.nazwa)} — ${esc(ilosc)}` : esc(p.nazwa);
-  };
-
   const wiersz = (tytul, opis, kwota) => `
     <tr>
       <td style="padding:12px 0;border-bottom:1px solid rgba(201,168,106,.15)">
@@ -932,19 +925,23 @@ function podsumowanieDlaKlienta(s) {
     .map((p) => `${esc(p.nazwa)}${p.detal ? `<br><span style="color:#8c8474;font-size:13px">${esc(p.detal)}</span>` : ''}`)
     .join('<br>');
 
-  const listaUslug = uslugi.length
-    ? `<div style="color:#8c8474;font-size:13px;margin-bottom:6px">W tej cenie:</div>
-       <ul style="margin:0;padding-left:18px">${uslugi.map((p) => `<li style="margin:3px 0">${bezStawki(p)}</li>`).join('')}</ul>`
-    : '';
+  /*
+   * PRACE KAMIENIARSKIE — jedna kwota, bez wyliczania czynności.
+   *
+   * Do 21.08.2026 stała tu lista „w tej cenie" z pomiarem Prolinerem,
+   * wycięciami i montażem. Klient czytał ją jak menu do skreślania
+   * („a bez pomiaru ile?"), dlatego Dawid kazał pokazywać wyłącznie cenę
+   * materiału, cenę prac i sumę. Pełne rozbicie ze stawkami zostaje
+   * w mailu FIRMOWYM — tam jest potrzebne.
+   */
+  const opisPrac = s.odbiorWlasny
+    ? 'Docięcie, obróbka krawędzi, wycięcia i przygotowanie do odbioru.'
+    : 'Docięcie, obróbka krawędzi, wycięcia, transport i montaż u klienta.';
 
   return `
     <table style="width:100%;border-collapse:collapse;margin:18px 0 0">
-      ${material.length ? wiersz('Płyty / materiał', opisMaterialu, zl(suma(material))) : ''}
-      ${
-        uslugi.length
-          ? wiersz(s.odbiorWlasny ? 'Produkcja (odbiór własny)' : 'Produkcja i montaż', listaUslug, zl(suma(uslugi)))
-          : ''
-      }
+      ${material.length ? wiersz('Materiał', opisMaterialu, zl(suma(material))) : ''}
+      ${uslugi.length ? wiersz('Prace kamieniarskie', opisPrac, zl(suma(uslugi))) : ''}
     </table>
     ${
       s.odbiorWlasny

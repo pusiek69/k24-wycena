@@ -1,4 +1,10 @@
 import { h, zl, liczba } from './dom.js';
+import {
+  rozbicieDlaKlienta,
+  opisPrac,
+  ETYKIETA_MATERIALU,
+  ETYKIETA_PRAC,
+} from './pozycje-klienta.js';
 import { opisPlyt } from '../engine/pakowanie.js';
 import {
   szukajTanszych,
@@ -413,63 +419,54 @@ function naglowek(w) {
 function blokMaterialu(w) {
   const pozycje = w.pozycje.filter((p) => p.grupa === 'materiał');
   if (!pozycje.length) return null;
-  const suma = pozycje.reduce((a, p) => a + p.brutto, 0);
-  const doUstalenia = pozycje.some((p) => p.materialDoUstalenia);
+  const r = rozbicieDlaKlienta(w.pozycje, { odbiorWlasny: w.odbiorWlasny });
 
   return h(
     'div',
     { class: 'blok' },
-    h('div', { class: 'blok-tytul' }, '1 · Płyty / materiał', opisPlyty(w)),
+    h('div', { class: 'blok-tytul' }, '1 · ' + ETYKIETA_MATERIALU, opisPlyty(w)),
     h(
       'div',
       { class: 'blok-kwota' },
-      h(
-        'div',
-        { class: 'blok-opis' },
-        pozycje.map((p) => h('div', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null))
-      ),
-      h('div', { class: 'blok-suma' }, doUstalenia ? 'do ustalenia' : zl(suma))
+      h('div', { class: 'blok-opis' }, h('div', {}, pozycje[0].nazwa, r.materialOpis ? h('small', {}, r.materialOpis) : null)),
+      h('div', { class: 'blok-suma' }, r.doUstalenia ? 'do ustalenia' : zl(r.material))
     )
   );
 }
 
+/*
+ * PRACE KAMIENIARSKIE — jedna kwota, bez listy czynności.
+ *
+ * Do 21.08.2026 stała tu lista „w tej cenie": pomiar Prolinerem, wycięcie
+ * pod zlew, otwory, montaż. Klient czytał ją jak menu do skreślania
+ * („a bez pomiaru ile?"), zamiast patrzeć na wartość całości — dlatego
+ * Dawid kazał ją zwinąć. Pełne rozbicie ma mail firmowy i edytor ofert.
+ */
 function blokUslug(w) {
   const pozycje = w.pozycje.filter((p) => p.grupa === 'usługi');
   if (!pozycje.length) return null;
-  const suma = pozycje.reduce((a, p) => a + p.brutto, 0);
+  const r = rozbicieDlaKlienta(w.pozycje, { odbiorWlasny: w.odbiorWlasny });
 
   return h(
     'div',
     { class: 'blok' },
-    h(
-      'div',
-      { class: 'blok-tytul' },
-      w.odbiorWlasny ? '2 · Produkcja (odbiór własny)' : '2 · Produkcja i montaż'
-    ),
+    h('div', { class: 'blok-tytul' }, '2 · ' + ETYKIETA_PRAC),
     h(
       'div',
       { class: 'blok-kwota' },
       h(
         'div',
         { class: 'blok-opis' },
-        h('div', { class: 'w-cenie-lbl' }, 'W tej cenie:'),
-        h('ul', { class: 'w-cenie' }, pozycje.map((p) => h('li', {}, opisPozycji(p))))
+        h('div', {}, opisPrac(w.odbiorWlasny)),
+        r.gratisy.length
+          ? h('div', { class: 'w-cenie-lbl' }, 'W tym gratis: ' + r.gratisy.join(', ').toLowerCase())
+          : null
       ),
-      h('div', { class: 'blok-suma' }, zl(suma))
+      h('div', { class: 'blok-suma' }, zl(r.prace))
     )
   );
 }
 
-/**
- * Nazwa pozycji z ilością, ale BEZ stawki. Szczegóły mają postać
- * „7,8 m.b. × 350 zł" — ilość zostaje, cena po znaku × znika.
- */
-function opisPozycji(p) {
-  if (!p.detal) return p.nazwa;
-  // „7,8 m.b. × 350 zł" → „7,8 m.b."; „w promocji bez dopłaty" zostaje w całości.
-  const bezStawki = p.detal.includes('×') ? p.detal.split('×')[0].trim() : p.detal.trim();
-  return bezStawki ? `${p.nazwa} — ${bezStawki}` : p.nazwa;
-}
 
 /** Przy firmach bez połówek klient musi wiedzieć, że płaci za całą płytę. */
 function opisPlyty(w) {

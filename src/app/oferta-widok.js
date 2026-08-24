@@ -13,9 +13,16 @@
  * tutaj tylko wyświetlamy to, co siedzi w zamrożonej ofercie.
  */
 import { h, zl } from './dom.js';
+import {
+  rozbicieDlaKlienta,
+  opisPrac,
+  ETYKIETA_MATERIALU,
+  ETYKIETA_PRAC,
+} from './pozycje-klienta.js';
 
 export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
   const data = new Date(utworzono || Date.now()).toLocaleDateString('pl-PL');
+  const r = rozbicieDlaKlienta(o.pozycje, { odbiorWlasny: o.odbiorWlasny });
 
   return h(
     'div',
@@ -23,16 +30,28 @@ export function kartaOferty(o, { imie = '', utworzono = null } = {}) {
     h('div', { class: 'q-kicker' }, `Wycena z dnia ${data}${imie ? ` dla: ${imie}` : ''}`),
     h('h3', { class: 'q-title' }, o.opis || 'Blat z kamienia'),
 
+    // Klient widzi DWIE kwoty i sumę — bez wyliczania pomiaru, wycięć
+    // i montażu z osobna (decyzja Dawida, 21.08.2026).
     h(
       'div',
       { class: 'oferta-pozycje' },
-      ...(o.pozycje || []).map((p) =>
+      h(
+        'div',
+        { class: 'oferta-poz' },
+        h('span', {}, ETYKIETA_MATERIALU, r.materialOpis ? h('small', {}, r.materialOpis) : null),
+        h('b', {}, zl(r.material))
+      ),
+      h(
+        'div',
+        { class: 'oferta-poz' },
         h(
-          'div',
-          { class: 'oferta-poz' + (p.gratis ? ' gratis' : '') },
-          h('span', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null),
-          h('b', {}, p.gratis ? 'GRATIS' : zl(p.brutto))
-        )
+          'span',
+          {},
+          ETYKIETA_PRAC,
+          h('small', {}, opisPrac(o.odbiorWlasny)),
+          r.gratisy.length ? h('small', {}, 'W tym gratis: ' + r.gratisy.join(', ').toLowerCase()) : null
+        ),
+        h('b', {}, zl(r.prace))
       )
     ),
 
