@@ -29,7 +29,13 @@
  */
 
 import { obsluzPanel, podpisz } from './panel.js';
-import { zapiszLead, zapiszFeedback, zapiszOferte, ofertaPoTokenie } from './baza.js';
+import {
+  zapiszLead,
+  zapiszFeedback,
+  zapiszOferte,
+  ofertaPoTokenie,
+  odczytajStawki,
+} from './baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -100,6 +106,7 @@ export default {
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
       if (sciezka === '/feedback') return await obsluzFeedback(request, env, cors);
+      if (sciezka === '/ustawienia') return await obsluzUstawienia(env, cors);
       if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
@@ -402,6 +409,21 @@ async function obsluzLead(request, env, cors) {
  * HMAC-em z hasła panelu i wkleja podpis do linku „Powtórz wycenę".
  * Zmiana hasła unieważnia wszystkie stare linki — tak jak ciasteczka.
  */
+/**
+ * Stawki zakładu dla kalkulatora. Odczyt jest PUBLICZNY — to nasze ceny
+ * sprzedaży, które klient i tak zobaczy w wycenie; edytować może wyłącznie
+ * Dawid z panelu (/panel/api/stawki, za hasłem).
+ */
+async function obsluzUstawienia(env, cors) {
+  try {
+    return json({ ok: true, ustawienia: await odczytajStawki(env) }, 200, cors);
+  } catch (e) {
+    console.error('ustawienia', e?.message || e);
+    // Milczące zero: kalkulator ma wtedy policzyć stawkami domyślnymi.
+    return json({ ok: true, ustawienia: {} }, 200, cors);
+  }
+}
+
 async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
   if (!env.PANEL_HASLO) return false;
   if (!leadId || !exp || Number(exp) < Date.now()) return false;

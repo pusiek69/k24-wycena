@@ -106,8 +106,8 @@ test('naturalny: promocja podmienia cenę materiału i dokleja dopisek', () => {
   assert.ok(Math.abs(nettoM2(w) - 715) < 0.5, `netto/m2 = ${nettoM2(w)}`);
   assert.equal(w.promo.nazwa, 'Sezon Letnich Okazji');
   assert.ok(w.ostrzezenia.some((o) => /wyczerpania zapasów/.test(o) && /opiekuna/.test(o)));
-  // Reguły naturalnego zostają: obróbka 300 zł/m², całe płyty.
-  assert.ok(w.pozycje.some((p) => p.nazwa.includes('Obróbka kamienia naturalnego')));
+  // Reguły naturalnego zostają: obróbka wg stawki z panelu, całe płyty.
+  assert.ok(w.pozycje.some((p) => p.nazwa.includes('Docięcie, polerowanie')));
   assert.ok(!w.pak.polowka);
 });
 

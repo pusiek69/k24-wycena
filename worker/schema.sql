@@ -108,3 +108,12 @@ CREATE TABLE IF NOT EXISTS logowania (
   proby INTEGER NOT NULL DEFAULT 0,
   do_kiedy TEXT NOT NULL
 );
+
+-- Stawki zakładu ustawiane przez Dawida w panelu (montaż, obróbka, wycięcia).
+-- Klucze odpowiadają PARAMETRY w src/app/ustawienia.js; brak wiersza znaczy
+-- „wartość domyślna z kodu". Nie ma tu cen zakupu materiału.
+CREATE TABLE IF NOT EXISTS ustawienia (
+  klucz     TEXT PRIMARY KEY,
+  wartosc   TEXT NOT NULL,
+  zmieniono TEXT NOT NULL
+);

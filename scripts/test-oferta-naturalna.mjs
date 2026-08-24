@@ -9,8 +9,8 @@
  *   • z ceną wpisaną RĘCZNIE — dla płyt spoza magazynu. To zdejmuje wymóg
  *     kodu płyty, ale wyłącznie w trybie właściciela; ścieżka klienta
  *     dalej odmawia wyceny bez wskazanej sztuki.
- * Reszta zasad naturalnego zostaje: całe płyty, obrzeże, odpad 15%,
- * dodatek za obróbkę 300 zł/m².
+ * Reszta zasad naturalnego zostaje: całe płyty, obrzeże, odpad 15%
+ * i obróbka wg stawki z panelu (od 21.08.2026 wspólne 200 zł/m²).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -36,13 +36,21 @@ test('ręczna cena bez kodu płyty daje pełną wycenę', () => {
   assert.equal(w.dekor, 'Kwarcyt Bella Vista');
 });
 
-test('liczy się jak naturalny: całe płyty, obróbka 300 zł/m²', () => {
+test('liczy się jak naturalny: całe płyty, obróbka wg stawki z panelu', () => {
   const w = wycenWlasciciela(RECZNY, KUCHNIA);
   // Całe płyty z obrzeżem — bez połówek.
   assert.ok(!w.pak.polowka, 'kamień naturalny bez połówek');
-  const obrobka = w.pozycje.find((p) => p.nazwa.includes('Obróbka kamienia naturalnego'));
-  assert.ok(obrobka, 'dodatek za obróbkę naturalnego musi być');
-  assert.match(obrobka.detalFirmowy || '', /300 zł/);
+
+  // Od 21.08.2026 naturalny płaci tę samą obróbkę co reszta (200 zł/m²),
+  // a osobny dodatek 300 zł/m² zniknął — obie stawki są w panelu.
+  const obrobka = w.pozycje.find((p) => p.nazwa.includes('Docięcie, polerowanie'));
+  assert.ok(obrobka, 'pozycja obróbki musi być na liście');
+  assert.match(obrobka.detalFirmowy || '', /200 zł/);
+  assert.equal(
+    w.pozycje.find((p) => p.nazwa.includes('Obróbka kamienia naturalnego')),
+    undefined,
+    'dodatek naturalny domyślnie wyłączony'
+  );
 });
 
 test('cena ręczna jest brutto — jak ceny magazynowe Interstone', () => {
@@ -103,7 +111,7 @@ test('wycena z magazynu z kodem działa jak dotąd', () => {
   );
   assert.equal(w.ok, true, w.blad);
   assert.equal(w.kodPlyty, 'STON000623-86421');
-  assert.ok(w.pozycje.some((p) => p.nazwa.includes('Obróbka kamienia naturalnego')));
+  assert.ok(w.pozycje.some((p) => p.nazwa.includes('Docięcie, polerowanie')));
 });
 
 test('nadpisanie ceny magazynowej ręczną zmienia tylko materiał', () => {

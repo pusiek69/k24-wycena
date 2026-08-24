@@ -20,6 +20,9 @@ import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
+import { gotoweStawki } from './stawki-klient.js';
+import { bezCenJednostkowych } from './oferta-detal.js';
+
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
 const NATURALNY = '__naturalny';
@@ -74,6 +77,11 @@ export function uruchomOferteDawida(root, paczka) {
   const box = h('div', { class: 'panel oferta-dawida' });
   root.replaceChildren(box);
   rysuj(box, stan, paczka);
+
+  // Stawki z panelu mogą dojść ułamek sekundy później niż pierwsze
+  // rysowanie — po ich nałożeniu przeliczamy jeszcze raz, żeby Dawid
+  // widział skutek własnych zmian, a nie wartości domyślnych.
+  gotoweStawki().then(() => rysuj(box, stan, paczka));
 
   // Prefill z leada naturalnego: od razu dociągamy świeżą cenę z magazynu.
   if (naturalny && stan.nat.kod) pobierzPlyte(box, stan, paczka);
@@ -162,14 +170,15 @@ function zamrozOferte(stan, w) {
   // je na końcu listy jako gratis, żeby oferta czytała się jak karta wyceny
   const wCenie = w.pozycje
     .filter((p) => p.wCenie)
-    .map((p) => ({ nazwa: p.nazwa, detal: p.detal || '', brutto: 0, gratis: true }));
+    .map((p) => ({ nazwa: p.nazwa, detal: bezCenJednostkowych(p.detal), brutto: 0, gratis: true }));
 
   const widoczne = [
     ...w.pozycje
       .filter((p) => !p.wCenie)
       .map((p) => ({
         nazwa: p.nazwa,
-        detal: p.detal || '',
+        // Bez stawek jednostkowych — patrz bezCenJednostkowych() na górze pliku.
+        detal: bezCenJednostkowych(p.detal),
         brutto: stan.gratisy.has(p.nazwa) ? 0 : Math.round(p.brutto),
         gratis: stan.gratisy.has(p.nazwa),
       })),
@@ -279,8 +288,14 @@ function rysuj(box, stan, paczka) {
     h(
       'div',
       { class: 'karta-wyceny' },
-      h('div', { class: 'q-kicker' }, `Tryb właściciela — oferta dla: ${paczka.imie || 'klient'} (karta #${paczka.leadId})`),
-      h('h3', { class: 'q-title' }, 'Powtórz wycenę'),
+      h(
+        'div',
+        { class: 'q-kicker' },
+        paczka.test
+          ? 'Tryb właściciela — WYCENA TESTOWA (nic się nie zapisuje)'
+          : `Tryb właściciela — oferta dla: ${paczka.imie || 'klient'} (karta #${paczka.leadId})`
+      ),
+      h('h3', { class: 'q-title' }, paczka.test ? 'Wycena testowa' : 'Powtórz wycenę'),
 
       /* ── parametry ── */
       h(
@@ -358,8 +373,8 @@ function rysuj(box, stan, paczka) {
       /* ── pasek właściciela ── */
       w.ok ? pasekWlasciciela(stan, oferta, odswiez) : null,
 
-      /* ── wysyłka ── */
-      w.ok ? wysylka(stan, oferta, paczka, box) : null
+      /* ── wysyłka (w trybie testowym nie ma komu wysyłać) ── */
+      w.ok ? (paczka.test ? notaTestowa() : wysylka(stan, oferta, paczka, box)) : null
     )
   );
 }
@@ -579,6 +594,17 @@ function pasekWlasciciela(stan, oferta, odswiez) {
           'Bez zaznaczenia klient widzi tylko kwotę końcową.'
       )
     )
+  );
+}
+
+function notaTestowa() {
+  return h(
+    'div',
+    { class: 'od-pasek', style: 'margin-top:18px' },
+    h('b', {}, 'Wycena testowa. '),
+    'Nic nie idzie do klienta i nic nie ląduje w bazie — to podgląd skutków ' +
+      'aktualnych stawek. Żeby wysłać ofertę, otwórz „Powtórz wycenę" ' +
+      'przy konkretnym kliencie w panelu.'
   );
 }
 

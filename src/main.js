@@ -7,6 +7,7 @@ import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
 import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
+import { gotoweStawki } from './app/stawki-klient.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
@@ -48,6 +49,10 @@ przyklejonyPrzycisk();
  * Zwykły klient nigdy tu nie trafia — fragment wymaga podpisanego linku
  * z panelu, a bez ważnego podpisu worker i tak odmówi wysyłki.
  */
+// Stawki zakładu z panelu Dawida — nakładają się na konfiguracje firm,
+// zanim ktokolwiek zdąży policzyć wycenę (rozmowa i tak trwa dłużej).
+gotoweStawki();
+
 const powtorka = paczkaPowtorki();
 if (!FIRMY.length) {
   root.innerHTML =

@@ -31,7 +31,36 @@ import {
   statystykaFeedbacku,
   odczytajMeta,
   zapiszMeta,
+  odczytajStawki,
+  zapiszStawki,
 } from './baza.js';
+
+/*
+ * STAWKI ZAKŁADU EDYTOWALNE W PANELU.
+ *
+ * Lista musi zgadzać się z PARAMETRY w src/app/ustawienia.js — tam siedzą
+ * wartości domyślne i nakładanie ich na firmy. Tutaj są tylko etykiety
+ * dla formularza i lista dozwolonych kluczy (baza nie ufa formularzowi).
+ *
+ * To NASZE ceny sprzedaży. Cen zakupu materiału ani przeliczników
+ * dostawców w panelu nie ma — te żyją w pricing/zrodla, poza repozytorium.
+ */
+const STAWKI = [
+  { klucz: 'obrobkaZaM2', label: 'Obróbka blatu (docięcie, polerowanie, klejenie)', jednostka: 'zł/m² blatu', domyslnie: 200, opis: '0 = w cenie, bez naliczenia' },
+  { klucz: 'obrobkaNaturalnaZaM2', label: 'Dodatek: obróbka kamienia naturalnego', jednostka: 'zł/m² blatu', domyslnie: 0, opis: 'ponad stawkę obróbki, tylko kamień naturalny' },
+  { klucz: 'montazBaza', label: 'Montaż — baza (dojazd, wniesienie)', jednostka: 'zł raz na zlecenie', domyslnie: 1500 },
+  { klucz: 'montazZaM2', label: 'Montaż — stawka od powierzchni', jednostka: 'zł/m² blatu', domyslnie: 200 },
+  { klucz: 'pomiar', label: 'Pomiar Proliner (tylko kuchnia)', jednostka: 'zł raz na zlecenie', domyslnie: 1000 },
+  { klucz: 'zlewPodblatowy', label: 'Wycięcie + montaż zlewu podblatowego', jednostka: 'zł/szt.', domyslnie: 650 },
+  { klucz: 'udzialNablatowego', label: 'Zlew nablatowy — część ceny podblatowego', jednostka: '× (0,5 = połowa)', domyslnie: 0.5, krok: 0.05 },
+  { klucz: 'plytaNakladana', label: 'Wycięcie pod płytę nakładaną', jednostka: 'zł', domyslnie: 250 },
+  { klucz: 'plytaLicowana', label: 'Wycięcie pod płytę licowaną', jednostka: 'zł', domyslnie: 650 },
+  { klucz: 'otwor', label: 'Otwór w blacie', jednostka: 'zł/szt.', domyslnie: 150 },
+  { klucz: 'mat', label: 'Dopłata: powierzchnia matowa / strukturalna', jednostka: 'zł/m²', domyslnie: 60 },
+  { klucz: 'listwa', label: 'Listwa przyścienna', jednostka: 'zł/m.b.', domyslnie: 180 },
+  { klucz: 'krawedz', label: 'Wykończenie krawędzi', jednostka: 'zł/m.b.', domyslnie: 90 },
+];
+const KLUCZE_STAWEK = STAWKI.map((s) => s.klucz);
 
 const CIASTKO = 'k24h_panel';
 const WAZNOSC_DNI = 30;
@@ -60,6 +89,8 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/karta') return await apiKarta(request, env);
   if (sciezka === '/panel/api/zmien' && request.method === 'POST') return await apiZmien(request, env);
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
+  if (sciezka === '/panel/api/stawki') return await apiStawki(request, env);
+  if (sciezka === '/panel/api/test') return await apiTest(request, env);
 
   return json({ error: 'Nieznany adres panelu.' }, 404);
 }
@@ -236,6 +267,58 @@ async function apiZmien(request, env) {
   return json({ ok: true, karta: await karta(env, id) });
 }
 
+/**
+ * Stawki zakładu: odczyt (GET) i zapis (POST) z panelu.
+ * Zapis idzie przez listę dozwolonych kluczy — nic spoza STAWKI nie wejdzie.
+ */
+async function apiStawki(request, env) {
+  if (request.method === 'POST') {
+    const d = await request.json().catch(() => null);
+    if (!d || typeof d !== 'object') return json({ error: 'Niepoprawne dane.' }, 400);
+    const ile = await zapiszStawki(env, d.stawki, KLUCZE_STAWEK);
+    return json({ ok: true, zapisanych: ile, stawki: await odczytajStawki(env) });
+  }
+  return json({ ok: true, opis: STAWKI, stawki: await odczytajStawki(env) });
+}
+
+/**
+ * WYCENA TESTOWA — podpisany link do kalkulatora w trybie właściciela,
+ * bez żadnego leada. Dawid sprawdza skutki zmiany stawek jednym kliknięciem,
+ * a baza klientów i statystyki zostają nietknięte (`leadId: 0` — worker
+ * nie ma czego zapisać, więc wysyłka jest wyłączona po stronie edytora).
+ */
+async function apiTest(request, env) {
+  const p = new URL(request.url).searchParams;
+  const exp = Date.now() + 2 * 3600000;
+  const paczka = {
+    leadId: 0,
+    test: true,
+    exp,
+    podpis: await podpisz(env.PANEL_HASLO, `oferta|0|${exp}`),
+    imie: 'wycena testowa',
+    parametry: {
+      firma: p.get('firma') || 'avant-quartz',
+      dekor: p.get('dekor') || '',
+      grubosc: p.get('grubosc') || '20',
+      odcinki: [{ gl: Number(p.get('gl')) || 60, dl: Number(p.get('dl')) || 300 }],
+      opcje: {
+        pomieszczenie: 'kuchnia',
+        zlew: 'podblat',
+        zlewy: 1,
+        plyta: 'nakladana',
+        otwory: Number(p.get('otwory')) || 2,
+        dostawa: 'montaz',
+      },
+    },
+  };
+  const bajty = new TextEncoder().encode(JSON.stringify(paczka));
+  const b64 = btoa(String.fromCharCode(...bajty))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return json({ ok: true, link: `https://kam24h.pl/#powtorz=${b64}` });
+}
+
 async function apiCsv(env) {
   return new Response(await csv(env), {
     headers: {
@@ -309,6 +392,11 @@ padding:.75rem .85rem;margin-bottom:.6rem}
 .karta.dzis{border-left:4px solid var(--akcent)}
 .karta.goracy{border-left:4px solid var(--zielony)}
 .znacznik.dobry{border-color:var(--zielony);color:var(--zielony)}
+label.stawka{display:block;font-size:.82rem;color:var(--tekst);margin:0 0 .6rem}
+label.stawka input{margin-top:.2rem}
+.stawki-siatka{display:grid;grid-template-columns:1fr;gap:.2rem}
+@media (min-width:620px){.stawki-siatka{grid-template-columns:1fr 1fr;gap:.2rem .9rem}}
+.zmieniona{color:var(--akcent)}
 table.reakcje{width:100%;border-collapse:collapse;font-size:.88rem}
 table.reakcje th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--szary);
 font-weight:600;text-align:left;padding:.15rem .5rem .3rem 0}
@@ -376,6 +464,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
   <section id="podsumowanie"></section>
   <section id="dzis"></section>
   <section id="reakcje"></section>
+  <section id="stawki"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
@@ -445,6 +534,8 @@ function rysuj(){
 
   document.getElementById('reakcje').innerHTML = reakcjeHtml(dane.feedback);
 
+  rysujStawki();
+
   document.getElementById('lista').innerHTML =
     dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
                       : '<p class="pusto">Brak zgłoszeń dla tych filtrów.</p>';
@@ -469,6 +560,35 @@ function kartaHtml(k, dzis){
       '<a href="mailto:' + esc(k.email) + '">Mail</a>' +
       '<button type="button" data-rozwin="' + k.id + '">Szczegóły</button>' +
     '</div><div class="szczegoly" id="sz-' + k.id + '" hidden></div></article>';
+}
+
+var STAWKI_OPIS = [], STAWKI_WART = {};
+
+async function rysujStawki(){
+  if(!STAWKI_OPIS.length){
+    var d = await (await fetch('/panel/api/stawki')).json();
+    STAWKI_OPIS = d.opis || []; STAWKI_WART = d.stawki || {};
+  }
+  var pola = STAWKI_OPIS.map(function(s){
+    var v = (STAWKI_WART[s.klucz] !== undefined) ? STAWKI_WART[s.klucz] : s.domyslnie;
+    var domyslna = Number(v) === Number(s.domyslnie);
+    return '<label class="stawka">' + esc(s.label) +
+      '<span class="mini"> \u2014 ' + esc(s.jednostka) + (s.opis ? ' \u00b7 ' + esc(s.opis) : '') + '</span>' +
+      '<input type="number" step="' + (s.krok || 1) + '" min="0" data-stawka="' + s.klucz + '" value="' + v + '">' +
+      (domyslna ? '' : '<span class="mini zmieniona">zmieniona (domy\u015blnie ' + s.domyslnie + ')</span>') +
+      '</label>';
+  }).join('');
+
+  document.getElementById('stawki').innerHTML =
+    '<h2>Stawki zak\u0142adu <button class="chip" type="button" id="stawki-pokaz">poka\u017c / ukryj</button></h2>' +
+    '<div class="lejek" id="stawki-tresc" hidden>' +
+      '<p class="mini">Kwoty brutto przy 23% \u2014 kalkulator sam schodzi do stawki wariantu ' +
+      '(8% z monta\u017cem). Zmiana dzia\u0142a od razu, tak\u017ce w wycenach klient\u00f3w.</p>' +
+      '<div class="stawki-siatka">' + pola + '</div>' +
+      '<p><button class="btn" type="button" id="stawki-zapisz">Zapisz stawki</button> ' +
+      '<button class="btn cichy" type="button" id="stawki-test">Wycena testowa \u2197</button></p>' +
+      '<p class="mini" id="stawki-info"></p>' +
+    '</div>';
 }
 
 function znacznikFeedbacku(k){
@@ -587,6 +707,30 @@ document.addEventListener('click', function(e){
     if(!confirm('Skasować kartę razem z wycenami i notatkami? Tego nie da się cofnąć.')) return;
     fetch('/panel/api/zmien', {method:'POST', headers:{'content-type':'application/json'},
       body: JSON.stringify({id: Number(kas.dataset.kasuj), skasuj: true})}).then(function(){ otwarta = null; wczytaj(); });
+    return;
+  }
+  if(e.target.id === 'stawki-pokaz'){
+    var t = document.getElementById('stawki-tresc'); t.hidden = !t.hidden; return;
+  }
+  if(e.target.id === 'stawki-zapisz'){
+    var stawki = {};
+    [].forEach.call(document.querySelectorAll('[data-stawka]'), function(i){ stawki[i.dataset.stawka] = i.value; });
+    e.target.disabled = true;
+    fetch('/panel/api/stawki', {method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({stawki: stawki})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        STAWKI_WART = d.stawki || {};
+        document.getElementById('stawki-info').textContent =
+          'Zapisano ' + (d.zapisanych || 0) + ' stawek. Kalkulator liczy po nowemu od zaraz.';
+        e.target.disabled = false;
+      });
+    return;
+  }
+  if(e.target.id === 'stawki-test'){
+    fetch('/panel/api/test').then(function(r){ return r.json(); }).then(function(d){
+      if(d.link) window.open(d.link, '_blank', 'noopener');
+    });
     return;
   }
   var chip = e.target.closest('[data-status]');

@@ -83,6 +83,20 @@ export async function sprawdzMagazyn(fraza, kod) {
 }
 
 /**
+ * Stawki zakładu ustawione przez Dawida w panelu. Gdy worker nie odpowie,
+ * kalkulator liczy wartościami domyślnymi — patrz app/ustawienia.js.
+ */
+export async function pobierzUstawienia() {
+  try {
+    const odp = await fetch(`${API_BASE}/ustawienia`, { method: 'POST' });
+    const dane = await odp.json().catch(() => null);
+    return dane?.ok ? dane.ustawienia || {} : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Odpowiedź klienta na pokazaną wycenę (pasuje / za drogo / zastanowi się).
  * Zawsze w tle: feedback to bonus, więc błąd sieci ma zniknąć bez śladu,
  * zamiast pokazywać klientowi cokolwiek.

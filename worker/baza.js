@@ -583,6 +583,51 @@ const OPIS_FEEDBACKU = {
  * Feedback zapisuje się też przy ostatniej wycenie, bo z tego liczy się
  * statystyka „ile procent uznało cenę za wysoką" per rodzaj materiału.
  */
+/**
+ * STAWKI ZAKŁADU (panel → kalkulator)
+ *
+ * Stawki naszej pracy, które Dawid ustawia w panelu (montaż, obróbka,
+ * wycięcia, otwory). Leżą w tabeli `ustawienia` jako pary klucz→liczba;
+ * kalkulator dopytuje o nie przy starcie strony, a bez nich liczy
+ * wartościami domyślnymi z kodu.
+ *
+ * To NASZE ceny sprzedaży — cen zakupu materiału ani przeliczników
+ * dostawców tu nie ma i być nie może.
+ */
+export async function odczytajStawki(env) {
+  if (!env.BAZA) return {};
+  const wynik = await env.BAZA.prepare(`SELECT klucz, wartosc FROM ustawienia`).all();
+  const stawki = {};
+  for (const w of wynik.results || []) {
+    const liczba = Number(w.wartosc);
+    if (Number.isFinite(liczba)) stawki[w.klucz] = liczba;
+  }
+  return stawki;
+}
+
+/**
+ * Zapis stawek z panelu. Przyjmuje wyłącznie klucze z listy dozwolonych
+ * i liczby nieujemne — panel jest jedynym wołającym, ale baza nie może
+ * zależeć od tego, że formularz się nie pomyli.
+ */
+export async function zapiszStawki(env, stawki, dozwolone) {
+  const czas = teraz();
+  let zapisanych = 0;
+  for (const [klucz, wartosc] of Object.entries(stawki || {})) {
+    if (!dozwolone.includes(klucz)) continue;
+    const liczba = Number(wartosc);
+    if (!Number.isFinite(liczba) || liczba < 0) continue;
+    await env.BAZA.prepare(
+      `INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES (?, ?, ?)
+       ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmieniono = excluded.zmieniono`
+    )
+      .bind(klucz, String(liczba), czas)
+      .run();
+    zapisanych++;
+  }
+  return zapisanych;
+}
+
 export async function zapiszFeedback(env, dane) {
   const baza = env.BAZA;
   if (!baza) return null;

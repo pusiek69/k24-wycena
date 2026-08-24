@@ -209,7 +209,7 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
 {
   const { wczytajSilnik } = await import('./lib/silnik.mjs');
   const { progi, zapisy } = await import('./lib/ceny-progowe.mjs');
-  const { wycen, FIRMY } = await wczytajSilnik();
+  const { wycen, FIRMY } = await wczytajSilnik({ stawkiZSieci: true });
   const p = progi(FIRMY, wycen);
 
   const oczekiwane = [
