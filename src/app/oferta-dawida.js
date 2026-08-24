@@ -22,6 +22,7 @@ import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-natura
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
+import { kartaOferty } from './oferta-widok.js';
 
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
@@ -611,48 +612,37 @@ function notaTestowa() {
   );
 }
 
+/**
+ * PRZED WYSYŁKĄ — PODGLĄD (decyzja Dawida, 21.08.2026).
+ *
+ * Żadnego cichego wysyłania: przycisk prowadzi najpierw do ekranu z tym,
+ * co dostanie klient — kartą wyceny online (ten sam renderer co strona
+ * /oferta, więc bez cen jednostkowych i z ewentualną obniżką) oraz
+ * TREŚCIĄ MAILA prosto z workera, czyli dokładnie tą, która pójdzie.
+ * Dopiero „Wyślij do klienta" cokolwiek zapisuje i wysyła.
+ */
 function wysylka(stan, oferta, paczka, box) {
   const wynik = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
-  const przycisk = h('button', { class: 'btn', type: 'button' }, 'Wyślij klientowi →');
+  const przycisk = h('button', { class: 'btn', type: 'button' }, 'Pokaż podgląd →');
+
+  // Przełącznik obniżki mógł się zmienić po ostatnim rysowaniu — zamrażamy
+  // dokładnie to, co pójdzie do klienta, i tego samego używa podgląd.
+  const swieza = () => ({
+    ...oferta,
+    przekresl: !!stan.przekresl && oferta.razem < oferta.razemPrzed,
+  });
 
   przycisk.addEventListener('click', async () => {
     przycisk.disabled = true;
-    przycisk.textContent = 'Wysyłam…';
-    // przełącznik obniżki mógł się zmienić po ostatnim rysowaniu — zamrażamy na świeżo
-    const swieza = { ...oferta, przekresl: !!stan.przekresl && oferta.razem < oferta.razemPrzed };
+    przycisk.textContent = 'Przygotowuję podgląd…';
+    wynik.hidden = true;
     try {
-      const odp = await fetch(`${API_BASE}/oferta/wyslij`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          leadId: paczka.leadId,
-          exp: paczka.exp,
-          podpis: paczka.podpis,
-          oferta: swieza,
-        }),
-      });
-      const dane = await odp.json().catch(() => null);
-      if (!odp.ok || !dane?.ok) throw new Error(dane?.error || 'Błąd wysyłki.');
-      box.replaceChildren(
-        h(
-          'div',
-          { class: 'karta-wyceny' },
-          h('div', { class: 'bramka-ok' }, h('span', { class: 'ptak' }, '✓'),
-            h('span', {}, h('b', {}, 'Oferta wysłana. '),
-              dane.mail
-                ? 'Mail z wyceną poszedł do klienta, a wersja zapisała się w karcie.'
-                : 'Wersja zapisała się w karcie, ale mail nie wyszedł — spróbuj ponownie z panelu.')),
-          h('p', { class: 'q-hint' }, 'Link do wyceny online (ten sam, który dostał klient):'),
-          h('p', {}, h('a', { class: 'link-btn', href: dane.link, target: '_blank', rel: 'noopener' }, dane.link)),
-          h('p', { class: 'q-hint' }, 'Status leada ustawiony na „Oferta wysłana" (chyba że był już dalej).')
-        )
-      );
+      const dane = await doWorkera(paczka, swieza(), { podglad: true });
+      pokazPodglad(stan, oferta, paczka, box, dane);
     } catch (e) {
       przycisk.disabled = false;
-      przycisk.textContent = 'Wyślij klientowi →';
-      wynik.textContent =
-        (e?.message === 'Brak autoryzacji.' ? 'Link z panelu wygasł — wejdź w kartę i kliknij „Powtórz wycenę" jeszcze raz. ' : '') +
-        'Nie udało się wysłać: ' + (e?.message || 'błąd sieci');
+      przycisk.textContent = 'Pokaż podgląd →';
+      wynik.textContent = opisBledu(e);
       wynik.hidden = false;
     }
   });
@@ -661,8 +651,121 @@ function wysylka(stan, oferta, paczka, box) {
     'div',
     { class: 'nav', style: 'margin-top:18px; flex-wrap:wrap' },
     przycisk,
-    h('span', { class: 'form-nota' }, 'Mail pójdzie na adres z karty klienta, z linkiem do wyceny online.'),
+    h('span', { class: 'form-nota' }, 'Najpierw zobaczysz, co dostanie klient — mail wychodzi dopiero po potwierdzeniu.'),
     wynik
+  );
+}
+
+/** Jedno wejście do workera: podgląd i wysyłka różnią się jedną flagą. */
+async function doWorkera(paczka, oferta, { podglad = false } = {}) {
+  const odp = await fetch(`${API_BASE}/oferta/wyslij`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      leadId: paczka.leadId,
+      exp: paczka.exp,
+      podpis: paczka.podpis,
+      oferta,
+      podglad,
+    }),
+  });
+  const dane = await odp.json().catch(() => null);
+  if (!odp.ok || !dane?.ok) throw new Error(dane?.error || 'Błąd wysyłki.');
+  return dane;
+}
+
+const opisBledu = (e) =>
+  (e?.message === 'Brak autoryzacji.'
+    ? 'Link z panelu wygasł — wejdź w kartę i kliknij „Powtórz wycenę" jeszcze raz. '
+    : '') + 'Nie udało się: ' + (e?.message || 'błąd sieci');
+
+function pokazPodglad(stan, oferta, paczka, box, dane) {
+  const wynik = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
+  const wyslij = h('button', { class: 'btn', type: 'button' }, 'Wyślij do klienta →');
+  const wroc = h('button', { class: 'btn cichy', type: 'button' }, '← Wróć do edycji');
+
+  wroc.addEventListener('click', () => rysuj(box, stan, paczka));
+
+  wyslij.addEventListener('click', async () => {
+    wyslij.disabled = true;
+    wroc.disabled = true;
+    wyslij.textContent = 'Wysyłam…';
+    try {
+      const odp = await doWorkera(paczka, {
+        ...oferta,
+        przekresl: !!stan.przekresl && oferta.razem < oferta.razemPrzed,
+      });
+      pokazWyslane(box, odp);
+    } catch (e) {
+      wyslij.disabled = false;
+      wroc.disabled = false;
+      wyslij.textContent = 'Wyślij do klienta →';
+      wynik.textContent = opisBledu(e);
+      wynik.hidden = false;
+    }
+  });
+
+  // Mail pokazujemy w ramce z atrybutem `srcdoc` — to ten sam HTML, który
+  // dostanie klient, więc nie chcemy, żeby jego style rozlały się na panel.
+  const ramka = h('iframe', {
+    class: 'podglad-mail',
+    title: 'Podgląd maila do klienta',
+    srcdoc: dane.html || '',
+    loading: 'lazy',
+  });
+
+  box.replaceChildren(
+    h(
+      'div',
+      { class: 'karta-wyceny' },
+      h('div', { class: 'q-kicker' }, 'Podgląd — to zobaczy klient'),
+      h('h3', { class: 'q-title' }, 'Sprawdź przed wysłaniem'),
+      h(
+        'p',
+        { class: 'q-hint' },
+        `Mail pójdzie na ${dane.adres || 'adres z karty'} — temat: „${dane.temat || ''}".`
+      ),
+
+      h('div', { class: 'q-kicker', style: 'margin-top:16px' }, '1 · Treść maila'),
+      ramka,
+
+      h('div', { class: 'q-kicker', style: 'margin-top:18px' }, '2 · Strona wyceny online (spod linku w mailu)'),
+      kartaOferty(oferta, { imie: paczka.imie, utworzono: Date.now() }),
+      h(
+        'p',
+        { class: 'form-nota' },
+        'Pod wyceną klient ma jeszcze trzy przyciski: „Pasuje mi", „Cena za wysoka", ' +
+          '„Muszę się zastanowić" — odpowiedź trafia do jego karty w panelu.'
+      ),
+
+      h('div', { class: 'nav', style: 'margin-top:18px; flex-wrap:wrap' }, wyslij, wroc, wynik)
+    )
+  );
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function pokazWyslane(box, dane) {
+  box.replaceChildren(
+    h(
+      'div',
+      { class: 'karta-wyceny' },
+      h(
+        'div',
+        { class: 'bramka-ok' },
+        h('span', { class: 'ptak' }, '✓'),
+        h(
+          'span',
+          {},
+          h('b', {}, 'Oferta wysłana. '),
+          dane.mail
+            ? 'Mail z wyceną poszedł do klienta, a wersja zapisała się w karcie.'
+            : 'Wersja zapisała się w karcie, ale mail nie wyszedł — spróbuj ponownie z panelu.'
+        )
+      ),
+      h('p', { class: 'q-hint' }, 'Link do wyceny online (ten sam, który dostał klient):'),
+      h('p', {}, h('a', { class: 'link-btn', href: dane.link, target: '_blank', rel: 'noopener' }, dane.link)),
+      h('p', { class: 'q-hint' }, 'Status leada ustawiony na „Oferta wysłana" (chyba że był już dalej).')
+    )
   );
 }
 

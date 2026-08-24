@@ -29,6 +29,7 @@
  */
 
 import { obsluzPanel, podpisz } from './panel.js';
+import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import {
   zapiszLead,
   zapiszFeedback,
@@ -476,6 +477,30 @@ async function obsluzOfertaWyslij(request, env, cors) {
     .first();
   if (!klient?.email) return json({ error: 'Karta bez adresu e-mail.' }, 404, cors);
 
+  /*
+   * PODGLĄD PRZED WYSYłKĄ (decyzja Dawida, 21.08.2026).
+   *
+   * Ten sam generator treści co przy wysyłce — Dawid widzi dokładnie ten
+   * mail, który pójdzie do klienta, a nie jego podobiznę. Nic się przy tym
+   * nie zapisuje i nic nie wychodzi: żadnej wersji w karcie, żadnego maila,
+   * status leada bez zmian.
+   */
+  if (d.podglad === true) {
+    return json(
+      {
+        ok: true,
+        podglad: true,
+        temat: TEMAT_OFERTY,
+        adres: klient.email,
+        // Link powstanie dopiero przy wysyłce — w podglądzie pokazujemy,
+        // jak będzie wyglądał, żeby przycisk w mailu nie był pusty.
+        html: mailOferty(klient.imie, o, 'https://kam24h.pl/oferta#(link-powstanie-przy-wysylce)'),
+      },
+      200,
+      cors
+    );
+  }
+
   // Token linku: 32 znaki hex z generatora kryptograficznego.
   const bajty = new Uint8Array(16);
   crypto.getRandomValues(bajty);
@@ -488,43 +513,13 @@ async function obsluzOfertaWyslij(request, env, cors) {
     from: env.MAIL_FROM || 'Kamieniarstwo 24h <onboarding@resend.dev>',
     to: [klient.email],
     reply_to: env.LEAD_EMAIL || 'kamieniarstwo24h@gmail.com',
-    subject: 'Wycena przygotowana przez Dawida Ząbka — Kamieniarstwo 24h',
+    subject: TEMAT_OFERTY,
     html: mailOferty(klient.imie, o, link),
   });
 
   return json({ ok: true, token, link, mail: wyslany }, 200, cors);
 }
 
-/** Mail z ofertą — spójny z mailem wyceny, ale podpisany osobiście. */
-function mailOferty(imie, o, link) {
-  const kwota = zl(o.razem);
-  const rabat =
-    o.przekresl && Number(o.razemPrzed) > Number(o.razem)
-      ? `<span style="text-decoration:line-through;color:#8a8578;font-size:16px">${zl(o.razemPrzed)}</span> `
-      : '';
-  const gratisy = (o.pozycje || [])
-    .filter((p) => p.gratis)
-    .map((p) => `<li style="margin:4px 0">${eskapuj(p.nazwa)} — <b>gratis</b></li>`)
-    .join('');
-
-  return `<!doctype html><html lang="pl"><body style="margin:0;background:#f5f3ef;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#2b2823">
-  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e4e0d6;border-radius:12px;padding:28px">
-    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578">Kamieniarstwo 24h</p>
-    <h1 style="margin:0 0 16px;font-size:20px">Wycena przygotowana przez Dawida Ząbka</h1>
-    <p style="margin:0 0 16px;font-size:15px;line-height:1.6">${imie ? `Pan(i) ${eskapuj(imie)} — p` : 'P'}rzygotowałem indywidualną wycenę blatu: <b>${eskapuj(o.opis || '')}</b>.</p>
-    <p style="margin:0 0 6px;font-size:15px">Kwota całkowita brutto:</p>
-    <p style="margin:0 0 18px;font-size:28px;font-weight:bold">${rabat}${kwota}</p>
-    ${gratisy ? `<ul style="margin:0 0 18px;padding-left:20px;font-size:14px">${gratisy}</ul>` : ''}
-    <p style="margin:0 0 22px"><a href="${link}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">Zobacz pełne rozbicie wyceny →</a></p>
-    <p style="margin:0 0 6px;font-size:13px;color:#6d6a60">Wycena przygotowana indywidualnie, ważna 30 dni.</p>
-    <p style="margin:0;font-size:13px;color:#6d6a60">Pytania? Proszę śmiało dzwonić: <a href="tel:+48796991128" style="color:#8a6a2f">796 991 128</a> (pon.–pt. 8:00–18:00) albo odpisać na tę wiadomość.</p>
-  </div>
-  <p style="max-width:560px;margin:14px auto 0;font-size:11px;color:#8a8578;text-align:center">Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748</p>
-</body></html>`;
-}
-
-const eskapuj = (t) =>
-  String(t ?? '').replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
 
 /* ─────────────────────────────────────────────────────────────── /feedback */
 

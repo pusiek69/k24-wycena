@@ -787,6 +787,12 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .od-pasek { margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--line-hi);
   border-radius: var(--radius); background: rgba(201, 168, 106, .05); }
 
+/* Podgląd maila przed wysyłką (tryb właściciela). */
+.podglad-mail {
+  width: 100%; height: 420px; border: 1px solid var(--line-hi);
+  border-radius: var(--radius); background: #fff; margin-top: 8px;
+}
+
 /* Feedback po wycenie: trzy duże przyciski, wygodne kciukiem. */
 .feedback {
   background: var(--slab); border: 1px solid var(--line-hi); border-radius: var(--radius);

@@ -10,7 +10,8 @@
  * Każde otwarcie podbija licznik „klient obejrzał" w karcie leada.
  */
 import './style.css';
-import { h, zl } from './app/dom.js';
+import { h } from './app/dom.js';
+import { kartaOferty } from './app/oferta-widok.js';
 import { API_BASE, wyslijFeedback } from './api.js';
 import { zdarzenie } from './analytics/zdarzenia.js';
 
@@ -47,67 +48,9 @@ function blad(tresc) {
 }
 
 function widok({ imie, utworzono, oferta: o }) {
-  const data = new Date(utworzono).toLocaleDateString('pl-PL');
-
-  return h(
-    'div',
-    {},
-    h(
-      'div',
-      { class: 'karta-wyceny' },
-      h(
-        'div',
-        { class: 'q-kicker' },
-        `Wycena z dnia ${data}${imie ? ` dla: ${imie}` : ''}`
-      ),
-      h('h3', { class: 'q-title' }, o.opis || 'Blat z kamienia'),
-
-      h(
-        'div',
-        { class: 'oferta-pozycje' },
-        ...o.pozycje.map((p) =>
-          h(
-            'div',
-            { class: 'oferta-poz' + (p.gratis ? ' gratis' : '') },
-            h('span', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null),
-            h('b', {}, p.gratis ? 'GRATIS' : zl(p.brutto))
-          )
-        )
-      ),
-
-      h(
-        'div',
-        { class: 'oferta-suma' },
-        h('span', {}, 'Razem brutto'),
-        h(
-          'span',
-          {},
-          o.przekresl && Number(o.razemPrzed) > Number(o.razem)
-            ? h('s', { class: 'oferta-stara' }, zl(o.razemPrzed))
-            : null,
-          h('b', {}, zl(o.razem))
-        )
-      ),
-
-      ...(o.noty || []).map((nota) => h('div', { class: 'info' }, nota)),
-      h(
-        'div',
-        { class: 'info' },
-        `W cenie stawka VAT ${Math.round((o.stawkaVat ?? 0.08) * 100)}%. ` +
-          'Wycena przygotowana indywidualnie, ważna 30 dni. ' +
-          (o.odbiorWlasny
-            ? 'Odbiór własny w zakładzie — prosimy sprawdzić wymiary przed zamówieniem.'
-            : 'Ostateczną cenę potwierdzamy po bezpłatnym pomiarze.')
-      ),
-
-      h(
-        'div',
-        { class: 'nav' },
-        h('a', { class: 'btn', href: 'tel:+48796991128', 'data-miejsce': 'oferta-karta' }, '☎ 796 991 128')
-      )
-    ),
-    feedback()
-  );
+  // Karta jest wspólna z podglądem w trybie właściciela — patrz
+  // app/oferta-widok.js. Tu dokładamy tylko przyciski feedbacku.
+  return h('div', {}, kartaOferty(o, { imie, utworzono }), feedback());
 }
 
 /* Trzy przyciski — te same co pod wyceną w kalkulatorze; odpowiedź trafia
