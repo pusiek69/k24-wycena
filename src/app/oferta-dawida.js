@@ -35,7 +35,10 @@ export function paczkaPowtorki() {
     const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
     const bajty = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
     const paczka = JSON.parse(new TextDecoder().decode(bajty));
-    return paczka?.leadId && paczka?.podpis && paczka?.parametry ? paczka : null;
+    // Wycena testowa z panelu ma leadId 0 (nie ma klienta) — samo `leadId`
+    // jako warunek odrzucałoby ją jako falsy.
+    const maKarte = Number(paczka?.leadId) > 0 || paczka?.test === true;
+    return maKarte && paczka?.podpis && paczka?.parametry ? paczka : null;
   } catch {
     return null;
   }
