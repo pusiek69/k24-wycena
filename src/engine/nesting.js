@@ -1,0 +1,264 @@
+/**
+ * ROZRYS PŁYT — układanie elementów blatu na płytach kamienia.
+ *
+ * Wszystko w MILIMETRACH: płyty dostawców podawane są w mm (3250 × 1590),
+ * a przy kamieniu grubość rzazu piły to kwestia 3–5 mm, więc centymetry
+ * gubiłyby dokładnie to, co tu decyduje.
+ *
+ * ALGORYTM: MaxRects w wariancie Best Short Side Fit.
+ *
+ * Wybrany świadomie zamiast prostszego „shelf": blaty kuchenne to kilka
+ * elementów o bardzo różnych proporcjach (3120 × 800 obok 950 × 800
+ * i fartucha 2300 × 550). Shelf układa je w poziome pasy i przy takim
+ * zestawie potrafi zmarnować pół płyty; MaxRects korzysta z wolnych
+ * prostokątów po obu stronach każdego położonego elementu i na typowej
+ * kuchni wychodzi o kilkanaście punktów procentowych lepiej.
+ *
+ * RZAZ PIŁY (kerf). Każdy element rezerwuje sobie miejsce powiększone
+ * o grubość rzazu — ścinka po cięciu nie jest materiałem, z którego da się
+ * jeszcze coś wyciąć. To celowo ostrożne: liczymy rzaz z każdej strony,
+ * bo przy krojeniu w głąb płyty cięcie faktycznie zabiera materiał po obu
+ * stronach linii.
+ *
+ * MARGINES PŁYTY. Surowe krawędzie płyty (zwłaszcza kamienia naturalnego)
+ * są nierówne i schodzą przy obróbce — dlatego układamy w prostokącie
+ * pomniejszonym o margines z każdej strony.
+ *
+ * USŁOJENIE. Przy kamieniu z wyraźnym rysunkiem (Patagonia, marmury
+ * book-match) elementu NIE WOLNO obrócić o 90°, bo rysunek pobiegnie
+ * w poprzek blatu. Stąd `rotacja: false` — wtedy każdy element ląduje
+ * dokładnie w orientacji, w jakiej go podano.
+ */
+
+/** Domyślne parametry cięcia — nadpisywane stawkami z panelu. */
+export const DOMYSLNY_RZAZ_MM = 3;
+export const DOMYSLNY_MARGINES_MM = 10;
+
+/**
+ * @param {Array} elementy  [{ nazwa, szer, gl, ilosc }] w mm
+ * @param {object} plyta    { szer, wys } w mm
+ * @param {object} opcje    { rzaz, margines, rotacja }
+ * @returns {{plyty: Array, nieumieszczone: Array, statystyki: object}}
+ */
+export function rozrysuj(elementy, plyta, opcje = {}) {
+  const rzaz = liczbaNieujemna(opcje.rzaz, DOMYSLNY_RZAZ_MM);
+  const margines = liczbaNieujemna(opcje.margines, DOMYSLNY_MARGINES_MM);
+  const rotacja = opcje.rotacja !== false;
+  const maksPlyt = Number(opcje.maksPlyt) || 40;
+
+  const polePlyty = { szer: Number(plyta?.szer) || 0, wys: Number(plyta?.wys) || 0 };
+  const uzyteczna = {
+    szer: polePlyty.szer - 2 * margines,
+    wys: polePlyty.wys - 2 * margines,
+  };
+
+  const doUlozenia = rozwin(elementy);
+  const nieumieszczone = [];
+
+  if (!(uzyteczna.szer > 0 && uzyteczna.wys > 0)) {
+    return pusty(polePlyty, doUlozenia, 'Płyta jest mniejsza niż podwójny margines.');
+  }
+
+  // Element większy od użytecznej części płyty nie zmieści się NIGDY —
+  // odkładamy go z powodem, zamiast mielić go przez kolejne płyty.
+  const mieszczace = [];
+  for (const el of doUlozenia) {
+    if (zmiesciSie(el, uzyteczna, rzaz, rotacja)) mieszczace.push(el);
+    else nieumieszczone.push({ ...el, powod: 'wiekszy-od-plyty' });
+  }
+
+  // Najpierw duże elementy: mniejsze łatwiej domknąć w resztkach.
+  mieszczace.sort((a, b) => b.szer * b.gl - a.szer * a.gl || Math.max(b.szer, b.gl) - Math.max(a.szer, a.gl));
+
+  const plyty = [];
+  let zostalo = mieszczace;
+
+  while (zostalo.length && plyty.length < maksPlyt) {
+    const { ulozone, reszta } = ulozNaPlycie(zostalo, uzyteczna, { rzaz, rotacja, margines });
+    // Zabezpieczenie przed pętlą bez końca: skoro nic nie weszło na pustą
+    // płytę, to nie wejdzie już nigdy.
+    if (!ulozone.length) {
+      for (const el of reszta) nieumieszczone.push({ ...el, powod: 'nie-zmiescil-sie' });
+      break;
+    }
+    plyty.push({
+      nr: plyty.length + 1,
+      szer: polePlyty.szer,
+      wys: polePlyty.wys,
+      margines,
+      elementy: ulozone,
+      poleElementowMm2: ulozone.reduce((a, e) => a + e.szer * e.gl, 0),
+    });
+    zostalo = reszta;
+  }
+
+  if (zostalo.length && plyty.length >= maksPlyt) {
+    for (const el of zostalo) nieumieszczone.push({ ...el, powod: 'limit-plyt' });
+  }
+
+  return { plyty, nieumieszczone, statystyki: statystyki(plyty, polePlyty, nieumieszczone) };
+}
+
+/* ────────────────────────────────────────────── układanie jednej płyty */
+
+function ulozNaPlycie(elementy, uzyteczna, { rzaz, rotacja, margines }) {
+  // Wolne prostokąty w układzie współrzędnych użytecznej części płyty.
+  let wolne = [{ x: 0, y: 0, szer: uzyteczna.szer, wys: uzyteczna.wys }];
+  const ulozone = [];
+  const reszta = [];
+
+  for (const el of elementy) {
+    const miejsce = najlepszeMiejsce(el, wolne, rzaz, rotacja);
+    if (!miejsce) {
+      reszta.push(el);
+      continue;
+    }
+
+    const { wolny, szer, gl, obrocony } = miejsce;
+    ulozone.push({
+      ...el,
+      x: wolny.x + margines,
+      y: wolny.y + margines,
+      szer,
+      gl,
+      obrocony,
+    });
+
+    // Zajmujemy prostokąt powiększony o rzaz — to, co zabiera piła.
+    wolne = potnij(wolne, {
+      x: wolny.x,
+      y: wolny.y,
+      szer: szer + rzaz,
+      wys: gl + rzaz,
+    });
+  }
+
+  return { ulozone, reszta };
+}
+
+/**
+ * Best Short Side Fit: wygrywa miejsce, w którym KRÓTSZY z dwóch zapasów
+ * jest najmniejszy. Dzięki temu resztki zostają w jednym kawałku zamiast
+ * rozdrabniać się na paski nie do wykorzystania.
+ */
+function najlepszeMiejsce(el, wolne, rzaz, rotacja) {
+  let naj = null;
+
+  for (const wolny of wolne) {
+    const warianty = rotacja && el.szer !== el.gl
+      ? [
+          { szer: el.szer, gl: el.gl, obrocony: false },
+          { szer: el.gl, gl: el.szer, obrocony: true },
+        ]
+      : [{ szer: el.szer, gl: el.gl, obrocony: false }];
+
+    for (const w of warianty) {
+      const zapasSzer = wolny.szer - (w.szer + rzaz);
+      const zapasWys = wolny.wys - (w.gl + rzaz);
+      if (zapasSzer < 0 || zapasWys < 0) continue;
+
+      const krotszy = Math.min(zapasSzer, zapasWys);
+      const dluzszy = Math.max(zapasSzer, zapasWys);
+      if (!naj || krotszy < naj.krotszy || (krotszy === naj.krotszy && dluzszy < naj.dluzszy)) {
+        naj = { wolny, szer: w.szer, gl: w.gl, obrocony: w.obrocony, krotszy, dluzszy };
+      }
+    }
+  }
+
+  return naj;
+}
+
+/** Wolne prostokąty po zajęciu miejsca — klasyczne cięcie MaxRects. */
+function potnij(wolne, zajety) {
+  const wynik = [];
+
+  for (const w of wolne) {
+    if (!nachodzi(w, zajety)) {
+      wynik.push(w);
+      continue;
+    }
+    // Nad, pod, po lewej i po prawej od zajętego prostokąta.
+    if (zajety.y > w.y) wynik.push({ x: w.x, y: w.y, szer: w.szer, wys: zajety.y - w.y });
+    const dolZajetego = zajety.y + zajety.wys;
+    if (dolZajetego < w.y + w.wys) {
+      wynik.push({ x: w.x, y: dolZajetego, szer: w.szer, wys: w.y + w.wys - dolZajetego });
+    }
+    if (zajety.x > w.x) wynik.push({ x: w.x, y: w.y, szer: zajety.x - w.x, wys: w.wys });
+    const prawyZajetego = zajety.x + zajety.szer;
+    if (prawyZajetego < w.x + w.szer) {
+      wynik.push({ x: prawyZajetego, y: w.y, szer: w.x + w.szer - prawyZajetego, wys: w.wys });
+    }
+  }
+
+  return odsiejZawarte(wynik.filter((w) => w.szer > 0 && w.wys > 0));
+}
+
+/** Prostokąt w całości mieszczący się w innym jest zbędny. */
+function odsiejZawarte(lista) {
+  return lista.filter(
+    (a, i) => !lista.some((b, j) => i !== j && zawiera(b, a) && (!zawiera(a, b) || j < i))
+  );
+}
+
+const zawiera = (duzy, maly) =>
+  maly.x >= duzy.x &&
+  maly.y >= duzy.y &&
+  maly.x + maly.szer <= duzy.x + duzy.szer &&
+  maly.y + maly.wys <= duzy.y + duzy.wys;
+
+const nachodzi = (a, b) =>
+  a.x < b.x + b.szer && a.x + a.szer > b.x && a.y < b.y + b.wys && a.y + a.wys > b.y;
+
+/* ──────────────────────────────────────────────────────── drobiazgi */
+
+function zmiesciSie(el, uzyteczna, rzaz, rotacja) {
+  const pasuje = (szer, gl) => szer + rzaz <= uzyteczna.szer + 0.001 && gl + rzaz <= uzyteczna.wys + 0.001;
+  return pasuje(el.szer, el.gl) || (rotacja && pasuje(el.gl, el.szer));
+}
+
+/** [{nazwa, szer, gl, ilosc: 2}] → dwa osobne elementy z numerami. */
+function rozwin(elementy) {
+  const wynik = [];
+  for (const el of elementy || []) {
+    const szer = Number(el.szer) || 0;
+    const gl = Number(el.gl) || 0;
+    const ile = Math.max(1, Math.round(Number(el.ilosc) || 1));
+    if (!(szer > 0 && gl > 0)) continue;
+    for (let i = 0; i < ile; i++) {
+      wynik.push({
+        id: `${el.id || el.nazwa || 'el'}-${i + 1}`,
+        nazwa: ile > 1 ? `${el.nazwa || 'Element'} ${i + 1}` : el.nazwa || 'Element',
+        szer,
+        gl,
+      });
+    }
+  }
+  return wynik;
+}
+
+function statystyki(plyty, plyta, nieumieszczone) {
+  const polePlytyM2 = (plyta.szer * plyta.wys) / 1e6;
+  const plytM2 = plyty.length * polePlytyM2;
+  const elementyM2 = plyty.reduce((a, p) => a + p.poleElementowMm2, 0) / 1e6;
+  return {
+    plyt: plyty.length,
+    polePlytyM2: zaokr(polePlytyM2, 3),
+    plytM2: zaokr(plytM2, 3),
+    elementyM2: zaokr(elementyM2, 3),
+    odpadM2: zaokr(Math.max(0, plytM2 - elementyM2), 3),
+    wykorzystanieProc: plytM2 > 0 ? zaokr((elementyM2 / plytM2) * 100, 2) : 0,
+    nieumieszczonych: nieumieszczone.length,
+  };
+}
+
+const pusty = (plyta, elementy, powod) => ({
+  plyty: [],
+  nieumieszczone: elementy.map((el) => ({ ...el, powod })),
+  statystyki: statystyki([], plyta, elementy),
+});
+
+const zaokr = (n, m) => Math.round(n * 10 ** m) / 10 ** m;
+const liczbaNieujemna = (x, domyslna) => {
+  const n = Number(x);
+  return Number.isFinite(n) && n >= 0 ? n : domyslna;
+};

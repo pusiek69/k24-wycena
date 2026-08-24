@@ -23,6 +23,8 @@ import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
+import { widokRozrysu, elementyZOdcinkow } from './rozrys.js';
+import { DOMYSLNE } from './ustawienia.js';
 
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
@@ -85,7 +87,10 @@ export function uruchomOferteDawida(root, paczka) {
   // Stawki z panelu mogą dojść ułamek sekundy później niż pierwsze
   // rysowanie — po ich nałożeniu przeliczamy jeszcze raz, żeby Dawid
   // widział skutek własnych zmian, a nie wartości domyślnych.
-  gotoweStawki().then(() => rysuj(box, stan, paczka));
+  gotoweStawki().then((stawki) => {
+    stan.stawki = stawki;
+    rysuj(box, stan, paczka);
+  });
 
   // Prefill z leada naturalnego: od razu dociągamy świeżą cenę z magazynu.
   if (naturalny && stan.nat.kod) pobierzPlyte(box, stan, paczka);
@@ -377,6 +382,9 @@ function rysuj(box, stan, paczka) {
       /* ── pasek właściciela ── */
       w.ok ? pasekWlasciciela(stan, oferta, odswiez) : null,
 
+      /* ── rozrys płyt: narzędzie warsztatowe, nie część oferty ── */
+      w.ok ? h('div', { class: 'nav', style: 'margin-top:10px' }, przyciskRozrysu(stan, w, paczka, box)) : null,
+
       /* ── wysyłka (w trybie testowym nie ma komu wysyłać) ── */
       w.ok ? (paczka.test ? notaTestowa() : wysylka(stan, oferta, paczka, box)) : null
     )
@@ -654,6 +662,77 @@ function wysylka(stan, oferta, paczka, box) {
     h('span', { class: 'form-nota' }, 'Najpierw zobaczysz, co dostanie klient — mail wychodzi dopiero po potwierdzeniu.'),
     wynik
   );
+}
+
+/**
+ * ROZRYS PŁYT — osobny ekran, nie część oferty.
+ *
+ * Klient go nie dostaje: to narzędzie warsztatowe, które odpowiada na
+ * pytanie „ile płyt naprawdę trzeba zamówić i czy to się mieści".
+ */
+function przyciskRozrysu(stan, w, paczka, box) {
+  const btn = h('button', { class: 'btn cichy', type: 'button' }, 'Rozrys płyt →');
+  btn.addEventListener('click', () => pokazRozrys(stan, w, paczka, box));
+  return btn;
+}
+
+function pokazRozrys(stan, w, paczka, box) {
+  if (!stan.rozrys) {
+    stan.rozrys = {
+      elementy: elementyZOdcinkow(stan.odcinki),
+      rzaz: stan.stawki?.rzazMm ?? DOMYSLNE.rzazMm,
+      margines: stan.stawki?.marginesPlytyMm ?? DOMYSLNE.marginesPlytyMm,
+      // Kamień naturalny domyślnie BEZ obrotu — rysunek musi biec zgodnie.
+      rotacja: stan.firma !== NATURALNY,
+    };
+  }
+
+  const rysuj2 = () => {
+    const plyta = plytaDoRozrysu(stan, w);
+    const widok = widokRozrysu(
+      {
+        ...stan.rozrys,
+        plyta,
+        plytZWyceny: w.pak?.plytyPelne ?? 0,
+        opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
+      },
+      (zmiana) => {
+        stan.rozrys = { ...stan.rozrys, ...zmiana };
+        rysuj2();
+      }
+    );
+
+    box.replaceChildren(
+      h(
+        'div',
+        { class: 'karta-wyceny' },
+        widok,
+        h(
+          'div',
+          { class: 'nav rozrys-nav', style: 'margin-top:18px; flex-wrap:wrap' },
+          h('button', { class: 'btn', type: 'button', onclick: () => window.print() }, 'Drukuj / zapisz PDF'),
+          h('button', { class: 'btn cichy', type: 'button', onclick: () => rysuj(box, stan, paczka) }, '← Wróć do wyceny')
+        )
+      )
+    );
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  rysuj2();
+}
+
+/**
+ * Format płyty w MILIMETRACH. Przy kamieniu naturalnym bierzemy wymiar
+ * WSKAZANEJ płyty z magazynu (każda jest inna), przy kolekcjach — format
+ * z cennika firmy.
+ */
+function plytaDoRozrysu(stan, w) {
+  const zWariantu = stan.firma === NATURALNY ? stan.nat.wariant?.plytaCm : null;
+  if (zWariantu?.dl > 0) {
+    return { szer: Math.round(zWariantu.dl * 10), wys: Math.round(zWariantu.gl * 10) };
+  }
+  const p = w.firma?.plyta || {};
+  return { szer: Math.round((p.w || 320) * 10), wys: Math.round((p.h || 160) * 10) };
 }
 
 /** Jedno wejście do workera: podgląd i wysyłka różnią się jedną flagą. */

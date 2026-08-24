@@ -787,6 +787,42 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .od-pasek { margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--line-hi);
   border-radius: var(--radius); background: rgba(201, 168, 106, .05); }
 
+/* ROZRYS PŁYT (tryb właściciela). */
+.rozrys-staty { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 10px 0 4px; }
+.rozrys-stat { font-family: var(--sans); font-size: 12px; color: var(--vein); }
+.rozrys-stat b { display: block; font-size: 17px; color: var(--cream); font-variant-numeric: tabular-nums; }
+.rozrys-uwagi { margin: 12px 0; }
+.rozrys-opcje { margin-top: 14px; }
+.rozrys-uslojenie { grid-column: 1 / -1; }
+.rozrys-elementy { margin-top: 14px; }
+.rozrys-wiersz { display: flex; gap: 6px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.rozrys-wiersz input[type="text"] { flex: 1 1 160px; min-width: 120px; }
+.rozrys-wiersz input[type="number"] { width: 88px; }
+.rozrys-wiersz input {
+  padding: 8px 10px; background: var(--bg); border: 1px solid var(--line-hi);
+  border-radius: var(--radius); color: var(--cream); font-family: var(--sans); font-size: 14px;
+}
+.rozrys-plyta { margin-top: 20px; }
+.rozrys-plyta-tytul { font-family: var(--sans); font-size: 14px; margin-bottom: 6px; color: var(--cream); }
+.rozrys-svg { width: 100%; height: auto; background: #fff; border-radius: var(--radius); }
+.rozrys-tabela { width: 100%; border-collapse: collapse; margin-top: 18px; font-size: 14px; }
+.rozrys-tabela th {
+  text-align: left; font-family: var(--sans); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--vein); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line-hi);
+}
+.rozrys-tabela td { padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+
+@media print {
+  /* Na wydruku zostaje sam rozrys: rysunki płyt, statystyki i tabela. */
+  body > *:not(#kreator) { display: none !important; }
+  #kreator .bramka, #kreator .czat, #kreator .czat-wejscie,
+  .rozrys-opcje, .rozrys-elementy, .rozrys-nav { display: none !important; }
+  .karta-wyceny { border: 0; padding: 0; background: #fff; }
+  .rozrys-stat, .rozrys-stat b, .rozrys-plyta-tytul,
+  .rozrys-tabela, .rozrys-tabela th, .rozrys-tabela td { color: #000 !important; }
+  .rozrys-plyta { break-inside: avoid; page-break-inside: avoid; }
+}
+
 /* Podgląd maila przed wysyłką (tryb właściciela). */
 .podglad-mail {
   width: 100%; height: 420px; border: 1px solid var(--line-hi);

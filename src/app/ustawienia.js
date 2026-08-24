@@ -82,6 +82,26 @@ export const PARAMETRY = [
   { klucz: 'mat', label: 'Dopłata za powierzchnię matową / strukturalną', jednostka: 'zł/m²', domyslnie: 60 },
   { klucz: 'listwa', label: 'Listwa przyścienna', jednostka: 'zł/m.b.', domyslnie: 180 },
   { klucz: 'krawedz', label: 'Wykończenie krawędzi', jednostka: 'zł/m.b.', domyslnie: 90 },
+
+  /*
+   * Poniższe dwa NIE są cenami — to parametry cięcia używane przez rozrys
+   * płyt (app/rozrys.js). Trzymamy je w tym samym miejscu, bo to ta sama
+   * szuflada „ustawienia zakładu", którą Dawid otwiera w panelu.
+   */
+  {
+    klucz: 'rzazMm',
+    label: 'Rozrys: rzaz piły',
+    jednostka: 'mm',
+    domyslnie: 3,
+    opis: 'Ile materiału zabiera cięcie — rezerwowane wokół każdego elementu.',
+  },
+  {
+    klucz: 'marginesPlytyMm',
+    label: 'Rozrys: margines krawędzi płyty',
+    jednostka: 'mm',
+    domyslnie: 10,
+    opis: 'Surowe krawędzie płyty odpadają przy obróbce — nie układamy na nich elementów.',
+  },
 ];
 
 export const DOMYSLNE = Object.fromEntries(PARAMETRY.map((p) => [p.klucz, p.domyslnie]));

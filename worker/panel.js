@@ -59,6 +59,8 @@ const STAWKI = [
   { klucz: 'mat', label: 'Dopłata: powierzchnia matowa / strukturalna', jednostka: 'zł/m²', domyslnie: 60 },
   { klucz: 'listwa', label: 'Listwa przyścienna', jednostka: 'zł/m.b.', domyslnie: 180 },
   { klucz: 'krawedz', label: 'Wykończenie krawędzi', jednostka: 'zł/m.b.', domyslnie: 90 },
+  { klucz: 'rzazMm', label: 'Rozrys: rzaz piły', jednostka: 'mm', domyslnie: 3, opis: 'parametr cięcia, nie cena' },
+  { klucz: 'marginesPlytyMm', label: 'Rozrys: margines krawędzi płyty', jednostka: 'mm', domyslnie: 10, opis: 'parametr cięcia, nie cena' },
 ];
 const KLUCZE_STAWEK = STAWKI.map((s) => s.klucz);
 
