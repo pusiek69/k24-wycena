@@ -101,17 +101,28 @@ test('element mieszczący się w płycie, ale nie w marginesie, odpada', () => {
 
 test('rzaz piły realnie zabiera miejsce — dwa blaty na styk już nie wchodzą', () => {
   // 2 × 1600 mm = dokładnie szerokość płyty: bez rzazu wejdą, z rzazem nie.
+  // Bez rotacji, żeby sprawdzić sam rzaz — po obrocie elementy ułożyłyby się
+  // inaczej i test mówiłby o czym innym.
   const elementy = [{ nazwa: 'Blat', szer: 1600, gl: 1500, ilosc: 2 }];
-  const bez = rozrysuj(elementy, PLYTA, BEZ_STRAT);
-  const z = rozrysuj(elementy, PLYTA, { rzaz: 10, margines: 0 });
+  const bez = rozrysuj(elementy, PLYTA, { rzaz: 0, margines: 0, rotacja: false });
+  const z = rozrysuj(elementy, PLYTA, { rzaz: 10, margines: 0, rotacja: false });
   assert.equal(bez.statystyki.plyt, 1);
   assert.equal(z.statystyki.plyt, 2, 'rzaz musi wypchnąć drugi element na kolejną płytę');
   sprawdzPoprawnosc(z, PLYTA, { rzaz: 10 });
 });
 
-test('domyślne parametry cięcia są ostrożne, ale nie absurdalne', () => {
+test('element równy wysokości płyty wchodzi — przy krawędzi rzazu nie ma', () => {
+  // Do 25.08.2026 rzaz doliczaliśmy także od strony krawędzi płyty, więc
+  // element 1600 mm na płycie 1600 mm „nie mieścił się" o 10 mm. Decyzja
+  // Dawida: jego wymiary są ostateczne, rzaz dzieli tylko sąsiadów.
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 1500, gl: 1600 }], PLYTA, { rzaz: 10, margines: 0 });
+  assert.equal(w.statystyki.nieumieszczonych, 0);
+});
+
+test('domyślne parametry cięcia: rzaz realny, margines zerowy', () => {
   assert.ok(DOMYSLNY_RZAZ_MM >= 2 && DOMYSLNY_RZAZ_MM <= 6);
-  assert.ok(DOMYSLNY_MARGINES_MM >= 5 && DOMYSLNY_MARGINES_MM <= 30);
+  // 0 od 25.08.2026 — Dawid podaje wymiary do wycięcia bez marginesów.
+  assert.equal(DOMYSLNY_MARGINES_MM, 0);
 });
 
 /* ────────────────────────────────────────── usłojenie: obrót 90° */
@@ -236,4 +247,82 @@ test('kolejność odcinków ma znaczenie — inny układ to inny rozrys', () => 
 test('brak odcinków nie wywraca podpisu', () => {
   assert.equal(podpisWyceny([]), podpisWyceny(undefined));
   assert.equal(typeof podpisWyceny(null), 'string');
+});
+
+/* ══════ RZAZ TYLKO MIĘDZY ELEMENTAMI, MARGINES 0 (Dawid, 25.08.2026) ══════
+ *
+ * „Ja już podaję wymiary do wycięcia bez marginesów" — wymiary Dawida są
+ * ostateczne. Nic ich nie powiększa, rzaz jest wyłącznie odstępem między
+ * sąsiadami, a przy krawędzi płyty rzazu nie ma.
+ */
+
+test('domyślny margines płyty to 0 — elementy mogą dojść do krawędzi', () => {
+  assert.equal(DOMYSLNY_MARGINES_MM, 0);
+});
+
+test('element równy płycie co do milimetra MIEŚCI SIĘ', () => {
+  // Wcześniej doliczaliśmy rzaz z każdej strony i taki element „nie wchodził".
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3480, gl: 2010 }], { szer: 3480, wys: 2010 });
+  assert.equal(w.plyty.length, 1, 'element równy płycie został odrzucony');
+  assert.equal(w.nieumieszczone.length, 0);
+  assert.equal(w.plyty[0].elementy[0].szer, 3480, 'wymiar elementu został zmieniony');
+});
+
+test('wymiary elementu nie są nigdzie powiększane', () => {
+  const wej = [{ nazwa: 'Blat', szer: 2537, gl: 613 }, { nazwa: 'Wyspa', szer: 1401, gl: 897 }];
+  const w = rozrysuj(wej, { szer: 3480, wys: 2010 });
+  const ulozone = w.plyty.flatMap((p) => p.elementy);
+  for (const el of wej) {
+    const u = ulozone.find((x) => x.nazwa === el.nazwa);
+    assert.ok(u, `${el.nazwa} nie został ułożony`);
+    // Element mógł zostać obrócony, ale wymiary muszą być te same.
+    const zgodne = (u.szer === el.szer && u.gl === el.gl) || (u.szer === el.gl && u.gl === el.szer);
+    assert.ok(zgodne, `${el.nazwa}: ${u.szer}×${u.gl} zamiast ${el.szer}×${el.gl}`);
+  }
+});
+
+test('element zaczyna się w rogu płyty, bez odsunięcia', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 1000, gl: 600 }], { szer: 3480, wys: 2010 });
+  const el = w.plyty[0].elementy[0];
+  assert.equal(el.x, 0, 'element odsunięty od lewej krawędzi');
+  assert.equal(el.y, 0, 'element odsunięty od górnej krawędzi');
+});
+
+test('rzaz nadal rozdziela SĄSIADÓW', () => {
+  // Dwa elementy po 1000 mm na płycie 2003 mm: wejdą oba tylko wtedy,
+  // gdy między nimi zmieści się 3 mm rzazu — i ani milimetra więcej.
+  const dwa = [{ nazwa: 'A', szer: 1000, gl: 600 }, { nazwa: 'B', szer: 1000, gl: 600 }];
+  const zapas = rozrysuj(dwa, { szer: 2003, wys: 600 }, { rzaz: 3, rotacja: false });
+  assert.equal(zapas.plyty.length, 1, 'dwa elementy z rzazem powinny wejść na jedną płytę');
+
+  // Ta sama para na 2002 mm już się nie mieści obok siebie — brakuje rzazu.
+  const ciasno = rozrysuj(dwa, { szer: 2002, wys: 600 }, { rzaz: 3, rotacja: false });
+  assert.equal(ciasno.plyty.length, 2, 'rzaz między elementami przestał obowiązywać');
+});
+
+test('rzaz nie zjada miejsca przy krawędzi płyty', () => {
+  // Element 3480 obok niczego — brak sąsiada, brak rzazu.
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3480, gl: 600 }], { szer: 3480, wys: 2010 }, { rzaz: 5 });
+  assert.equal(w.statystyki.nieumieszczonych, 0);
+});
+
+test('margines ustawiony ręcznie nadal działa', () => {
+  // Parametr zostaje w Stawkach — przy surowej krawędzi kamienia bywa potrzebny.
+  const bez = rozrysuj([{ nazwa: 'Blat', szer: 3480, gl: 600 }], { szer: 3480, wys: 2010 }, { margines: 0 });
+  const z = rozrysuj([{ nazwa: 'Blat', szer: 3480, gl: 600 }], { szer: 3480, wys: 2010 }, { margines: 20 });
+  assert.equal(bez.statystyki.nieumieszczonych, 0);
+  assert.equal(z.statystyki.nieumieszczonych, 1, 'margines 20 mm powinien wykluczyć element równy płycie');
+});
+
+test('margines odsuwa elementy od krawędzi, gdy jest ustawiony', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 1000, gl: 600 }], { szer: 3480, wys: 2010 }, { margines: 15 });
+  assert.equal(w.plyty[0].elementy[0].x, 15);
+  assert.equal(w.plyty[0].elementy[0].y, 15);
+});
+
+test('na płycie Pacifica 3480×2010 mieszczą się trzy blaty 3400 mm', () => {
+  const el = Array.from({ length: 3 }, (_, i) => ({ nazwa: `Blat ${i + 1}`, szer: 3400, gl: 600 }));
+  const w = rozrysuj(el, { szer: 3480, wys: 2010 }, { rzaz: 3, rotacja: false });
+  assert.equal(w.plyty.length, 1, 'trzy pasy 600 mm + rzazy mieszczą się w 2010 mm');
+  assert.equal(w.statystyki.nieumieszczonych, 0);
 });

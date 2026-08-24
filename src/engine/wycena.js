@@ -1,4 +1,5 @@
 import { upakuj, opisPlyt } from './pakowanie.js';
+import { opcjaDostepna } from './opcje-dekoru.js';
 
 /**
  * SILNIK WYCENY — wspólny dla wszystkich firm.
@@ -245,6 +246,9 @@ export function wycen(firma, w, dataISO) {
   // ---------- 3. obróbki wybrane przez klienta ----------
   const wybrane = w.opcje || {};
   for (const o of firma.opcje || []) {
+    // Dopłaty zależne od wzoru (np. Matt/Suede u Pacifica) pomijamy przy
+    // dekorach, które ich nie mają — nawet gdy w żądaniu przyszło `true`.
+    if (!opcjaDostepna(o, w.dekor)) continue;
     const v = wybrane[o.id];
 
     if (o.typ === 'wybor') {

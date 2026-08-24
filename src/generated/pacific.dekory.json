@@ -1,0 +1,140 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/pacific.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "pacific",
+  "_wygenerowano": "2026-08-24",
+  "_dekorow": 33,
+  "dekory": {
+    "Alchemy": {
+      "20": 930
+    },
+    "Arena": {
+      "20": 673
+    },
+    "Artemis": {
+      "20": 930
+    },
+    "Arya": {
+      "20": 874
+    },
+    "Ashford": {
+      "20": 939
+    },
+    "Aspen Aura": {
+      "20": 874
+    },
+    "Astrial Mist": {
+      "20": 874
+    },
+    "Bellagio": {
+      "20": 930
+    },
+    "Brilliant White": {
+      "20": 677
+    },
+    "Cappucino": {
+      "20": 874
+    },
+    "Dazzle": {
+      "20": 727
+    },
+    "Driftwood": {
+      "20": 874
+    },
+    "Echo White": {
+      "20": 505
+    },
+    "French Vanilla": {
+      "20": 874
+    },
+    "Galactic Halo": {
+      "20": 874
+    },
+    "Golden Dawn": {
+      "20": 874
+    },
+    "Hazel Gold": {
+      "20": 939
+    },
+    "Hermes": {
+      "20": 930
+    },
+    "Honeydew": {
+      "20": 930
+    },
+    "Maple Gaze": {
+      "20": 874
+    },
+    "Medusa": {
+      "20": 874
+    },
+    "Nestos": {
+      "20": 874
+    },
+    "Oakville": {
+      "20": 874
+    },
+    "Oasis": {
+      "20": 673
+    },
+    "Ruskin": {
+      "20": 874
+    },
+    "Seasons": {
+      "20": 514
+    },
+    "Silken": {
+      "20": 575
+    },
+    "Stella": {
+      "20": 514
+    },
+    "Suzuka": {
+      "20": 874
+    },
+    "Tokyo": {
+      "20": 874
+    },
+    "Velvet": {
+      "20": 673
+    },
+    "Venetia": {
+      "20": 514
+    },
+    "Venus Glow": {
+      "20": 874
+    }
+  },
+  "wykonczenie": {
+    "nazwa": "Matt / Suede",
+    "cena": 130,
+    "dekory": [
+      "Alchemy",
+      "Arena",
+      "Artemis",
+      "Aspen Aura",
+      "Astrial Mist",
+      "Bellagio",
+      "Brilliant White",
+      "Driftwood",
+      "Echo White",
+      "French Vanilla",
+      "Galactic Halo",
+      "Golden Dawn",
+      "Hermes",
+      "Honeydew",
+      "Maple Gaze",
+      "Medusa",
+      "Nestos",
+      "Oakville",
+      "Oasis",
+      "Ruskin",
+      "Seasons",
+      "Silken",
+      "Stella",
+      "Suzuka",
+      "Velvet",
+      "Venetia",
+      "Venus Glow"
+    ]
+  }
+}

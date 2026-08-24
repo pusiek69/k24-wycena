@@ -1,4 +1,5 @@
 import { h, zl, liczba, uprosc } from './dom.js';
+import { opcjaDostepna } from '../engine/opcje-dekoru.js';
 import { FIRMY, grubosciDekoru } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { upakuj, opisPlyt } from '../engine/pakowanie.js';
@@ -70,11 +71,15 @@ export function krokDekor(stan, a) {
       'div',
       { class: 'tools' },
       szukaj,
-      h(
-        'a',
-        { class: 'link-btn', href: f.linkDekory.url, target: '_blank', rel: 'noopener' },
-        '↗ ' + f.linkDekory.label
-      ),
+      // Nie każda firma ma katalog wzorów online (Pacific dostał cennik
+      // zrzutem). Bez tego zabezpieczenia wybór takiej firmy wywalał krok.
+      f.linkDekory
+        ? h(
+            'a',
+            { class: 'link-btn', href: f.linkDekory.url, target: '_blank', rel: 'noopener' },
+            '↗ ' + f.linkDekory.label
+          )
+        : null,
       (f.linkiDodatkowe || []).map((l) =>
         h('a', { class: 'link-btn', href: l.url, target: '_blank', rel: 'noopener' }, '↗ ' + l.label)
       )
@@ -160,7 +165,9 @@ function krokKamienNaturalny(stan, a, f) {
     h(
       'div',
       { class: 'tools' },
-      h('a', { class: 'link-btn', href: f.linkDekory.url, target: '_blank', rel: 'noopener' }, '↗ ' + f.linkDekory.label),
+      f.linkDekory
+        ? h('a', { class: 'link-btn', href: f.linkDekory.url, target: '_blank', rel: 'noopener' }, '↗ ' + f.linkDekory.label)
+        : null,
       (f.linkiDodatkowe || []).map((l) =>
         h('a', { class: 'link-btn', href: l.url, target: '_blank', rel: 'noopener' }, '↗ ' + l.label)
       )
@@ -373,7 +380,11 @@ export function krokObrobki(stan, a) {
     h(
       'div',
       { class: 'opcje' },
-      (f.opcje || []).map((o) => opcjaWidok(o, stan, a, f))
+      (f.opcje || [])
+        // Dopłata dostępna tylko przy części wzorów (Matt/Suede u Pacifica)
+        // nie ma prawa pokazać się przy dekorze, który jej nie ma.
+        .filter((o) => opcjaDostepna(o, stan.dekor))
+        .map((o) => opcjaWidok(o, stan, a, f))
     ),
     nawigacja(a, { wstecz: 'wymiary', dalej: 'wynik', dalejLabel: 'Pokaż wycenę →' })
   );

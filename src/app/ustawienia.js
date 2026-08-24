@@ -93,14 +93,17 @@ export const PARAMETRY = [
     label: 'Rozrys: rzaz piły',
     jednostka: 'mm',
     domyslnie: 3,
-    opis: 'Ile materiału zabiera cięcie — rezerwowane wokół każdego elementu.',
+    opis: 'Szerokość cięcia — odstęp MIĘDZY elementami. Wymiarów elementów nie powiększa.',
   },
   {
     klucz: 'marginesPlytyMm',
     label: 'Rozrys: margines krawędzi płyty',
     jednostka: 'mm',
-    domyslnie: 10,
-    opis: 'Surowe krawędzie płyty odpadają przy obróbce — nie układamy na nich elementów.',
+    // 0 od 25.08.2026 (decyzja Dawida): podaje wymiary do wycięcia bez
+    // marginesów, więc elementy mają móc dochodzić do krawędzi płyty.
+    // Parametr zostaje — przy surowej krawędzi kamienia bywa potrzebny.
+    domyslnie: 0,
+    opis: 'Zapas przy surowej krawędzi płyty. 0 = elementy mogą dochodzić do brzegu.',
   },
 ];
 
@@ -165,7 +168,13 @@ export function zastosujUstawienia(firmy, ustawienia) {
         };
       }
       if (o.id === 'otwory') return { ...o, cena: u.otwor };
-      if (o.id === 'mat') return { ...o, cena: u.mat };
+      /*
+       * Uwaga: stawka „mat" z panelu to NASZA dopłata za powierzchnię
+       * matową. Gdy dopłata pochodzi z CENNIKA DOSTAWCY (Pacific:
+       * Matt/Suede), zostawiamy ją w spokoju — inaczej stawka warsztatowa
+       * skasowałaby cenę z cennika i sprzedawalibyśmy poniżej kosztu.
+       */
+      if (o.id === 'mat') return o.zCennika ? o : { ...o, cena: u.mat };
       if (o.id === 'listwa') return { ...o, cena: u.listwa };
       if (o.id === 'krawedz') return { ...o, cena: u.krawedz };
       return o;

@@ -114,6 +114,29 @@ for (const plik of pliki) {
     dekory,
   };
 
+  /*
+   * DOPŁATA ZA WYKOŃCZENIE (Pacific: Matt/Suede).
+   *
+   * W źródle stoi kwota ZAKUPOWA i lista wzorów, przy których dostawca
+   * takie wykończenie robi. Do klienta wypuszczamy wyłącznie cenę końcową
+   * netto — przeliczoną tym samym mnożnikiem co dekory, żeby marża na
+   * dopłacie była taka sama jak na materiale.
+   */
+  if (z._wykonczenie) {
+    const wyk = z._wykonczenie;
+    const zakup = wyk.doplataBruttoM2 ?? wyk.doplataM2;
+    if (typeof zakup !== 'number' || !(zakup > 0)) {
+      console.error(`✗ ${slug}: "_wykonczenie" bez poprawnej dopłaty`);
+      bledy++;
+    } else {
+      wynik.wykonczenie = {
+        nazwa: String(wyk.nazwa || 'Wykończenie specjalne'),
+        cena: Math.round(zakup * mnoznik),
+        dekory: Array.isArray(wyk.dekory) ? wyk.dekory : [],
+      };
+    }
+  }
+
   const sciezka = path.join(CEL, `${slug}.dekory.json`);
   const tresc = JSON.stringify(wynik, null, 2) + '\n';
   const stara = fs.existsSync(sciezka) ? fs.readFileSync(sciezka, 'utf8') : '';
@@ -304,6 +327,29 @@ function policzMnoznik(z, slug) {
 function policzMnoznikPln(z, slug) {
   if (typeof z.mnoznikRecznie === 'number') return z.mnoznikRecznie;
   if (z.juzPrzeliczone) return 1;
+
+  /*
+   * CENNIK PODANY W CENACH BRUTTO (Pacific).
+   *
+   * Nasze katalogi trzymają cenę końcową NETTO za m² — VAT dolicza
+   * silnik wg wariantu (8% z montażem, 23% przy odbiorze własnym).
+   * Gdy dostawca podaje brutto, najpierw schodzimy do netto, a dopiero
+   * potem nakładamy marżę. Wynik jest ten sam, co przy liczeniu
+   * „brutto × marża, potem /VAT" — tylko zapis jest uczciwszy.
+   */
+  if (z.cenyBrutto) {
+    const vat = typeof z.vatZrodla === 'number' ? z.vatZrodla : 0.23;
+    const marza = z.marza;
+    if (typeof marza !== 'number') {
+      console.error(`✗ ${slug}: "cenyBrutto" wymaga pola "marza" (np. 0.30)`);
+      return null;
+    }
+    if (!(vat >= 0 && vat < 1)) {
+      console.error(`✗ ${slug}: "vatZrodla" musi być ułamkiem 0–1, jest ${vat}`);
+      return null;
+    }
+    return ((1 + marza) / (1 + vat)) * (1 - (z.rabatZakupowy || 0));
+  }
   const rabat = z.rabatZakupowy;
   const marza = z.marza;
   if (typeof rabat !== 'number' || typeof marza !== 'number') {

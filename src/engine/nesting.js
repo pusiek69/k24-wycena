@@ -14,15 +14,21 @@
  * prostokątów po obu stronach każdego położonego elementu i na typowej
  * kuchni wychodzi o kilkanaście punktów procentowych lepiej.
  *
- * RZAZ PIŁY (kerf). Każdy element rezerwuje sobie miejsce powiększone
- * o grubość rzazu — ścinka po cięciu nie jest materiałem, z którego da się
- * jeszcze coś wyciąć. To celowo ostrożne: liczymy rzaz z każdej strony,
- * bo przy krojeniu w głąb płyty cięcie faktycznie zabiera materiał po obu
- * stronach linii.
+ * RZAZ PIŁY (kerf) — WYŁĄCZNIE MIĘDZY ELEMENTAMI (decyzja Dawida,
+ * 25.08.2026: „ja już podaję wymiary do wycięcia bez marginesów").
  *
- * MARGINES PŁYTY. Surowe krawędzie płyty (zwłaszcza kamienia naturalnego)
- * są nierówne i schodzą przy obróbce — dlatego układamy w prostokącie
- * pomniejszonym o margines z każdej strony.
+ * Wymiary, które podaje Dawid, są OSTATECZNE — nic ich nie powiększa.
+ * Rzaz wchodzi dopiero przy dzieleniu wolnego miejsca: po położeniu
+ * elementu kolejny zaczyna się o grubość cięcia dalej, bo tyle materiału
+ * zabiera piła między nimi. Przy KRAWĘDZI PŁYTY rzazu nie ma — nie ma tam
+ * sąsiada, od którego trzeba by się odsunąć — więc element może dojść
+ * do samego brzegu. Wcześniej doliczaliśmy rzaz z każdej strony i element
+ * równy szerokości płyty „nie mieścił się" o 3 mm.
+ *
+ * MARGINES PŁYTY — DOMYŚLNIE 0 (ta sama decyzja Dawida).
+ * Parametr zostaje w Stawkach, bo przy surowej, nierównej krawędzi kamienia
+ * naturalnego bywa potrzebny — ale domyślnie elementy mogą dochodzić
+ * do krawędzi płyty.
  *
  * USŁOJENIE. Przy kamieniu z wyraźnym rysunkiem (Patagonia, marmury
  * book-match) elementu NIE WOLNO obrócić o 90°, bo rysunek pobiegnie
@@ -32,7 +38,7 @@
 
 /** Domyślne parametry cięcia — nadpisywane stawkami z panelu. */
 export const DOMYSLNY_RZAZ_MM = 3;
-export const DOMYSLNY_MARGINES_MM = 10;
+export const DOMYSLNY_MARGINES_MM = 0;
 
 /**
  * @param {Array} elementy  [{ nazwa, szer, gl, ilosc }] w mm
@@ -124,12 +130,17 @@ function ulozNaPlycie(elementy, uzyteczna, { rzaz, rotacja, margines }) {
       obrocony,
     });
 
-    // Zajmujemy prostokąt powiększony o rzaz — to, co zabiera piła.
+    /*
+     * Zajmujemy prostokąt elementu POWIĘKSZONY o rzaz — dzięki temu kolejny
+     * element zacznie się o grubość cięcia dalej. Ale przycinamy go do
+     * wolnego miejsca: gdy element dochodzi do krawędzi, nie ma za czym
+     * rezerwować ścinki, bo za krawędzią nie ma już płyty.
+     */
     wolne = potnij(wolne, {
       x: wolny.x,
       y: wolny.y,
-      szer: szer + rzaz,
-      wys: gl + rzaz,
+      szer: Math.min(szer + rzaz, wolny.szer),
+      wys: Math.min(gl + rzaz, wolny.wys),
     });
   }
 
@@ -153,9 +164,11 @@ function najlepszeMiejsce(el, wolne, rzaz, rotacja) {
       : [{ szer: el.szer, gl: el.gl, obrocony: false }];
 
     for (const w of warianty) {
-      const zapasSzer = wolny.szer - (w.szer + rzaz);
-      const zapasWys = wolny.wys - (w.gl + rzaz);
-      if (zapasSzer < 0 || zapasWys < 0) continue;
+      // Element musi się zmieścić w SWOICH wymiarach — rzaz odejmiemy
+      // dopiero od tego, co zostanie po nim wolne (patrz niżej).
+      const zapasSzer = wolny.szer - w.szer;
+      const zapasWys = wolny.wys - w.gl;
+      if (zapasSzer < -0.001 || zapasWys < -0.001) continue;
 
       const krotszy = Math.min(zapasSzer, zapasWys);
       const dluzszy = Math.max(zapasSzer, zapasWys);
@@ -212,7 +225,9 @@ const nachodzi = (a, b) =>
 /* ──────────────────────────────────────────────────────── drobiazgi */
 
 function zmiesciSie(el, uzyteczna, rzaz, rotacja) {
-  const pasuje = (szer, gl) => szer + rzaz <= uzyteczna.szer + 0.001 && gl + rzaz <= uzyteczna.wys + 0.001;
+  // Bez rzazu: pojedynczy element może zająć płytę co do milimetra.
+  // Rzaz dotyczy odstępu między sąsiadami, nie krawędzi płyty.
+  const pasuje = (szer, gl) => szer <= uzyteczna.szer + 0.001 && gl <= uzyteczna.wys + 0.001;
   return pasuje(el.szer, el.gl) || (rotacja && pasuje(el.gl, el.szer));
 }
 
