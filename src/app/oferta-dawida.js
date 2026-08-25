@@ -20,6 +20,7 @@ import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
+import * as wlasna from './plyta-wlasna.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
@@ -39,6 +40,8 @@ import {
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
 const NATURALNY = '__naturalny';
+/** Materiał spoza cenników — Dawid podaje wymiar, cenę i nazwę sam. */
+const WLASNA = '__wlasna';
 
 /** Fragment #powtorz=… → paczka z panelu albo null. */
 export function paczkaPowtorki() {
@@ -91,6 +94,8 @@ export function uruchomOferteDawida(root, paczka) {
     wiadomosc: '',
     // Warianty materiałowe do porównania (do trzech, dobierane ręcznie).
     warianty: [],
+    // Płyta spoza cenników (zlecenie Dawida, 25.08.2026).
+    wlasna: { ...wlasna.PUSTA },
   };
   if (!stan.odcinki.length) stan.odcinki = [{ gl: 60, dl: 300 }];
 
@@ -178,6 +183,19 @@ function policz(stan) {
     );
   }
 
+  if (stan.firma === WLASNA) {
+    // Płyta własna idzie tą samą ścieżką co płyta spoza magazynu przy
+    // kamieniu naturalnym: pełne płyty z podanego wymiaru, cena od Dawida.
+    // Różni się tylko `rodzaj` — dzięki temu nie dostaje dodatku za trudność
+    // obróbki kamienia ani większego odpadu.
+    const brak = wlasna.czegoBrakuje(stan.wlasna);
+    if (brak) return { ok: false, blad: brak };
+    return wycenWlasciciela(
+      wariantReczny({ ...wlasna.doWariantu(stan.wlasna, stan.grubosc), rodzaj: 'Płyta własna' }),
+      { odcinki, opcje: stan.opcje, grubosc: stan.grubosc || '20' }
+    );
+  }
+
   const firma = firmaWgSlug(stan.firma);
   if (!firma) return { ok: false, blad: 'Nieznana firma.' };
   return wycen(firma, { dekor: stan.dekor, grubosc: stan.grubosc, odcinki, opcje: stan.opcje });
@@ -240,7 +258,14 @@ function zamrozOferte(stan, w) {
   // zbudowana z konkretnej płyty, nie wpis z listy kolekcji.
   const firma = w.firma;
   return {
-    opis: [firma?.nazwa, w.dekor, w.grubosc ? `${w.grubosc} mm` : '', opisOdcinkow(stan.odcinki)]
+    // Przy płycie własnej pomijamy nazwę „firmy" — to nasza etykieta
+    // wewnętrzna, a klient ma zobaczyć nazwę materiału, którą podał Dawid.
+    opis: [
+      stan.firma === WLASNA ? '' : firma?.nazwa,
+      w.dekor,
+      w.grubosc ? `${w.grubosc} mm` : '',
+      opisOdcinkow(stan.odcinki),
+    ]
       .filter(Boolean)
       .join(' · '),
     pozycje: widoczne,
@@ -350,9 +375,12 @@ function ofertaZWariantami(stan, w) {
 
 function rysuj(box, stan, paczka) {
   const naturalny = stan.firma === NATURALNY;
+  const plytaWlasna = stan.firma === WLASNA;
   let dekory = [];
   let grubosci = [];
-  if (!naturalny) {
+  // Ani kamień naturalny, ani płyta własna nie mają dekorów z cennika —
+  // bez tego wyjątku `stan.firma` wracałoby tu do pierwszej kolekcji z listy.
+  if (!naturalny && !plytaWlasna) {
     const firma = firmaWgSlug(stan.firma) || FIRMY[0];
     stan.firma = firma.slug;
     dekory = Object.keys(firma.dekory || {});
@@ -388,11 +416,12 @@ function rysuj(box, stan, paczka) {
             [
               ...FIRMY.filter((f) => f.trybCeny === 'katalog').map((f) => [f.slug, f.nazwa]),
               [NATURALNY, 'Kamień naturalny (płyta z magazynu)'],
+              [WLASNA, 'Płyta własna (spoza cenników)'],
             ],
             stan.firma,
             (v) => {
               stan.firma = v;
-              if (v !== NATURALNY) {
+              if (v !== NATURALNY && v !== WLASNA) {
                 const nowa = firmaWgSlug(v);
                 stan.dekor = Object.keys(nowa?.dekory || {})[0] || '';
               }
@@ -419,6 +448,9 @@ function rysuj(box, stan, paczka) {
 
       /* ── kamień naturalny: płyta z magazynu albo cena ręczna ── */
       naturalny ? blokNaturalny(stan, paczka, box, odswiez) : null,
+
+      /* ── płyta spoza cenników: wymiar, cena i nazwa od Dawida ── */
+      plytaWlasna ? blokPlytyWlasnej(stan, odswiez) : null,
 
       /* ── odcinki ── */
       h('div', { class: 'q-kicker', style: 'margin-top:16px' }, 'Odcinki blatu (głębokość × długość, cm)'),
@@ -675,6 +707,82 @@ function blokWiadomosci(stan) {
       { class: 'form-nota' },
       'Kilka zdań od siebie — trafią do maila z ofertą i na stronę wyceny, nad kwotę. '
         + 'Puste pole = oferta bez dopisku. Zobaczysz to w podglądzie przed wysłaniem.'
+    )
+  );
+}
+
+/* ───────────────────────────────── płyta spoza cenników */
+
+/**
+ * FORMULARZ PŁYTY WŁASNEJ (zlecenie Dawida, 25.08.2026).
+ *
+ * Dwie rzeczy są tu oznaczone WPROST, bo w hurtowniach spotyka się obie
+ * formy i pomyłka kosztuje realne pieniądze:
+ *   • czy cena jest za m², czy za całą płytę,
+ *   • czy jest netto, czy brutto.
+ * Pod spodem pokazujemy przeliczenie na obie postaci — Dawid widzi od razu,
+ * czy wpisał to, co miał na fakturze.
+ */
+function blokPlytyWlasnej(stan, odswiez) {
+  const p = stan.wlasna;
+  const ustaw = (pole) => (e) => {
+    const v = e.target.value;
+    p[pole] = ['szer', 'wys', 'cena'].includes(pole) ? Number(v) || 0 : v;
+  };
+  // Pola tekstowe/liczbowe przeliczamy przy WYJŚCIU z pola, nie przy każdym
+  // znaku — inaczej ekran przebudowuje się w środku pisania (ta sama
+  // pułapka co w rozrysie, patrz app/rozrys.js).
+  const pole2 = (etykieta, kontrolka) => pole(etykieta, kontrolka);
+  const wejscie = (klucz, atrybuty) => {
+    const i = h('input', atrybuty);
+    i.value = p[klucz] ?? '';
+    i.addEventListener('input', ustaw(klucz));
+    i.addEventListener('change', odswiez);
+    return i;
+  };
+
+  const brutto = wlasna.cenaBruttoM2(p);
+  const netto = wlasna.cenaNettoM2(p);
+  const pole_m2 = wlasna.poleM2(p);
+
+  return h(
+    'div',
+    { class: 'od-pasek', style: 'margin-top:4px' },
+    h('div', { class: 'q-kicker' }, 'Płyta spoza cenników'),
+    h(
+      'div',
+      { class: 'od-siatka' },
+      pole2('Nazwa materiału', wejscie('nazwa', { type: 'text', placeholder: 'np. Dekton Aura 15' })),
+      pole2('Nr płyty (opcjonalnie)', wejscie('nrPlyty', { type: 'text', placeholder: 'np. 24/118' })),
+      pole2('Szerokość płyty (mm)', wejscie('szer', { type: 'number', min: '1' })),
+      pole2('Wysokość płyty (mm)', wejscie('wys', { type: 'number', min: '1' })),
+      pole2('Cena', wejscie('cena', { type: 'number', min: '0', step: '1' })),
+      pole2(
+        'Cena podana',
+        wybor(wlasna.JEDNOSTKI, p.jednostka, (v) => ((p.jednostka = v), odswiez()))
+      ),
+      pole2(
+        'Kwota jest',
+        wybor(wlasna.FORMY_CENY, p.forma, (v) => ((p.forma = v), odswiez()))
+      )
+    ),
+    h(
+      'p',
+      { class: 'form-nota' },
+      pole_m2 > 0
+        ? `Płyta ${liczba(pole_m2, 2)} m². ` +
+          (brutto > 0
+            ? `Cena materiału: ${zl(netto)}/m² netto = ${zl(brutto)}/m² brutto · ` +
+              `cała płyta ${zl(brutto * pole_m2)} brutto.`
+            : 'Podaj cenę, żeby zobaczyć przeliczenie.')
+        : 'Podaj wymiar płyty.'
+    ),
+    h(
+      'p',
+      { class: 'form-nota' },
+      'Liczymy PEŁNYMI płytami z podanego wymiaru — tak jak przy płycie ' +
+        'z magazynu. Rozrys użyje tego samego formatu, a klient zobaczy nazwę ' +
+        '(i numer płyty, jeśli wpisany).'
     )
   );
 }

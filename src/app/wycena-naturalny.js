@@ -147,8 +147,10 @@ export function firmaZWariantu(wariant) {
       polowkaDozwolona: false,
       // Magazyn podaje wymiar SUROWEJ płyty — krawędzie kamienia naturalnego
       // są nierówne i schodzą przy obróbce. W cennikach producentów formaty
-      // są już użytkowe, dlatego obrzeże dokładamy tylko tutaj.
-      obrzeze: 1,
+      // są już użytkowe, a płytę własną Dawid podaje w wymiarze użytkowym
+      // („ja już podaję wymiary bez marginesów", 25.08.2026) — dlatego
+      // obrzeże dokładamy WYŁĄCZNIE kamieniowi naturalnemu.
+      obrzeze: naturalny ? 1 : 0,
     },
     // Kamień naturalny ma większy odpad — rysunek trzeba dobrać, zdarzają się
     // pęknięcia. Konglomerat i spiek z Interstone tną się jak każde inne.
@@ -340,10 +342,14 @@ function liczba(n) {
  * Interstone albo z inną ceną. Liczy się identycznie jak płyta magazynowa:
  * całe płyty, obrzeże, odpad 15%, dodatek za obróbkę naturalnego.
  */
-export function wariantReczny({ nazwa, kod = '', cenaBruttoM2, plytaCm, gruboscMm }) {
+export function wariantReczny({ nazwa, kod = '', cenaBruttoM2, plytaCm, gruboscMm, rodzaj }) {
   return {
     nazwa: String(nazwa || 'Kamień naturalny').trim(),
-    rodzaj: 'Kamień naturalny',
+    // `rodzaj` decyduje o dodatkach: po słowie „kamień" silnik rozpoznaje
+    // kamień naturalny i dolicza dodatek za trudność obróbki oraz większy
+    // odpad. Płyta własna (app/plyta-wlasna.js) podaje tu własny rodzaj,
+    // żeby liczyła się jak zwykły materiał płytowy.
+    rodzaj: String(rodzaj || 'Kamień naturalny'),
     kod: String(kod || ''),
     cenaBruttoM2: Number(cenaBruttoM2) || 0,
     plytaCm: { dl: Number(plytaCm?.dl) || 0, gl: Number(plytaCm?.gl) || 0 },
