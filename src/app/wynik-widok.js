@@ -368,39 +368,65 @@ function plakietkaPromo(w) {
   );
 }
 
+/**
+ * NAGŁÓWEK PIERWSZEJ WYCENY (przeprojektowany 25.08.2026).
+ *
+ * Zgłoszenie Dawida: „popraw, żeby była ładniejsza, czytelniejsza i ten
+ * zakres cenowy żeby był dobrze widoczny".
+ *
+ * Było: nazwa, a pod nią jeden zbity ciąg oddzielany kropkami (odcinki ·
+ * metry · m² · grubość), a kwota — jedyna rzecz, po którą klient tu
+ * przyszedł — kończyła jako ostatni element tym samym drobnym drukiem.
+ *
+ * Jest: KWOTA na wierzchu i duża, ze złotym akcentem, a parametry rozbite
+ * na pary etykieta–wartość, które da się przeczytać wzrokiem z góry na dół.
+ */
 function naglowek(w) {
   const doUstalenia = w.materialDoUstalenia;
+
+  const wiersz = (etykieta, wartosc) =>
+    wartosc
+      ? h('div', { class: 'param' }, h('dt', {}, etykieta), h('dd', {}, String(wartosc)))
+      : null;
+
   return h(
     'div',
     { class: 'wynik-head' },
+
+    /* ── kwota: to po nią klient tu przyszedł ── */
     h(
       'div',
-      {},
-      h('div', { class: 'q-kicker' }, 'Wycena orientacyjna'),
-      h('div', { class: 'q-title' }, `${w.firma.nazwa}${w.dekor ? ' · ' + w.dekor : ''}`),
+      { class: 'kwota-hero' },
+      h('div', { class: 'kh-lbl' }, doUstalenia ? 'Obróbka i montaż' : 'Szacowany koszt'),
       h(
         'div',
-        { class: 'q-hint' },
-        `${opisOdcinkow(w)} · ${liczba(w.pak.mb)} m.b. · ${liczba(w.pak.m2Blatu)} m²` +
-          (w.grubosc ? ` · ${w.grubosc} mm` : '')
-      )
-    ),
-    h(
-      'div',
-      { class: 'kwota' },
-      h('div', { class: 'k-lbl' }, doUstalenia ? 'Obróbka i montaż' : 'Razem brutto'),
-      h(
-        'div',
-        { class: 'k-val' },
-        doUstalenia ? zl(w.razemZaokr) : `${zl(w.widelki.od)} – ${zl(w.widelki.do)}`
+        { class: 'kh-val' },
+        doUstalenia
+          ? zl(w.razemZaokr)
+          : [
+              h('span', { class: 'kh-od' }, zl(w.widelki.od)),
+              h('span', { class: 'kh-myslnik' }, '–'),
+              h('span', { class: 'kh-do' }, zl(w.widelki.do)),
+            ]
       ),
       h(
         'div',
-        { class: 'k-note' },
+        { class: 'kh-note' },
         doUstalenia
-          ? '+ materiał wg wybranej płyty'
-          : `z VAT ${procentVat(w)} · bez zobowiązań`
+          ? `+ materiał wg wybranej płyty · z VAT ${procentVat(w)}`
+          : `brutto, z VAT ${procentVat(w)} · orientacyjnie, doprecyzujemy po pomiarze`
       )
+    ),
+
+    /* ── parametry: pary etykieta–wartość, nie ciąg z kropkami ── */
+    h(
+      'dl',
+      { class: 'parametry' },
+      wiersz('Materiał', w.firma.nazwa),
+      wiersz('Dekor', w.dekor),
+      wiersz('Grubość', w.grubosc ? `${w.grubosc} mm` : ''),
+      wiersz('Odcinki', opisOdcinkow(w)),
+      wiersz('Metry bieżące', `${liczba(w.pak.mb)} m.b. (${liczba(w.pak.m2Blatu)} m²)`)
     )
   );
 }
