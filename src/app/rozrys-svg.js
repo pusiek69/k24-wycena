@@ -98,7 +98,9 @@ export function tytulPlyty(p, opisMaterialu) {
   return h(
     'div',
     { class: 'rozrys-plyta-tytul' },
-    h('b', {}, `Płyta ${p.nr}`),
+    // Połówkę podpisujemy WPROST — na rysunku widać tylko niższy arkusz,
+    // a Dawid musi wiedzieć, że zamawia pół płyty, nie całą.
+    h('b', {}, `Płyta ${p.nr}${p.polowka ? ' — połówka' : ''}`),
     opisMaterialu ? h('span', {}, ' — ' + opisMaterialu) : null,
     h(
       'span',

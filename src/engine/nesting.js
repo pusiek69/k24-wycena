@@ -43,7 +43,7 @@ export const DOMYSLNY_MARGINES_MM = 0;
 /**
  * @param {Array} elementy  [{ nazwa, szer, gl, ilosc }] w mm
  * @param {object} plyta    { szer, wys } w mm
- * @param {object} opcje    { rzaz, margines, rotacja }
+ * @param {object} opcje    { rzaz, margines, rotacja, polowkaDozwolona }
  * @returns {{plyty: Array, nieumieszczone: Array, statystyki: object}}
  */
 export function rozrysuj(elementy, plyta, opcje = {}) {
@@ -51,6 +51,20 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
   const margines = liczbaNieujemna(opcje.margines, DOMYSLNY_MARGINES_MM);
   const rotacja = opcje.rotacja !== false;
   const maksPlyt = Number(opcje.maksPlyt) || 40;
+
+  /*
+   * POŁÓWKI PŁYT (zlecenie Dawida, 25.08.2026: „w avant, caesarstone
+   * i keralini uwzględnij w rozkroju, że są połówki płyt").
+   *
+   * U części dostawców można kupić pół płyty — i wycena już to liczy
+   * (patrz engine/pakowanie.js). Rozrys tego nie pokazywał i rysował
+   * pełny arkusz nawet wtedy, gdy Dawid kupował połowę, przez co
+   * „Powierzchnia płyt" i odpad na rysunku kłóciły się z wyceną.
+   *
+   * Połówka to arkusz przecięty w POPRZEK: z 320 × 160 cm robi się
+   * 320 × 80 cm — tak samo, jak liczy to wycena.
+   */
+  const polowkaDozwolona = opcje.polowkaDozwolona === true;
 
   const polePlyty = { szer: Number(plyta?.szer) || 0, wys: Number(plyta?.wys) || 0 };
   const uzyteczna = {
@@ -96,6 +110,19 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
       poleElementowMm2: ulozone.reduce((a, e) => a + e.szer * e.gl, 0),
     });
     zostalo = reszta;
+  }
+
+  /*
+   * Ostatnia płyta wykorzystana najwyżej do połowy wysokości = połówka.
+   * Ten sam próg co w wycenie, żeby rysunek i kwota mówiły to samo.
+   */
+  const ostatnia = plyty[plyty.length - 1];
+  if (polowkaDozwolona && ostatnia) {
+    const uzytaWysokosc = ostatnia.elementy.reduce((a, e) => Math.max(a, e.y + e.gl), 0);
+    if (uzytaWysokosc <= polePlyty.wys / 2 + 0.001) {
+      ostatnia.polowka = true;
+      ostatnia.wys = polePlyty.wys / 2;
+    }
   }
 
   if (zostalo.length && plyty.length >= maksPlyt) {
@@ -253,10 +280,16 @@ function rozwin(elementy) {
 
 function statystyki(plyty, plyta, nieumieszczone) {
   const polePlytyM2 = (plyta.szer * plyta.wys) / 1e6;
-  const plytM2 = plyty.length * polePlytyM2;
+  // Metry liczymy z RZECZYWISTYCH wymiarów arkuszy — połówka wchodzi
+  // w rachunek jako pół płyty, tak jak w wycenie.
+  const plytM2 = plyty.reduce((a, p) => a + (p.szer * p.wys) / 1e6, 0);
   const elementyM2 = plyty.reduce((a, p) => a + p.poleElementowMm2, 0) / 1e6;
+  const polowek = plyty.filter((p) => p.polowka).length;
   return {
     plyt: plyty.length,
+    // Rozbicie na pełne i połówki — z tego wycena składa „2 i ½ płyty".
+    plytPelnych: plyty.length - polowek,
+    polowek,
     polePlytyM2: zaokr(polePlytyM2, 3),
     plytM2: zaokr(plytM2, 3),
     elementyM2: zaokr(elementyM2, 3),

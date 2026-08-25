@@ -58,10 +58,11 @@ export function widokRozrysu(kontekst, onZmiana) {
   function rysujWyniki() {
     const wynik = rozrysuj(k.elementy, k.plyta, {
       rotacja: k.rotacja, rzaz: k.rzaz, margines: k.margines,
+      polowkaDozwolona: k.polowkaDozwolona === true,
     });
     gora.replaceChildren(
       naglowek(wynik, k.plyta, k.opisMaterialu),
-      ostrzezenia(wynik, k.plytZWyceny)
+      ostrzezenia(wynik, k.plytZWyceny, k.polowkaZWyceny)
     );
     dol.replaceChildren(
       ...wynik.plyty.map((p) =>
@@ -128,16 +129,32 @@ const staty = (etykieta, wartosc) =>
  * Dawid ma zobaczyć różnicę i sam zdecydować (świadoma decyzja: cena
  * nie może zmieniać się sama pod klientem, który już dostał ofertę).
  */
-function ostrzezenia(wynik, plytZWyceny) {
+/** „2 i ½ płyty" — tak samo, jak mówi o tym wycena. */
+function opisIle(pelnych, polowek) {
+  if (pelnych === 0 && polowek) return '½ płyty';
+  return polowek ? `${pelnych} i ½ płyty` : `${pelnych} ${pelnych === 1 ? 'płytę' : 'płyt'}`;
+}
+
+function ostrzezenia(wynik, plytZWyceny, polowkaZWyceny) {
   const uwagi = [];
   const s = wynik.statystyki;
 
-  if (plytZWyceny > 0 && s.plyt > 0 && s.plyt !== plytZWyceny) {
+  /*
+   * Porównanie z wyceną liczone w POŁÓWKACH, nie w sztukach — inaczej
+   * rozrys z jedną połówką „nie zgadzałby się" z wyceną, która liczy
+   * dokładnie to samo (zlecenie Dawida, 25.08.2026).
+   */
+  const polRozrysu = (s.plytPelnych ?? s.plyt) * 2 + (s.polowek || 0);
+  const polWyceny = plytZWyceny * 2 + (polowkaZWyceny ? 1 : 0);
+
+  if (polWyceny > 0 && polRozrysu > 0 && polRozrysu !== polWyceny) {
+    const wRozrysie = opisIle(s.plytPelnych ?? s.plyt, s.polowek || 0);
+    const wWycenie = opisIle(plytZWyceny, polowkaZWyceny ? 1 : 0);
     uwagi.push(
-      s.plyt > plytZWyceny
-        ? `Rozrys potrzebuje ${s.plyt} płyt, a wycena policzyła ${plytZWyceny}. ` +
+      polRozrysu > polWyceny
+        ? `Rozrys potrzebuje ${wRozrysie}, a wycena policzyła ${wWycenie}. ` +
             'Przy tym układzie materiału zabraknie — sprawdź wycenę przed wysłaniem.'
-        : `Rozrys mieści wszystko na ${s.plyt} płytach, a wycena liczy ${plytZWyceny}. ` +
+        : `Rozrys mieści wszystko na ${wRozrysie}, a wycena liczy ${wWycenie}. ` +
             'Wycena jest bezpieczna, ale jest pole do upustu.'
     );
   }

@@ -348,6 +348,9 @@ function zamrozRozrys(stan, w) {
       rzaz: ustawienia.rzaz,
       margines: ustawienia.margines,
       rotacja: ustawienia.rotacja,
+      // U części dostawców można kupić pół płyty — rysunek ma to pokazać,
+      // bo inaczej odpad na rozrysie kłóci się z kwotą w wycenie.
+      polowkaDozwolona: w.firma?.plyta?.polowkaDozwolona === true,
     });
     if (!wynik.plyty.length) return null;
 
@@ -1181,7 +1184,9 @@ function pokazRozrys(stan, w, paczka, box) {
     {
       ...stan.rozrys,
       plyta: plytaDoRozrysu(stan, w),
+      polowkaDozwolona: w.firma?.plyta?.polowkaDozwolona === true,
       plytZWyceny: w.pak?.plytyPelne ?? 0,
+      polowkaZWyceny: !!w.pak?.polowka,
       opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
     },
     // Sam widok dba o przerysowanie swoich wyników — tutaj tylko zapisujemy

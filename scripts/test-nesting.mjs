@@ -326,3 +326,97 @@ test('na płycie Pacifica 3480×2010 mieszczą się trzy blaty 3400 mm', () => {
   assert.equal(w.plyty.length, 1, 'trzy pasy 600 mm + rzazy mieszczą się w 2010 mm');
   assert.equal(w.statystyki.nieumieszczonych, 0);
 });
+
+/* ═══════════ POŁÓWKI PŁYT W ROZKROJU (Dawid, 25.08.2026) ═══════════
+ *
+ * „W avant, caesarstone i keralini uwzględnij w rozkroju, że są połówki
+ * płyt." Wycena liczyła je od dawna (engine/pakowanie.js), ale rozrys
+ * rysował pełny arkusz — przez co odpad na rysunku kłócił się z kwotą.
+ *
+ * Połówka to arkusz przecięty w POPRZEK: 3200 × 1600 → 3200 × 800.
+ */
+
+const POL = { szer: 3200, wys: 1600 };
+
+test('bez zgody dostawcy połówek nie ma — rysujemy pełny arkusz', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], POL);
+  assert.equal(w.plyty[0].wys, 1600);
+  assert.equal(w.plyty[0].polowka, undefined);
+  assert.equal(w.statystyki.polowek, 0);
+});
+
+test('blat mieszczący się w połowie wysokości daje POŁÓWKĘ', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], POL, { polowkaDozwolona: true });
+  assert.equal(w.plyty[0].polowka, true);
+  assert.equal(w.plyty[0].wys, 800, 'połówka ma połowę wysokości arkusza');
+  assert.equal(w.statystyki.polowek, 1);
+  assert.equal(w.statystyki.plytPelnych, 0);
+});
+
+test('metry liczą się z RZECZYWISTEGO arkusza — połówka to pół', () => {
+  const pelna = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], POL);
+  const polowka = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], POL, { polowkaDozwolona: true });
+  assert.equal(pelna.statystyki.plytM2, 5.12);
+  assert.equal(polowka.statystyki.plytM2, 2.56);
+});
+
+test('odpad na połówce jest liczony od połówki, nie od całej płyty', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], POL, { polowkaDozwolona: true });
+  // 2,56 m² arkusza − 1,8 m² blatu = 0,76 m² odpadu.
+  assert.equal(w.statystyki.odpadM2, 0.76);
+  assert.ok(w.statystyki.wykorzystanieProc > 60, 'wykorzystanie połówki musi być wyższe niż całej płyty');
+});
+
+test('blat wyższy niż połowa arkusza NIE jest połówką', () => {
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 900 }], POL, { polowkaDozwolona: true });
+  assert.equal(w.plyty[0].polowka, undefined);
+  assert.equal(w.plyty[0].wys, 1600);
+});
+
+test('połówką może być tylko OSTATNI arkusz', () => {
+  // Trzy blaty 3000×600: dwa na pierwszą płytę, trzeci na drugą (połówka).
+  const el = Array.from({ length: 3 }, (_, i) => ({ nazwa: `Blat ${i + 1}`, szer: 3000, gl: 600 }));
+  const w = rozrysuj(el, POL, { polowkaDozwolona: true, rotacja: false });
+  assert.equal(w.plyty.length, 2);
+  assert.equal(w.plyty[0].polowka, undefined, 'pierwsza płyta nie może być połówką');
+  assert.equal(w.plyty[1].polowka, true);
+  assert.equal(w.statystyki.plytPelnych, 1);
+  assert.equal(w.statystyki.polowek, 1);
+});
+
+test('rozkrój zgadza się z wyceną co do połówki', async () => {
+  // To jest sedno zgłoszenia: rysunek i kwota mają mówić to samo.
+  const { wycen, FIRMY } = await import('./lib/silnik.mjs').then((m) => m.wczytajSilnik());
+  const firma = FIRMY.find((f) => f.slug === 'avant-quartz');
+  assert.equal(firma.plyta.polowkaDozwolona, true, 'Avant Quartz ma mieć połówki');
+
+  const odcinki = [{ gl: 60, dl: 300 }];
+  const w = wycen(firma, {
+    dekor: Object.keys(firma.dekory)[0],
+    grubosc: '20',
+    odcinki,
+    opcje: { pomieszczenie: 'kuchnia', otwory: 1 },
+  });
+  assert.equal(w.ok, true, w.blad);
+
+  const r = rozrysuj(
+    [{ nazwa: 'Blat 1', szer: 3000, gl: 600 }],
+    { szer: firma.plyta.w * 10, wys: firma.plyta.h * 10 },
+    { polowkaDozwolona: true }
+  );
+  assert.equal(r.statystyki.plytPelnych, w.pak.plytyPelne, 'liczba pełnych płyt się rozjeżdża');
+  assert.equal(r.statystyki.polowek > 0, w.pak.polowka, 'połówka w rozrysie nie zgadza się z wyceną');
+});
+
+test('trzy firmy z połówkami mają to ustawione w konfiguracji', async () => {
+  const { FIRMY } = await import('./lib/silnik.mjs').then((m) => m.wczytajSilnik());
+  for (const slug of ['avant-quartz', 'caesarstone', 'keralini']) {
+    const f = FIRMY.find((x) => x.slug === slug);
+    assert.equal(f.plyta.polowkaDozwolona, true, `${slug} powinien mieć połówki`);
+  }
+  // A InterQ i Pacific NIE — dostawcy sprzedają tylko pełne płyty.
+  for (const slug of ['interq', 'pacific']) {
+    const f = FIRMY.find((x) => x.slug === slug);
+    assert.equal(f.plyta.polowkaDozwolona, false, `${slug} nie ma połówek`);
+  }
+});
