@@ -420,3 +420,31 @@ test('trzy firmy z połówkami mają to ustawione w konfiguracji', async () => {
     assert.equal(f.plyta.polowkaDozwolona, false, `${slug} nie ma połówek`);
   }
 });
+
+test('OŚ CIĘCIA POŁÓWKI: długość zostaje, na pół idzie wysokość', () => {
+  /*
+   * Potwierdzone przez Dawida 25.08.2026: połówka u Avanta, Caesarstone
+   * i Keralini to 320 × 80 cm, a NIE 160 × 160.
+   *
+   * Ten test istnieje, bo to rozstrzygnięcie kosztuje pieniądze: przy
+   * cięciu wzdłuż blat dłuższy niż 160 cm nie zmieściłby się na połówce
+   * i trzeba by kupić całą płytę — typowa prosta kuchnia drożeje wtedy
+   * o ok. 1 600 zł. Gdyby ktoś kiedyś odwrócił oś, ma się to wywalić tutaj,
+   * a nie w cenniku u klienta.
+   */
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], { szer: 3200, wys: 1600 },
+    { polowkaDozwolona: true });
+  const p = w.plyty[0];
+  assert.equal(p.polowka, true);
+  assert.equal(p.szer, 3200, 'DŁUGOŚĆ połówki musi zostać pełna');
+  assert.equal(p.wys, 800, 'na pół idzie WYSOKOŚĆ');
+});
+
+test('blat dłuższy niż połowa płyty i tak wchodzi na połówkę', () => {
+  // Sedno wyboru osi: 300 cm blat mieści się, bo połówka ma pełne 320 cm.
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 3000, gl: 600 }], { szer: 3200, wys: 1600 },
+    { polowkaDozwolona: true, rotacja: false });
+  assert.equal(w.statystyki.nieumieszczonych, 0);
+  assert.equal(w.statystyki.polowek, 1);
+  assert.equal(w.statystyki.plytM2, 2.56, 'klient płaci za pół płyty, nie za całą');
+});

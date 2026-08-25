@@ -61,8 +61,15 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
    * pełny arkusz nawet wtedy, gdy Dawid kupował połowę, przez co
    * „Powierzchnia płyt" i odpad na rysunku kłóciły się z wyceną.
    *
-   * Połówka to arkusz przecięty w POPRZEK: z 320 × 160 cm robi się
-   * 320 × 80 cm — tak samo, jak liczy to wycena.
+   * OŚ CIĘCIA — POTWIERDZONA PRZEZ DAWIDA (25.08.2026): połówka to arkusz
+   * przecięty w POPRZEK, czyli z 320 × 160 cm robi się 320 × 80 cm.
+   * DŁUGOŚĆ ZOSTAJE, na pół idzie wysokość.
+   *
+   * To rozstrzygnięcie ma znaczenie pieniężne, więc zapisujemy je wprost:
+   * przy cięciu wzdłuż (160 × 160) blat dłuższy niż 160 cm NIE zmieściłby
+   * się na połówce i trzeba by kupić całą płytę — typowa prosta kuchnia
+   * drożeje wtedy o ok. 1 600 zł. Ta sama zasada obowiązuje w wycenie
+   * (engine/pakowanie.js) i tu — jedna i druga muszą mówić to samo.
    */
   const polowkaDozwolona = opcje.polowkaDozwolona === true;
 

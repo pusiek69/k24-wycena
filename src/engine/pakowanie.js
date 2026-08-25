@@ -187,7 +187,14 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
   let polowka = false;
 
   if (plyta?.polowkaDozwolona && plytyPelne > 0) {
-    // Ostatnia płyta wykorzystana najwyżej do połowy = kupujemy połówkę.
+    /*
+     * Ostatnia płyta wykorzystana najwyżej do połowy = kupujemy połówkę.
+     *
+     * Połówka to arkusz przecięty w POPRZEK (320 × 160 → 320 × 80):
+     * długość zostaje, na pół idzie wysokość. Potwierdził Dawid
+     * 25.08.2026 — patrz uwaga w engine/nesting.js, rozrys stosuje
+     * dokładnie ten sam próg.
+     */
     const ostatnia = plyty[plyty.length - 1];
     if (ostatnia.wysokosc <= UH / 2 + 0.1) {
       plytyPelne -= 1;
