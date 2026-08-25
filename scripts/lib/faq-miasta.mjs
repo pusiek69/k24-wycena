@@ -71,7 +71,15 @@ const zl = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + 
 export function pytaniaMiasta(miasto, kwoty, wzorow, i) {
   const { nazwa, wMiescie, doMiasta, km, daleko } = miasto;
 
-  const dojazd = daleko
+  // Tarnobrzeg to miasto zakładu — „0 km od naszego zakładu w Tarnobrzegu"
+  // brzmiałoby absurdalnie.
+  const naMiejscu = km === 0;
+
+  const dojazd = naMiejscu
+    ? 'Tak. Zakład mamy w Tarnobrzegu przy ul. Szpitalnej 8, więc jesteśmy na miejscu — ' +
+      'pomiar Prolinerem wykonujemy bezpłatnie i niezobowiązująco, a transport i montaż ' +
+      'są wliczone w cenę blatu. Płyty można obejrzeć u nas na hali przed zamówieniem.'
+    : daleko
     ? `${nazwa} leży około ${km} km od naszego zakładu w Tarnobrzegu, czyli poza promieniem, ` +
       'w którym pomiar jest bezpłatny bez żadnych warunków. Nie znaczy to, że nie przyjedziemy — ' +
       'realizujemy montaże w całej Polsce. Warunki dojazdu ustalamy indywidualnie przy zamówieniu, ' +
