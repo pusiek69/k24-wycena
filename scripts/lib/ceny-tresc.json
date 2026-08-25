@@ -56,5 +56,16 @@
     7850,
     8050,
     8550
-  ]
+  ],
+  "liczby": {
+    "avantDekory": 62,
+    "caesarstoneDekory": 30,
+    "technistoneDekory": 66,
+    "keraliniDekory": 49,
+    "marazziDekory": 129,
+    "konglomeratWzory": 158,
+    "konglomeratDekory": 158,
+    "spiekWzory": 178,
+    "wszystkieWzory": 700
+  }
 }
