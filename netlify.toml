@@ -312,3 +312,8 @@
   for = "/realizacje/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
+    # Zdjęcia galerii nie zmieniają się po wgraniu, a przy 172 plikach
+    # brak cache oznacza tyle samo zapytań przy każdym wejściu w galerię.
+    # Reguły `/*.webp` i `/*.png` wyżej łapią tylko katalog główny —
+    # do podkatalogów nie sięgają, stąd osobny wpis. 30 dni, jak tam.
+    Cache-Control = "public, max-age=2592000"
