@@ -14,7 +14,7 @@ import { API_BASE } from '../api.js';
 /** Ten sam limit co w workerze (worker/rozmowa.js) — licznik ma nie kłamać. */
 export const MAKS_ZNAKOW = 2000;
 
-export function sekcjaRozmowy(token, poczatkowa = []) {
+export function sekcjaRozmowy(token, poczatkowa = [], { tylkoOdczyt = false } = {}) {
   const lista = h('ul', { class: 'watek' });
   const info = h('p', { class: 'watek-info', hidden: true, role: 'status' });
 
@@ -93,16 +93,22 @@ export function sekcjaRozmowy(token, poczatkowa = []) {
     'section',
     { class: 'watek-sekcja' },
     h('h4', { class: 'watek-tytul' }, 'Pytania do tej wyceny'),
-    h(
-      'p',
-      { class: 'watek-wstep' },
-      'Można napisać wprost tutaj — odpowiedź Dawida pojawi się w tym miejscu ' +
-        'i przyjdzie na Państwa e-mail. Pilne sprawy najszybciej telefonicznie: ',
-      h('a', { href: 'tel:+48796991128', 'data-miejsce': 'watek' }, '796 991 128'),
-      '.'
-    ),
+    // W podglądzie zachęta „napisz tutaj" kłóciłaby się z brakiem pola.
+    tylkoOdczyt
+      ? h('p', { class: 'watek-wstep' }, 'Tak wygląda wątek u klienta. Odpowiadasz z jego karty w panelu.')
+      : h(
+          'p',
+          { class: 'watek-wstep' },
+          'Można napisać wprost tutaj — odpowiedź Dawida pojawi się w tym miejscu ' +
+            'i przyjdzie na Państwa e-mail. Pilne sprawy najszybciej telefonicznie: ',
+          h('a', { href: 'tel:+48796991128', 'data-miejsce': 'watek' }, '796 991 128'),
+          '.'
+        ),
     lista,
-    formularz
+    // Podgląd właściciela: sam wątek, bez pola do pisania — Dawid odpowiada
+    // z karty klienta w panelu, żeby wiadomość poszła jako „od Dawida",
+    // a nie jako kolejny wpis klienta.
+    tylkoOdczyt ? null : formularz
   );
 }
 

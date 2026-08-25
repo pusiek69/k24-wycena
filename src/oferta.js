@@ -19,7 +19,27 @@ import { zdarzenie } from './analytics/zdarzenia.js';
 const PORY = ['Jak najszybciej', 'Po 16:00', 'Jutro przed południem'];
 const BUDZETY = ['do 8 tys.', '8–12 tys.', '12–20 tys.', 'powyżej 20 tys.'];
 
-const token = (location.hash || '').replace(/^#/, '').trim();
+/*
+ * Adres ma postać `#token` albo `#token~podpis`.
+ *
+ * Druga forma to PODGLĄD WŁAŚCICIELA z panelu: Dawid oglada wysłaną
+ * ofertę dokładnie tak, jak widzi ją klient, ale jego zajrzenie NIE
+ * podbija licznika „klient obejrzał". Podpis sprawdza worker — bez
+ * ważnego podpisu strona zachowuje się jak zwykły link z maila.
+ */
+const [token, pakiet] = (location.hash || '').replace(/^#/, '').trim().split('~');
+
+function podgladWlasciciela() {
+  if (!pakiet) return null;
+  try {
+    const b64 = pakiet.replace(/-/g, '+').replace(/_/g, '/');
+    const bajty = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const p = JSON.parse(new TextDecoder().decode(bajty));
+    return p?.podpis ? { podglad: true, leadId: p.leadId, exp: p.exp, podpis: p.podpis } : null;
+  } catch {
+    return null;
+  }
+}
 const root = document.getElementById('oferta');
 
 async function start() {
@@ -31,7 +51,7 @@ async function start() {
     const odp = await fetch(`${API_BASE}/oferta/dane`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ token, ...(podgladWlasciciela() || {}) }),
     });
     dane = await odp.json();
   } catch {
@@ -40,8 +60,20 @@ async function start() {
   if (!dane?.ok || !dane.oferta) {
     return blad('Nie udało się wczytać wyceny. Proszę spróbować za chwilę albo zadzwonić: 796 991 128.');
   }
-  zdarzenie('oferta_otwarta');
-  root.replaceChildren(widok(dane));
+  const wlasciciel = !!podgladWlasciciela();
+  // Statystyk nie zaburzamy własnym zaglądaniem — ani w bazie, ani w Analytics.
+  if (!wlasciciel) zdarzenie('oferta_otwarta');
+  root.replaceChildren(
+    wlasciciel
+      ? h(
+          'div',
+          { class: 'info podglad-wlasciciela' },
+          'Podgląd z panelu — dokładnie to, co widzi klient. ' +
+            'Twoje wejście nie liczy się jako otwarcie oferty.'
+        )
+      : null,
+    widok(dane)
+  );
 }
 
 function blad(tresc) {
@@ -49,6 +81,11 @@ function blad(tresc) {
 }
 
 function widok({ imie, utworzono, oferta: o, rozmowa }) {
+  // W podglądzie z panelu Dawid ma OBEJRZEĆ ofertę, a nie odpowiadać na nią
+  // za klienta. Feedback i wybór wariantu zapisałyby się na karcie jako
+  // decyzja klienta i przestawiły status w lejku — dlatego ich tu nie ma.
+  const wlasciciel = !!podgladWlasciciela();
+
   // Karta jest wspólna z podglądem w trybie właściciela — patrz
   // app/oferta-widok.js. Tu dokładamy przyciski feedbacku i rozmowę.
   return h(
@@ -60,11 +97,13 @@ function widok({ imie, utworzono, oferta: o, rozmowa }) {
       // Klik w wariancie to najmocniejszy sygnał, jaki klient może dać:
       // mówi nie tylko że chce, ale NA CZYM. Idzie jako zwykły feedback
       // „pasuje" z dopisaną nazwą materiału.
-      naWybor: (wariant) => wybierzWariant(wariant),
+      naWybor: wlasciciel ? null : (wariant) => wybierzWariant(wariant),
     }),
-    feedback(),
+    wlasciciel ? null : feedback(),
     // Wątek wisi przy TEJ ofercie — autoryzuje ten sam token, co wycena.
-    sekcjaRozmowy(token, rozmowa || [])
+    // W podglądzie pokazujemy go bez możliwości pisania: odpowiada się
+    // z karty klienta w panelu, gdzie wiadomość idzie jako „od Dawida".
+    sekcjaRozmowy(token, rozmowa || [], { tylkoOdczyt: wlasciciel })
   );
 }
 

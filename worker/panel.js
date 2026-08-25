@@ -247,15 +247,38 @@ async function apiKarta(request, env) {
    */
   const exp = Date.now() + 7 * 86400000;
   const sig = await podpisz(env.PANEL_HASLO, `oferta|${k.id}|${exp}`);
+  const doBase64 = (obj) =>
+    btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj))))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
   for (const w of k.wyceny) {
+    /*
+     * PODGLĄD WYSŁANEJ OFERTY (zlecenie Dawida, 25.08.2026):
+     * „chciałbym mieć dostęp również do wysłanej nowej wyceny do klienta".
+     *
+     * Link prowadzi na tę samą stronę co link z maila, więc Dawid widzi
+     * DOKŁADNIE to, co klient — razem z jego wiadomością, rozrysem
+     * i wariantami, w wersji zamrożonej w chwili wysyłki.
+     *
+     * Doklejamy podpis właściciela, żeby strona zapytała o dane w trybie
+     * PODGLĄDU. Bez tego każde zajrzenie Dawida podbijałoby licznik
+     * „klient obejrzał" i statystyka, po której pozna, czy oferta została
+     * przeczytana, przestałaby cokolwiek znaczyć.
+     */
+    if (w.wersja === 'dawid' && w.token) {
+      w.podglad =
+        'https://kam24h.pl/oferta#' +
+        w.token +
+        '~' +
+        doBase64({ leadId: k.id, exp, podpis: sig });
+    }
+
     if (w.wersja || !w.dane || !w.dane.firma) continue; // tylko wyceny klienta z parametrami
-    const paczka = { leadId: k.id, exp, podpis: sig, parametry: w.dane, imie: k.imie };
     w.powtorz =
       'https://kam24h.pl/#powtorz=' +
-      btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(paczka))))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
+      doBase64({ leadId: k.id, exp, podpis: sig, parametry: w.dane, imie: k.imie });
   }
   return json(k);
 }
@@ -747,11 +770,16 @@ async function pokazSzczegoly(id, cicho){
     var powtorz = w.powtorz
       ? ' · <a href="' + esc(w.powtorz) + '" target="_blank" rel="noopener">Powtórz wycenę ↗</a>'
       : '';
+    // Każda wysłana wersja ma swój link — także te starsze, bo właśnie
+    // po nie sięga się, gdy klient dzwoni „ale Pan mi wtedy pisał…".
+    var podglad = w.podglad
+      ? ' · <a href="' + esc(w.podglad) + '" target="_blank" rel="noopener">Zobacz ofertę klienta ↗</a>'
+      : '';
     return '<li' + (w.wersja === 'dawid' ? ' class="od-dawida"' : '') + '>' +
       '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + powtorz + obejrzenia +
+      (w.odbior ? ' · odbiór własny' : '') + podglad + powtorz + obejrzenia +
       watekHtml(w) + '</li>';
   }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
 
