@@ -25,9 +25,12 @@ const tylkoSprawdz = process.argv.includes('--sprawdz');
 
 /** Adres z sitemapy → plik HTML w repozytorium. */
 function doPliku(url) {
+  const czyKatalog = /\/$/.test(url.replace(/^https?:\/\/[^/]+/, ''));
   const sciezka = url.replace(/^https?:\/\/[^/]+\/?/, '').replace(/\/$/, '');
   if (!sciezka) return 'index.html';
-  return sciezka.endsWith('.html') ? sciezka : `${sciezka}.html`;
+  if (sciezka.endsWith('.html')) return sciezka;
+  // Adres katalogu („/baza-wiedzy/") to jego index, a nie plik obok.
+  return czyKatalog ? `${sciezka}/index.html` : `${sciezka}.html`;
 }
 
 /** Data ostatniego commitu pliku (YYYY-MM-DD) albo null, gdy plik nieznany. */
