@@ -236,6 +236,30 @@
   force = true
 
 [[redirects]]
+  from = "/blaty-kuchenne-ostrowiec-swietokrzyski.html"
+  to = "/blaty-kuchenne-ostrowiec-swietokrzyski"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-starachowice.html"
+  to = "/blaty-kuchenne-starachowice"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-staszow.html"
+  to = "/blaty-kuchenne-staszow"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/blaty-kuchenne-lublin.html"
+  to = "/blaty-kuchenne-lublin"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/realizacje.html"
   to = "/realizacje"
   status = 301

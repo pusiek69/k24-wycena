@@ -23,7 +23,8 @@
     "galeria": "node scripts/galeria.mjs",
     "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz",
     "ceny:tresc": "node scripts/ceny-tresc.mjs",
-    "sitemap": "node scripts/sitemap-lastmod.mjs"
+    "sitemap": "node scripts/sitemap-lastmod.mjs",
+    "miasta": "node scripts/strony-miast.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.3",
