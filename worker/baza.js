@@ -411,12 +411,40 @@ export async function karta(env, id) {
     watki.get(m.wycena_id).push({ autor: m.autor, tresc: m.tresc, utworzono: m.utworzono });
   }
 
+  /*
+   * Rozmowa jest przypięta do PIERWSZEJ wersji oferty (żeby przetrwała
+   * aktualizacje), a w karcie ma się pokazać przy NAJNOWSZEJ — bo to ją
+   * Dawid ma przed oczami. Tu przekładamy jedno na drugie.
+   */
+  const wiersze = wyceny.results || [];
+  const watkiWgGrupy = new Map();
+  for (const w of wiersze) {
+    const grupa = w.watek || w.token;
+    if (!grupa || !watki.has(w.id)) continue;
+    watkiWgGrupy.set(grupa, watki.get(w.id));
+  }
+  // Przy najnowszej wersji zostawiamy rozmowę tylko raz — przy pozostałych
+  // wersjach z tej samej grupy ma jej nie być, żeby nie dublować dymków.
+  const najnowszaWGrupie = new Map();
+  for (const w of wiersze) {
+    const grupa = w.watek || w.token;
+    if (!grupa) continue;
+    const dotad = najnowszaWGrupie.get(grupa);
+    if (!dotad || w.id > dotad) najnowszaWGrupie.set(grupa, w.id);
+  }
+  for (const w of wiersze) {
+    const grupa = w.watek || w.token;
+    if (grupa && najnowszaWGrupie.get(grupa) !== w.id) watki.set(w.id, []);
+  }
+
   return {
     ...kartaSkrocona(k),
-    wyceny: (wyceny.results || []).map((w) => ({
+    wyceny: wiersze.map((w) => ({
       ...w,
       dane: bezpiecznyJson(w.dane),
-      rozmowa: watki.get(w.id) || [],
+      // Rozmowa wisi przy PIERWSZEJ wersji, ale pokazujemy ją przy
+      // NAJNOWSZEJ — na tę Dawid patrzy i z niej odpisuje.
+      rozmowa: watki.get(w.id) || watkiWgGrupy.get(w.watek || w.token) || [],
     })),
     notatki: notatki.results || [],
   };
@@ -490,7 +518,12 @@ const bezpiecznyJson = (t) => {
  * nigdy nadpisanie: oryginał klienta zostaje nietknięty. Zwraca token
  * linku wyceny online.
  */
-export async function zapiszOferte(env, klientId, oferta, token) {
+/**
+ * Zapisuje wersję oferty. `watek` łączy kolejne wersje TEJ SAMEJ oferty —
+ * pusty znaczy „nowa oferta", wtedy wątkiem staje się jej własny token.
+ * Dzięki temu link klienta się nie zmienia, a historia wersji zostaje.
+ */
+export async function zapiszOferte(env, klientId, oferta, token, watek = '') {
   const baza = env.BAZA;
   const czas = teraz();
   const kwota = liczba(oferta.razem);
@@ -499,8 +532,8 @@ export async function zapiszOferte(env, klientId, oferta, token) {
     .prepare(
       `INSERT INTO wyceny (klient_id, utworzono, kwota, firma, dekor, grubosc,
                            m2, mb, pomieszczenie, odbior, kod_plyty, opis,
-                           kategoria, wersja, dane, token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'dawid', ?, ?)`
+                           kategoria, wersja, dane, token, watek)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'dawid', ?, ?, ?)`
     )
     .bind(
       klientId,
@@ -517,7 +550,8 @@ export async function zapiszOferte(env, klientId, oferta, token) {
       String(oferta.opis || '').slice(0, 500),
       String(oferta.kategoria || ''),
       jsonOferty(oferta),
-      token
+      token,
+      watek || token
     )
     .run();
 
@@ -551,11 +585,13 @@ export async function zapiszOferte(env, klientId, oferta, token) {
     baza,
     klientId,
     'system',
-    `Wysłano ofertę od Dawida: ${oferta.opis || ''} — ${kwota} zł` +
+    (watek && watek !== token
+      ? `Zaktualizowano ofertę (ten sam link): ${oferta.opis || ''} — ${kwota} zł`
+      : `Wysłano ofertę od Dawida: ${oferta.opis || ''} — ${kwota} zł`) +
       (oferta.korektaOpis ? ` (${oferta.korektaOpis})` : '')
   );
 
-  return { token, wycenaId: swieza?.id || 0 };
+  return { token, watek: watek || token, wycenaId: swieza?.id || 0 };
 }
 
 /**
@@ -586,12 +622,35 @@ export async function ofertaPoTokenie(env, token, { podglad = false } = {}) {
   const czysty = String(token || '').trim();
   if (!/^[a-f0-9]{32,64}$/.test(czysty)) return null;
 
-  const w = await env.BAZA.prepare(`SELECT * FROM wyceny WHERE token = ? LIMIT 1`)
+  const wpis = await env.BAZA.prepare(`SELECT * FROM wyceny WHERE token = ? LIMIT 1`)
     .bind(czysty)
     .first();
-  if (!w) return null;
+  if (!wpis) return null;
+
+  /*
+   * JEDEN LINK = NAJNOWSZA WERSJA (zlecenie Dawida, 25.08.2026).
+   *
+   * Klient dostał link do KONKRETNEJ wersji, ale ma zobaczyć tę najnowszą
+   * z tego wątku — także wtedy, gdy odwieża stronę w trakcie rozmowy
+   * telefonicznej, a Dawid właśnie coś poprawił. Dzięki temu stare,
+   * rozesłane wcześniej linki nie umierają: prowadzą do tego samego wątku.
+   *
+   * Publikacja to pojedynczy INSERT, więc klient nigdy nie zobaczy
+   * półproduktu — albo poprzednią wersję, albo nową w całości.
+   */
+  const grupa = wpis.watek || wpis.token;
+  const wersje = await env.BAZA.prepare(
+    `SELECT * FROM wyceny WHERE watek = ? ORDER BY id ASC`
+  )
+    .bind(grupa)
+    .all();
+  const lista = wersje.results?.length ? wersje.results : [wpis];
+  const pierwsza = lista[0];
+  const w = lista[lista.length - 1];
 
   if (!podglad) {
+    // Licznik podbijamy przy WERSJI, którą klient właśnie zobaczył —
+    // inaczej nie dałoby się powiedzieć, czy czytał tę po poprawkach.
     await env.BAZA.prepare(
       `UPDATE wyceny SET otwarcia = otwarcia + 1, ostatnie_otwarcie = ? WHERE id = ?`
     )
@@ -606,10 +665,21 @@ export async function ofertaPoTokenie(env, token, { podglad = false } = {}) {
   return {
     klientId: w.klient_id,
     wycenaId: w.id,
+    watek: grupa,
+    // Wątek rozmowy i feedback wiszą przy PIERWSZEJ wersji, więc przetrwają
+    // każdą aktualizację — klient nie traci rozmowy przez to, że Dawid
+    // poprawił kwotę.
+    watekId: pierwsza.id,
+    wersjaNr: lista.length,
     imie: klient?.imie || '',
-    utworzono: w.utworzono,
+    // Data PIERWSZEJ wysyłki — tak klient pamięta tę ofertę.
+    utworzono: pierwsza.utworzono,
+    // Kiedy opublikowano to, co widzi teraz. Różne od `utworzono` znaczy
+    // „oferta była aktualizowana" — strona mówi o tym wprost.
+    opublikowano: w.utworzono,
+    zaktualizowana: lista.length > 1,
     oferta: bezpiecznyJson(w.dane),
-    rozmowa: await rozmowaOferty(env, w.id),
+    rozmowa: await rozmowaOferty(env, pierwsza.id),
   };
 }
 
@@ -755,6 +825,9 @@ export async function zapiszFeedback(env, dane) {
   // To jest NAJWAŻNIEJSZA informacja z całego feedbacku: mówi wprost,
   // na czym Dawid ma oprzeć rozmowę, więc ląduje w notatce.
   const wariant = String(dane.wariant || '').slice(0, 120);
+  // Przy KTÓREJ wersji oferty klient odpowiedział — po aktualizacjach
+  // pod tym samym linkiem to jedyny sposób, żeby to odtworzyć.
+  const wersja = Number(dane.wersja) || 1;
 
   await baza
     .prepare(
@@ -778,6 +851,7 @@ export async function zapiszFeedback(env, dane) {
 
   const szczegol = [
     wariant && `wybrał wariant: ${wariant}`,
+    wersja > 1 && `wersja oferty: ${wersja}`,
     pora && `pora: ${pora}`,
     budzet && `budżet: ${budzet}`,
   ]

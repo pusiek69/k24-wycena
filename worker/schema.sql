@@ -142,3 +142,21 @@ CREATE TABLE IF NOT EXISTS wiadomosci (
 CREATE INDEX IF NOT EXISTS wiadomosci_wycena ON wiadomosci (wycena_id, id);
 
 CREATE INDEX IF NOT EXISTS wiadomosci_klient ON wiadomosci (klient_id, id);
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  JEDEN LINK = ZAWSZE NAJNOWSZA WERSJA (zlecenie Dawida, 25.08.2026)
+--
+--  „Chciałbym tę wycenę móc zmieniać dla klienta w czasie rzeczywistym —
+--   pod TYM SAMYM linkiem, żeby nie robić 5 osobnych wycen."
+--
+--  Wersje nadal są osobnymi wierszami (audyt zostaje nietknięty), ale
+--  łączy je `watek` — token PIERWSZEJ wersji. Link klienta pokazuje
+--  najnowszą wersję z wątku, a stare, rozesłane wcześniej linki dalej
+--  działają, bo prowadzą do tego samego wątku.
+-- ═══════════════════════════════════════════════════════════════════════
+ALTER TABLE wyceny ADD COLUMN watek TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS wyceny_watek ON wyceny (watek, id);
+
+-- Wysłane wcześniej oferty: każda jest sama dla siebie osobnym wątkiem.
+UPDATE wyceny SET watek = token WHERE watek = '' AND token <> '';

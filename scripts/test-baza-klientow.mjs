@@ -671,3 +671,144 @@ test('wiadomość od Dawida zamraża się w ofercie i wraca do klienta', async (
   const w = await ofertaPoTokenie(env, TOKEN);
   assert.equal(w.oferta.wiadomosc, 'Pomiar mam wolny w czwartek.');
 });
+
+/* ═══════ JEDEN LINK = NAJNOWSZA WERSJA (zlecenie Dawida, 25.08.2026) ═══════
+ *
+ * „Chciałbym tę wycenę móc zmieniać dla klienta w czasie rzeczywistym —
+ *  pod TYM SAMYM linkiem, żeby nie robić 5 osobnych wycen."
+ */
+
+const OFERTA2 = { ...OFERTA, opis: 'Wersja druga', razem: 7900 };
+const OFERTA3 = { ...OFERTA, opis: 'Wersja trzecia', razem: 7500 };
+
+test('pierwsza oferta zakłada wątek własnym tokenem', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const z = await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  assert.equal(z.watek, TOKEN);
+});
+
+test('aktualizacja to NOWY wiersz w tym samym wątku — historia zostaje', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+
+  const ile = await env.BAZA.prepare("SELECT COUNT(*) c FROM wyceny WHERE watek = ?").bind(TOKEN).first();
+  assert.equal(ile.c, 2, 'aktualizacja nadpisała wersję zamiast dopisać');
+});
+
+test('STARY link pokazuje NAJNOWSZĄ wersję', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+
+  // Klient ma w mailu TOKEN (pierwszy) — i ma zobaczyć wersję drugą.
+  const w = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(w.oferta.opis, 'Wersja druga');
+  assert.equal(w.wersjaNr, 2);
+  assert.equal(w.zaktualizowana, true);
+});
+
+test('link do wersji pośredniej też prowadzi do najnowszej', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+  await zapiszOferte(env, klientId, OFERTA3, 'c'.repeat(32), TOKEN);
+
+  for (const link of [TOKEN, 'b'.repeat(32), 'c'.repeat(32)]) {
+    const w = await ofertaPoTokenie(env, link);
+    assert.equal(w.oferta.opis, 'Wersja trzecia', `link ${link.slice(0, 4)} pokazał starą wersję`);
+    assert.equal(w.wersjaNr, 3);
+  }
+});
+
+test('pojedyncza oferta nie jest oznaczona jako zaktualizowana', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  const w = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(w.zaktualizowana, false);
+  assert.equal(w.wersjaNr, 1);
+});
+
+test('KLIENT ODŚWIEŻA W TRAKCIE EDYCJI — widzi spójną ostatnią wersję', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+
+  // Dawid „edytuje": dopóki nie opublikuje, klient widzi wersję pierwszą.
+  const wTrakcie = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(wTrakcie.oferta.opis, OFERTA.opis);
+  assert.equal(wTrakcie.oferta.razem, OFERTA.razem, 'klient zobaczył półprodukt');
+
+  // Publikacja to jeden INSERT — po nim od razu pełna nowa wersja.
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+  const po = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(po.oferta.opis, 'Wersja druga');
+  assert.equal(po.oferta.razem, 7900);
+});
+
+test('rozmowa PRZEŻYWA aktualizacje — wisi przy pierwszej wersji', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const pierwsza = await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await dopiszWiadomosc(env, {
+    wycenaId: pierwsza.wycenaId, klientId, autor: 'klient', tresc: 'Czy zdążycie?',
+  });
+
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+
+  const w = await ofertaPoTokenie(env, TOKEN);
+  assert.equal(w.rozmowa.length, 1, 'rozmowa zniknęła po aktualizacji');
+  assert.equal(w.rozmowa[0].tresc, 'Czy zdążycie?');
+  assert.equal(w.watekId, pierwsza.wycenaId, 'kotwica wątku się przesunęła');
+});
+
+test('licznik otwarć liczy się przy wersji, którą klient widział', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const p1 = await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await ofertaPoTokenie(env, TOKEN);           // otwarcie wersji 1
+  const p2 = await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+  await ofertaPoTokenie(env, TOKEN);           // otwarcie wersji 2
+  await ofertaPoTokenie(env, TOKEN);           // i jeszcze raz
+
+  const w1 = await env.BAZA.prepare('SELECT otwarcia FROM wyceny WHERE id = ?').bind(p1.wycenaId).first();
+  const w2 = await env.BAZA.prepare('SELECT otwarcia FROM wyceny WHERE id = ?').bind(p2.wycenaId).first();
+  assert.equal(w1.otwarcia, 1, 'otwarcia starej wersji się zmieniły');
+  assert.equal(w2.otwarcia, 2, 'otwarcia nowej wersji nie doszły');
+});
+
+test('podgląd właściciela nadal nie podbija licznika żadnej wersji', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  const p = await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await ofertaPoTokenie(env, TOKEN, { podglad: true });
+  const w = await env.BAZA.prepare('SELECT otwarcia FROM wyceny WHERE id = ?').bind(p.wycenaId).first();
+  assert.equal(w.otwarcia, 0);
+});
+
+test('notatka rozróżnia nową ofertę od aktualizacji', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32), TOKEN);
+
+  const n = await env.BAZA.prepare(
+    "SELECT tresc FROM notatki WHERE klient_id = ? ORDER BY id DESC LIMIT 1"
+  ).bind(klientId).first();
+  assert.match(n.tresc, /Zaktualizowano ofertę \(ten sam link\)/);
+});
+
+test('dwie OSOBNE oferty tego samego klienta zostają osobne', async () => {
+  const env = nowaBaza();
+  const { klientId } = await zapiszLead(env, LEAD);
+  await zapiszOferte(env, klientId, OFERTA, TOKEN);
+  await zapiszOferte(env, klientId, OFERTA2, 'b'.repeat(32)); // bez wątku = nowa
+
+  assert.equal((await ofertaPoTokenie(env, TOKEN)).oferta.opis, OFERTA.opis);
+  assert.equal((await ofertaPoTokenie(env, 'b'.repeat(32))).oferta.opis, 'Wersja druga');
+});

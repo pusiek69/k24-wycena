@@ -484,6 +484,11 @@ async function obsluzOfertaDane(request, env, cors) {
         oferta: wynik.oferta,
         // Rozmowa pod ofertą — klient widzi całą historię od razu przy wycenie.
         rozmowa: wynik.rozmowa || [],
+        // Ktora wersje klient wlasnie oglada i kiedy zostala opublikowana —
+        // z tego strona sklada znacznik „Oferta zaktualizowana…".
+        wersjaNr: wynik.wersjaNr || 1,
+        opublikowano: wynik.opublikowano || wynik.utworzono,
+        zaktualizowana: !!wynik.zaktualizowana,
       },
       200,
       cors
@@ -551,18 +556,52 @@ async function obsluzOfertaWyslij(request, env, cors) {
   crypto.getRandomValues(bajty);
   const token = [...bajty].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-  await zapiszOferte(env, klient.id, o, token);
+  /*
+   * AKTUALIZACJA POD TYM SAMYM LINKIEM (zlecenie Dawida, 25.08.2026).
+   *
+   * `d.watek` niesie token pierwszej wersji. Nowa wersja to zawsze nowy
+   * WIERSZ (historia i audyt zostają nietknięte), ale należy do tego
+   * samego wątku — więc klient pod starym linkiem zobaczy właśnie ją.
+   *
+   * Sprawdzamy, czy wątek naprawdę należy do TEGO klienta: bez tego
+   * podpisany link właściciela pozwalałby dopisać wersję do cudzej oferty.
+   */
+  let watek = '';
+  const zadanyWatek = String(d.watek || '').trim();
+  if (/^[a-f0-9]{32,64}$/.test(zadanyWatek)) {
+    const nalezy = await env.BAZA.prepare(
+      `SELECT 1 FROM wyceny WHERE watek = ? AND klient_id = ? LIMIT 1`
+    )
+      .bind(zadanyWatek, klient.id)
+      .first();
+    if (nalezy) watek = zadanyWatek;
+  }
 
-  const link = `https://kam24h.pl/oferta#${token}`;
-  const wyslany = await resend(env, {
-    from: nadawca(env),
-    to: [klient.email],
-    reply_to: doDawida(env),
-    subject: TEMAT_OFERTY,
-    html: mailOferty(klient.imie, o, link),
-  });
+  const zapis = await zapiszOferte(env, klient.id, o, token, watek);
+  const aktualizacja = !!watek;
 
-  return json({ ok: true, token, link, mail: wyslany }, 200, cors);
+  // Link klienta się NIE zmienia przy aktualizacji — na tym polega cały
+  // pomysł: „żeby nie robić 5 osobnych wycen".
+  const link = `https://kam24h.pl/oferta#${zapis.watek}`;
+
+  /*
+   * Mail przy aktualizacji jest OPCJONALNY i domyślnie go nie ma.
+   * Dawid zwykle poprawia wycenę w trakcie rozmowy telefonicznej, a klient
+   * po prostu odświeża stronę — osobny mail przy każdej poprawce byłby
+   * hałasem. Przy NOWEJ ofercie mail leci jak dotąd.
+   */
+  const powiadom = aktualizacja ? d.powiadom === true : true;
+  const wyslany = powiadom
+    ? await resend(env, {
+        from: nadawca(env),
+        to: [klient.email],
+        reply_to: doDawida(env),
+        subject: aktualizacja ? `${TEMAT_OFERTY} (aktualizacja)` : TEMAT_OFERTY,
+        html: mailOferty(klient.imie, o, link),
+      })
+    : false;
+
+  return json({ ok: true, token: zapis.watek, link, mail: wyslany, aktualizacja }, 200, cors);
 }
 
 
@@ -595,7 +634,9 @@ async function obsluzOfertaNapisz(request, env, cors) {
     const w = await ofertaPoTokenie(env, String(d.token), { podglad: true });
     if (!w?.wycenaId) return json({ ok: false, powod: 'Nie znaleźliśmy tej wyceny.' }, 404, cors);
 
-    const limity = await kontekstRozmowy(env, w.wycenaId);
+    // Wątek wisi przy PIERWSZEJ wersji oferty, więc przetrwa aktualizacje.
+    const kotwica = w.watekId || w.wycenaId;
+    const limity = await kontekstRozmowy(env, kotwica);
     const sprawdzenie = sprawdzWiadomosc(d.tresc, { pulapka: d.pulapka, ...limity });
     if (!sprawdzenie.ok) {
       // Botowi nie tłumaczymy, co go zdradziło — dostaje zwykłe „ok",
@@ -605,7 +646,7 @@ async function obsluzOfertaNapisz(request, env, cors) {
     }
 
     await dopiszWiadomosc(env, {
-      wycenaId: w.wycenaId,
+      wycenaId: kotwica,
       klientId: w.klientId,
       autor: 'klient',
       tresc: sprawdzenie.tresc,
@@ -633,7 +674,7 @@ async function obsluzOfertaNapisz(request, env, cors) {
     });
     if (typeof powiadomienie?.catch === 'function') powiadomienie.catch(() => {});
 
-    return json({ ok: true, rozmowa: await rozmowaOferty(env, w.wycenaId) }, 200, cors);
+    return json({ ok: true, rozmowa: await rozmowaOferty(env, kotwica) }, 200, cors);
   } catch (e) {
     console.error('oferta/napisz', e?.message || e);
     return json(
@@ -666,6 +707,7 @@ async function obsluzFeedback(request, env, cors) {
       // Który wariant materiałowy wskazał klient — opis, nie indeks:
       // ma być czytelny wprost w notatce na karcie.
       wariant: String(d.wariant || '').slice(0, 120),
+      wersja: Number(d.wersja) || 1,
     });
     return json({ ok: !!wynik }, 200, cors);
   } catch (e) {

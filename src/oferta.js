@@ -63,6 +63,9 @@ async function start() {
   const wlasciciel = !!podgladWlasciciela();
   // Statystyk nie zaburzamy własnym zaglądaniem — ani w bazie, ani w Analytics.
   if (!wlasciciel) zdarzenie('oferta_otwarta');
+  // Numer wersji zapamiętujemy przy feedbacku — Dawid ma wiedzieć,
+  // NA KTÓRĄ wersję klient odpowiedział.
+  window.__wersjaOferty = dane.wersjaNr || 1;
   root.replaceChildren(
     wlasciciel
       ? h(
@@ -80,7 +83,7 @@ function blad(tresc) {
   root.replaceChildren(h('div', { class: 'bramka-ok' }, h('span', { class: 'ptak' }, '☎'), h('span', {}, tresc)));
 }
 
-function widok({ imie, utworzono, oferta: o, rozmowa }) {
+function widok({ imie, utworzono, oferta: o, rozmowa, zaktualizowana, opublikowano, wersjaNr }) {
   // W podglądzie z panelu Dawid ma OBEJRZEĆ ofertę, a nie odpowiadać na nią
   // za klienta. Feedback i wybór wariantu zapisałyby się na karcie jako
   // decyzja klienta i przestawiły status w lejku — dlatego ich tu nie ma.
@@ -91,6 +94,23 @@ function widok({ imie, utworzono, oferta: o, rozmowa }) {
   return h(
     'div',
     {},
+    /*
+     * ZNACZNIK AKTUALIZACJI (zlecenie Dawida, 25.08.2026).
+     *
+     * Jeden link pokazuje zawsze najnowszą wersję, więc klient musi
+     * wiedzieć, że to, co czyta, jest nowsze niż to, co dostał mailem —
+     * inaczej pomyśli, że pomylił kwotę albo że coś się popsuło.
+     */
+    zaktualizowana
+      ? h(
+          'div',
+          { class: 'info oferta-zaktualizowana' },
+          h('b', {}, 'Oferta zaktualizowana '),
+          kiedyPl(opublikowano),
+          wersjaNr > 1 ? ` (wersja ${wersjaNr})` : '',
+          '. Pokazujemy najnowszą wersję — ta sama strona zawsze ma aktualne warunki.'
+        )
+      : null,
     kartaOferty(o, {
       imie,
       utworzono,
@@ -115,7 +135,7 @@ function widok({ imie, utworzono, oferta: o, rozmowa }) {
  */
 function wybierzWariant(wariant) {
   zdarzenie('feedback_oferta', { wybor: 'wariant' });
-  wyslijFeedback({ oferta: token, feedback: 'pasuje', wariant: wariant.opis || wariant.material });
+  wyslijFeedback({ oferta: token, feedback: 'pasuje', wariant: wariant.opis || wariant.material, wersja: window.__wersjaOferty || 1 });
 
   const karty = [...document.querySelectorAll('.wariant-karta')];
   const karta = karty.find((k) => k.textContent.includes(wariant.opis));
@@ -138,7 +158,7 @@ function feedback() {
   const box = h('div', { class: 'feedback' });
   const wyslij = (tresc) => {
     zdarzenie('feedback_oferta', { wybor: tresc.feedback });
-    wyslijFeedback({ oferta: token, ...tresc });
+    wyslijFeedback({ oferta: token, wersja: window.__wersjaOferty || 1, ...tresc });
   };
 
   box.append(
@@ -186,6 +206,14 @@ function feedback() {
   );
   return box;
 }
+
+/** Data i godzina po polsku — bez zależności od ustawień środowiska. */
+const kiedyPl = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
 
 const przycisk = (ikona, tekst, onclick) =>
   h(

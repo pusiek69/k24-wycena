@@ -96,6 +96,10 @@ export function uruchomOferteDawida(root, paczka) {
     warianty: [],
     // Płyta spoza cenników (zlecenie Dawida, 25.08.2026).
     wlasna: { ...wlasna.PUSTA },
+    // Aktualizacja pod tym samym linkiem: mail do klienta jest OPCJONALNY
+    // i domyślnie wyłączony — Dawid zwykle poprawia wycenę w trakcie
+    // rozmowy telefonicznej, a klient po prostu odświeża stronę.
+    powiadomOAktualizacji: false,
   };
   if (!stan.odcinki.length) stan.odcinki = [{ gl: 60, dl: 300 }];
 
@@ -1226,7 +1230,8 @@ function plytaDoRozrysu(stan, w) {
 }
 
 /** Jedno wejście do workera: podgląd i wysyłka różnią się jedną flagą. */
-async function doWorkera(paczka, oferta, { podglad = false } = {}) {
+async function doWorkera(paczka, oferta, opcje = {}) {
+  const { podglad = false } = opcje;
   const odp = await fetch(`${API_BASE}/oferta/wyslij`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -1236,6 +1241,9 @@ async function doWorkera(paczka, oferta, { podglad = false } = {}) {
       podpis: paczka.podpis,
       oferta,
       podglad,
+      // Pusty wątek = nowa oferta z nowym linkiem.
+      watek: opcje.watek || '',
+      powiadom: !!opcje.powiadom,
     }),
   });
   const dane = await odp.json().catch(() => null);
@@ -1250,7 +1258,32 @@ const opisBledu = (e) =>
 
 function pokazPodglad(stan, oferta, paczka, box, dane) {
   const wynik = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
-  const wyslij = h('button', { class: 'btn', type: 'button' }, 'Wyślij do klienta →');
+  /*
+   * DWIE DROGI PUBLIKACJI (zlecenie Dawida, 25.08.2026).
+   *
+   * Gdy oferta ma już wątek (Dawid wszedł przez „Aktualizuj ofertę"),
+   * domyślną akcją jest AKTUALIZACJA POD TYM SAMYM LINKIEM — klient
+   * odświeża stronę i widzi nową kwotę, bez piątego linku w skrzynce.
+   * Druga droga zostaje: nowa oferta z nowym linkiem.
+   */
+  const maWatek = !!paczka.watek;
+
+  const powiadomienie = h('input', {
+    type: 'checkbox',
+    checked: stan.powiadomOAktualizacji ? 'checked' : undefined,
+  });
+  powiadomienie.addEventListener('change', () => {
+    stan.powiadomOAktualizacji = powiadomienie.checked;
+  });
+
+  const wyslij = h(
+    'button',
+    { class: 'btn', type: 'button' },
+    maWatek ? 'Zaktualizuj ofertę (ten sam link) →' : 'Wyślij do klienta →'
+  );
+  const jakoNowa = maWatek
+    ? h('button', { class: 'btn cichy', type: 'button' }, 'Wyślij jako nową ofertę')
+    : null;
   const wroc = h('button', { class: 'btn cichy', type: 'button' }, '← Wróć do edycji');
 
   wroc.addEventListener('click', () => rysuj(box, stan, paczka));
@@ -1262,7 +1295,10 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
     try {
       // `oferta` jest tu już wersją pokazaną w podglądzie — wysyłamy ją
       // bez zmian, żeby klient dostał to, co Dawid przed chwilą zatwierdził.
-      const odp = await doWorkera(paczka, oferta);
+      const odp = await doWorkera(paczka, oferta, {
+        watek: paczka.watek || '',
+        powiadom: !!stan.powiadomOAktualizacji,
+      });
       pokazWyslane(box, odp);
     } catch (e) {
       wyslij.disabled = false;
@@ -1272,6 +1308,24 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
       wynik.hidden = false;
     }
   });
+
+  if (jakoNowa) {
+    jakoNowa.addEventListener('click', async () => {
+      jakoNowa.disabled = true;
+      wyslij.disabled = true;
+      jakoNowa.textContent = 'Wysyłam…';
+      try {
+        // Bez wątku = osobna oferta z własnym, nowym linkiem.
+        pokazWyslane(box, await doWorkera(paczka, oferta, { watek: '' }));
+      } catch (e) {
+        jakoNowa.disabled = false;
+        wyslij.disabled = false;
+        jakoNowa.textContent = 'Wyślij jako nową ofertę';
+        wynik.textContent = opisBledu(e);
+        wynik.hidden = false;
+      }
+    });
+  }
 
   // Mail pokazujemy w ramce z atrybutem `srcdoc` — to ten sam HTML, który
   // dostanie klient, więc nie chcemy, żeby jego style rozlały się na panel.
@@ -1314,7 +1368,22 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
           'a odpiszesz z karty klienta w panelu.'
       ),
 
-      h('div', { class: 'nav', style: 'margin-top:18px; flex-wrap:wrap' }, wyslij, wroc, wynik)
+      maWatek
+        ? h(
+            'label',
+            { class: 'switch zgoda', style: 'margin-top:14px' },
+            powiadomienie,
+            h('span', { class: 'box' }, '✓'),
+            h(
+              'span',
+              { class: 'zgoda-txt' },
+              'Wyślij klientowi maila o aktualizacji. Bez zaznaczenia nowa wersja ' +
+                'po prostu pojawi się pod jego linkiem — przydatne, gdy rozmawiacie ' +
+                'przez telefon i klient odświeża stronę.'
+            )
+          )
+        : null,
+      h('div', { class: 'nav', style: 'margin-top:18px; flex-wrap:wrap' }, wyslij, jakoNowa, wroc, wynik)
     )
   );
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });

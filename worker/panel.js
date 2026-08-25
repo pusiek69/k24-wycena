@@ -275,6 +275,20 @@ async function apiKarta(request, env) {
         doBase64({ leadId: k.id, exp, podpis: sig });
     }
 
+    /*
+     * AKTUALIZUJ OFERTĘ (zlecenie Dawida, 25.08.2026): otwiera edytor
+     * z parametrami TEJ oferty i tokenem wątku, więc kolejna wersja
+     * pójdzie pod tym samym linkiem, który klient już ma.
+     */
+    if (w.wersja === 'dawid' && w.watek && w.dane?.parametry) {
+      w.aktualizuj =
+        'https://kam24h.pl/#powtorz=' +
+        doBase64({
+          leadId: k.id, exp, podpis: sig, imie: k.imie,
+          parametry: w.dane.parametry, watek: w.watek,
+        });
+    }
+
     if (w.wersja || !w.dane || !w.dane.firma) continue; // tylko wyceny klienta z parametrami
     w.powtorz =
       'https://kam24h.pl/#powtorz=' +
@@ -775,11 +789,14 @@ async function pokazSzczegoly(id, cicho){
     var podglad = w.podglad
       ? ' · <a href="' + esc(w.podglad) + '" target="_blank" rel="noopener">Zobacz ofertę klienta ↗</a>'
       : '';
+    var aktualizuj = w.aktualizuj
+      ? ' · <a href="' + esc(w.aktualizuj) + '" target="_blank" rel="noopener">Aktualizuj ofertę ↗</a>'
+      : '';
     return '<li' + (w.wersja === 'dawid' ? ' class="od-dawida"' : '') + '>' +
       '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + podglad + powtorz + obejrzenia +
+      (w.odbior ? ' · odbiór własny' : '') + podglad + aktualizuj + powtorz + obejrzenia +
       watekHtml(w) + '</li>';
   }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
 
