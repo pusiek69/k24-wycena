@@ -298,3 +298,17 @@
   for = "/promo/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
+
+# Zdjęcia realizacji. CORS jest tu potrzebny, bo Dawid wgrywa je na
+# wizytówkę Google (Profil Firmy) przez przeglądarkę — kompozer na
+# google.com pobiera plik fetchem z kam24h.pl, a bez tego nagłówka
+# przeglądarka blokuje odczyt jako żądanie międzydomenowe.
+#
+# To wyłącznie publiczne zdjęcia galerii — te same, które każdy widzi
+# na /realizacje. Nagłówek nie odsłania niczego, co nie byłoby już jawne:
+# pozwala jedynie CUDZEMU skryptowi odczytać bajty pliku, który i tak
+# jest dostępny pod publicznym adresem.
+[[headers]]
+  for = "/realizacje/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
