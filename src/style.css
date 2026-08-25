@@ -1452,8 +1452,11 @@ button { color: var(--cream); background: transparent; }
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 8px;
-  font-size: clamp(28px, 8.5vw, 46px);
+  gap: 6px;
+  /* Zmierzone na 375 px: przy 32 px zakres „11 250 zł – 13 700 zł" nie mieści
+     się w karcie (282 px na 271 px dostępnych) i łamie się na dwie linie —
+     a to psuje dokładnie ten element, który miał być najczytelniejszy. */
+  font-size: clamp(25px, 7.2vw, 46px);
   line-height: 1.08;
   color: var(--vein);
   font-variant-numeric: tabular-nums;
