@@ -14,6 +14,8 @@
     "podglad": "npm run build:podglad && node scripts/podglad-jednoplikowy.mjs",
     "build:podglad": "vite build --config vite.podglad.config.js",
     "worker": "node scripts/build-worker.mjs",
+    "wdroz:worker": "node scripts/build-worker.mjs && npx wrangler deploy",
+    "sprawdz:asystent": "node scripts/sprawdz-asystenta.mjs",
     "checklist": "node scripts/checklist.mjs",
     "cennik:dodaj": "node scripts/cennik-serwer.mjs",
     "pretest": "node scripts/build-worker.mjs",

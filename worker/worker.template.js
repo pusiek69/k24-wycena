@@ -107,6 +107,9 @@ export default {
       }
     }
 
+    // Odczyt diagnostyczny — GET, bo wola go skrypt i czlowiek z przegladarki.
+    if (sciezka === '/kolekcje') return obsluzKolekcje(cors);
+
     if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
 
     try {
@@ -444,6 +447,26 @@ async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
 }
 
 /** Wycena online: dane po tokenie. Otwarcie klienta podbija licznik. */
+/**
+ * KTORE KOLEKCJE ZNA ASYSTENT (/kolekcje).
+ *
+ * POWÓD POWSTANIA (25.08.2026): po dodaniu cennika Pacific konsultant
+ * na produkcji twierdził, że takiego materiału nie ma — bo prompt jest
+ * generowany poprawnie z src/firms, ale WORKER NIE ZOSTAł WDROŻONY.
+ * Strona znała nowy cennik, asystent nie. Z zewnątrz nie dało się tego
+ * zobaczyć inaczej niż przez rozmowę.
+ *
+ * Ten endpoint pokazuje wprost, co siedzi w PROMPCIE wdrożonej wersji.
+ * `npm run sprawdz:asystent` porównuje to z lokalnymi cennikami i mówi,
+ * czy trzeba wdrożyć workera. Nazwy kolekcji są publiczne (widnieja
+ * w kalkulatorze), więc nic tu nie wycieka.
+ */
+function obsluzKolekcje(cors) {
+  const kolekcje = [...DEKORY.matchAll(/^##\s*(.+)$/gm)].map((m) => m[1].trim());
+  const dekorow = (DEKORY.match(/;/g) || []).length + kolekcje.length;
+  return json({ ok: true, kolekcje, dekorow }, 200, cors);
+}
+
 async function obsluzOfertaDane(request, env, cors) {
   const d = await request.json().catch(() => null);
   if (!d?.token) return json({ ok: false }, 400, cors);

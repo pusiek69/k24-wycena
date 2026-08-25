@@ -8,7 +8,18 @@
  * pilnujemy reguł, które nie mogą zależeć od tego, co odpowie model.
  */
 
-/** Nazwy materiałów, jakimi posługuje się konsultant → slug firmy. */
+/**
+ * SYNONIMY nazw materiałów → slug firmy.
+ *
+ * To lista WYJĄTKÓW, nie spis wszystkich kolekcji. Nazwa, której tu nie ma,
+ * jest normalizowana do sluga (patrz `slugMaterialu`) — dzięki temu nowy
+ * cennik działa od razu, bez dopisywania go tutaj.
+ *
+ * Tak właśnie przewrócił się Pacific (25.08.2026): konsultant znał już
+ * kolekcję i odsyłał poprawną akcję `quote` z material: „pacific", ale ta
+ * tablica go nie znała, więc przeglądarka odpowiadała klientowi, że wycenę
+ * przygotuje Dawid osobiście.
+ */
 const MATERIALY = {
   avant_quartz: 'avant-quartz',
   'avant-quartz': 'avant-quartz',
@@ -99,7 +110,7 @@ export function opcjeZeSzczegolow(szczegoly = {}, pomieszczenie) {
 /** Parametry z rozmowy → wejście kalkulatora. Null, gdy nie da się policzyć. */
 export function przelozParametry(params) {
   if (!params) return null;
-  const slug = MATERIALY[String(params.material || '').toLowerCase()];
+  const slug = slugMaterialu(params.material);
   // Kamień naturalny ma własną ścieżkę — cenę bierzemy z magazynu na żywo,
   // bo w cenniku go nie ma (patrz app/wycena-naturalny.js).
   if (!slug || slug === 'interstone') return null;
@@ -170,7 +181,13 @@ export function odczytajSzczegoly(wiadomosc) {
 
 /** Czy konsultant mówi o materiale, który liczymy sami z cennika. */
 export function slugMaterialu(nazwa) {
-  return MATERIALY[String(nazwa || '').toLowerCase()];
+  const czysta = String(nazwa || '').trim().toLowerCase();
+  if (!czysta) return undefined;
+  if (MATERIALY[czysta]) return MATERIALY[czysta];
+  // Bez wpisu w synonimach: normalizujemy do postaci sluga. Czy taka firma
+  // istnieje, rozstrzyga `firmaWgSlug` u wywołującego — tutaj nie znamy
+  // listy firm i nie chcemy jej znać (ten plik ma zostać czysty).
+  return czysta.replace(/[\s_]+/g, '-');
 }
 
 /**

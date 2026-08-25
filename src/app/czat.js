@@ -194,7 +194,15 @@ export function uruchomCzat(root, akcje = {}) {
     }
 
     const firma = firmaWgSlug(wybor.slug);
-    if (!firma) return pokazBramke(null);
+    if (!firma) {
+      // Marka spoza naszych cenników (Dekton, Neolith…). Kalkulator jej nie
+      // policzy, ale klient ma usłyszeć konkret, a nie zobaczyć samego formularza.
+      dodajWiadomosc(
+        'konsultant',
+        `Przy tym materiale wycenę przygotowuje osobiście Dawid Ząbek — proszę o telefon: ${TEL}.`
+      );
+      return pokazBramke(null);
+    }
 
     const w = wycen(firma, wybor.dane);
     if (!w.ok) {
