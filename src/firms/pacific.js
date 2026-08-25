@@ -35,6 +35,11 @@ export default {
     'po marmurowe żyłowania; przy większości dekorów dostępne wykończenie ' +
     'matowe Matt/Suede za dopłatą.',
 
+  linkDekory: {
+    url: 'https://pacific-surfaces.com/products/quartz',
+    label: 'Zobacz wzory Pacific',
+  },
+
   vat: VAT,
   cenyUslug: 'brutto',
 
