@@ -119,17 +119,8 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
     zostalo = reszta;
   }
 
-  /*
-   * Ostatnia płyta wykorzystana najwyżej do połowy wysokości = połówka.
-   * Ten sam próg co w wycenie, żeby rysunek i kwota mówiły to samo.
-   */
-  const ostatnia = plyty[plyty.length - 1];
-  if (polowkaDozwolona && ostatnia) {
-    const uzytaWysokosc = ostatnia.elementy.reduce((a, e) => Math.max(a, e.y + e.gl), 0);
-    if (uzytaWysokosc <= polePlyty.wys / 2 + 0.001) {
-      ostatnia.polowka = true;
-      ostatnia.wys = polePlyty.wys / 2;
-    }
+  if (polowkaDozwolona && plyty.length) {
+    domknijNaPolowce(plyty, uzyteczna, polePlyty, { rzaz, rotacja, margines });
   }
 
   if (zostalo.length && plyty.length >= maksPlyt) {
@@ -137,6 +128,69 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
   }
 
   return { plyty, nieumieszczone, statystyki: statystyki(plyty, polePlyty, nieumieszczone) };
+}
+
+/**
+ * OSTATNIA PŁYTA NA POŁÓWCE.
+ *
+ * Zgłoszenie Dawida (26.08.2026): „wycena wychodzi z 1,5 płyty, a na
+ * rozrysie pokazuje 2 płyty". Rysunek i kwota mówiły co innego, a klient
+ * widzi obie liczby naraz.
+ *
+ * Skąd się to brało: MaxRects układa elementy tak, żeby zostawić jak
+ * najrówniejsze resztki, i NIC nie wiedział o tym, że wysokość ostatniego
+ * arkusza kosztuje. Dwa realne przypadki z 3200 × 1600:
+ *
+ *   • 2400 × 800 + 900 × 800 — algorytm kładł drugi element OBRÓCONY
+ *     (800 × 900), bo tak lepiej pasował do wolnego prostokąta. Zajęta
+ *     wysokość rosła z 800 do 900 mm i połówka przepadała, choć element
+ *     bez obrotu mieścił się w niej co do milimetra.
+ *
+ *   • 2000 × 600 + 600 × 600 — oba elementy szły na jedną płytę, ale jeden
+ *     POD drugim (wysokość 1203 mm) zamiast OBOK (600 mm). Pole to samo,
+ *     rachunek inny: pierwsze to cała płyta, drugie połówka.
+ *
+ * Dlatego zamiast tylko MIERZYĆ zajętą wysokość, próbujemy ostatnią płytę
+ * ułożyć jeszcze raz — na arkuszu o połowie wysokości. Jeśli wszystko
+ * wejdzie, to jest połówka i tak ją rysujemy. Jeśli nie — zostaje pełna
+ * płyta i nic się nie zmienia.
+ *
+ * Przymiarka NIE MOŻE dołożyć płyty: bierzemy ją tylko wtedy, gdy zmieszczą
+ * się WSZYSTKIE elementy z tej płyty.
+ */
+function domknijNaPolowce(plyty, uzyteczna, polePlyty, opcje) {
+  const ostatnia = plyty[plyty.length - 1];
+  const polowaWys = polePlyty.wys / 2;
+
+  // Układ, który już jest, mieści się w połowie — nie ma czego przestawiać.
+  const uzytaWysokosc = ostatnia.elementy.reduce((a, e) => Math.max(a, e.y + e.gl), 0);
+  if (uzytaWysokosc <= polowaWys + 0.001) {
+    ostatnia.polowka = true;
+    ostatnia.wys = polowaWys;
+    return;
+  }
+
+  const polUzyteczna = { szer: uzyteczna.szer, wys: polowaWys - 2 * opcje.margines };
+  if (!(polUzyteczna.wys > 0)) return;
+
+  // Wracamy do wymiarów sprzed obrotu — inaczej druga próba dziedziczyłaby
+  // dokładnie ten obrót, który zepsuł połówkę.
+  const surowe = ostatnia.elementy.map((e) => ({
+    ...e,
+    szer: e.obrocony ? e.gl : e.szer,
+    gl: e.obrocony ? e.szer : e.gl,
+    x: undefined,
+    y: undefined,
+    obrocony: undefined,
+  }));
+
+  const { ulozone, reszta } = ulozNaPlycie(surowe, polUzyteczna, opcje);
+  if (reszta.length) return; // na połówkę się nie da — zostaje pełna płyta
+
+  ostatnia.elementy = ulozone;
+  ostatnia.wys = polowaWys;
+  ostatnia.polowka = true;
+  ostatnia.poleElementowMm2 = ulozone.reduce((a, e) => a + e.szer * e.gl, 0);
 }
 
 /* ────────────────────────────────────────────── układanie jednej płyty */

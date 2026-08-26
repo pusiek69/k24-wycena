@@ -448,3 +448,121 @@ test('blat dłuższy niż połowa płyty i tak wchodzi na połówkę', () => {
   assert.equal(w.statystyki.polowek, 1);
   assert.equal(w.statystyki.plytM2, 2.56, 'klient płaci za pół płyty, nie za całą');
 });
+
+/* ═══ POŁÓWKA MIMO NIEWYGODNEGO UKŁADU (Dawid, 26.08.2026) ═══════════
+ *
+ * „Wycena wychodzi z 1,5 płyty, a na rozrysie pokazuje 2 płyty."
+ *
+ * MaxRects układał elementy tak, żeby zostawić równe resztki, i nie wiedział,
+ * że wysokość OSTATNIEGO arkusza kosztuje pieniądze. Dwa układy potrafiły
+ * zabrać połówkę mimo że elementy się na niej mieściły — oba niżej.
+ */
+
+test('obrót elementu nie może zabrać połówki', () => {
+  // 900 × 800 zmieści się w połówce (wys. 800) tylko BEZ obrotu. Algorytm
+  // wolał obrócić na 800 × 900, bo tak lepiej pasowało do wolnego miejsca —
+  // i połówka przepadała przez 100 mm.
+  const el = [
+    { nazwa: 'Blat', szer: 2400, gl: 800 },
+    { nazwa: 'Wyspa', szer: 900, gl: 800 },
+  ];
+  const w = rozrysuj(el, POL, { polowkaDozwolona: true });
+
+  assert.equal(w.plyty.length, 2);
+  assert.equal(w.plyty[1].polowka, true, 'druga płyta ma być połówką');
+  assert.equal(w.plyty[1].wys, 800);
+  assert.equal(w.plyty[1].elementy[0].obrocony, false, 'na połówce element leży bez obrotu');
+  assert.equal(w.statystyki.plytPelnych, 1);
+  assert.equal(w.statystyki.polowek, 1);
+});
+
+test('elementy idą OBOK siebie, gdy dzięki temu wystarczy połówka', () => {
+  // 2000 + 600 to 2603 mm z rzazem — mieści się obok siebie na 3200 mm.
+  // Algorytm kładł drugi element POD pierwszym (wysokość 1203 mm) i robiła
+  // się z tego cała płyta zamiast połówki.
+  const el = [
+    { nazwa: 'Blat', szer: 2000, gl: 600 },
+    { nazwa: 'Wyspa', szer: 600, gl: 600 },
+  ];
+  const w = rozrysuj(el, POL, { polowkaDozwolona: true });
+
+  assert.equal(w.plyty.length, 1);
+  assert.equal(w.plyty[0].polowka, true);
+  assert.equal(w.statystyki.plytM2, 2.56, 'kupujemy pół arkusza, nie cały');
+});
+
+test('przymiarka do połówki nie może dołożyć płyty', () => {
+  // Dwa blaty 2400 × 800 nie zejdą na połówce — ma zostać pełny arkusz,
+  // a liczba płyt bez zmian.
+  const el = [
+    { nazwa: 'Blat A', szer: 2400, gl: 800 },
+    { nazwa: 'Blat B', szer: 2400, gl: 800 },
+  ];
+  const bez = rozrysuj(el, POL);
+  const z = rozrysuj(el, POL, { polowkaDozwolona: true });
+
+  assert.equal(z.plyty.length, bez.plyty.length, 'liczba płyt nie może urosnąć');
+  assert.equal(z.statystyki.nieumieszczonych, 0);
+});
+
+test('elementy na połówce nie wychodzą poza jej wysokość', () => {
+  const w = rozrysuj(
+    [
+      { nazwa: 'Blat', szer: 2400, gl: 800 },
+      { nazwa: 'Wyspa', szer: 900, gl: 800 },
+    ],
+    POL,
+    { polowkaDozwolona: true }
+  );
+  for (const p of w.plyty) {
+    for (const e of p.elementy) {
+      assert.ok(e.y + e.gl <= p.wys + 0.001, `${e.nazwa} wystaje poza arkusz ${p.nr}`);
+      assert.ok(e.x + e.szer <= p.szer + 0.001, `${e.nazwa} wystaje w bok na arkuszu ${p.nr}`);
+    }
+  }
+});
+
+test('rozrys NIGDY nie potrzebuje więcej materiału niż wycena', async () => {
+  /*
+   * Sedno zgłoszenia, sprawdzone na całej siatce realnych kuchni, a nie
+   * na jednym przykładzie. Rozrys może wypaść LEPIEJ od wyceny (MaxRects
+   * pakuje gęściej niż pasy) — ale nigdy gorzej, bo wtedy Dawid patrzy
+   * na rysunek z dwiema płytami przy kwocie za półtorej.
+   *
+   * Liczymy w POŁÓWKACH, żeby „1 i ½" dało się porównać z „2".
+   */
+  const { upakuj } = await import('../src/engine/pakowanie.js');
+  const PLYTA_CM = { w: 320, h: 160, polowkaDozwolona: true };
+
+  const gorsze = [];
+  for (const dl of [180, 200, 240, 260, 280, 300, 320]) {
+    for (const drugi of [0, 60, 90, 120, 160, 180, 200, 240]) {
+      for (const gl of [60, 62, 65, 80]) {
+        const odcinki = [{ dl, gl }];
+        if (drugi) odcinki.push({ dl: drugi, gl });
+
+        const pak = upakuj(odcinki, PLYTA_CM);
+        const r = rozrysuj(
+          odcinki.map((o, i) => ({ nazwa: `E${i}`, szer: o.dl * 10, gl: o.gl * 10 })),
+          POL,
+          { polowkaDozwolona: true }
+        );
+
+        const wWycenie = pak.plytyPelne * 2 + (pak.polowka ? 1 : 0);
+        const wRozrysie = r.statystyki.plytPelnych * 2 + r.statystyki.polowek;
+        if (wRozrysie > wWycenie) {
+          gorsze.push(`${odcinki.map((o) => `${o.dl}×${o.gl}`).join(' + ')}: rozrys ${wRozrysie / 2}, wycena ${wWycenie / 2}`);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(gorsze, [], 'rozrys żąda więcej płyt niż wycena');
+});
+
+test('połówka działa też na formacie Interstone 300 × 180', () => {
+  // Inny format, ta sama zasada: połowa WYSOKOŚCI (1800 → 900).
+  const w = rozrysuj([{ nazwa: 'Blat', szer: 2800, gl: 600 }], { szer: 3000, wys: 1800 }, { polowkaDozwolona: true });
+  assert.equal(w.plyty[0].polowka, true);
+  assert.equal(w.plyty[0].wys, 900);
+});
