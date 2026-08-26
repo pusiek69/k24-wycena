@@ -20,9 +20,16 @@ import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
-import { linkPlyty } from './magazyn-linki.js';
-import { kolorDekoru, nazwaTagu } from './kolory-dekorow.js';
+import { linkPlyty, linkMagazynu } from './magazyn-linki.js';
+import { kolorDekoru, nazwaTagu, odlegloscKoloru } from './kolory-dekorow.js';
 import { tanszeAlternatywy, ILE_PODPOWIEDZI } from './podpowiedzi.js';
+import {
+  dekoryWPromocji,
+  naturalneWPromocji,
+  ulozPromocje,
+  PROG_PODOBNEGO_KOLORU,
+} from './promocje-lista.js';
+import promocjaNaturalna from '../generated/naturalny.promocje.json';
 import * as wlasna from './plyta-wlasna.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
@@ -501,6 +508,9 @@ function rysuj(box, stan, paczka) {
 
       /* ── podpowiedzi tańszych materiałów: odpowiedź na „za drogo" ── */
       w.ok && !paczka.test ? blokPodpowiedzi(stan, w, oferta, odswiez) : null,
+
+      /* ── wszystkie dekory w promocji ── */
+      w.ok && !paczka.test ? blokPromocji(stan, oferta, odswiez) : null,
 
       /* ── warianty do porównania (nie w wycenie testowej) ── */
       w.ok && !paczka.test ? blokWariantow(stan, oferta, odswiez) : null,
@@ -1621,4 +1631,210 @@ function blokPodpowiedzi(stan, w, oferta, odswiez) {
       )
     )
   );
+}
+
+/* ─────────────────────────────────────── wszystkie dekory w promocji */
+
+/**
+ * PROMOCJE (dopisek Dawida, 26.08.2026): „żebym miał pokazane wszystkie
+ * te z promocji".
+ *
+ * Sekcja składa się z tych samych kampanii, po których liczy silnik, więc
+ * gaśnie sama nazajutrz po zakończeniu promocji i sama pokazuje nową, gdy
+ * wgramy kolejny cennik. Nie ma tu żadnej listy przepisanej ręcznie.
+ *
+ * Kwoty są przeliczone na TĘ wycenę — te same odcinki, otwory i montaż —
+ * więc „6 050 zł" można powiedzieć klientowi przez telefon. Wyjątkiem jest
+ * kamień naturalny: tam cena zależy od konkretnej płyty w magazynie, więc
+ * kwota jest ORIENTACYJNA i wprost tak podpisana, a zamiast „dodaj jako
+ * wariant" prowadzimy Dawida do magazynu po realną sztukę.
+ */
+const PLYTA_NATURALNA_TYPOWA = { dl: 300, gl: 180 };
+
+let pamiecPromocji = { podpis: null, lista: [] };
+
+function pozycjePromocji(stan) {
+  const podpis = JSON.stringify({
+    odcinki: stan.odcinki,
+    opcje: stan.opcje,
+    grubosc: stan.grubosc,
+    stawki: stan.stawki,
+    firma: stan.firma,
+    dekor: stan.dekor,
+  });
+  if (pamiecPromocji.podpis === podpis) return pamiecPromocji.lista;
+
+  const kolorGlowny =
+    stan.firma === NATURALNY
+      ? kolorDekoru(stan.nat.nazwa || '')
+      : kolorDekoru(stan.dekor, stan.firma);
+
+  const zKolekcji = dekoryWPromocji(FIRMY_WARIANTOW(), stan.grubosc)
+    .map((p) => {
+      const policzony = policzWariant(stan, { firma: p.firma, dekor: p.dekor, grubosc: p.grubosc });
+      if (!policzony.ok) return null;
+      return { ...p, razem: policzony.bazowa, kolor: kolorDekoru(p.dekor, p.firma) };
+    })
+    .filter(Boolean);
+
+  const naturalne = naturalneWPromocji(promocjaNaturalna)
+    .map((p) => {
+      const w = wycenWlasciciela(
+        wariantReczny({
+          nazwa: p.dekor,
+          // Ceny promocyjne kamienia są NETTO, a `wariantReczny` przyjmuje brutto.
+          cenaBruttoM2: p.cenaNettoM2 * (1 + wlasna.VAT_MATERIALU),
+          plytaCm: PLYTA_NATURALNA_TYPOWA,
+          gruboscMm: Number(p.grubosc),
+        }),
+        { odcinki: stan.odcinki.filter((o) => o.gl > 0 && o.dl > 0), opcje: stan.opcje, grubosc: p.grubosc }
+      );
+      if (!w.ok) return null;
+      return {
+        ...p,
+        razem: Math.round(w.razemZaokr || w.razem),
+        orientacyjna: true,
+        kolor: kolorDekoru(p.dekor),
+      };
+    })
+    .filter(Boolean);
+
+  const lista = ulozPromocje(
+    [...zKolekcji, ...naturalne].map((p) => ({
+      ...p,
+      podobnyKolor: odlegloscKoloru(kolorGlowny, p.kolor) <= PROG_PODOBNEGO_KOLORU,
+      // Promocja bywa tylko na INNĄ grubość niż wyceniana (Keralini ma
+      // letnie ceny wyłącznie na 12 mm przy blacie liczonym z 20 mm).
+      // Kwota jest wtedy niższa także z tego powodu — mówimy o tym wprost,
+      // bo inaczej różnica wyglądałaby na samą przecenę materiału.
+      innaGrubosc: String(p.grubosc) !== String(stan.grubosc),
+    }))
+  );
+
+  pamiecPromocji = { podpis, lista };
+  return lista;
+}
+
+function blokPromocji(stan, oferta, odswiez) {
+  const pozycje = pozycjePromocji(stan);
+  if (!pozycje.length) return null;
+
+  const cenaObecna = Number(oferta?.razem) || 0;
+  const pelno = stan.warianty.length >= MAKS_WARIANTOW;
+  const juzNaStole = new Set([
+    `${stan.firma}/${stan.dekor}`,
+    ...stan.warianty.map((v) => `${v.firma}/${v.dekor}`),
+  ]);
+  const podobnych = pozycje.filter((p) => p.podobnyKolor).length;
+
+  /*
+   * Rozwinięcie trzymamy w STANIE, nie w samym <details>. Kliknięcie
+   * „dodaj jako wariant" przerysowuje edytor — bez tego lista zwijałaby
+   * się po każdym dodaniu i Dawid musiałby jej szukać od nowa.
+   */
+  return h(
+    'details',
+    {
+      class: 'od-blok promocje-blok',
+      open: stan.promocjeOtwarte ? '' : null,
+      ontoggle: (e) => {
+        stan.promocjeOtwarte = e.target.open;
+      },
+    },
+    h(
+      'summary',
+      { class: 'q-kicker', style: 'cursor:pointer' },
+      `Wszystkie dekory w promocji (${pozycje.length})`,
+      podobnych
+        ? h('span', { class: 'form-nota' }, ` — w tym ${podobnych} w podobnym kolorze`)
+        : null
+    ),
+    h(
+      'p',
+      { class: 'form-nota', style: 'margin:2px 0 8px' },
+      'Kwoty przeliczone na tę wycenę. Na górze dekory w kolorze zbliżonym do wyboru klienta, dalej od najtańszych.'
+    ),
+    ...pozycje.map((p) => wierszPromocji(p, { cenaObecna, pelno, juzNaStole, stan, odswiez }))
+  );
+}
+
+function wierszPromocji(p, { cenaObecna, pelno, juzNaStole, stan, odswiez }) {
+  const roznicaKwoty = cenaObecna ? cenaObecna - p.razem : 0;
+  const juz = juzNaStole.has(`${p.firma}/${p.dekor}`);
+
+  return h(
+    'div',
+    { class: 'od-pasek', style: 'align-items:center' },
+    h(
+      'span',
+      { style: 'flex:1' },
+      h('span', { class: 'alt-promo' }, 'PROMOCJA'),
+      ' ',
+      h('b', {}, `${p.firmaNazwa} — ${p.dekor}`),
+      h(
+        'span',
+        { class: 'form-nota', style: 'display:block' },
+        `${p.grubosc} mm${p.innaGrubosc ? ' (inna niż w ofercie)' : ''}` +
+          `${p.wykonczenie ? ` · ${p.wykonczenie}` : ''} · ${p.kampania} do ` +
+          `${dataPl(p.doKiedy)}${p.podobnyKolor ? ' · podobny kolor' : ''}` +
+          (p.orientacyjna ? ' · kwota orientacyjna — zależy od płyty z magazynu' : '')
+      )
+    ),
+    h(
+      'span',
+      { style: 'text-align:right;white-space:nowrap;margin-right:10px' },
+      h('b', {}, `${p.orientacyjna ? '~' : ''}${zl(p.razem)}`),
+      roznicaKwoty > 0
+        ? h('span', { class: 'form-nota', style: 'display:block;color:#1d6b3a' }, `−${zl(roznicaKwoty)}`)
+        : h('span', { class: 'form-nota', style: 'display:block' }, `+${zl(-roznicaKwoty)}`)
+    ),
+    akcjaPromocji(p, { pelno, juz, stan, odswiez })
+  );
+}
+
+/**
+ * Kamienia naturalnego NIE DA SIĘ dodać jako wariant — jego cena wynika
+ * z konkretnej płyty, a wariant zna tylko materiał. Zamiast martwego
+ * przycisku dajemy link do magazynu zawężony do tego wzoru: stamtąd
+ * Dawid bierze realną sztukę i wycenia ją normalną ścieżką.
+ */
+function akcjaPromocji(p, { pelno, juz, stan, odswiez }) {
+  if (p.naturalny) {
+    return h(
+      'a',
+      {
+        class: 'link-btn',
+        href: linkMagazynu({ fraza: p.dekor }),
+        target: '_blank',
+        rel: 'noopener',
+      },
+      'znajdź płytę ↗'
+    );
+  }
+  if (juz) return h('span', { class: 'form-nota' }, 'już w ofercie');
+  if (pelno) return h('span', { class: 'form-nota' }, 'komplet wariantów');
+  return h(
+    'button',
+    {
+      class: 'link-btn',
+      type: 'button',
+      onclick: () => {
+        stan.warianty.push({
+          firma: p.firma,
+          dekor: p.dekor,
+          grubosc: p.grubosc,
+          upustTyp: 'dziedziczy',
+          upustProc: 0,
+        });
+        odswiez();
+      },
+    },
+    'dodaj jako wariant →'
+  );
+}
+
+/** „2026-09-30" → „30.09.2026" — data w promocji ma być czytelna od razu. */
+function dataPl(iso) {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : String(iso || '');
 }
