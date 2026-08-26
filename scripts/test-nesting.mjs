@@ -566,3 +566,70 @@ test('połówka działa też na formacie Interstone 300 × 180', () => {
   assert.equal(w.plyty[0].polowka, true);
   assert.equal(w.plyty[0].wys, 900);
 });
+
+/* ═══ PRZYKŁAD DAWIDA: WYSPA GŁĘBSZA NIŻ BLATY (26.08.2026) ═══════════
+ *
+ * Avant Quartz, płyta 320 × 160. Odcinki (głębokość × długość):
+ * 60×300, 60×320, 99×160, 60×100.
+ *
+ * Rozrys pokazywał 2 PEŁNE płyty, wycena 1 i ½ — i to WYCENA miała rację:
+ * układ na 1 pełnej + połówce jest wykonalny (sprawdzony ręcznie), tylko
+ * zachłanne pakowanie go nie znajdowało. Wyspa 99 × 160 cm stawiana
+ * „na sztorc" (990 × 1600 mm) wchodziła dokładnie w wysokość arkusza
+ * i blokowała go na jeden element.
+ */
+
+const DAWID = [
+  { nazwa: 'Blat A', szer: 3000, gl: 600 },
+  { nazwa: 'Blat B', szer: 3200, gl: 600 },
+  { nazwa: 'Wyspa', szer: 1600, gl: 990 },
+  { nazwa: 'Blat C', szer: 1000, gl: 600 },
+];
+
+test('przykład Dawida: rozrys schodzi na 1 pełną + połówkę', () => {
+  const w = rozrysuj(DAWID, POL, { polowkaDozwolona: true });
+  assert.equal(w.statystyki.nieumieszczonych, 0);
+  assert.equal(w.statystyki.plytPelnych, 1);
+  assert.equal(w.statystyki.polowek, 1);
+  assert.equal(w.statystyki.plytM2, 7.68);
+});
+
+test('przykład Dawida: wycena i rozrys mówią to samo', async () => {
+  const { upakuj, opisPlyt } = await import('../src/engine/pakowanie.js');
+  const odcinki = [
+    { gl: 60, dl: 300 },
+    { gl: 60, dl: 320 },
+    { gl: 99, dl: 160 },
+    { gl: 60, dl: 100 },
+  ];
+  const pak = upakuj(odcinki, { w: 320, h: 160, polowkaDozwolona: true });
+  const r = rozrysuj(DAWID, POL, { polowkaDozwolona: true });
+
+  assert.equal(opisPlyt(pak), '1 i ½ płyty');
+  assert.equal(pak.plytyPelne, r.statystyki.plytPelnych);
+  assert.equal(pak.polowka, r.statystyki.polowek > 0);
+});
+
+test('elementy z przykładu Dawida naprawdę mieszczą się tam, gdzie narysowane', () => {
+  const w = rozrysuj(DAWID, POL, { polowkaDozwolona: true });
+  for (const p of w.plyty) {
+    for (const e of p.elementy) {
+      assert.ok(e.x >= -0.001 && e.y >= -0.001, `${e.nazwa} poza arkuszem`);
+      assert.ok(e.x + e.szer <= p.szer + 0.001, `${e.nazwa} wystaje w bok`);
+      assert.ok(e.y + e.gl <= p.wys + 0.001, `${e.nazwa} wystaje w dół`);
+    }
+    // Żadne dwa elementy nie mogą na siebie nachodzić.
+    for (let i = 0; i < p.elementy.length; i++) {
+      for (let j = i + 1; j < p.elementy.length; j++) {
+        const a = p.elementy[i];
+        const b = p.elementy[j];
+        const koliduje =
+          a.x < b.x + b.szer - 0.001 &&
+          a.x + a.szer - 0.001 > b.x &&
+          a.y < b.y + b.gl - 0.001 &&
+          a.y + a.gl - 0.001 > b.y;
+        assert.ok(!koliduje, `${a.nazwa} nachodzi na ${b.nazwa}`);
+      }
+    }
+  }
+});

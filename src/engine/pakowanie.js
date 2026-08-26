@@ -34,6 +34,8 @@
  *   plyta   — { w, h, polowkaDozwolona, rzaz?, obrzeze? }
  */
 
+import { rozrysuj, DOMYSLNY_RZAZ_MM } from './nesting.js';
+
 const RZAZ_DOMYSLNY = 1; // cm — szerokość rzazu piły z zapasem na pasowanie
 
 /**
@@ -187,16 +189,8 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
   let polowka = false;
 
   if (plyta?.polowkaDozwolona && plytyPelne > 0) {
-    /*
-     * Ostatnia płyta wykorzystana najwyżej do połowy = kupujemy połówkę.
-     *
-     * Połówka to arkusz przecięty w POPRZEK (320 × 160 → 320 × 80):
-     * długość zostaje, na pół idzie wysokość. Potwierdził Dawid
-     * 25.08.2026 — patrz uwaga w engine/nesting.js, rozrys stosuje
-     * dokładnie ten sam próg.
-     */
     const ostatnia = plyty[plyty.length - 1];
-    if (ostatnia.wysokosc <= UH / 2 + 0.1) {
+    if (zejdzieNaPolowce(ostatnia, plyta)) {
       plytyPelne -= 1;
       polowka = true;
     }
@@ -231,6 +225,62 @@ function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
     })),
     ostrzezenia: [...new Set(ostrzezenia)],
   };
+}
+
+/**
+ * CZY OSTATNIA PŁYTA NAPRAWDĘ ZEJDZIE NA POŁÓWCE.
+ *
+ * Zgłoszenie Dawida (26.08.2026). Do tej pory wystarczyło, że zsumowana
+ * wysokość pasów na ostatniej płycie nie przekraczała połowy — i to
+ * potrafiło ZANIŻYĆ materiał, czyli policzyć klientowi pół płyty mniej,
+ * niż trzeba kupić. Dwie drogi do tego prowadziły:
+ *
+ *   • Pakowanie sprawdza OBA ustawienia płyty (pasy wzdłuż dłuższego albo
+ *     krótszego boku) i „połowa" liczyła się w tym ustawieniu, które akurat
+ *     wygrało. Przy pasach w poprzek „połowa" wypadała na 160 cm z boku
+ *     320 cm — a połówka to zawsze 320 × 80. Element o głębokości 99 cm
+ *     przechodził jako mieszczący się na arkuszu głębokim na 80 cm.
+ *
+ *   • Sama suma wysokości pasów nic nie mówi o tym, czy kawałki ułożą się
+ *     na węższym arkuszu — pas może być za długi, a nie za wysoki.
+ *
+ * Dlatego zamiast mierzyć wysokość, ROBIMY PRZYMIARKĘ: bierzemy kawałki
+ * z ostatniej płyty i próbujemy ułożyć je na arkuszu w × h/2 tym samym
+ * modułem, co rozrys. Wejdą wszystkie — jest połówka. Nie wejdą — pełna
+ * płyta. Jeden algorytm w obu torach znaczy, że rysunek i kwota nie mają
+ * jak powiedzieć czego innego.
+ *
+ * Rzaz bierzemy z rozrysu (3 mm), a nie centymetrowy z pakowania: to
+ * przymiarka do FIZYCZNEGO arkusza, więc musi zadać dokładnie to samo
+ * pytanie, co rysunek, który Dawid ogląda obok kwoty.
+ *
+ * Obrót jest dozwolony, bo połówki dopuszczają wyłącznie konglomeraty
+ * (Avant, Caesarstone, Keralini) i Interstone. Kamień naturalny, gdzie
+ * usłojenie blokuje obrót, ma `polowkaDozwolona: false` i tu nie trafia.
+ */
+function zejdzieNaPolowce(ostatnia, plyta) {
+  const arkusz = {
+    szer: Math.round(plyta.w * 10),
+    wys: Math.round((plyta.h * 10) / 2),
+  };
+  if (!(arkusz.szer > 0 && arkusz.wys > 0)) return false;
+
+  const kawalki = ostatnia.pasy.flatMap((pas, i) =>
+    pas.el.map((e, j) => ({
+      nazwa: `k${i}-${j}`,
+      szer: Math.round(e.dl * 10),
+      gl: Math.round(e.gl * 10),
+    }))
+  );
+  if (!kawalki.length) return false;
+
+  const proba = rozrysuj(kawalki, arkusz, {
+    rzaz: DOMYSLNY_RZAZ_MM,
+    margines: 0,
+    rotacja: true,
+    maksPlyt: 1,
+  });
+  return proba.nieumieszczone.length === 0 && proba.plyty.length === 1;
 }
 
 function zaokr(n) {

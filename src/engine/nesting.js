@@ -94,18 +94,99 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
     else nieumieszczone.push({ ...el, powod: 'wiekszy-od-plyty' });
   }
 
-  // Najpierw duże elementy: mniejsze łatwiej domknąć w resztkach.
-  mieszczace.sort((a, b) => b.szer * b.gl - a.szer * a.gl || Math.max(b.szer, b.gl) - Math.max(a.szer, a.gl));
+  /*
+   * KILKA PODEJŚĆ ZAMIAST JEDNEGO (Dawid, 26.08.2026).
+   *
+   * Zachłanne pakowanie zależy od tego, w jakiej kolejności podaje się
+   * elementy, a żadna jedna kolejność nie wygrywa zawsze. Na przykładzie
+   * Dawida (60×300, 60×320, 99×160, 60×100) układanie „od największego
+   * pola" kładło na pierwszą płytę dwa najdłuższe blaty jeden pod drugim
+   * i wypychało resztę na drugi PEŁNY arkusz — choć wystarczał jeden
+   * pełny i połówka. Kolejność „od najgłębszego" trafiała w ten układ.
+   *
+   * Więc próbujemy kilku sensownych kolejności i bierzemy najtańszy wynik.
+   * Elementów w kuchni są jednostki, a nie tysiące, więc to nadal ułamek
+   * milisekundy — a rachunek potrafi się różnić o pół płyty.
+   */
+  const proby = [];
+  for (const kolejnosc of KOLEJNOSCI) {
+    // Przy zablokowanym obrocie wszystkie tryby są tym samym — nie liczymy trzy razy.
+    for (const trybObrotu of rotacja ? TRYBY_OBROTU : ['bssf']) {
+      proby.push(
+        poJednejPlycie(kolejnosc(mieszczace), uzyteczna, polePlyty, {
+          rzaz,
+          rotacja,
+          margines,
+          maksPlyt,
+          polowkaDozwolona,
+          trybObrotu,
+        })
+      );
+    }
+  }
 
+  const najlepsza = proby.reduce((a, b) => (koszt(b) < koszt(a) ? b : a));
+  nieumieszczone.push(...najlepsza.nieumieszczone);
+
+  return {
+    plyty: najlepsza.plyty,
+    nieumieszczone,
+    statystyki: statystyki(najlepsza.plyty, polePlyty, nieumieszczone),
+  };
+}
+
+/**
+ * Kolejności, w jakich próbujemy układać. Każda jest sensowna przy innym
+ * zestawie: „od największego pola" przy podobnych kształtach, „od
+ * najgłębszego" gdy w kuchni jest wyspa głębsza od blatów, „od
+ * najdłuższego" gdy decyduje długość arkusza.
+ */
+/**
+ * Jak traktujemy obrót elementu przy wyborze miejsca:
+ *
+ *   bssf         — czysty Best Short Side Fit, obrót na równi z brakiem obrotu,
+ *   ostatecznosc — najpierw próbujemy BEZ obrotu, obracamy dopiero gdy się nie da,
+ *   wzdluz       — najpierw kładziemy element dłuższym bokiem wzdłuż płyty,
+ *                  czyli tak, jak kamieniarz układa blat na arkuszu.
+ *
+ * Żaden nie wygrywa zawsze, więc liczymy wszystkie i wybieramy najtańszy.
+ */
+const TRYBY_OBROTU = ['bssf', 'ostatecznosc', 'wzdluz'];
+
+const KOLEJNOSCI = [
+  (el) => [...el].sort((a, b) => b.szer * b.gl - a.szer * a.gl || Math.max(b.szer, b.gl) - Math.max(a.szer, a.gl)),
+  (el) => [...el].sort((a, b) => b.gl - a.gl || b.szer - a.szer),
+  (el) => [...el].sort((a, b) => Math.max(b.szer, b.gl) - Math.max(a.szer, a.gl) || b.szer * b.gl - a.szer * a.gl),
+  (el) => [...el].sort((a, b) => b.szer - a.szer || b.gl - a.gl),
+];
+
+/**
+ * Ile ten układ kosztuje. Najpierw liczy się, żeby nic nie wypadło
+ * z rozrysu, potem materiał liczony W POŁÓWKACH (połówka to realnie pół
+ * arkusza), a na końcu odpad — przy remisie wybieramy równiejsze resztki.
+ */
+function koszt(proba) {
+  const polowek = proba.plyty.filter((p) => p.polowka).length;
+  const wPolowkach = (proba.plyty.length - polowek) * 2 + polowek;
+  const odpad = proba.plyty.reduce((a, p) => a + p.szer * p.wys - p.poleElementowMm2, 0);
+  return proba.nieumieszczone.length * 1e9 + wPolowkach * 1e6 + odpad / 1e6;
+}
+
+/** Jedno pełne podejście: płyta po płycie, aż elementy się skończą. */
+function poJednejPlycie(elementy, uzyteczna, polePlyty, opcje) {
+  const { rzaz, rotacja, margines, maksPlyt, polowkaDozwolona, trybObrotu } = opcje;
+  const ustawienia = { rzaz, rotacja, margines, trybObrotu };
   const plyty = [];
-  let zostalo = mieszczace;
+  const nieumieszczone = [];
+  let zostalo = elementy;
 
   while (zostalo.length && plyty.length < maksPlyt) {
-    const { ulozone, reszta } = ulozNaPlycie(zostalo, uzyteczna, { rzaz, rotacja, margines });
+    const { ulozone, reszta } = ulozNaPlycie(zostalo, uzyteczna, ustawienia);
     // Zabezpieczenie przed pętlą bez końca: skoro nic nie weszło na pustą
     // płytę, to nie wejdzie już nigdy.
     if (!ulozone.length) {
       for (const el of reszta) nieumieszczone.push({ ...el, powod: 'nie-zmiescil-sie' });
+      zostalo = [];
       break;
     }
     plyty.push({
@@ -120,14 +201,14 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
   }
 
   if (polowkaDozwolona && plyty.length) {
-    domknijNaPolowce(plyty, uzyteczna, polePlyty, { rzaz, rotacja, margines });
+    domknijNaPolowce(plyty, uzyteczna, polePlyty, ustawienia);
   }
 
   if (zostalo.length && plyty.length >= maksPlyt) {
     for (const el of zostalo) nieumieszczone.push({ ...el, powod: 'limit-plyt' });
   }
 
-  return { plyty, nieumieszczone, statystyki: statystyki(plyty, polePlyty, nieumieszczone) };
+  return { plyty, nieumieszczone };
 }
 
 /**
@@ -195,14 +276,14 @@ function domknijNaPolowce(plyty, uzyteczna, polePlyty, opcje) {
 
 /* ────────────────────────────────────────────── układanie jednej płyty */
 
-function ulozNaPlycie(elementy, uzyteczna, { rzaz, rotacja, margines }) {
+function ulozNaPlycie(elementy, uzyteczna, { rzaz, rotacja, margines, trybObrotu }) {
   // Wolne prostokąty w układzie współrzędnych użytecznej części płyty.
   let wolne = [{ x: 0, y: 0, szer: uzyteczna.szer, wys: uzyteczna.wys }];
   const ulozone = [];
   const reszta = [];
 
   for (const el of elementy) {
-    const miejsce = najlepszeMiejsce(el, wolne, rzaz, rotacja);
+    const miejsce = najlepszeMiejsce(el, wolne, rzaz, rotacja, trybObrotu);
     if (!miejsce) {
       reszta.push(el);
       continue;
@@ -240,17 +321,41 @@ function ulozNaPlycie(elementy, uzyteczna, { rzaz, rotacja, margines }) {
  * jest najmniejszy. Dzięki temu resztki zostają w jednym kawałku zamiast
  * rozdrabniać się na paski nie do wykorzystania.
  */
-function najlepszeMiejsce(el, wolne, rzaz, rotacja) {
+function najlepszeMiejsce(el, wolne, rzaz, rotacja, trybObrotu) {
+  /*
+   * OBRÓT DOPIERO, GDY BEZ NIEGO SIĘ NIE DA (Dawid, 26.08.2026).
+   *
+   * BSSF wybiera miejsce, w którym krótszy zapas jest najmniejszy — a to
+   * premiuje obrót, który wypełnia arkusz na styk. Wyspa 160 × 99 cm
+   * postawiona „na sztorc" (990 × 1600 mm) wchodziła dokładnie w wysokość
+   * płyty, po czym blokowała cały arkusz na jeden element. Bez obrotu
+   * ta sama wyspa zajmuje 993 mm wysokości i zostaje miejsce na blat.
+   *
+   * Nie da się rozstrzygnąć raz na zawsze, która droga jest lepsza —
+   * zależy od zestawu. Dlatego liczymy OBIE i wyżej wybieramy tańszą.
+   */
+  const bez = { szer: el.szer, gl: el.gl, obrocony: false };
+  const obrocony = { szer: el.gl, gl: el.szer, obrocony: true };
+  const oba = [bez, obrocony];
+
+  if (!rotacja || el.szer === el.gl) return szukaj(el, wolne, [bez]);
+
+  if (trybObrotu === 'ostatecznosc') {
+    return szukaj(el, wolne, [bez]) || szukaj(el, wolne, oba);
+  }
+  if (trybObrotu === 'wzdluz') {
+    // Dłuższym bokiem wzdłuż płyty — element nie staje „na sztorc"
+    // i nie blokuje arkusza na całą wysokość.
+    const wzdluz = el.szer >= el.gl ? bez : obrocony;
+    return szukaj(el, wolne, [wzdluz]) || szukaj(el, wolne, oba);
+  }
+  return szukaj(el, wolne, oba);
+}
+
+function szukaj(el, wolne, warianty) {
   let naj = null;
 
   for (const wolny of wolne) {
-    const warianty = rotacja && el.szer !== el.gl
-      ? [
-          { szer: el.szer, gl: el.gl, obrocony: false },
-          { szer: el.gl, gl: el.szer, obrocony: true },
-        ]
-      : [{ szer: el.szer, gl: el.gl, obrocony: false }];
-
     for (const w of warianty) {
       // Element musi się zmieścić w SWOICH wymiarach — rzaz odejmiemy
       // dopiero od tego, co zostanie po nim wolne (patrz niżej).

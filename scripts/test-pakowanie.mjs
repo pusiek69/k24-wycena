@@ -211,3 +211,79 @@ test('uklad przechodzi przez JSON bez strat (leci do Workera)', () => {
   const poJson = JSON.parse(JSON.stringify(p.uklad));
   assert.deepEqual(poJson, p.uklad);
 });
+
+/* ═══ POŁÓWKI TYLKO WTEDY, GDY NAPRAWDĘ WCHODZĄ (Dawid, 26.08.2026) ═══
+ *
+ * Do tej pory wystarczyło, że pasy na ostatniej płycie nie przekraczały
+ * połowy wysokości W TYM USTAWIENIU PŁYTY, które akurat wygrało. Przy
+ * pasach ułożonych w poprzek „połowa" wypadała na 160 cm z boku 320 cm —
+ * a połówka to zawsze 320 × 80. Skutek: wycena liczyła pół płyty mniej,
+ * niż trzeba kupić, i różnicę dopłacałby Dawid z własnej kieszeni.
+ *
+ * Teraz decyduje PRZYMIARKA na arkuszu w × h/2 — ten sam moduł, którym
+ * liczy rozrys.
+ */
+
+const POLOWKI = { w: 320, h: 160, polowkaDozwolona: true };
+
+test('element głębszy niż połówka NIE daje połówki', () => {
+  // 99 cm głębokości nie zejdzie na arkuszu głębokim na 80 cm w żadnej
+  // orientacji: obrócony ma 160 cm wysokości, czyli dwa razy za dużo.
+  const p = upakuj([{ gl: 99, dl: 160 }, { gl: 60, dl: 100 }], POLOWKI);
+  assert.equal(p.polowka, false, 'to musi być pełna płyta');
+  assert.equal(p.plytyPelne, 1);
+});
+
+test('płytki blat nadal schodzi na połówce', () => {
+  const p = upakuj([{ gl: 60, dl: 300 }], POLOWKI);
+  assert.equal(p.polowka, true);
+  assert.equal(p.plytyPelne, 0);
+  assert.equal(p.m2Kupione, 2.56);
+});
+
+test('przykład Dawida zostaje przy 1 i ½ płyty', () => {
+  // Tu połówka JEST wykonalna (na ostatniej płycie leży sam blat 60 × 300),
+  // więc poprawka nie ma prawa podnieść tej wyceny.
+  const p = upakuj(
+    [{ gl: 60, dl: 300 }, { gl: 60, dl: 320 }, { gl: 99, dl: 160 }, { gl: 60, dl: 100 }],
+    POLOWKI
+  );
+  assert.equal(opisPlyt(p), '1 i ½ płyty');
+});
+
+test('wycena NIGDY nie liczy połówki, której nie da się wyciąć', async () => {
+  /*
+   * Sedno zgłoszenia, sprawdzone na siatce kuchni o MIESZANYCH głębokościach
+   * — bo to one łamały starą regułę. Dla każdej wyceny z połówką bierzemy
+   * kawałki z ostatniej płyty i sprawdzamy, czy zejdą na arkuszu w × h/2.
+   */
+  const { rozrysuj } = await import('../src/engine/nesting.js');
+  const GL = [60, 62, 65, 80, 90, 99, 120];
+  const DL = [80, 100, 120, 160, 200, 240, 260, 300, 320];
+
+  let ziarno = 20260826;
+  const los = () => ((ziarno = (ziarno * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+  const zanizone = [];
+  for (let i = 0; i < 1500; i++) {
+    const ile = 2 + Math.floor(los() * 3);
+    const odcinki = Array.from({ length: ile }, () => ({
+      gl: GL[Math.floor(los() * GL.length)],
+      dl: DL[Math.floor(los() * DL.length)],
+    }));
+    const pak = upakuj(odcinki, POLOWKI);
+    if (!pak.polowka) continue;
+
+    const kawalki = pak.uklad
+      .at(-1)
+      .pasy.flatMap((pas, a) =>
+        pas.elementy.map((e, b) => ({ nazwa: `k${a}-${b}`, szer: e.dl * 10, gl: e.gl * 10 }))
+      );
+    const proba = rozrysuj(kawalki, { szer: 3200, wys: 800 }, { rzaz: 3, margines: 0, maksPlyt: 1 });
+    if (proba.nieumieszczone.length) {
+      zanizone.push(odcinki.map((o) => `${o.gl}×${o.dl}`).join(' + '));
+    }
+  }
+
+  assert.deepEqual(zanizone.slice(0, 5), [], 'wycena policzyła połówkę, której nie da się wyciąć');
+});
