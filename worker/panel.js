@@ -16,6 +16,7 @@
  */
 
 import { resend, nadawca, doDawida } from './poczta.js';
+import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { sprawdzWiadomosc } from './rozmowa.js';
 import { TEMAT_DO_KLIENTA, mailDoKlienta } from './mail-rozmowa.js';
 
@@ -289,6 +290,19 @@ async function apiKarta(request, env) {
         });
     }
 
+    /*
+     * LINK DO PŁYTY W MAGAZYNIE (zlecenie Dawida, 26.08.2026):
+     * „ciężko mi ją znaleźć na magazynie". Kod płyty leży w kolumnie
+     * `kod_plyty`, a przy ofertach Dawida także w zamrożonych danych.
+     * Adres składamy TU, po stronie serwera, bo przeglądarkowy skrypt
+     * panelu siedzi w szablonie i nie ma jak zaimportować modułu.
+     */
+    const kod = w.kod_plyty || w.dane?.kodPlyty || '';
+    if (kod) {
+      w.kodPlyty = kod;
+      w.magazyn = linkPlyty(kod);
+    }
+
     if (w.wersja || !w.dane || !w.dane.firma) continue; // tylko wyceny klienta z parametrami
     w.powtorz =
       'https://kam24h.pl/#powtorz=' +
@@ -507,6 +521,11 @@ padding:.7rem .9rem;display:flex;align-items:center;gap:.6rem}
 header h1{font-size:1.05rem;margin:0;flex:1}
 a,button{font:inherit}
 .mini{color:var(--szary);font-size:.82rem}
+/* Kod płyty: do zaznaczenia jednym kliknięciem i czytelny w obu motywach —
+   kolory jawnie, bo dziedziczone już raz zniknęły w trybie ciemnym. */
+.kod-plyty{user-select:all;background:var(--pole);color:var(--tekst);
+border:1px solid var(--linia);border-radius:3px;padding:0 .28em;
+font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}
 main{padding:.9rem;max-width:820px;margin:0 auto}
 section{margin-bottom:1.4rem}
 h2{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--szary);
@@ -796,7 +815,8 @@ async function pokazSzczegoly(id, cicho){
       '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + podglad + aktualizuj + powtorz + obejrzenia +
+      (w.odbior ? ' · odbiór własny' : '') + plytaHtml(w) +
+      podglad + aktualizuj + powtorz + obejrzenia +
       watekHtml(w) + '</li>';
   }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
 
@@ -817,6 +837,24 @@ async function pokazSzczegoly(id, cicho){
     ' · źródło: ' + esc(zrodloOpis(k)) + '</p>' +
     '<h2>Wyceny</h2><ul class="log">' + wyceny + '</ul>' +
     '<h2>Notatki</h2><ul class="log">' + notatki + '</ul>';
+}
+
+/**
+ * KOD PŁYTY JAKO KLIK DO MAGAZYNU — tylko przy kamieniu naturalnym.
+ *
+ * Interstone nie daje karcie płyty własnego adresu, więc link prowadzi
+ * do stanu magazynowego zawężonego do TEGO numeru płyty. Kod stoi obok
+ * do przepisania — wyszukiwarka na nietrafiony numer oddaje kilka
+ * przypadkowych płyt zamiast pustej listy, więc trzeba mieć po czym
+ * poznać, że to właściwa.
+ */
+function plytaHtml(w){
+  if (!w.kodPlyty) return '';
+  var kod = '<code class="kod-plyty">' + esc(w.kodPlyty) + '</code>';
+  return '<br><span class="mini">Płyta: ' + kod +
+    (w.magazyn
+      ? ' <a href="' + esc(w.magazyn) + '" target="_blank" rel="noopener">pokaż w magazynie ↗</a>'
+      : '') + '</span>';
 }
 
 /**

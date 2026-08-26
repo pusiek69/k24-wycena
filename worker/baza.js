@@ -546,7 +546,9 @@ export async function zapiszOferte(env, klientId, oferta, token, watek = '') {
       Number(oferta.mb || 0),
       String(oferta.pomieszczenie || ''),
       oferta.odbiorWlasny ? 1 : 0,
-      '',
+      // Kod płyty przy ofertach Dawida ZOSTAWAŁ PUSTY, choć edytor go zna.
+      // Bez niego panel nie miał czego zlinkować do magazynu (26.08.2026).
+      String(oferta.kodPlyty || ''),
       String(oferta.opis || '').slice(0, 500),
       String(oferta.kategoria || ''),
       jsonOferty(oferta),

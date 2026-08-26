@@ -20,6 +20,7 @@ import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
+import { linkPlyty } from './magazyn-linki.js';
 import * as wlasna from './plyta-wlasna.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
@@ -541,7 +542,8 @@ function blokNaturalny(stan, paczka, box, odswiez) {
         `✓ ${p.nazwa} · ${p.rodzaj || ''} · ${p.gruboscMm} mm · płyta ` +
           `${liczba(p.plytaCm.dl)}×${liczba(p.plytaCm.gl)} cm · ` +
           `${zl(p.cenaBruttoM2)}/m² · dostępne ${liczba(p.dostepneM2)} m²`
-      )
+      ),
+      linkDoMagazynu(p.kod)
     );
 
     /*
@@ -566,6 +568,17 @@ function blokNaturalny(stan, paczka, box, odswiez) {
               `${b.symbol}${String(b.symbol) === wlasny ? ' (wybrana)' : ''} · ` +
                 `${b.wymiarCm ? `${b.wymiarCm.dl}×${b.wymiarCm.gl} cm · ` : ''}` +
                 `${liczba(b.dostepneM2)} m²${b.magazyn ? ` · ${b.magazyn}` : ''}`
+            ),
+            h(
+              'a',
+              {
+                class: 'link-btn',
+                href: linkPlyty(String(b.symbol)),
+                target: '_blank',
+                rel: 'noopener',
+                title: `Pokaż płytę ${stonCzesc}-${b.symbol} w magazynie Interstone`,
+              },
+              'magazyn ↗'
             ),
             String(b.symbol) !== wlasny && stonCzesc
               ? h(
@@ -1439,4 +1452,30 @@ function licznik(wartosc, min, onchange) {
     type: 'number', inputmode: 'numeric', min: String(min), value: liczba(wartosc ?? min),
     onchange: (e) => onchange(Math.max(min, Number(e.target.value) || min)),
   });
+}
+
+/**
+ * LINK DO PŁYTY W MAGAZYNIE — widzi go WYŁĄCZNIE Dawid.
+ *
+ * Na ofercie klienta tego nie ma i nie ma być: klient dostaje gotową cenę,
+ * a nie wgląd w to, skąd bierzemy materiał.
+ *
+ * Obok linku stoi pełny kod do zaznaczenia, bo wyszukiwarka Interstone
+ * na nietrafiony numer oddaje kilka przypadkowych płyt zamiast pustej
+ * listy — po kodzie widać od razu, czy to ta płyta.
+ */
+function linkDoMagazynu(kod) {
+  const url = linkPlyty(kod);
+  if (!url) return null;
+  return h(
+    'p',
+    { class: 'form-nota', style: 'margin:4px 0 0' },
+    h(
+      'a',
+      { class: 'link-btn', href: url, target: '_blank', rel: 'noopener' },
+      '↗ Pokaż tę płytę w magazynie'
+    ),
+    ' ',
+    h('code', { style: 'user-select:all' }, String(kod))
+  );
 }

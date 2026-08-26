@@ -32,6 +32,7 @@ import { obsluzPanel, podpisz } from './panel.js';
 import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
+import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { resend, nadawca, doDawida } from './poczta.js';
 import {
   zapiszLead,
@@ -854,6 +855,32 @@ function rozbicieVat(s) {
     <div style="color:#8c8474;font-size:12px;margin-top:4px">stawka ${procent}% — ${powod}</div>`;
 }
 
+/**
+ * PŁYTA W MAGAZYNIE — blok tylko w mailu DO FIRMY.
+ *
+ * Zlecenie Dawida (26.08.2026): „ciężko mi ją znaleźć na magazynie".
+ * Kod płyty stał do tej pory wyłącznie w temacie maila, a żeby zobaczyć
+ * płytę, trzeba było wejść na interstone.pl i przeklikać stan magazynowy.
+ *
+ * Do maila KLIENTA to nie trafia — klient dostaje cenę, nie źródło.
+ *
+ * Interstone nie daje karcie płyty własnego adresu, więc link zawęża stan
+ * magazynowy do numeru tej płyty. Kod stoi obok, bo nietrafiony numer
+ * oddaje kilka przypadkowych płyt zamiast pustej listy.
+ */
+function plytaWMagazynie(s) {
+  const kod = s?.kodPlyty;
+  const url = kod ? linkPlyty(kod) : null;
+  if (!url) return '';
+  return `
+    <div style="margin:14px 0 0;padding:11px 13px;background:#f7f4ee;border-left:3px solid #c9a86a;border-radius:4px">
+      <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8c7040">Płyta w magazynie</span><br>
+      <span style="font-family:monospace;font-size:15px;color:#232220">${esc(kod)}</span>
+      &nbsp;·&nbsp;
+      <a href="${esc(url)}" style="color:#8c7040;font-weight:bold">pokaz te plyte w magazynie &#8599;</a>
+    </div>`;
+}
+
 function mailDoFirmy(klient, s, extra) {
   const problem = telefonPodejrzany(klient.telefon);
   const uklad = opisUkladu(s);
@@ -941,6 +968,7 @@ function mailDoFirmy(klient, s, extra) {
     ${rozbicieVat(s)}
 
     ${sekcja('Materiał', material, s.materialBrutto)}
+    ${plytaWMagazynie(s)}
     ${sekcja(s.odbiorWlasny ? 'Cięcie i dodatki (bez montażu)' : 'Cięcie, montaż i dodatki', uslugi, s.uslugiBrutto)}
 
     ${
