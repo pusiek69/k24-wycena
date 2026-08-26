@@ -21,6 +21,8 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
 import { linkPlyty } from './magazyn-linki.js';
+import { kolorDekoru, nazwaTagu } from './kolory-dekorow.js';
+import { tanszeAlternatywy, ILE_PODPOWIEDZI } from './podpowiedzi.js';
 import * as wlasna from './plyta-wlasna.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
@@ -496,6 +498,9 @@ function rysuj(box, stan, paczka) {
 
       /* ── rozrys płyt: narzędzie warsztatowe, nie część oferty ── */
       w.ok ? h('div', { class: 'nav', style: 'margin-top:10px' }, przyciskRozrysu(stan, w, paczka, box)) : null,
+
+      /* ── podpowiedzi tańszych materiałów: odpowiedź na „za drogo" ── */
+      w.ok && !paczka.test ? blokPodpowiedzi(stan, w, oferta, odswiez) : null,
 
       /* ── warianty do porównania (nie w wycenie testowej) ── */
       w.ok && !paczka.test ? blokWariantow(stan, oferta, odswiez) : null,
@@ -1477,5 +1482,143 @@ function linkDoMagazynu(kod) {
     ),
     ' ',
     h('code', { style: 'user-select:all' }, String(kod))
+  );
+}
+
+/* ──────────────────────────── podpowiedzi tańszych materiałów */
+
+/**
+ * TAŃSZE MATERIAŁY W PODOBNYM KOLORZE (zlecenie Dawida, 26.08.2026).
+ *
+ * „Za drogo" pada w połowie rozmów i do tej pory Dawid odpowiadał na to
+ * z głowy — musiał pamiętać, który dekor w której kolekcji wygląda podobnie
+ * i ile kosztuje przy TYM metrażu. Teraz liczy to silnik.
+ *
+ * Kandydatów przeliczamy CO DO JEDNEGO przez ten sam `policz`, co ofertę
+ * główną — te same odcinki, otwory, montaż, stawki i upust. Dzięki temu
+ * „−2 300 zł" jest kwotą, którą można powiedzieć klientowi przez telefon,
+ * a nie szacunkiem z ceny za metr. Całość to ułamek sekundy.
+ */
+/*
+ * Pamięć podręczna na jedno wejście w edytor.
+ *
+ * Edytor przerysowuje się po każdej zmianie pola, a 734 przeliczenia
+ * to ok. 30 ms — przy wpisywaniu wymiarów byłoby to odczuwalne szarpanie.
+ * Kandydaci zależą wyłącznie od wymiarów, opcji, grubości i stawek —
+ * nie od wybranego materiału — więc wystarczy jeden zestaw na taki komplet.
+ */
+let pamiecKandydatow = { podpis: null, lista: [] };
+
+function kandydaciNaPodpowiedz(stan) {
+  const podpis = JSON.stringify({
+    odcinki: stan.odcinki,
+    opcje: stan.opcje,
+    grubosc: stan.grubosc,
+    stawki: stan.stawki,
+  });
+  if (pamiecKandydatow.podpis === podpis) return pamiecKandydatow.lista;
+
+  const kandydaci = [];
+  for (const firma of FIRMY_WARIANTOW()) {
+    for (const dekor of Object.keys(firma.dekory || {})) {
+      const grubosci = grubosciDekoru(firma, dekor);
+      if (!grubosci.length) continue;
+      // Trzymamy grubość oferty głównej, gdy dekor ją ma — inaczej
+      // porównywalibyśmy blat 20 mm z blatem 12 mm i różnica w kwocie
+      // brałaby się z grubości, nie z materiału.
+      const grubosc = grubosci.includes(stan.grubosc) ? stan.grubosc : grubosci[0];
+      const policzony = policzWariant(stan, { firma: firma.slug, dekor, grubosc });
+      if (!policzony.ok) continue;
+      kandydaci.push({
+        firma: firma.slug,
+        firmaNazwa: firma.nazwa,
+        typ: firma.typ || '',
+        dekor,
+        grubosc,
+        razem: policzony.bazowa,
+        kolor: kolorDekoru(dekor, firma.slug),
+      });
+    }
+  }
+
+  pamiecKandydatow = { podpis, lista: kandydaci };
+  return kandydaci;
+}
+
+function blokPodpowiedzi(stan, w, oferta, odswiez) {
+  const cenaObecna = Number(oferta?.razem) || 0;
+  if (!(cenaObecna > 0)) return null;
+
+  const kolorGlowny =
+    stan.firma === NATURALNY
+      ? kolorDekoru(stan.nat.nazwa || '')
+      : kolorDekoru(stan.dekor, stan.firma);
+
+  const propozycje = tanszeAlternatywy({
+    kolorGlowny,
+    cenaObecna,
+    kandydaci: kandydaciNaPodpowiedz(stan),
+    // Nie podpowiadamy tego, co już jest na stole.
+    pomijaj: [
+      `${stan.firma}/${stan.dekor}`,
+      ...stan.warianty.map((v) => `${v.firma}/${v.dekor}`),
+    ],
+  });
+
+  if (!propozycje.length) return null;
+
+  const pelno = stan.warianty.length >= MAKS_WARIANTOW;
+
+  return h(
+    'div',
+    { class: 'od-blok' },
+    h('div', { class: 'q-kicker' }, `Tańsze, podobne kolorystycznie (${nazwaTagu(kolorGlowny)})`),
+    h(
+      'p',
+      { class: 'form-nota', style: 'margin:2px 0 8px' },
+      'Ten sam blat, ten sam montaż — inny materiał. Kwoty przeliczone na tę wycenę.'
+    ),
+    ...propozycje.map((p) =>
+      h(
+        'div',
+        { class: 'od-pasek', style: 'align-items:center' },
+        h(
+          'span',
+          { style: 'flex:1' },
+          h('b', {}, `${p.firmaNazwa} — ${p.dekor}`),
+          h(
+            'span',
+            { class: 'form-nota', style: 'display:block' },
+            `${p.grubosc} mm · ${p.typ} · ${p.dopasowanie} (${nazwaTagu(p.kolor)})`
+          )
+        ),
+        h(
+          'span',
+          { style: 'text-align:right;white-space:nowrap;margin-right:10px' },
+          h('b', {}, zl(p.razem)),
+          h('span', { class: 'form-nota', style: 'display:block;color:#1d6b3a' }, `−${zl(p.oszczednosc)}`)
+        ),
+        pelno
+          ? h('span', { class: 'form-nota' }, 'komplet wariantów')
+          : h(
+              'button',
+              {
+                class: 'link-btn',
+                type: 'button',
+                onclick: () => {
+                  stan.warianty.push({
+                    firma: p.firma,
+                    dekor: p.dekor,
+                    grubosc: p.grubosc,
+                    upustTyp: 'dziedziczy',
+                    upustProc: 0,
+                  });
+                  odswiez();
+                },
+              },
+              'dodaj jako wariant →'
+            )
+      )
+    )
   );
 }
