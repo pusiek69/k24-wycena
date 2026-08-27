@@ -30,6 +30,9 @@ export async function wczytajSilnik(opcje = {}) {
     // zdarzyło się wywalić `uprosc is not defined` prosto na produkcję.
     `export { wycenZMagazynu, firmaZWariantu, jestNaturalny, wariantReczny, wycenWlasciciela, znajdzPromocjeNaturalna } from ${JSON.stringify(path.join(ROOT, 'src/app/wycena-naturalny.js'))};`,
     `export { DOMYSLNE, zastosujUstawienia } from ${JSON.stringify(path.join(ROOT, 'src/app/ustawienia.js'))};`,
+    // Promocje „ostatnie płyty" (27.08.2026) — ten sam powód co wyżej:
+    // firmaZPromocji dziedziczy po realnym dekorze przez firms/index.js.
+    `export { aktywna, doBanera, firmaZPromocji, notaPromocji, wycenPromocje, podpowiedzPromocji, formaPlyty, dataPl, paczkaPodgladu, MINIMALNA_OSZCZEDNOSC } from ${JSON.stringify(path.join(ROOT, 'src/app/promo-plyt.js'))};`,
     ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
     `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}]`,
     `  .filter((f) => f.aktywna !== false)`,

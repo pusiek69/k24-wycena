@@ -41,6 +41,12 @@ import {
   dopiszWiadomosc,
   rozmowaOferty,
 } from './baza.js';
+import {
+  listaPromocji,
+  zapiszPromocje,
+  ustawPublikacje,
+  skasujPromocje,
+} from './promocje-baza.js';
 
 /*
  * STAWKI ZAKŁADU EDYTOWALNE W PANELU.
@@ -102,6 +108,13 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
   if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
     return await apiOdpowiedz(request, env);
+  if (sciezka === '/panel/api/promocje') return await apiPromocje(request, env);
+  if (sciezka === '/panel/api/promocje/zapisz' && request.method === 'POST')
+    return await apiPromocjeZapisz(request, env);
+  if (sciezka === '/panel/api/promocje/publikuj' && request.method === 'POST')
+    return await apiPromocjePublikuj(request, env);
+  if (sciezka === '/panel/api/promocje/usun' && request.method === 'POST')
+    return await apiPromocjeUsun(request, env);
 
   return json({ error: 'Nieznany adres panelu.' }, 404);
 }
@@ -340,6 +353,81 @@ async function apiStawki(request, env) {
     return json({ ok: true, zapisanych: ile, stawki: await odczytajStawki(env) });
   }
   return json({ ok: true, opis: STAWKI, stawki: await odczytajStawki(env) });
+}
+
+/**
+ * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026).
+ *
+ * Panel widzi WSZYSTKO — szkice i opublikowane naraz (`wszystkie: true`),
+ * bo Dawid musi móc dokończyć niedopracowany szkic. Produkcja (worker
+ * .template.js `/promocje`) widzi wyłącznie aktywne opublikowane — filtr
+ * jest zamierzenie w dwóch różnych miejscach: tu decyduje WIDOCZNOŚĆ dla
+ * Dawida, tam decyduje WIDOCZNOŚĆ dla klienta, i to są różne pytania.
+ */
+async function apiPromocje(request, env) {
+  const promocje = await listaPromocji(env, { wszystkie: true });
+  const zLinkiem = await Promise.all(
+    promocje.map(async (p) => ({ ...p, linkPodgladu: await linkPodgladuPromocji(env, p.id) }))
+  );
+  return json({ ok: true, promocje: zLinkiem });
+}
+
+/**
+ * Link „Podgląd" — Dawid otwiera DOKŁADNIE tę samą stronę i ten sam kod
+ * banera, co klient zobaczy po publikacji, tylko z jednym doklejonym
+ * szkicem. Podpis ważny 14 dni: dłużej niż zwykle trwa dopracowanie
+ * promocji, a krócej niż „na zawsze", gdyby link kiedyś wyciekł.
+ */
+async function linkPodgladuPromocji(env, id) {
+  const exp = Date.now() + 14 * 24 * 3600000;
+  const podpis = await podpisz(env.PANEL_HASLO, `promo|${id}|${exp}`);
+  const paczka = { podgladId: id, exp, podpis };
+  const bajty = new TextEncoder().encode(JSON.stringify(paczka));
+  const b64 = btoa(String.fromCharCode(...bajty))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  return `https://kam24h.pl/#promoPodglad=${b64}`;
+}
+
+/** Zapis (nowa promocja albo edycja) — walidacja siedzi w promocje-baza.js. */
+async function apiPromocjeZapisz(request, env) {
+  const d = await request.json().catch(() => null);
+  if (!d || typeof d !== 'object') return json({ error: 'Niepoprawne dane.' }, 400);
+  const wynik = await zapiszPromocje(env, d);
+  if (!wynik.ok) return json({ error: wynik.blad }, 400);
+  return json({
+    ok: true,
+    id: wynik.id,
+    promocja: { ...wynik.promocja, linkPodgladu: await linkPodgladuPromocji(env, wynik.id) },
+  });
+}
+
+/**
+ * Publikacja / cofnięcie — osobny krok od zapisu, żeby „chcę zobaczyć,
+ * zanim to pójdzie na stronę" (zlecenie Dawida) było naprawdę osobnym
+ * kliknięciem, a nie zgadywaniem, czy zapis od razu publikuje.
+ *
+ * Wyłącznie z zalogowanego panelu (jak reszta /panel/api) — strona
+ * podglądu NIE publikuje sama, tylko odsyła Dawida z powrotem do panelu
+ * (patrz nota przy `#promoPodglad` w src/main.js). Jedno miejsce publikacji
+ * jest prostsze do obronienia niż dwie ścieżki autoryzacji dla tej samej
+ * operacji.
+ */
+async function apiPromocjePublikuj(request, env) {
+  const d = await request.json().catch(() => null);
+  const id = Number(d?.id);
+  if (!id) return json({ error: 'Brak promocji.' }, 400);
+  const ok = await ustawPublikacje(env, id, d?.opublikowana !== false);
+  if (!ok) return json({ error: 'Nie znaleziono promocji.' }, 404);
+  return json({ ok: true });
+}
+
+async function apiPromocjeUsun(request, env) {
+  const d = await request.json().catch(() => null);
+  const id = Number(d?.id);
+  if (!id) return json({ error: 'Brak promocji.' }, 400);
+  return json({ ok: await skasujPromocje(env, id) });
 }
 
 /**
@@ -623,6 +711,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
   <section id="dzis"></section>
   <section id="reakcje"></section>
   <section id="stawki"></section>
+  <section id="promocje"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
@@ -693,6 +782,7 @@ function rysuj(){
   document.getElementById('reakcje').innerHTML = reakcjeHtml(dane.feedback);
 
   rysujStawki();
+  rysujPromocje();
 
   document.getElementById('lista').innerHTML =
     dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
@@ -747,6 +837,156 @@ async function rysujStawki(){
       '<button class="btn cichy" type="button" id="stawki-test">Wycena testowa \u2197</button></p>' +
       '<p class="mini" id="stawki-info"></p>' +
     '</div>';
+}
+
+/**
+ * PROMOCJE „OSTATNIE PLYTY" (zlecenie Dawida, 27.08.2026) - panel.
+ *
+ * Wyprzedaz fizycznie ograniczonej partii plyt: Dawid wpisuje GOTOWA cene
+ * dla klienta i sam zmniejsza licznik sztuk (sprzedaje tez poza
+ * kalkulatorem). Szkic (nieopublikowana) widac TYLKO tutaj i pod linkiem
+ * podgladu - baner na stronie pokazuje wylacznie to, co Dawid opublikowal.
+ */
+var PROMOCJE = [], PROMO_EDYTOWANA = null;
+
+async function rysujPromocje(){
+  var d = await (await fetch('/panel/api/promocje')).json();
+  PROMOCJE = d.promocje || [];
+
+  var wiersze = PROMOCJE.length
+    ? PROMOCJE.map(promoWiersz).join('')
+    : '<p class="pusto">Brak promocji. Dodaj pierwsza - zobaczysz podglad, zanim trafi na strone.</p>';
+
+  document.getElementById('promocje').innerHTML =
+    '<h2>Promocje „ostatnie plyty" <button class="chip" type="button" id="promocje-pokaz">pokaz / ukryj</button></h2>' +
+    '<div class="lejek" id="promocje-tresc" hidden>' +
+      '<p class="mini">Cena promocyjna to GOTOWA cena dla klienta (zl/m\u00b2 brutto) - wpisujesz ja wprost, ' +
+      'nic jej dalej nie przelicza. Licznik sztuk zmniejszasz recznie, bo sprzedajesz tez poza kalkulatorem.</p>' +
+      '<div id="promocje-lista">' + wiersze + '</div>' +
+      '<p><button class="btn" type="button" id="promo-nowa">+ Nowa promocja</button></p>' +
+      '<div id="promo-form"></div>' +
+    '</div>';
+
+  if (PROMO_EDYTOWANA !== null) rysujPromoFormularz(PROMO_EDYTOWANA === 'nowa' ? null : PROMO_EDYTOWANA);
+}
+
+function promoWiersz(p){
+  var stan = p.opublikowana
+    ? '<span class="znacznik dobry">opublikowana</span>'
+    : '<span class="znacznik">szkic - widoczny tylko pod podgladem</span>';
+  var wyprzedana = p.plytZostalo <= 0 ? '<span class="znacznik flaga">wyprzedana</span>' : '';
+  var material = [p.opisMaterial, p.dekor].filter(Boolean).join(' \u00b7 ');
+  var cena = p.cenaNormalnaM2 > 0
+    ? '<s class="mini">' + zl(p.cenaNormalnaM2) + '/m\u00b2</s> ' + zl(p.cenaPromoM2) + '/m\u00b2'
+    : zl(p.cenaPromoM2) + '/m\u00b2';
+
+  return '<article class="karta">' +
+    '<div class="gora"><div class="kto"><b>' + esc(p.nazwa) + '</b>' +
+    '<span class="mini">' + esc(material || '\u2014') + ' \u00b7 ' + p.plytaDlCm + '\u00d7' + p.plytaGlCm + ' cm, ' + p.gruboscMm + ' mm' +
+    (p.dataKonca ? ' \u00b7 do ' + esc(p.dataKonca) : '') + '</span></div>' +
+    '<span class="kwota">' + cena + '</span></div>' +
+    '<div style="margin-top:.4rem">' + stan + ' ' + wyprzedana +
+    ' <span class="mini">zostalo ' + p.plytZostalo + ' z ' + p.plytRazem + '</span></div>' +
+    '<div class="akcje">' +
+      '<button type="button" data-promo-edytuj="' + p.id + '">Edytuj</button>' +
+      (p.plytZostalo > 0
+        ? '<button type="button" data-promo-minus="' + p.id + '">\u22121 plyta</button>'
+        : '') +
+      '<a href="' + esc(p.linkPodgladu) + '" target="_blank" rel="noopener">Podglad \u2197</a>' +
+      (p.opublikowana
+        ? '<button type="button" data-promo-cofnij="' + p.id + '">Cofnij publikacje</button>'
+        : '<button type="button" class="dzwon" data-promo-publikuj="' + p.id + '" style="background:var(--zielony);border-color:var(--zielony)">Opublikuj</button>') +
+      '<button type="button" data-promo-usun="' + p.id + '">Usun</button>' +
+    '</div></article>';
+}
+
+function promoPusta(){
+  return { id:null, nazwa:'', opisMaterial:'', firmaSlug:'', dekor:'', gruboscMm:20,
+    plytaDlCm:320, plytaGlCm:160, cenaNormalnaM2:'', cenaPromoM2:'', plytRazem:1, plytZostalo:1, dataKonca:'', zdjecieUrl:'' };
+}
+
+function rysujPromoFormularz(id){
+  var p = id ? PROMOCJE.find(function(x){ return x.id === id; }) : null;
+  var v = p ? Object.assign({}, p) : promoPusta();
+  PROMO_EDYTOWANA = id || 'nowa';
+
+  function pole(etyk, atrybuty){
+    return '<label class="stawka">' + etyk + '<input ' + atrybuty + '></label>';
+  }
+
+  document.getElementById('promo-form').innerHTML =
+    '<div class="szczegoly" style="margin-top:.8rem">' +
+    '<h3 style="margin:0 0 .4rem">' + (p ? 'Edycja promocji' : 'Nowa promocja') + '</h3>' +
+    '<div class="stawki-siatka">' +
+      pole('Nazwa (widzi klient)', 'id="pf-nazwa" value="' + esc(v.nazwa) + '" placeholder="np. Calacatta Gold \u2014 ostatnie plyty">') +
+      pole('Opis materialu (podtytul, opcjonalnie)', 'id="pf-opis" value="' + esc(v.opisMaterial) + '" placeholder="np. Konglomerat kwarcowy">') +
+      pole('Firma z cennika (slug, opcjonalnie)', 'id="pf-firma" value="' + esc(v.firmaSlug) + '" placeholder="np. avant-quartz">') +
+      pole('Dekor (opcjonalnie)', 'id="pf-dekor" value="' + esc(v.dekor) + '" placeholder="np. Dijon">') +
+      pole('Grubosc (mm)', 'id="pf-grubosc" type="number" min="1" value="' + v.gruboscMm + '">') +
+      pole('Dlugosc plyty (cm)', 'id="pf-dl" type="number" min="1" value="' + v.plytaDlCm + '">') +
+      pole('Glebokosc plyty (cm)', 'id="pf-gl" type="number" min="1" value="' + v.plytaGlCm + '">') +
+      pole('Cena normalna zl/m\u00b2 (przekreslona, opcjonalnie)', 'id="pf-cena-norm" type="number" min="0" value="' + v.cenaNormalnaM2 + '">') +
+      pole('Cena promocyjna zl/m\u00b2 \u2014 GOTOWA dla klienta *', 'id="pf-cena-promo" type="number" min="1" value="' + v.cenaPromoM2 + '">') +
+      pole('Ile plyt razem *', 'id="pf-razem" type="number" min="1" value="' + v.plytRazem + '">') +
+      pole('Ile zostalo teraz *', 'id="pf-zostalo" type="number" min="0" value="' + v.plytZostalo + '">') +
+      pole('Koniec promocji (opcjonalnie)', 'id="pf-koniec" type="date" value="' + esc(v.dataKonca) + '">') +
+      pole('Zdjecie \u2014 adres URL (opcjonalnie)', 'id="pf-zdjecie" value="' + esc(v.zdjecieUrl) + '" placeholder="https://\u2026">') +
+    '</div>' +
+    '<p class="mini" id="promo-blad" style="color:var(--czerwony)"></p>' +
+    '<p><button class="btn" type="button" id="promo-zapisz" data-id="' + (v.id || '') + '">Zapisz</button> ' +
+    '<button class="btn cichy" type="button" id="promo-anuluj">Anuluj</button></p>' +
+    '</div>';
+}
+
+function promoZFormularza(id){
+  return {
+    id: id || undefined,
+    nazwa: document.getElementById('pf-nazwa').value.trim(),
+    opisMaterial: document.getElementById('pf-opis').value.trim(),
+    firmaSlug: document.getElementById('pf-firma').value.trim(),
+    dekor: document.getElementById('pf-dekor').value.trim(),
+    gruboscMm: Number(document.getElementById('pf-grubosc').value) || 20,
+    plytaDlCm: Number(document.getElementById('pf-dl').value) || 0,
+    plytaGlCm: Number(document.getElementById('pf-gl').value) || 0,
+    cenaNormalnaM2: Number(document.getElementById('pf-cena-norm').value) || 0,
+    cenaPromoM2: Number(document.getElementById('pf-cena-promo').value) || 0,
+    plytRazem: Number(document.getElementById('pf-razem').value) || 0,
+    plytZostalo: Number(document.getElementById('pf-zostalo').value),
+    dataKonca: document.getElementById('pf-koniec').value || '',
+    zdjecieUrl: document.getElementById('pf-zdjecie').value.trim(),
+  };
+}
+
+async function promoZapisz(id){
+  var dane = promoZFormularza(id);
+  var btn = document.getElementById('promo-zapisz');
+  btn.disabled = true;
+  var odp = await (await fetch('/panel/api/promocje/zapisz', {method:'POST',
+    headers:{'content-type':'application/json'}, body: JSON.stringify(dane)})).json();
+  btn.disabled = false;
+  if (odp.error) { document.getElementById('promo-blad').textContent = odp.error; return; }
+  PROMO_EDYTOWANA = null;
+  await rysujPromocje();
+}
+
+async function promoUstawPublikacje(id, opublikowana){
+  await fetch('/panel/api/promocje/publikuj', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({id: id, opublikowana: opublikowana})});
+  await rysujPromocje();
+}
+
+async function promoMinusJedna(id){
+  var p = PROMOCJE.find(function(x){ return x.id === id; });
+  if (!p || p.plytZostalo <= 0) return;
+  var dane = Object.assign({}, p, { id: id, plytZostalo: p.plytZostalo - 1 });
+  await fetch('/panel/api/promocje/zapisz', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(dane)});
+  await rysujPromocje();
+}
+
+async function promoUsun(id){
+  if (!confirm('Skasowac te promocje? Tego nie da sie cofnac.')) return;
+  await fetch('/panel/api/promocje/usun', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({id: id})});
+  await rysujPromocje();
 }
 
 function znacznikFeedbacku(k){
@@ -970,6 +1210,22 @@ document.addEventListener('click', function(e){
     });
     return;
   }
+  if(e.target.id === 'promocje-pokaz'){
+    var pt = document.getElementById('promocje-tresc'); pt.hidden = !pt.hidden; return;
+  }
+  if(e.target.id === 'promo-nowa'){ rysujPromoFormularz(null); return; }
+  if(e.target.id === 'promo-anuluj'){ PROMO_EDYTOWANA = null; document.getElementById('promo-form').innerHTML = ''; return; }
+  if(e.target.id === 'promo-zapisz'){ promoZapisz(Number(e.target.dataset.id) || null); return; }
+  var pEdytuj = e.target.closest('[data-promo-edytuj]');
+  if(pEdytuj){ rysujPromoFormularz(Number(pEdytuj.dataset.promoEdytuj)); return; }
+  var pMinus = e.target.closest('[data-promo-minus]');
+  if(pMinus){ promoMinusJedna(Number(pMinus.dataset.promoMinus)); return; }
+  var pPublikuj = e.target.closest('[data-promo-publikuj]');
+  if(pPublikuj){ promoUstawPublikacje(Number(pPublikuj.dataset.promoPublikuj), true); return; }
+  var pCofnij = e.target.closest('[data-promo-cofnij]');
+  if(pCofnij){ promoUstawPublikacje(Number(pCofnij.dataset.promoCofnij), false); return; }
+  var pUsun = e.target.closest('[data-promo-usun]');
+  if(pUsun){ promoUsun(Number(pUsun.dataset.promoUsun)); return; }
   var chip = e.target.closest('[data-status]');
   if(chip){
     var sel = document.getElementById('f-status');

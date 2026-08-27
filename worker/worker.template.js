@@ -14,6 +14,8 @@
  *    POST /oferta/wyslij — zapis wersji Dawida + mail do klienta (token z panelu)
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
  *                     odczyt, z którego korzysta konsultant przez narzędzie)
+ *    POST /promocje — promocje „ostatnie płyty" dla banera (publicznie tylko
+ *                     aktywne; podgląd szkicu — patrz worker/promocje-baza.js)
  *    GET  /panel    — baza klientów dla Dawida (worker/panel.js), za hasłem
  *
  *  Sekrety (Cloudflare → Settings → Variables and Secrets):
@@ -44,6 +46,12 @@ import {
   ofertaPoTokenie,
   odczytajStawki,
 } from './baza.js';
+import {
+  listaPromocji,
+  zapiszPromocje,
+  ustawPublikacje,
+  skasujPromocje,
+} from './promocje-baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -122,6 +130,7 @@ export default {
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
       if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
+      if (sciezka === '/promocje') return await obsluzPromocje(request, env, cors);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
       console.error(sciezka, e?.message || e);
@@ -138,6 +147,22 @@ export default {
  * stronie, a przeglądarka nie ma jak podstawić fałszywych danych.
  */
 const NARZEDZIA = [
+  {
+    name: 'sprawdz_promocje',
+    description: [
+      'Sprawdza AKTUALNE promocje „ostatnie płyty" — pojedyncze, fizycznie',
+      'ograniczone partie płyt (konglomerat, spiek albo kamień naturalny),',
+      'które Dawid wyprzedaje po gotowej, obniżonej cenie za m². To NIE jest',
+      'to samo, co zwykłe ceny katalogowe — to osobna, krótkoterminowa pula.',
+      '',
+      'Używaj na początku rozmowy o materiale i kolorze, żeby WSPOMNIEĆ o pasującej',
+      'promocji, jeśli akurat trwa — i zawsze, gdy klient pyta wprost o okazje,',
+      'wyprzedaże albo „coś taniej". Nigdy nie zgaduj cen ani liczby sztuk —',
+      'tylko z odpowiedzi tego narzędzia. Gdy zwróci brak promocji, po prostu',
+      'nie wspominaj o nich — to nie błąd.',
+    ].join('\n'),
+    input_schema: { type: 'object', properties: {} },
+  },
   {
     name: 'sprawdz_magazyn',
     description: [
@@ -195,14 +220,14 @@ async function obsluzChat(request, env, cors, ctx) {
     messages.push({ role: 'assistant', content: wynik.content });
     messages.push({
       role: 'user',
-      content: await Promise.all(proby.map((b) => wykonajNarzedzie(b, ctx))),
+      content: await Promise.all(proby.map((b) => wykonajNarzedzie(b, ctx, env))),
     });
   }
 
   return json({ content: wynik.content, stop_reason: wynik.stop_reason }, 200, cors);
 }
 
-async function wykonajNarzedzie(blok, ctx) {
+async function wykonajNarzedzie(blok, ctx, env) {
   let tresc;
   try {
     if (blok.name === 'sprawdz_magazyn') {
@@ -210,6 +235,8 @@ async function wykonajNarzedzie(blok, ctx) {
       // go po samym numerze — pełny kod tokenizuje inaczej i gubi trafienie.
       const fraza = numerPlytyZKodu(blok.input?.fraza) || blok.input?.fraza;
       tresc = opiszPlyty(await pobierzMagazyn(fraza, ctx));
+    } else if (blok.name === 'sprawdz_promocje') {
+      tresc = await opiszPromocjeDlaAsystenta(env);
     } else {
       tresc = `NIEDOSTĘPNE: Nieznane narzędzie „${blok.name}".`;
     }
@@ -447,6 +474,22 @@ async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
   return r === 0;
 }
 
+/**
+ * Autoryzacja podglądu promocji „ostatnie płyty" — te NIE są przypięte
+ * do żadnego klienta (`leadId`), więc mają WŁASNY, prostszy podpis:
+ * `promo|<id>|<exp>`. Panel wkleja go w link „Podgląd" przy szkicu.
+ */
+async function tokenPromocji(env, id, exp, podpisKlienta) {
+  if (!env.PANEL_HASLO) return false;
+  if (!id || !exp || Number(exp) < Date.now()) return false;
+  const wzor = await podpisz(env.PANEL_HASLO, `promo|${id}|${exp}`);
+  const podany = String(podpisKlienta || '');
+  if (podany.length !== wzor.length) return false;
+  let r = 0;
+  for (let i = 0; i < wzor.length; i++) r |= wzor.charCodeAt(i) ^ podany.charCodeAt(i);
+  return r === 0;
+}
+
 /** Wycena online: dane po tokenie. Otwarcie klienta podbija licznik. */
 /**
  * KTORE KOLEKCJE ZNA ASYSTENT (/kolekcje).
@@ -466,6 +509,57 @@ function obsluzKolekcje(cors) {
   const kolekcje = [...DEKORY.matchAll(/^##\s*(.+)$/gm)].map((m) => m[1].trim());
   const dekorow = (DEKORY.match(/;/g) || []).length + kolekcje.length;
   return json({ ok: true, kolekcje, dekorow }, 200, cors);
+}
+
+/**
+ * PROMOCJE „OSTATNIE PŁYTY" (POST /promocje).
+ *
+ * PUBLICZNIE zwraca wyłącznie AKTYWNE opublikowane promocje (są sztuki,
+ * nie minął termin) — dokładnie to, co ma pokazać baner na produkcji.
+ *
+ * PODGLĄD WŁAŚCICIELA: `{ podgladId, exp, podpis }` z ważnym podpisem
+ * dokłada JEDEN wskazany szkic do wyniku — Dawid widzi go razem z tym,
+ * co już jest opublikowane, dokładnie tak, jak wyglądałaby strona,
+ * gdyby ten szkic był live. Bez ważnego podpisu żądanie z `podgladId`
+ * po prostu dostaje sam publiczny widok — nie ma jak podejrzeć cudzego
+ * szkicu zgadując numer.
+ */
+async function obsluzPromocje(request, env, cors) {
+  const d = await request.json().catch(() => ({})) || {};
+  const podglad = !!d.podgladId && (await tokenPromocji(env, d.podgladId, d.exp, d.podpis));
+
+  const wszystkie = await listaPromocji(env, {
+    dolaczId: podglad ? Number(d.podgladId) : null,
+  });
+  const dzis = new Date().toISOString().slice(0, 10);
+  const aktywne = wszystkie.filter(
+    (p) => p.plytZostalo > 0 && (!p.dataKonca || dzis <= p.dataKonca)
+  );
+
+  return json({ ok: true, promocje: aktywne }, 200, cors);
+}
+
+/** Tekst dla narzędzia asystenta — te same promocje, które widzi baner. */
+async function opiszPromocjeDlaAsystenta(env) {
+  const wszystkie = await listaPromocji(env, {});
+  const dzis = new Date().toISOString().slice(0, 10);
+  const aktywne = wszystkie.filter(
+    (p) => p.plytZostalo > 0 && (!p.dataKonca || dzis <= p.dataKonca)
+  );
+  if (!aktywne.length) return 'Brak aktywnych promocji „ostatnie płyty" — nie wspominaj o żadnej.';
+
+  return aktywne
+    .map((p, i) => {
+      const material = [p.opisMaterial, p.dekor].filter(Boolean).join(' · ');
+      const rabat = p.cenaNormalnaM2 > 0 ? ` (normalnie ${p.cenaNormalnaM2} zł/m²)` : '';
+      const termin = p.dataKonca ? `, promocja do ${p.dataKonca}` : '';
+      return (
+        `${i + 1}. „${p.nazwa}"${material ? ' — ' + material : ''} — zostało ${p.plytZostalo} ` +
+        `z ${p.plytRazem} płyt (${p.plytaDlCm}×${p.plytaGlCm} cm, ${p.gruboscMm} mm), ` +
+        `cena promocyjna ${p.cenaPromoM2} zł/m² brutto${rabat}${termin}.`
+      );
+    })
+    .join('\n');
 }
 
 async function obsluzOfertaDane(request, env, cors) {

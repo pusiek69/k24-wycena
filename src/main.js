@@ -8,6 +8,8 @@ import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
 import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 import { gotoweStawki } from './app/stawki-klient.js';
+import { paczkaPodgladu } from './app/promo-plyt.js';
+import { gotowePromocje, renderBaner } from './app/promocje-baner.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
@@ -53,6 +55,21 @@ przyklejonyPrzycisk();
 // zanim ktokolwiek zdąży policzyć wycenę (rozmowa i tak trwa dłużej).
 gotoweStawki();
 
+/*
+ * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026).
+ *
+ * TRYB PODGLĄDU: link z panelu niesie fragment #promoPodglad=… — dokładnie
+ * ta sama strona, dokładnie ten sam kod banera, tylko źródło danych inne
+ * (dokłada JEDEN wskazany szkic, z podpisem właściciela). Dawid widzi
+ * DOKŁADNIE to, co zobaczy klient, zanim jeszcze cokolwiek opublikuje.
+ *
+ * Baner NIE pokazuje się w trybie „Powtórz wycenę" (edytor ofert dla
+ * Dawida) — to inny kontekst: on wtedy przygotowuje wycenę KONKRETNEMU
+ * klientowi, a nie sam nią przegląda jak kupujący.
+ */
+const podgladPromocji = paczkaPodgladu(location.hash);
+const banerBox = document.getElementById('promo-baner');
+
 const powtorka = paczkaPowtorki();
 if (!FIRMY.length) {
   root.innerHTML =
@@ -61,6 +78,17 @@ if (!FIRMY.length) {
 } else if (powtorka) {
   uruchomOferteDawida(root, powtorka);
 } else {
+  if (banerBox) {
+    gotowePromocje(podgladPromocji).then((promocje) => {
+      renderBaner(banerBox, promocje, {
+        podglad: !!podgladPromocji,
+        onWybierz: (promo) => {
+          zdarzenie('promo_plyt_wybrana', { promocja: promo.nazwa });
+          uruchomKreator(root, { promo });
+        },
+      });
+    });
+  }
   uruchomAplikacje(root);
 }
 

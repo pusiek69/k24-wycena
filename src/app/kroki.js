@@ -5,6 +5,7 @@ import { wycen } from '../engine/wycena.js';
 import { upakuj, opisPlyt } from '../engine/pakowanie.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { bramkaWyceny } from './bramka.js';
+import { formaPlyty, dataPl } from './promo-plyt.js';
 
 const TEL = '796 991 128';
 const TEL_HREF = 'tel:+48796991128';
@@ -291,6 +292,8 @@ export function krokWymiary(stan, a) {
     'Podaj każdy prosty odcinek blatu osobno — blat w literę L to dwa odcinki. ' +
       'Typowa głębokość blatu kuchennego to 60–65 cm. Wymiary mogą być przybliżone, dokładne bierzemy na pomiarze.',
 
+    stan.promo ? promoPasek(stan.promo, a) : null,
+
     grubosci.length > 1
       ? h(
           'div',
@@ -319,7 +322,40 @@ export function krokWymiary(stan, a) {
     listaOdcinkow,
     szkic,
     podsumowanie,
-    nawigacja(a, { wstecz: 'dekor', dalej: 'obrobki' })
+    // W trybie promocji nie ma dokąd wracać po „Wstecz" — kroki 1 i 2 były
+    // pominięte. Wyjście z trybu jest jedno: przycisk „Zmień materiał"
+    // w `promoPasek` wyżej, więc tutaj chowamy zwykły przycisk cofania.
+    nawigacja(a, stan.promo ? { dalej: 'obrobki' } : { wstecz: 'dekor', dalej: 'obrobki' })
+  );
+}
+
+/**
+ * Podsumowanie wybranej promocji na kroku „Wymiary" — klient wszedł tu
+ * z banera z pominięciem kroków „Materiał"/„Dekor", więc musi widzieć
+ * OD RAZU, co dokładnie liczy: nazwę, cenę Dawida (nie do zmiany) i ile
+ * płyt zostało. „Zmień materiał" to jedyne wyjście z trybu promocji.
+ */
+function promoPasek(promo, a) {
+  return h(
+    'div',
+    { class: 'promo-pasek' },
+    h(
+      'div',
+      { class: 'promo-pasek-tekst' },
+      h('span', { class: 'promo-pasek-etykieta' }, 'Wybrana promocja'),
+      h('b', {}, promo.nazwa),
+      h(
+        'span',
+        { class: 'promo-pasek-cena' },
+        `${zl(promo.cenaPromoM2)}/m² · zostało ${promo.plytZostalo} ${formaPlyty(promo.plytZostalo)}` +
+          (promo.dataKonca ? ` · do ${dataPl(promo.dataKonca)}` : '')
+      )
+    ),
+    h(
+      'button',
+      { class: 'link-btn', type: 'button', onclick: () => a.zmienMaterial() },
+      'Zmień materiał'
+    )
   );
 }
 

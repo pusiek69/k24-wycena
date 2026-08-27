@@ -97,6 +97,28 @@ export async function pobierzUstawienia() {
 }
 
 /**
+ * Promocje „ostatnie płyty" (zlecenie Dawida, 27.08.2026).
+ *
+ * Bez argumentów — publiczny widok: tylko to, co Dawid opublikował.
+ * Z `{ podgladId, exp, podpis }` z linku podglądu — dokłada JEDEN wskazany
+ * szkic, z podpisem właściciela. Worker sam sprawdza podpis; zły albo
+ * przeterminowany po prostu wraca do publicznego widoku, bez błędu.
+ */
+export async function pobierzPromocje(podglad) {
+  try {
+    const odp = await fetch(`${API_BASE}/promocje`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(podglad || {}),
+    });
+    const dane = await odp.json().catch(() => null);
+    return dane?.ok ? dane.promocje || [] : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Odpowiedź klienta na pokazaną wycenę (pasuje / za drogo / zastanowi się).
  * Zawsze w tle: feedback to bonus, więc błąd sieci ma zniknąć bez śladu,
  * zamiast pokazywać klientowi cokolwiek.

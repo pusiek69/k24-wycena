@@ -160,3 +160,51 @@ CREATE INDEX IF NOT EXISTS wyceny_watek ON wyceny (watek, id);
 
 -- Wysłane wcześniej oferty: każda jest sama dla siebie osobnym wątkiem.
 UPDATE wyceny SET watek = token WHERE watek = '' AND token <> '';
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026)
+--
+--  Wyprzedaż resztek magazynowych — nie ma nic wspólnego z kampaniami
+--  dostawców (Avant/Caesarstone/Keralini/Laminam), które żyją w
+--  pricing/zrodla/*.promocje.json. Tu Dawid ma FIZYCZNIE ograniczoną
+--  liczbę sztuk jednej konkretnej płyty i sam ustawia GOTOWĄ cenę dla
+--  klienta — żadnych przeliczników marży w kodzie.
+--
+--  Licznik `plyt_zostalo` zmniejsza Dawid RĘCZNIE z panelu — sprzedaje
+--  też poza kalkulatorem (telefonicznie, na miejscu), więc automatyczne
+--  liczenie z zamówień online byłoby nieprawdziwe.
+--
+--  `opublikowana = 0` to SZKIC: baner na stronie go nie pokazuje, widzi go
+--  wyłącznie Dawid pod podpisanym linkiem podglądu (dokładnie ten sam
+--  baner, jaki zobaczy klient po kliknięciu „Opublikuj").
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS promocje_plyt (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  nazwa             TEXT NOT NULL,
+  -- Wolny opis pod nazwą na banerze, np. „Avant Quartz · Calacatta Chery".
+  opis_material     TEXT NOT NULL DEFAULT '',
+  -- Gdy promocja odwołuje się do realnego dekoru z cennika (nie „płyty
+  -- własnej") — po co: link do zdjęć, rodzaj materiału, narzut odpadu.
+  -- Same ceny w wycenie i tak biorą się z cena_promo_m2, nie z cennika.
+  firma_slug        TEXT NOT NULL DEFAULT '',
+  dekor             TEXT NOT NULL DEFAULT '',
+  grubosc_mm        INTEGER NOT NULL DEFAULT 20,
+  plyta_dl_cm       REAL NOT NULL,
+  plyta_gl_cm       REAL NOT NULL,
+  -- Obie ceny to zł/m² BRUTTO, wpisywane wprost przez Dawida — silnik
+  -- ich nie przelicza żadną marżą. cena_normalna to marketingowe „było",
+  -- stabilne przez cały czas trwania promocji (nie goni za cennikiem).
+  cena_normalna_m2  INTEGER NOT NULL DEFAULT 0,
+  cena_promo_m2     INTEGER NOT NULL,
+  plyt_razem        INTEGER NOT NULL,
+  plyt_zostalo      INTEGER NOT NULL,
+  -- Opcjonalny koniec promocji (YYYY-MM-DD) — pusty string = bez terminu,
+  -- kończy ją wtedy tylko wyzerowanie sztuk.
+  data_konca        TEXT NOT NULL DEFAULT '',
+  zdjecie_url       TEXT NOT NULL DEFAULT '',
+  opublikowana      INTEGER NOT NULL DEFAULT 0,
+  utworzono         TEXT NOT NULL,
+  zmieniono         TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS promocje_plyt_opublikowana ON promocje_plyt (opublikowana);

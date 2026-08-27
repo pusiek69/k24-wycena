@@ -207,4 +207,122 @@ if (JEST) {
     const odp = await worker.fetch(zapytanie('/nie-ma-takiej', {}), env, ctx);
     assert.ok(odp.status === 404 || odp.status === 405, `oddał ${odp.status}`);
   });
+
+  /* ═══════════ PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026) ══
+   *
+   * Dokładnie ten scenariusz, po który powstał ten plik: `npm run worker`
+   * i wszystkie 24 testy modułu przechodzą, ale prawdziwy request przez
+   * `worker.fetch()` to jedyny sposób złapać literówkę widoczną dopiero
+   * przy WYKONANIU (jak self-referencing const w sierpniu).
+   */
+  const { podpisz } = await import('../worker/panel.js');
+
+  async function ciastkoPanelu(env) {
+    const wygasa = Date.now() + 3600000;
+    const podpis = await podpisz(env.PANEL_HASLO, 'panel|' + wygasa);
+    return `k24h_panel=${wygasa}.${podpis}`;
+  }
+
+  function zapytaniePanel(sciezka, cialo, cookie) {
+    return new Request(`https://k24h.example${sciezka}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://kam24h.pl', cookie },
+      body: JSON.stringify(cialo),
+    });
+  }
+
+  test('/promocje bez żadnej promocji zwraca pustą listę, nie błąd', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(zapytanie('/promocje', {}), env, ctx);
+    const dane = await odp.json();
+    assert.equal(odp.status, 200, `/promocje oddał ${odp.status}: ${JSON.stringify(dane)}`);
+    assert.deepEqual(dane.promocje, []);
+  });
+
+  test('szkic z panelu NIE pojawia się w publicznym /promocje', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const zapis = await worker.fetch(
+      zapytaniePanel(
+        '/panel/api/promocje/zapisz',
+        { nazwa: 'Test — ostatnie płyty', plytaDlCm: 320, plytaGlCm: 160, cenaPromoM2: 890, plytRazem: 3 },
+        cookie
+      ),
+      env,
+      ctx
+    );
+    const zapisDane = await zapis.json();
+    assert.equal(zapis.status, 200, `zapisz oddał ${zapis.status}: ${JSON.stringify(zapisDane)}`);
+    assert.ok(zapisDane.id, 'brak id nowej promocji');
+    assert.ok(zapisDane.promocja.linkPodgladu.includes('#promoPodglad='), 'brak linku podglądu');
+
+    const publiczny = await (await worker.fetch(zapytanie('/promocje', {}), env, ctx)).json();
+    assert.deepEqual(publiczny.promocje, [], 'szkic wyciekł do publicznego /promocje');
+  });
+
+  test('link podglądu pokazuje TEN szkic, a publikacja wprowadza go na produkcję', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const zapis = await (
+      await worker.fetch(
+        zapytaniePanel(
+          '/panel/api/promocje/zapisz',
+          { nazwa: 'Podgląd — test', plytaDlCm: 320, plytaGlCm: 160, cenaPromoM2: 750, plytRazem: 2 },
+          cookie
+        ),
+        env,
+        ctx
+      )
+    ).json();
+
+    // Wyciągamy exp/podpis z gotowego linku, tak jak zrobiłaby to strona podglądu.
+    const b64 = zapis.promocja.linkPodgladu.split('#promoPodglad=')[1];
+    const paczka = JSON.parse(Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+
+    const podglad = await (
+      await worker.fetch(zapytanie('/promocje', paczka), env, ctx)
+    ).json();
+    assert.equal(podglad.promocje.length, 1, 'podgląd nie pokazał szkicu');
+    assert.equal(podglad.promocje[0].nazwa, 'Podgląd — test');
+
+    // Sfałszowany podpis nie ma prawa odsłonić szkicu.
+    const falszywy = await (
+      await worker.fetch(zapytanie('/promocje', { ...paczka, podpis: 'x'.repeat(64) }), env, ctx)
+    ).json();
+    assert.deepEqual(falszywy.promocje, [], 'zły podpis odsłonił szkic');
+
+    await worker.fetch(
+      zapytaniePanel('/panel/api/promocje/publikuj', { id: zapis.id, opublikowana: true }, cookie),
+      env,
+      ctx
+    );
+    const naProdukcji = await (await worker.fetch(zapytanie('/promocje', {}), env, ctx)).json();
+    assert.equal(naProdukcji.promocje.length, 1, 'opublikowana promocja nie trafiła na produkcję');
+  });
+
+  test('promocje/zapisz bez ciasteczka panelu nie przepuszcza', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytanie('/panel/api/promocje/zapisz', { nazwa: 'x', plytaDlCm: 1, plytaGlCm: 1, cenaPromoM2: 1, plytRazem: 1 }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 401, `klient bez panelu nie może zapisać promocji, oddał ${odp.status}`);
+  });
+
+  test('promocje/zapisz odrzuca cenę promocyjną wyższą niż normalna', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const odp = await worker.fetch(
+      zapytaniePanel(
+        '/panel/api/promocje/zapisz',
+        { nazwa: 'x', plytaDlCm: 320, plytaGlCm: 160, cenaNormalnaM2: 500, cenaPromoM2: 800, plytRazem: 1 },
+        cookie
+      ),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 400);
+    assert.match((await odp.json()).error, /okazja/);
+  });
 }

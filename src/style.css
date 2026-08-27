@@ -1508,3 +1508,67 @@ button { color: var(--cream); background: transparent; }
   .parametry dt { flex: none; max-width: none; }
   .kwota-hero { padding: 15px 16px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026)
+ *
+ * Nie mylić z .promo-plakietka wyżej (rabat DOSTAWCY na wybrany dekor) —
+ * to osobna, fizycznie ograniczona partia płyt Dawida. Baner musi działać
+ * IDENTYCZNIE na produkcji i w podglądzie właściciela — patrz
+ * app/promocje-baner.js, jeden kod renderuje oba widoki.
+ * ═══════════════════════════════════════════════════════════════════════ */
+.promo-baner { display: flex; flex-direction: column; gap: 14px; margin: 22px auto 0; }
+
+.promo-podglad-info {
+  font-family: var(--sans); font-size: 13px; color: #e2cfa6;
+  background: rgba(201, 168, 106, .16); border: 1px solid var(--vein);
+  border-radius: var(--radius); padding: 11px 15px;
+}
+.promo-podglad-info b { color: var(--vein); }
+
+.promo-baner-karta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
+  background: var(--slab); border: 1px solid var(--line); border-left: 3px solid var(--vein);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.promo-baner-tekst { flex: 1 1 220px; min-width: 0; }
+.promo-baner-etykieta {
+  display: block; font-family: var(--sans); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--vein); margin-bottom: 4px;
+}
+.promo-baner-nazwa { font-size: 19px; font-weight: 400; margin: 0; color: var(--cream); }
+.promo-baner-material { color: var(--dim); font-size: 13px; margin: 3px 0 0; }
+.promo-baner-cena { text-align: right; flex: 0 0 auto; }
+.promo-baner-cena-przed { color: var(--dim); font-size: 13px; display: block; }
+.promo-baner-cena-teraz { font-size: 23px; color: var(--vein); display: block; font-variant-numeric: tabular-nums; }
+.promo-baner-licznik {
+  font-family: var(--sans); font-size: 12px; color: var(--dim); display: block; margin-top: 3px;
+}
+.promo-baner-cta { flex: none; }
+
+@media (max-width: 560px) {
+  .promo-baner-karta { flex-direction: column; align-items: stretch; text-align: left; }
+  .promo-baner-cena { text-align: left; }
+  .promo-baner-cta { width: 100%; justify-content: center; }
+}
+
+/* Podsumowanie promocji na kroku „Wymiary" kreatora — patrz app/kroki.js#promoPasek. */
+.promo-pasek {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px 18px;
+  flex-wrap: wrap; background: rgba(201, 168, 106, .10); border: 1px solid var(--line-hi);
+  border-radius: var(--radius); padding: 12px 16px; margin-bottom: 20px;
+}
+.promo-pasek-tekst { display: flex; flex-direction: column; gap: 2px; }
+.promo-pasek-etykieta {
+  font-family: var(--sans); font-size: 10.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--vein);
+}
+.promo-pasek-cena { font-family: var(--sans); font-size: 13px; color: var(--dim); }
+
+/* Dyskretna podpowiedź cross-sell na wyniku wyceny — patrz app/wynik-widok.js. */
+.promo-plyt-podpowiedz {
+  font-size: 14px; color: var(--dim); background: rgba(201, 168, 106, .08);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 14px; margin: 16px 0 0;
+}
+.promo-plyt-podpowiedz b { color: var(--vein); }

@@ -2,6 +2,7 @@ import { h, pusty } from './dom.js';
 import { firmaWgSlug } from '../firms/index.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { krokMaterial, krokDekor, krokWymiary, krokObrobki, krokWynik } from './kroki.js';
+import { firmaZPromocji } from './promo-plyt.js';
 
 const KROKI = [
   { id: 'material', label: 'Materiał' },
@@ -19,11 +20,21 @@ const WIDOKI = {
   wynik: krokWynik,
 };
 
-export function uruchom(root) {
+/**
+ * @param {HTMLElement} root
+ * @param {object} [opcje]
+ * @param {object} [opcje.promo]  klik w baner „ostatnie płyty" (app/promo-plyt.js)
+ *   — kreator startuje z góry PRESELEKCJONOWANY: materiał i cena są już
+ *   ustawione (Dawida cena promocyjna, nie do edycji przez klienta),
+ *   a klient ląduje od razu na kroku „Wymiary". Patrz `zmienMaterial`,
+ *   jedyne wyjście z tego trybu.
+ */
+export function uruchom(root, opcje = {}) {
   const stan = czystyStan();
+  if (opcje.promo) ustawPromocje(stan, opcje.promo);
 
   const akcje = {
-    firma: () => firmaWgSlug(stan.firma),
+    firma: () => (stan.promo ? firmaZPromocji(stan.promo) : firmaWgSlug(stan.firma)),
 
     idz(krok) {
       stan.krok = krok;
@@ -31,8 +42,12 @@ export function uruchom(root) {
     },
 
     wybierzFirme(slug) {
-      if (stan.firma !== slug) {
+      if (stan.firma !== slug || stan.promo) {
         stan.firma = slug;
+        // Klient wraca do zwykłego wyboru — promocja (jeśli była aktywna)
+        // przestaje obowiązywać, inaczej `akcje.firma()` dalej brałaby
+        // starą pseudo-firmę promocyjną zamiast tego, co właśnie wybrał.
+        stan.promo = null;
         stan.dekor = null;
         stan.grubosc = null;
         stan.cenaRecznaM2 = '';
@@ -60,6 +75,12 @@ export function uruchom(root) {
       if (przerysuj) render();
     },
 
+    /** Jedyne wyjście z trybu promocji — klient jednak chce co innego. */
+    zmienMaterial() {
+      Object.assign(stan, czystyStan());
+      akcje.idz('material');
+    },
+
     odNowa() {
       Object.assign(stan, czystyStan());
       render(true);
@@ -75,7 +96,7 @@ export function uruchom(root) {
     }
   }
 
-  render();
+  render(!!opcje.promo);
 }
 
 function czystyStan() {
@@ -88,7 +109,33 @@ function czystyStan() {
     szukaj: '',
     odcinki: [{ dl: 260, gl: 62 }],
     opcje: {},
+    // Promocja „ostatnie płyty" (app/promo-plyt.js) albo null — patrz
+    // `ustawPromocje` i `akcje.firma()` wyżej.
+    promo: null,
   };
+}
+
+/**
+ * Wchodzimy w kreator z góry ustawieni na promocję: materiał i cena znane,
+ * krok od razu „Wymiary" — klient nie klika przez „Materiał" i „Dekor",
+ * bo Dawid już wybrał za niego. `stan.firma` dostaje ten sam slug, co
+ * `firmaZPromocji` (spójność z resztą kreatora, który porównuje slugi).
+ */
+function ustawPromocje(stan, promo) {
+  stan.promo = promo;
+  stan.firma = `promo-${promo.id}`;
+  // Pusty dekor CELOWO — przy promocji nazwa materiału i nazwa dekoru to
+  // to samo (jeden tytuł od Dawida, nie marka + wzór osobno). Karta
+  // klienta i maile sklejają „firma.nazwa · dekor" i przy dwóch takich
+  // samych wartościach pokazałyby ją dwa razy. Patrz promo-plyt.js#wycenPromocje.
+  stan.dekor = '';
+  stan.grubosc = String(promo.gruboscMm);
+  // Cena Dawida — GOTOWA, klient jej nie wpisuje ani nie zmienia.
+  // Patrz app/promo-plyt.js#firmaZPromocji: silnik i tak weźmie
+  // `cenaPromoM2`, to pole tylko trzyma wartość do wyświetlenia.
+  stan.cenaRecznaM2 = promo.cenaPromoM2;
+  stan.opcje = domyslneOpcje(firmaZPromocji(promo));
+  stan.krok = 'wymiary';
 }
 
 function domyslneOpcje(firma) {
@@ -124,6 +171,10 @@ function pasekKrokow(stan, akcje) {
 function dostepny(stan, krok) {
   if (krok === 'material') return true;
   if (!stan.firma) return false;
+  // Tryb promocji pomija krok „Dekor" na starcie (patrz `ustawPromocje`) —
+  // nawigacja tam nie ma prawa być dostępna, bo pokazałaby formularz
+  // ręcznej ceny i wyglądałoby, że klient może zmienić cenę Dawida.
+  if (stan.promo) return krok !== 'dekor';
   if (krok === 'dekor') return true;
   const f = firmaWgSlug(stan.firma);
   return f?.trybCeny === 'reczna' || !!stan.dekor;
