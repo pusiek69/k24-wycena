@@ -224,3 +224,45 @@ test('maile z rozmowy nie niosą cen zakupowych ani słowa „rabat"', () => {
     assert.doesNotMatch(html.toLowerCase(), new RegExp(slowo), `wyciek: ${slowo}`);
   }
 });
+
+/* ═══ CZĘŚĆ TEKSTOWA MAILA (zgłoszenie Dawida, 27.08.2026) ════════════
+ *
+ * „Czy jak odsyłam email to klientom może to wpadać do spamu."
+ *
+ * Wiadomość wyłącznie w HTML to jeden z sygnałów masowej wysyłki —
+ * zwykła poczta idzie jako multipart. Maile do klientów nie miały części
+ * tekstowej wcale; teraz dokłada ją `resend()` dla każdego maila naraz.
+ */
+test('z HTML-a powstaje czytelny tekst', async () => {
+  const { tekstZHtml } = await import('../worker/poczta.js');
+  const html =
+    '<div><style>p{color:red}</style><h1>Oferta na blat</h1>' +
+    '<p>Dzie&#324; dobry,<br>przygotowa&#322;em wycen&#281;.</p></div>';
+  const t = tekstZHtml(html);
+  assert.equal(t, 'Oferta na blat\nDzień dobry,\nprzygotowałem wycenę.');
+  assert.ok(!/color:red/.test(t), 'style nie może przeciekać do tekstu');
+  assert.ok(!/</.test(t), 'w tekście nie zostaje żaden znacznik');
+});
+
+test('link zachowuje adres — inaczej klient nie wejdzie w ofertę', async () => {
+  const { tekstZHtml } = await import('../worker/poczta.js');
+  const t = tekstZHtml('<p><a href="https://kam24h.pl/oferta#abc">Zobacz ofertę</a></p>');
+  assert.equal(t, 'Zobacz ofertę (https://kam24h.pl/oferta#abc)');
+});
+
+test('encje z esc() rozwijają się z powrotem', async () => {
+  const { tekstZHtml } = await import('../worker/poczta.js');
+  // Tak wygląda wiadomość klienta po przejściu przez esc().
+  assert.equal(tekstZHtml('<p>Blat 3&quot; &amp; wyspa &lt;2 m&gt;</p>'), 'Blat 3" & wyspa <2 m>');
+});
+
+test('nadawca bez MAIL_FROM to awaryjna domena Resend — nie do produkcji', async () => {
+  /*
+   * Ten test nie „przechodzi bo tak ma być" — pilnuje, żeby fallback
+   * pozostał rozpoznawalny. Na produkcji MAIL_FROM musi być ustawiony,
+   * bo z onboarding@resend.dev wolno wysyłać tylko na własny adres.
+   */
+  const { nadawca } = await import('../worker/poczta.js');
+  assert.match(nadawca({}), /resend\.dev/);
+  assert.equal(nadawca({ MAIL_FROM: 'K24H <oferty@kam24h.pl>' }), 'K24H <oferty@kam24h.pl>');
+});
