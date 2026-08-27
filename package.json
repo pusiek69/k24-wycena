@@ -11,6 +11,7 @@
     "preview": "vite preview --port 4173",
     "cennik": "node scripts/build-katalog.mjs",
     "cennik:sprawdz": "node scripts/build-katalog.mjs --sprawdz",
+    "ceny:audyt": "node scripts/audyt-cen.mjs",
     "podglad": "npm run build:podglad && node scripts/podglad-jednoplikowy.mjs",
     "build:podglad": "vite build --config vite.podglad.config.js",
     "worker": "node scripts/build-worker.mjs",
