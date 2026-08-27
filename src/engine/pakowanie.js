@@ -1,42 +1,51 @@
 /**
- * Upakowanie odcinków blatu w płyty.
+ * ILE PŁYT TRZEBA KUPIĆ — ten sam rozkrój, co na rysunku.
  *
  * Materiał kupujemy w CAŁYCH płytach (część firm dopuszcza połówkę), więc
  * o cenie decyduje nie tyle metraż blatu, co ile płyt trzeba kupić.
  *
- * JAK TNIEMY
- * Odcinki o tej samej głębokości układamy jako RÓWNOLEGŁE PASY w poprzek
- * płyty: pas biegnie wzdłuż długości płyty, a jego wysokość to głębokość
- * blatu. Trzy odcinki po 60 cm głębokości to trzy pasy po 60 cm — na płycie
- * 315 × 188 zajmują 180 cm z 188 dostępnych i mieszczą się w jednej płycie.
+ * ═══════════════════════════════════════════════════════════════════════
+ * DECYZJA DAWIDA (26.08.2026): „rozkrój płyt dobrze liczy, a kalkulator
+ * liczy źle — system liczenia i optymalizacji płyt będzie taki sam jak
+ * w rozkroju. Bo teraz mam przypadek, że pokazało 1 i 1/2 płyty, a wyszło
+ * w rozkroju z jednej płyty."
  *
- * ZAPAS NA RZAZ I OBRZEŻE — LICZONY W CENTYMETRACH, NIE W PROCENTACH
+ * Do tej pory były DWA różne algorytmy. Wycena układała odcinki w proste
+ * poziome pasy (shelf), rysunek korzystał z MaxRects, który sięga po wolne
+ * prostokąty po obu stronach każdego położonego elementu. Rysunek pakował
+ * ciaśniej i na siatce realnych kuchni mieścił blat na mniejszej liczbie
+ * płyt niż wycena w co dziesiątym przypadku — a klient widział obie liczby
+ * naraz i płacił za tę wyższą.
+ *
+ * Teraz jest JEDEN silnik: engine/nesting.js. Ten moduł tylko przygotowuje
+ * dla niego dane (dzieli za długie odcinki, przelicza centymetry na
+ * milimetry) i tłumaczy wynik z powrotem na język wyceny. Rysunek i kwota
+ * nie mają już jak powiedzieć czego innego, bo liczy je to samo.
+ * ═══════════════════════════════════════════════════════════════════════
+ *
+ * RZAZ I OBRZEŻE — W CENTYMETRACH, NIE W PROCENTACH
  * Wcześniej stał tu narzut procentowy (10–15%) nakładany na wysokość
- * upakowanych pasów. To był błąd w dwóch miejscach naraz:
+ * upakowanych pasów. To był błąd w dwóch miejscach naraz: podwójnie liczył
+ * odpad (przy zakupie całych płyt odpadem JEST ścinka, za którą klient
+ * i tak płaci) i wywracał wynik na granicy — 3 pasy × 60 cm = 180 cm
+ * mieszczą się w 188 cm, ale 180 × 1,15 = 207 cm już nie.
  *
- *   • podwójnie liczył odpad — przy zakupie całych płyt odpadem JEST ścinka,
- *     za którą klient i tak płaci, więc dokładanie procentów do geometrii
- *     naliczało to samo drugi raz,
- *   • wywracało wynik na granicy: 3 pasy × 60 cm = 180 cm ≤ 188 cm mieszczą
- *     się bez problemu, ale 180 × 1,15 = 207 cm już nie — i wychodziły
- *     dwie płyty zamiast jednej (zgłoszone przez Dawida, sierpień 2026).
- *
- * Teraz zapas jest fizyczny: `rzaz` to szerokość cięcia między sąsiednimi
- * kawałkami, `obrzeze` to pas obcinany z surowej krawędzi płyty. Oba w cm,
- * oba do nadpisania w konfiguracji firmy (`plyta.rzaz`, `plyta.obrzeze`).
- *
- * `narzutOdpad` z pliku firmy NIE dotyczy już pakowania — służy wyłącznie
+ * `narzutOdpad` z pliku firmy NIE dotyczy pakowania — służy wyłącznie
  * rozliczeniu metrażowemu (kamień naturalny liczony z płyty wskazanej
  * ręcznie), gdzie faktycznie doliczamy procent na dobór rysunku.
  *
  * Wejście:
  *   odcinki — [{ dl, gl }] w centymetrach (długość × głębokość)
- *   plyta   — { w, h, polowkaDozwolona, rzaz?, obrzeze? }
+ *   plyta   — { w, h, polowkaDozwolona, rzaz?, obrzeze?, rotacja? }
  */
-
 import { rozrysuj, DOMYSLNY_RZAZ_MM } from './nesting.js';
 
-const RZAZ_DOMYSLNY = 1; // cm — szerokość rzazu piły z zapasem na pasowanie
+/**
+ * Rzaz piły. Ta sama wartość, co domyślna w rozkroju — i to jest cała
+ * rzecz: gdyby wycena liczyła 10 mm, a rysunek 3 mm, to przy blacie równym
+ * płycie co do centymetra wychodziłyby różne liczby płyt.
+ */
+const RZAZ_DOMYSLNY_CM = DOMYSLNY_RZAZ_MM / 10;
 
 /**
  * Obrzeże obcinane z krawędzi płyty — DOMYŚLNIE ZERO.
@@ -52,240 +61,199 @@ const RZAZ_DOMYSLNY = 1; // cm — szerokość rzazu piły z zapasem na pasowani
  */
 const OBRZEZE_DOMYSLNE = 0;
 
+const PUSTY = {
+  plytyPelne: 0,
+  polowka: false,
+  m2Blatu: 0,
+  m2Kupione: 0,
+  mb: 0,
+  laczenia: 0,
+  uklad: [],
+  ostrzezenia: [],
+};
+
 export function upakuj(odcinki, plyta, opcje = {}) {
-  const rzaz = liczba(opcje.rzaz, plyta?.rzaz, RZAZ_DOMYSLNY);
-  const obrzeze = liczba(opcje.obrzeze, plyta?.obrzeze, OBRZEZE_DOMYSLNE);
+  // `opcje` bywa liczbą (stary sposób wołania z kroki.js) — nie może
+  // to wywrócić wyceny, więc bierzemy z niej tylko to, co jest obiektem.
+  const o = opcje && typeof opcje === 'object' ? opcje : {};
+
+  const rzazCm = liczba(o.rzaz, plyta?.rzaz, RZAZ_DOMYSLNY_CM);
+  const obrzezeCm = liczba(o.obrzeze, plyta?.obrzeze, OBRZEZE_DOMYSLNE);
+  // Usłojenie: przy kamieniu z wyraźnym rysunkiem elementu nie wolno obrócić.
+  // Domyślnie obrót wolno — tak samo jak w rozkroju.
+  const rotacja = (o.rotacja ?? plyta?.rotacja) !== false;
 
   const czyste = (odcinki || [])
-    .map((o) => ({ dl: Math.max(o?.dl || 0, o?.gl || 0), gl: Math.min(o?.dl || 0, o?.gl || 0) }))
-    .filter((o) => o.dl > 0 && o.gl > 0);
+    .map((x) => ({ dl: Math.max(x?.dl || 0, x?.gl || 0), gl: Math.min(x?.dl || 0, x?.gl || 0) }))
+    .filter((x) => x.dl > 0 && x.gl > 0);
 
-  if (!czyste.length) {
-    return { plytyPelne: 0, polowka: false, m2Blatu: 0, m2Kupione: 0, mb: 0, ostrzezenia: [] };
-  }
+  if (!czyste.length) return { ...PUSTY };
 
-  // Płytę można ciąć w dwie strony — pasy wzdłuż dłuższego albo krótszego
-  // boku. Sprawdzamy oba układy i bierzemy ten, który zużywa mniej materiału.
-  const ukladA = ulozNaPlycie(czyste, plyta.w, plyta.h, { rzaz, obrzeze, plyta });
-  const ukladB = ulozNaPlycie(czyste, plyta.h, plyta.w, { rzaz, obrzeze, plyta });
-  const wybrany = lepszy(ukladA, ukladB);
-  if (wybrany) return wybrany;
+  const szerMm = Math.round(Math.max(plyta.w, plyta.h) * 10);
+  const wysMm = Math.round(Math.min(plyta.w, plyta.h) * 10);
+  const marginesMm = Math.round(obrzezeCm * 10);
 
-  // Płyta mniejsza niż samo obrzeże — konfiguracja jest bez sensu, ale
-  // wycena nie może się przez to wywrócić. Próbujemy bez obrzeża.
-  const awaryjny = lepszy(
-    ulozNaPlycie(czyste, plyta.w, plyta.h, { rzaz: 0, obrzeze: 0, plyta }),
-    ulozNaPlycie(czyste, plyta.h, plyta.w, { rzaz: 0, obrzeze: 0, plyta })
-  );
-  return awaryjny || { plytyPelne: 0, polowka: false, m2Blatu: 0, m2Kupione: 0, mb: 0, ostrzezenia: [] };
+  const wynik =
+    ulozWszystko(czyste, { szerMm, wysMm, marginesMm, rzazMm: rzazCm * 10, rotacja, plyta }) ||
+    // Płyta mniejsza niż samo obrzeże — konfiguracja jest bez sensu, ale
+    // wycena nie może się przez to wywrócić. Próbujemy bez obrzeża.
+    ulozWszystko(czyste, { szerMm, wysMm, marginesMm: 0, rzazMm: 0, rotacja, plyta });
+
+  return wynik || { ...PUSTY };
 }
 
-/**
- * Który układ lepszy.
- *
- * NAJPIERW mniej łączeń, dopiero potem mniej materiału. Obrót płyty potrafi
- * zmieścić blat w jednej płycie zamiast dwóch, ale za cenę przecięcia
- * odcinka na pół — a widoczne łączenie w blacie to wada, nie oszczędność.
- * Dawid woli dołożyć płytę niż tłumaczyć klientowi spoinę na środku wyspy.
- */
-function lepszy(a, b) {
-  if (!b) return a;
-  if (!a) return b;
-  if (a.laczenia !== b.laczenia) return a.laczenia < b.laczenia ? a : b;
-  if (b.m2Kupione < a.m2Kupione - 0.001) return b;
-  if (a.m2Kupione < b.m2Kupione - 0.001) return a;
-  return b.ostrzezenia.length < a.ostrzezenia.length ? b : a;
-}
-
-/**
- * Jeden układ: pasy biegną wzdłuż boku PW, a piętrzą się wzdłuż boku PH.
- *
- * @param PW długość płyty w tym układzie (wzdłuż niej biegną pasy)
- * @param PH szerokość płyty w tym układzie (w tę stronę piętrzymy pasy)
- */
-function ulozNaPlycie(odcinki, PW, PH, { rzaz, obrzeze, plyta }) {
-  // Z surowej płyty realnie wykorzystujemy pole pomniejszone o obrzeże.
-  const UW = PW - 2 * obrzeze;
-  const UH = PH - 2 * obrzeze;
-  if (!(UW > 0 && UH > 0)) return null;
+function ulozWszystko(czyste, { szerMm, wysMm, marginesMm, rzazMm, rotacja, plyta }) {
+  const uzytecznaDl = szerMm - 2 * marginesMm;
+  const uzytecznaGl = wysMm - 2 * marginesMm;
+  if (!(uzytecznaDl > 0 && uzytecznaGl > 0)) return null;
 
   const ostrzezenia = [];
   const czesci = [];
   let m2Blatu = 0;
   let mb = 0;
-  let laczenia = 0; // ile razy trzeba przeciąć odcinek, bo nie mieści się w płycie
+  let laczenia = 0;
 
-  for (const [nrOdcinka, o] of odcinki.entries()) {
-    m2Blatu += (o.dl * o.gl) / 10000;
-    mb += o.dl / 100;
+  for (const [nr, odc] of czyste.entries()) {
+    m2Blatu += (odc.dl * odc.gl) / 10000;
+    mb += odc.dl / 100;
 
-    if (o.gl > UH + 0.1) {
+    const dlMm = Math.round(odc.dl * 10);
+    const glMm = Math.round(odc.gl * 10);
+
+    if (glMm > uzytecznaGl + 1) {
       // Blat głębszy niż płyta — trzeba go zszywać wzdłuż. Rzadkie
       // (wyspy 100 cm+), ale nie wolno tego przemilczeć w wycenie.
       ostrzezenia.push(
-        `Głębokość ${fmtCm(o.gl)} cm przekracza szerokość płyty (${fmtCm(PH)} cm) — wymaga łączenia.`
+        `Głębokość ${fmtCm(odc.gl)} cm przekracza szerokość płyty (${fmtCm(uzytecznaGl / 10)} cm) — wymaga łączenia.`
       );
     }
 
     // Odcinek dłuższy niż płyta składamy z kilku kawałków (widoczne łączenie).
     // Przy absurdalnie małej płycie (błąd w konfiguracji) odpuszczamy ten
     // układ, zamiast kroić blat na setki kawałków.
-    if (o.dl / UW > 20) return null;
+    if (dlMm / uzytecznaDl > 20) return null;
 
-    let pozostalo = o.dl;
+    let zostalo = dlMm;
     let dzielony = false;
-    while (pozostalo > UW + 0.1) {
-      czesci.push({ dl: UW, gl: o.gl, odcinek: nrOdcinka, ciety: true });
-      pozostalo -= UW;
+    while (zostalo > uzytecznaDl + 1) {
+      czesci.push({ dl: uzytecznaDl, gl: glMm, odcinek: nr, ciety: true });
+      zostalo -= uzytecznaDl;
       dzielony = true;
       laczenia++;
       ostrzezenia.push(
-        `Odcinek dłuższy niż płyta (${fmtCm(UW)} cm użytecznej długości) — blat będzie łączony. ` +
+        `Odcinek dłuższy niż płyta (${fmtCm(uzytecznaDl / 10)} cm użytecznej długości) — blat będzie łączony. ` +
           'Miejsce łączenia ustalamy na pomiarze.'
       );
     }
-    if (pozostalo > 0.1) czesci.push({ dl: pozostalo, gl: o.gl, odcinek: nrOdcinka, ciety: dzielony });
+    if (zostalo > 1) czesci.push({ dl: zostalo, gl: glMm, odcinek: nr, ciety: dzielony });
   }
 
   if (!czesci.length) return null;
 
-  // Shelf packing (First Fit Decreasing Height): najgłębsze kawałki najpierw,
-  // bo to głębokość wyznacza wysokość pasa.
-  czesci.sort((a, b) => b.gl - a.gl || b.dl - a.dl);
+  /*
+   * TU LICZY JUŻ SILNIK RYSUNKU. Elementy podajemy w takiej kolejności,
+   * w jakiej podał je Dawid — nesting sam próbuje kilku uszeregowań
+   * i bierze najtańsze, więc sortowanie po naszej stronie tylko by mu
+   * przeszkadzało.
+   */
+  const rozkroj = rozrysuj(
+    czesci.map((c, i) => ({
+      nazwa: `k${i}`,
+      szer: c.dl,
+      gl: c.gl,
+      odcinek: c.odcinek,
+      ciety: c.ciety,
+      // Wymiary SPRZED ułożenia. Nesting wolno obrócić element o 90°,
+      // a wtedy `szer` niesie już bok, nie długość kawałka — i opis
+      // w mailu mówiłby, że blat ma 60 cm zamiast 300.
+      dlOryg: c.dl,
+      glOryg: c.gl,
+    })),
+    { szer: szerMm, wys: wysMm },
+    { rzaz: rzazMm, margines: marginesMm, rotacja, polowkaDozwolona: plyta?.polowkaDozwolona === true }
+  );
 
-  const pasy = [];
-  for (const cz of czesci) {
-    let wlozony = false;
-    for (const pas of pasy) {
-      // Kawałek musi zmieścić się na długość (z rzazem) i nie być głębszy
-      // niż pas, który już ma ustaloną wysokość.
-      if (pas.zajete + rzaz + cz.dl <= UW + 0.1 && cz.gl <= pas.wysokosc + 0.1) {
-        pas.zajete += rzaz + cz.dl;
-        pas.el.push(cz);
-        wlozony = true;
-        break;
-      }
-    }
-    if (!wlozony) pasy.push({ zajete: cz.dl, wysokosc: cz.gl, el: [cz] });
+  const s = rozkroj.statystyki;
+  let plytyPelne = s.plytPelnych ?? rozkroj.plyty.length;
+  const polowka = (s.polowek || 0) > 0;
+  let m2Kupione = s.plytM2;
+
+  /*
+   * ELEMENT, KTÓRY NIE WSZEDŁ NA ŻADNĄ PŁYTĘ.
+   *
+   * Zdarza się przy blacie głębszym niż arkusz (wyspa 110 cm na płycie
+   * 100 cm) — rysunek go odkłada i mówi o tym wprost. Wycena NIE MOŻE go
+   * po prostu pominąć, bo wtedy policzyłaby za mało płyt i Dawid dopłacałby
+   * z własnej kieszeni. Doliczamy po pełnej płycie na każdy taki kawałek.
+   */
+  if (rozkroj.nieumieszczone.length) {
+    plytyPelne += rozkroj.nieumieszczone.length;
+    m2Kupione += (rozkroj.nieumieszczone.length * szerMm * wysMm) / 1e6;
+    ostrzezenia.push(
+      `${rozkroj.nieumieszczone.length === 1 ? 'Jeden element nie mieści się' : 'Część elementów nie mieści się'} ` +
+        'na płycie w całości — wycena zakłada osobną płytę i łączenie. ' +
+        'Ostateczny rozkrój ustalamy na pomiarze.'
+    );
   }
-
-  // Pasy pakujemy w płyty. Pas NIE MOŻE przechodzić z płyty na płytę —
-  // dlatego liczymy je płyta po płycie, a nie dzieląc łączną wysokość.
-  const plyty = [];
-  for (const pas of pasy) {
-    let wlozony = false;
-    for (const p of plyty) {
-      if (p.wysokosc + rzaz + pas.wysokosc <= UH + 0.1) {
-        p.wysokosc += rzaz + pas.wysokosc;
-        p.pasy.push(pas);
-        wlozony = true;
-        break;
-      }
-    }
-    if (!wlozony) plyty.push({ wysokosc: pas.wysokosc, pasy: [pas] });
-  }
-
-  let plytyPelne = plyty.length;
-  let polowka = false;
-
-  if (plyta?.polowkaDozwolona && plytyPelne > 0) {
-    const ostatnia = plyty[plyty.length - 1];
-    if (zejdzieNaPolowce(ostatnia, plyta)) {
-      plytyPelne -= 1;
-      polowka = true;
-    }
-  }
-
-  const m2Plyty = (plyta.w * plyta.h) / 10000;
-  const m2Kupione = plytyPelne * m2Plyty + (polowka ? m2Plyty / 2 : 0);
 
   return {
     plytyPelne,
     polowka,
     m2Blatu,
-    m2Kupione,
+    m2Kupione: zaokr3(m2Kupione),
     mb,
     laczenia,
-    // Rozkład kawałków na płytach — Dawid potrzebuje go w mailu leadowym,
-    // żeby przed pomiarem wiedzieć, co z czego wyjdzie i gdzie wypadnie
-    // łączenie. Postać jest celowo płaska: leci przez JSON do Workera.
-    uklad: plyty.map((p) => ({
-      wysokoscUzyta: zaokr(p.wysokosc),
-      wysokoscPlyty: zaokr(UH),
-      pasy: p.pasy.map((pas) => ({
-        zajete: zaokr(pas.zajete),
-        dostepne: zaokr(UW),
-        elementy: pas.el.map((e) => ({
-          dl: zaokr(e.dl),
-          gl: zaokr(e.gl),
-          odcinek: e.odcinek,
-          ciety: !!e.ciety,
-        })),
-      })),
-    })),
+    uklad: ukladDoMaila(rozkroj.plyty, uzytecznaDl),
     ostrzezenia: [...new Set(ostrzezenia)],
   };
 }
 
 /**
- * CZY OSTATNIA PŁYTA NAPRAWDĘ ZEJDZIE NA POŁÓWCE.
+ * Rozkład kawałków na płytach — Dawid dostaje go w mailu leadowym, żeby
+ * przed pomiarem wiedzieć, co z czego wyjdzie i gdzie wypadnie łączenie.
  *
- * Zgłoszenie Dawida (26.08.2026). Do tej pory wystarczyło, że zsumowana
- * wysokość pasów na ostatniej płycie nie przekraczała połowy — i to
- * potrafiło ZANIŻYĆ materiał, czyli policzyć klientowi pół płyty mniej,
- * niż trzeba kupić. Dwie drogi do tego prowadziły:
- *
- *   • Pakowanie sprawdza OBA ustawienia płyty (pasy wzdłuż dłuższego albo
- *     krótszego boku) i „połowa" liczyła się w tym ustawieniu, które akurat
- *     wygrało. Przy pasach w poprzek „połowa" wypadała na 160 cm z boku
- *     320 cm — a połówka to zawsze 320 × 80. Element o głębokości 99 cm
- *     przechodził jako mieszczący się na arkuszu głębokim na 80 cm.
- *
- *   • Sama suma wysokości pasów nic nie mówi o tym, czy kawałki ułożą się
- *     na węższym arkuszu — pas może być za długi, a nie za wysoki.
- *
- * Dlatego zamiast mierzyć wysokość, ROBIMY PRZYMIARKĘ: bierzemy kawałki
- * z ostatniej płyty i próbujemy ułożyć je na arkuszu w × h/2 tym samym
- * modułem, co rozrys. Wejdą wszystkie — jest połówka. Nie wejdą — pełna
- * płyta. Jeden algorytm w obu torach znaczy, że rysunek i kwota nie mają
- * jak powiedzieć czego innego.
- *
- * Rzaz bierzemy z rozrysu (3 mm), a nie centymetrowy z pakowania: to
- * przymiarka do FIZYCZNEGO arkusza, więc musi zadać dokładnie to samo
- * pytanie, co rysunek, który Dawid ogląda obok kwoty.
- *
- * Obrót jest dozwolony, bo połówki dopuszczają wyłącznie konglomeraty
- * (Avant, Caesarstone, Keralini) i Interstone. Kamień naturalny, gdzie
- * usłojenie blokuje obrót, ma `polowkaDozwolona: false` i tu nie trafia.
+ * Elementy grupujemy po WSPÓLNYM `y`, czyli po rzędach widocznych na
+ * rysunku. Mail wyświetla to jako „pasy" i tak też wygląda arkusz — dzięki
+ * temu opis w mailu odpowiada temu, co Dawid ma na obrazku.
  */
-function zejdzieNaPolowce(ostatnia, plyta) {
-  const arkusz = {
-    szer: Math.round(plyta.w * 10),
-    wys: Math.round((plyta.h * 10) / 2),
-  };
-  if (!(arkusz.szer > 0 && arkusz.wys > 0)) return false;
+function ukladDoMaila(plyty, uzytecznaDl) {
+  return plyty.map((p) => {
+    const rzedy = new Map();
+    for (const e of p.elementy) {
+      const y = Math.round(e.y);
+      if (!rzedy.has(y)) rzedy.set(y, []);
+      rzedy.get(y).push(e);
+    }
 
-  const kawalki = ostatnia.pasy.flatMap((pas, i) =>
-    pas.el.map((e, j) => ({
-      nazwa: `k${i}-${j}`,
-      szer: Math.round(e.dl * 10),
-      gl: Math.round(e.gl * 10),
-    }))
-  );
-  if (!kawalki.length) return false;
+    const pasy = [...rzedy.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, el]) => {
+        el.sort((a, b) => a.x - b.x);
+        const koniec = Math.max(...el.map((e) => e.x + e.szer));
+        return {
+          zajete: zaokr(koniec / 10),
+          dostepne: zaokr(uzytecznaDl / 10),
+          elementy: el.map((e) => ({
+            dl: zaokr((e.dlOryg ?? e.szer) / 10),
+            gl: zaokr((e.glOryg ?? e.gl) / 10),
+            odcinek: e.odcinek ?? 0,
+            ciety: !!e.ciety,
+          })),
+        };
+      });
 
-  const proba = rozrysuj(kawalki, arkusz, {
-    rzaz: DOMYSLNY_RZAZ_MM,
-    margines: 0,
-    rotacja: true,
-    maksPlyt: 1,
+    const uzyta = p.elementy.reduce((a, e) => Math.max(a, e.y + e.gl), 0);
+    return {
+      wysokoscUzyta: zaokr(uzyta / 10),
+      wysokoscPlyty: zaokr(p.wys / 10),
+      polowka: !!p.polowka,
+      pasy,
+    };
   });
-  return proba.nieumieszczone.length === 0 && proba.plyty.length === 1;
 }
 
-function zaokr(n) {
-  return Math.round(n * 10) / 10;
-}
+const zaokr = (n) => Math.round(n * 10) / 10;
+const zaokr3 = (n) => Math.round(n * 1000) / 1000;
 
 export function opisPlyt(pak) {
   if (pak.plytyPelne === 0 && pak.polowka) return '½ płyty';

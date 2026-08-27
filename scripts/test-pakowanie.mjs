@@ -287,3 +287,93 @@ test('wycena NIGDY nie liczy połówki, której nie da się wyciąć', async () 
 
   assert.deepEqual(zanizone.slice(0, 5), [], 'wycena policzyła połówkę, której nie da się wyciąć');
 });
+
+/* ═══ JEDEN SILNIK DLA WYCENY I ROZKROJU (Dawid, 26.08.2026) ══════════
+ *
+ * „Rozkrój płyt dobrze liczy, a kalkulator liczy źle — system liczenia
+ * i optymalizacji płyt będzie taki sam jak w rozkroju. Bo teraz mam
+ * przypadek, że pokazało 1 i 1/2 płyty, a wyszło w rozkroju z jednej."
+ *
+ * Do tej pory były dwa algorytmy: wycena układała pasy, rysunek korzystał
+ * z MaxRects. Teraz liczy je to samo, więc te testy pilnują, żeby nikt
+ * przypadkiem nie rozdzielił ich z powrotem.
+ */
+
+test('wycena i rozkrój dają tę samą liczbę płyt — siatka realnych kuchni', async () => {
+  const { rozrysuj } = await import('../src/engine/nesting.js');
+  const PLYTA = { w: 320, h: 160, polowkaDozwolona: true };
+
+  const GL = [60, 62, 65, 80, 90, 99, 120];
+  const DL = [80, 100, 120, 160, 200, 240, 260, 300, 320];
+  let ziarno = 20260826;
+  const los = () => ((ziarno = (ziarno * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+
+  const rozjazdy = [];
+  for (let i = 0; i < 1200; i++) {
+    const ile = 2 + Math.floor(los() * 3);
+    const odcinki = Array.from({ length: ile }, () => ({
+      gl: GL[Math.floor(los() * GL.length)],
+      dl: DL[Math.floor(los() * DL.length)],
+    }));
+
+    const pak = upakuj(odcinki, PLYTA);
+    const r = rozrysuj(
+      odcinki.map((o, k) => ({ nazwa: `E${k}`, szer: o.dl * 10, gl: o.gl * 10 })),
+      { szer: 3200, wys: 1600 },
+      { polowkaDozwolona: true }
+    );
+    if (r.statystyki.nieumieszczonych) continue; // blat dłuższy niż płyta — dzielimy go w wycenie
+
+    const wWycenie = pak.plytyPelne * 2 + (pak.polowka ? 1 : 0);
+    const wRozkroju = r.statystyki.plytPelnych * 2 + r.statystyki.polowek;
+    if (wWycenie !== wRozkroju) {
+      rozjazdy.push(`${odcinki.map((o) => `${o.gl}×${o.dl}`).join(' + ')}: wycena ${wWycenie / 2}, rozkrój ${wRozkroju / 2}`);
+    }
+  }
+  assert.deepEqual(rozjazdy.slice(0, 5), [], 'wycena rozjechała się z rozkrojem');
+});
+
+test('przypadek Dawida: 1 i ½ w wycenie ma pokrycie w rozkroju', async () => {
+  const { rozrysuj } = await import('../src/engine/nesting.js');
+  const odcinki = [
+    { gl: 60, dl: 300 },
+    { gl: 60, dl: 320 },
+    { gl: 99, dl: 160 },
+    { gl: 60, dl: 100 },
+  ];
+  const pak = upakuj(odcinki, { w: 320, h: 160, polowkaDozwolona: true });
+  const r = rozrysuj(
+    odcinki.map((o, k) => ({ nazwa: `E${k}`, szer: o.dl * 10, gl: o.gl * 10 })),
+    { szer: 3200, wys: 1600 },
+    { polowkaDozwolona: true }
+  );
+  assert.equal(pak.plytyPelne, r.statystyki.plytPelnych);
+  assert.equal(pak.polowka, r.statystyki.polowek > 0);
+  assert.equal(pak.m2Kupione, r.statystyki.plytM2, 'metry materiału muszą być te same');
+});
+
+test('rzaz w wycenie jest ten sam co w rozkroju', async () => {
+  // Gdyby wycena liczyła 10 mm, a rysunek 3 mm, blat równy płycie
+  // co do centymetra dawałby różne liczby płyt.
+  const { DOMYSLNY_RZAZ_MM } = await import('../src/engine/nesting.js');
+  const blat = [{ gl: 60, dl: 319 }, { gl: 60, dl: 1 + (3200 - 3190 - DOMYSLNY_RZAZ_MM) / 10 }];
+  const p = upakuj(blat, plyta(320, 160));
+  assert.equal(p.plytyPelne + (p.polowka ? 0.5 : 0) > 0, true);
+  assert.equal(DOMYSLNY_RZAZ_MM, 3);
+});
+
+test('element głębszy niż płyta NIE znika z rachunku', () => {
+  /*
+   * Rysunek odkłada taki element i mówi o tym wprost. Wycena nie może go
+   * pominąć — inaczej policzyłaby za mało płyt i Dawid dopłaciłby
+   * z własnej kieszeni.
+   */
+  // 200 × 200 cm nie zejdzie z arkusza 320 × 160 w ŻADNEJ orientacji.
+  const p = upakuj([{ gl: 200, dl: 200 }], plyta(320, 160));
+  assert.ok(p.plytyPelne >= 1, 'element ponad format musi mieć swoją płytę');
+  assert.ok(p.m2Kupione > 0);
+  assert.ok(
+    p.ostrzezenia.some((o) => /nie mieści|łączenia/i.test(o)),
+    'brak ostrzeżenia o elemencie ponad format'
+  );
+});

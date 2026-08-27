@@ -324,7 +324,9 @@ export function krokWymiary(stan, a) {
 }
 
 function odswiezPodsumowanie(box, szkic, stan, f) {
-  const pak = upakuj(stan.odcinki, f.plyta, f.narzutOdpad ?? 0.1);
+  // `narzutOdpad` NIE dotyczy pakowania — o liczbie płyt decyduje geometria
+  // rozkroju, a procent na odpad zawyżałby ją drugi raz (patrz engine/pakowanie.js).
+  const pak = upakuj(stan.odcinki, f.plyta);
   box.replaceChildren();
   if (!pak.m2Blatu) {
     box.append('Podaj wymiary przynajmniej jednego odcinka.');

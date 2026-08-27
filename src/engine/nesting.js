@@ -434,6 +434,11 @@ function rozwin(elementy) {
     if (!(szer > 0 && gl > 0)) continue;
     for (let i = 0; i < ile; i++) {
       wynik.push({
+        // Przepisujemy CAŁY element, nie tylko wymiary. Wycena dokłada tu
+        // własne pola (z którego odcinka pochodzi kawałek, czy jest cięty,
+        // jakie miał wymiary przed obrotem) i po ułożeniu musi je odzyskać
+        // — inaczej opis rozkroju w mailu mówi o odcinku nr 1 zamiast nr 3.
+        ...el,
         id: `${el.id || el.nazwa || 'el'}-${i + 1}`,
         nazwa: ile > 1 ? `${el.nazwa || 'Element'} ${i + 1}` : el.nazwa || 'Element',
         szer,
