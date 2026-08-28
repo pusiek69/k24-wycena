@@ -25,6 +25,7 @@
     "galeria:sprawdz": "node scripts/galeria.mjs --sprawdz",
     "ceny:tresc": "node scripts/ceny-tresc.mjs",
     "sitemap": "node scripts/sitemap-lastmod.mjs",
+    "gbp": "node scripts/gbp-grafiki.mjs",
     "miasta": "node scripts/strony-miast.mjs"
   },
   "devDependencies": {

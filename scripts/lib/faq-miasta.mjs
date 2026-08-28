@@ -129,8 +129,8 @@ export function pytaniaMiasta(miasto, kwoty, wzorow, i) {
       odpowiedz:
         'Tak — kalkulator na tej stronie policzy orientacyjny koszt w dwie minuty, na podstawie ' +
         'podanych wymiarów. To wycena orientacyjna, nie oferta w rozumieniu art. 66 §1 Kodeksu ' +
-        'cywilnego: ostateczną cenę potwierdzamy po bezpłatnym pomiarze, bo przy nietypowych ' +
-        'kształtach, wyspach i blatach łączonych może się różnić.',
+        `cywilnego: ostateczną cenę potwierdzamy po ${daleko ? '' : 'bezpłatnym '}pomiarze, ` +
+        'bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.',
     },
     DODATKOWE[i % DODATKOWE.length],
   ];

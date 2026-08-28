@@ -50,6 +50,196 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "HomeAndConstructionBusiness",
+        "@id": "https://kam24h.pl/#firma",
+        "name": "Kamieniarstwo 24h",
+        "legalName": "Aaron sp. z o.o.",
+        "vatID": "PL8672241748",
+        "taxID": "8672241748",
+        "description": "Blaty kuchenne i łazienkowe oraz okładziny ścienne z konglomeratu kwarcowego, spieku i kamienia naturalnego. Własny zakład w Tarnobrzegu, pomiar Prolinerem, obróbka i montaż.",
+        "url": "https://kam24h.pl/",
+        "telephone": "+48796991128",
+        "email": "kamieniarstwo24h@gmail.com",
+        "image": "https://kam24h.pl/og-k24h.png",
+        "logo": "https://kam24h.pl/logo-k24h.png",
+        "priceRange": "$",
+        "currenciesAccepted": "PLN",
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday"
+            ],
+            "opens": "08:00",
+            "closes": "18:00"
+          }
+        ],
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ul. Szpitalna 8",
+          "addressLocality": "Tarnobrzeg",
+          "postalCode": "39-400",
+          "addressRegion": "podkarpackie",
+          "addressCountry": "PL"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 50.5729,
+          "longitude": 21.679
+        },
+        "areaServed": [
+          {
+            "@type": "City",
+            "name": "Tarnobrzeg"
+          },
+          {
+            "@type": "City",
+            "name": "Sandomierz"
+          },
+          {
+            "@type": "City",
+            "name": "Stalowa Wola"
+          },
+          {
+            "@type": "City",
+            "name": "Mielec"
+          },
+          {
+            "@type": "City",
+            "name": "Rzeszów"
+          },
+          {
+            "@type": "City",
+            "name": "Kielce"
+          },
+          {
+            "@type": "City",
+            "name": "Nisko"
+          },
+          {
+            "@type": "City",
+            "name": "Nowa Dęba"
+          },
+          {
+            "@type": "City",
+            "name": "Dębica"
+          },
+          {
+            "@type": "City",
+            "name": "Opatów"
+          },
+          {
+            "@type": "City",
+            "name": "Ostrowiec Świętokrzyski"
+          },
+          {
+            "@type": "City",
+            "name": "Starachowice"
+          },
+          {
+            "@type": "City",
+            "name": "Staszów"
+          },
+          {
+            "@type": "City",
+            "name": "Lublin"
+          },
+          {
+            "@type": "City",
+            "name": "Kraków"
+          },
+          {
+            "@type": "City",
+            "name": "Połaniec"
+          },
+          {
+            "@type": "City",
+            "name": "Baranów Sandomierski"
+          }
+        ],
+        "knowsAbout": [
+          "blaty kuchenne",
+          "blaty łazienkowe",
+          "okładziny ścienne z kamienia",
+          "konglomerat kwarcowy",
+          "spiek kwarcowy",
+          "granit",
+          "marmur",
+          "kwarcyt",
+          "trawertyn",
+          "dolomit",
+          "nagrobki"
+        ],
+        "founder": {
+          "@id": "https://kam24h.pl/#dawid"
+        },
+        "employee": {
+          "@id": "https://kam24h.pl/#dawid"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://kam24h.pl/blaty-kuchenne-lublin#strona",
+        "url": "https://kam24h.pl/blaty-kuchenne-lublin",
+        "name": "Blaty kuchenne Lublin — kamień na wymiar",
+        "description": "Blaty kamienne w Lublinie — około 130 km od naszego zakładu w Tarnobrzegu. Realizujemy pomiar i montaż, warunki dojazdu ustalamy indywidualnie.",
+        "inLanguage": "pl-PL",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Kamieniarstwo 24h",
+          "url": "https://kam24h.pl/"
+        },
+        "about": {
+          "@id": "https://kam24h.pl/#firma"
+        }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Strona główna",
+            "item": "https://kam24h.pl/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Lublin",
+            "item": "https://kam24h.pl/blaty-kuchenne-lublin"
+          }
+        ]
+      },
+      {
+        "@type": "Service",
+        "name": "Blaty kuchenne na wymiar — Lublin",
+        "serviceType": "Wykonanie i montaż blatów kamiennych",
+        "provider": {
+          "@id": "https://kam24h.pl/#firma"
+        },
+        "areaServed": {
+          "@type": "City",
+          "name": "Lublin"
+        },
+        "offers": {
+          "@type": "AggregateOffer",
+          "priceCurrency": "PLN",
+          "lowPrice": "5500",
+          "description": "Blat 60 × 300 cm z konglomeratu kwarcowego, z obróbką, transportem i montażem."
+        }
+      }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
     "@type": "FAQPage",
     "mainEntity": [
       {
@@ -80,7 +270,7 @@
       {
         "@type": "Question",
         "name": "Czy wycenę blatu w Lublinie można zrobić przez internet?",
-        "acceptedAnswer": { "@type": "Answer", "text": "Tak — kalkulator na tej stronie policzy orientacyjny koszt w dwie minuty, na podstawie podanych wymiarów. To wycena orientacyjna, nie oferta w rozumieniu art. 66 §1 Kodeksu cywilnego: ostateczną cenę potwierdzamy po bezpłatnym pomiarze, bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić." }
+        "acceptedAnswer": { "@type": "Answer", "text": "Tak — kalkulator na tej stronie policzy orientacyjny koszt w dwie minuty, na podstawie podanych wymiarów. To wycena orientacyjna, nie oferta w rozumieniu art. 66 §1 Kodeksu cywilnego: ostateczną cenę potwierdzamy po pomiarze, bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić." }
       },
       {
         "@type": "Question",
@@ -90,6 +280,8 @@
     ]
   }
   </script>
+
+
 
 </head>
 <body>
@@ -139,7 +331,7 @@
     <div class="cta-box">
       <div>
         <strong>Blat w Lublinie? Policz cenę albo zadzwoń</strong>
-        <span>Wycena orientacyjna w dwie minuty, pomiar u Państwa bezpłatny.</span>
+        <span>Wycena orientacyjna w dwie minuty — warunki dojazdu ustalamy przy zamówieniu.</span>
       </div>
       <div class="cta-btny">
         <a class="btn" href="/#kreator">Przejdź do wyceny →</a>
@@ -205,7 +397,7 @@
         </div>
         <div class="faq-poz">
           <h3>Czy wycenę blatu w Lublinie można zrobić przez internet?</h3>
-          <p>Tak — kalkulator na tej stronie policzy orientacyjny koszt w dwie minuty, na podstawie podanych wymiarów. To wycena orientacyjna, nie oferta w rozumieniu art. 66 §1 Kodeksu cywilnego: ostateczną cenę potwierdzamy po bezpłatnym pomiarze, bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.</p>
+          <p>Tak — kalkulator na tej stronie policzy orientacyjny koszt w dwie minuty, na podstawie podanych wymiarów. To wycena orientacyjna, nie oferta w rozumieniu art. 66 §1 Kodeksu cywilnego: ostateczną cenę potwierdzamy po pomiarze, bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.</p>
         </div>
         <div class="faq-poz">
           <h3>Czy blat trzeba impregnować?</h3>
@@ -220,7 +412,7 @@
     <div class="foot-cta">
       <div>
         <strong>Masz projekt kuchni albo gotowe szafki?</strong>
-        <span>Zadzwoń — doradzimy materiał i umówimy bezpłatny pomiar.</span>
+        <span>Zadzwoń — doradzimy materiał i ustalimy warunki dojazdu.</span>
       </div>
       <a class="phone-btn" href="tel:+48796991128" data-miejsce="stopka">
         <span class="ph-ico" aria-hidden="true">☎</span>
@@ -270,6 +462,7 @@
           <a href="/blaty-kuchenne-nowa-deba">Nowa Dęba</a>
           <a href="/blaty-kuchenne-debica">Dębica</a>
           <a href="/blaty-kuchenne-opatow">Opatów</a>
+              <a href="/blaty-kuchenne-krakow">Kraków</a>
               <span class="foot-tu">Lublin</span>
               <a href="/blaty-kuchenne-staszow">Staszów</a>
               <a href="/blaty-kuchenne-starachowice">Starachowice</a>
@@ -297,7 +490,7 @@
     <p class="foot-note">
       Ceny podane w kalkulatorze i na stronach informacyjnych są orientacyjne (brutto)
       i nie stanowią oferty w rozumieniu art. 66 §1 Kodeksu cywilnego.
-      Ostateczna cena po bezpłatnym pomiarze.
+      Ostateczna cena po pomiarze u Państwa.
     </p>
   </footer>
 

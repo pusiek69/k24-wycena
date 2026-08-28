@@ -55,6 +55,31 @@ export const MIASTA = [
     czas: 'około dwóch godzin drogi',
     krotki: 'Dalej niż nasz standardowy promień — warunki dojazdu ustalamy indywidualnie.',
   },
+
+  // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────
+  //
+  // JEDNA MOCNA STRONA, nie sześć cienkich. Wieliczka, Skawina czy
+  // Niepołomice nie dostają własnych podstron — miałyby tę samą treść
+  // z podmienioną nazwą, a Google od lat traktuje takie zestawy jako
+  // treść powieloną i nie pozycjonuje żadnej z nich. Zamiast tego
+  // nazwy wchodzą w treść i w `areaServed` strony Krakowa (`okolice`).
+  {
+    slug: 'krakow', nazwa: 'Kraków',
+    wMiescie: 'Krakowie', doMiasta: 'Krakowa',
+    km: 170, nowa: true, daleko: true,
+    czas: 'około dwóch i pół godziny drogi',
+    krotki:
+      'Kraków i okolice — Wieliczka, Skawina, Niepołomice, Zabierzów, Krzeszowice, Zielonki. ' +
+      'Dalej niż nasz standardowy promień, ale dojeżdżamy — warunki ustalamy przy zamówieniu.',
+    okolice: ['Wieliczka', 'Skawina', 'Niepołomice', 'Zabierzów', 'Krzeszowice', 'Zielonki'],
+    // Tytuł i opis pod frazy, o które prosił Dawid: „blaty kuchenne Kraków",
+    // „blat z kamienia Kraków", „blaty granitowe Kraków". Pozostałe miasta
+    // zostają przy wzorcu z generatora — te pola są opcjonalne.
+    tytul: 'Blaty kuchenne Kraków — blat z kamienia i blaty granitowe',
+    opis:
+      'Blaty kuchenne Kraków — blat z kamienia na wymiar: konglomerat, spiek, blaty ' +
+      'granitowe. Także Wieliczka, Skawina, Niepołomice. Wycena online w dwie minuty.',
+  },
 ];
 
 export const NOWE = MIASTA.filter((m) => m.nowa);

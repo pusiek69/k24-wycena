@@ -47,6 +47,7 @@ export default defineConfig({
         blaty_kuchenne_starachowice: resolve(import.meta.dirname, 'blaty-kuchenne-starachowice.html'),
         blaty_kuchenne_staszow: resolve(import.meta.dirname, 'blaty-kuchenne-staszow.html'),
         blaty_kuchenne_lublin: resolve(import.meta.dirname, 'blaty-kuchenne-lublin.html'),
+        blaty_kuchenne_krakow: resolve(import.meta.dirname, 'blaty-kuchenne-krakow.html'),
         realizacje: resolve(import.meta.dirname, 'realizacje.html'),
         o_mnie: resolve(import.meta.dirname, 'o-mnie.html'),
         czesto_zadawane_pytania: resolve(import.meta.dirname, 'czesto-zadawane-pytania.html'),
