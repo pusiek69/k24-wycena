@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS klienci (
   flagi           TEXT NOT NULL DEFAULT '[]',
   -- Odpowiedź klienta na pokazaną wycenę: '' | 'pasuje' | 'za_drogo' | 'zastanowi'.
   feedback        TEXT NOT NULL DEFAULT '',
+  -- Planowany termin realizacji, zaznaczony przez klienta w formularzu
+  -- (id z src/app/termin.js: pilne | miesiac | kwartal | pol_roku | pozniej).
+  -- Trzymamy go PRZY KLIENCIE, nie przy wycenie: Dawid dzwoni do człowieka,
+  -- a nie do wyceny, i interesuje go najświeższa deklaracja. Puste = wycena
+  -- starsza niż to pole (30.08.2026) albo klient nic nie zaznaczył.
+  termin          TEXT NOT NULL DEFAULT '',
   -- Budżet z pytania przy „za drogo" (dobrowolny) i pora kontaktu przy „pasuje".
   budzet          TEXT NOT NULL DEFAULT '',
   pora            TEXT NOT NULL DEFAULT '',
@@ -45,6 +51,11 @@ CREATE INDEX IF NOT EXISTS klienci_email    ON klienci (email_klucz);
 CREATE INDEX IF NOT EXISTS klienci_status   ON klienci (status);
 CREATE INDEX IF NOT EXISTS klienci_oddzwonic ON klienci (oddzwonic);
 CREATE INDEX IF NOT EXISTS klienci_ruch     ON klienci (ruch);
+
+-- Dopisanie kolumny do bazy, która powstała przed 30.08.2026.
+-- D1 nie zna `ADD COLUMN IF NOT EXISTS`, więc przy świeżej bazie ten
+-- ALTER się wywali („duplicate column") — i dobrze, bo kolumna już jest
+-- w CREATE TABLE wyżej. Uruchamiamy go osobno, nie z całym schematem.
 
 CREATE TABLE IF NOT EXISTS wyceny (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -5,6 +5,7 @@ import { zdarzenie, zdarzenieWycena, konwersjaLead } from '../analytics/zdarzeni
 import { zrodloLeada } from './zrodlo.js';
 import { panelFeedbacku } from './feedback.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
+import { TERMINY } from './termin.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -71,7 +72,15 @@ function formularzBramki(w, box, opcje) {
       pole('imie', 'Imię', { type: 'text', autocomplete: 'given-name', placeholder: 'Jak się zwracać?' }),
       pole('telefon', 'Telefon *', { type: 'tel', inputmode: 'tel', autocomplete: 'tel', placeholder: '600 100 200' }),
       pole('email', 'E-mail *', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'na ten adres wyślemy wycenę' }),
-      pole('miejscowosc', 'Miejscowość *', { type: 'text', autocomplete: 'address-level2', placeholder: 'ustalimy rejon pomiaru' })
+      pole('miejscowosc', 'Miejscowość *', { type: 'text', autocomplete: 'address-level2', placeholder: 'ustalimy rejon pomiaru' }),
+      /*
+       * PLANOWANY TERMIN (zlecenie Dawida, 30.08.2026) — jedno kliknięcie,
+       * a mówi więcej niż cała rozmowa: kto chce blat za dwa tygodnie,
+       * a kto dopiero rysuje kuchnię. Po tym Dawid ustawia kolejność
+       * obdzwaniania. Pole jest wymagane, ale lekkie — lista, nie pytanie
+       * otwarte, więc nie wydłuża formularza o myślenie.
+       */
+      wybor('termin', 'Kiedy planujesz blat? *', TERMINY)
     ),
 
     h('label', { class: 'plik-pick', for: 'b-plik' }, plikOpis),
@@ -116,6 +125,7 @@ function formularzBramki(w, box, opcje) {
       phone: wartosc(form, 'telefon'),
       email: wartosc(form, 'email'),
       city: wartosc(form, 'miejscowosc'),
+      termin: wartosc(form, 'termin'),
       zgoda: form.querySelector('[name="zgoda"]').checked,
     };
 
@@ -252,6 +262,24 @@ function odsloniecie(w, box, { mailWyslany, dane = {} }) {
 
 /* ------------------------------------------------------------ pomocnicze */
 
+/** Lista rozwijana — ten sam kształt co `pole`, żeby siatka się nie łamała. */
+function wybor(nazwa, etykieta, opcje) {
+  return h(
+    'div',
+    { class: 'pole' },
+    h('label', { for: 'b-' + nazwa }, etykieta),
+    h(
+      'select',
+      { id: 'b-' + nazwa, name: nazwa },
+      // Pusta pozycja na starcie: nie zgadujemy za klienta. Gdyby lista
+      // startowała od „jak najszybciej", połowa leadów byłaby oznaczona
+      // jako pilne tylko dlatego, że nikt nie ruszył pola.
+      h('option', { value: '' }, 'wybierz…'),
+      opcje.map((o) => h('option', { value: o.id }, o.label))
+    )
+  );
+}
+
 function pole(nazwa, etykieta, atrybuty) {
   return h(
     'div',
@@ -271,6 +299,10 @@ function sprawdz(d) {
   if (!/^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/.test(d.email))
     return { pole: 'email', komunikat: 'Proszę podać poprawny adres e-mail — na niego wyślemy wycenę.' };
   if (!d.city) return { pole: 'miejscowosc', komunikat: 'Proszę podać miejscowość — ustalamy rejon pomiaru.' };
+  // Termin jest wymagany, ale to jedno kliknięcie — komunikat ma o tym
+  // przypominać, a nie brzmieć jak wyrzut.
+  if (!d.termin)
+    return { pole: 'termin', komunikat: 'Proszę zaznaczyć, kiedy planuje Pan/Pani blat — to jedno kliknięcie.' };
   if (!d.zgoda) return { pole: 'zgoda', komunikat: 'Potrzebujemy zgody na kontakt, żeby móc odpowiedzieć.' };
   return null;
 }

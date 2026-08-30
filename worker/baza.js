@@ -15,6 +15,10 @@
  * ══════════════════════════════════════════════════════════════════════════
  */
 
+// Lista planowanych terminów mieszka po stronie frontu — panel, mail
+// i formularz mają pokazywać dokładnie to samo. Patrz src/app/termin.js.
+import { znanyTermin } from '../src/app/termin.js';
+
 /** Lejek sprzedaży. Kolejność ma znaczenie — w tej kolejności stoją w panelu. */
 export const STATUSY = [
   { id: 'nowy', nazwa: 'Nowy' },
@@ -88,6 +92,10 @@ export async function zapiszLead(env, lead) {
   const flagi = await wykryjFlagi(baza, { tk, ek, telefon, istniejacy });
 
   const s = lead.szczegoly && typeof lead.szczegoly === 'object' ? lead.szczegoly : {};
+  // Planowany termin realizacji — do bazy wpuszczamy WYŁĄCZNIE znane
+  // wartości, bo panel rysuje po nich kolumnę i filtr. Cokolwiek innego
+  // (stary klient, podrobione żądanie) zapisujemy jako puste.
+  const termin = znanyTermin(lead.termin) ? String(lead.termin || '') : '';
   const kwota = liczba(lead.kwota || s.razem);
   const zrodlo = czytelneZrodlo(lead.zrodlo);
 
@@ -105,6 +113,10 @@ export async function zapiszLead(env, lead) {
                             email_klucz = COALESCE(NULLIF(?, ''), email_klucz),
                             flagi = ?, wycen = wycen + 1,
                             kwota_ostatnia = ?, kwota_max = MAX(kwota_max, ?),
+                            -- Termin nadpisujemy tylko, gdy klient go teraz
+                            -- podał: druga wycena bez zaznaczenia nie ma
+                            -- prawa skasować tego, co powiedział za pierwszym.
+                            termin = COALESCE(NULLIF(?, ''), termin),
                             ruch = ?
          WHERE id = ?`
       )
@@ -118,6 +130,7 @@ export async function zapiszLead(env, lead) {
         JSON.stringify([...new Set([...bezpieczneFlagi(istniejacy.flagi), ...flagi])]),
         kwota,
         kwota,
+        termin,
         czas,
         klientId
       )
@@ -128,8 +141,8 @@ export async function zapiszLead(env, lead) {
       .prepare(
         `INSERT INTO klienci (imie, telefon, email, miejscowosc, telefon_klucz, email_klucz,
                               status, zrodlo, zrodlo_szczegol, flagi, wycen,
-                              kwota_ostatnia, kwota_max, utworzono, ruch)
-         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?)`
+                              kwota_ostatnia, kwota_max, termin, utworzono, ruch)
+         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?, ?)`
       )
       .bind(
         String(lead.imie || '').trim(),
@@ -143,6 +156,7 @@ export async function zapiszLead(env, lead) {
         JSON.stringify(flagi),
         kwota,
         kwota,
+        termin,
         czas,
         czas
       )
@@ -326,6 +340,12 @@ export async function lista(env, filtry = {}) {
     warunki.push(`status = ?`);
     dane.push(filtry.status);
   }
+  // Planowany termin — po nim Dawid wyławia klientów „na już".
+  // `znanyTermin` odrzuca puste, więc filtr „każdy termin" nie zawęża nic.
+  if (filtry.termin && filtry.termin !== '' && znanyTermin(filtry.termin)) {
+    warunki.push(`termin = ?`);
+    dane.push(String(filtry.termin));
+  }
   if (filtry.od) {
     warunki.push(`utworzono >= ?`);
     dane.push(String(filtry.od));
@@ -374,6 +394,7 @@ const kartaSkrocona = (k) => ({
   feedback: k.feedback || '',
   budzet: k.budzet || '',
   pora: k.pora || '',
+  termin: k.termin || '',
   wycen: k.wycen,
   kwota: k.kwota_ostatnia,
   kwotaMax: k.kwota_max,

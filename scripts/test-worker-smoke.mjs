@@ -65,11 +65,21 @@ function nowaBaza() {
  * jest przechwytywane i policzone.
  */
 const wyslane = [];
+// Treść wychodzących maili — bez niej dało się sprawdzić tylko ILE ich
+// poszło, a nie CO w nich było (np. czy temat niesie „PILNE").
+const listy = [];
 const prawdziwyFetch = globalThis.fetch;
 globalThis.fetch = async (url, opcje) => {
   const adres = String(url?.url || url);
   if (/api\.resend\.com|api\.anthropic\.com|interstone\.pl/.test(adres)) {
     wyslane.push(adres);
+    if (adres.includes('resend.com')) {
+      try {
+        listy.push(JSON.parse(String(opcje?.body || '{}')));
+      } catch {
+        listy.push({});
+      }
+    }
     return new Response(JSON.stringify({ id: 'test' }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
@@ -149,6 +159,116 @@ if (JEST) {
     assert.equal(odp.status, 200);
     const doPoczty = wyslane.filter((a) => a.includes('resend.com'));
     assert.equal(doPoczty.length, 2, `poszło ${doPoczty.length} maili zamiast 2`);
+  });
+
+  test('PLANOWANY TERMIN zapisuje się na karcie klienta', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'pilny@example.com', termin: 'pilne' }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200);
+
+    const cookie = await ciastkoPanelu(env);
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+    const klient = dane.lista.find((k) => k.email === 'pilny@example.com');
+    assert.ok(klient, 'nie znalazłem karty klienta');
+    assert.equal(klient.termin, 'pilne');
+  });
+
+  test('KLIENT NA JUŻ wyróżnia się w mailu do Dawida', async () => {
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'szybko@example.com', termin: 'pilne' }),
+      srodowisko(),
+      ctx
+    );
+    // Pierwszy mail idzie do firmy, drugi do klienta.
+    const doFirmy = listy[0];
+    assert.match(doFirmy.subject, /^PILNE — Nowa wycena/, `temat: ${doFirmy.subject}`);
+    assert.match(doFirmy.html, /PILNE — KLIENT CHCE BLAT DO 2 TYGODNI/);
+    assert.match(doFirmy.text, /Termin:\s+Jak najszybciej/);
+  });
+
+  test('klient „dopiero planuję" NIE jest oznaczany jako pilny', async () => {
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'kiedys@example.com', termin: 'pozniej' }),
+      srodowisko(),
+      ctx
+    );
+    const doFirmy = listy[0];
+    assert.doesNotMatch(doFirmy.subject, /PILNE/, `temat: ${doFirmy.subject}`);
+    assert.doesNotMatch(doFirmy.html, /PILNE — KLIENT/);
+    // ...ale sam termin ma być widoczny — to informacja, nie ozdoba.
+    assert.match(doFirmy.text, /Termin:\s+Później/);
+  });
+
+  test('podrobiony termin nie trafia do bazy ani nie wywraca zgłoszenia', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'lewy@example.com', termin: "'; DROP TABLE klienci; --" }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200, 'zgłoszenie jest warte więcej niż to pole');
+
+    const cookie = await ciastkoPanelu(env);
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+    const klient = dane.lista.find((k) => k.email === 'lewy@example.com');
+    assert.equal(klient.termin, '', 'nieznana wartość weszła do bazy');
+  });
+
+  test('filtr terminu w panelu zawęża listę', async () => {
+    const env = srodowisko();
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, phone: '600100201', email: 'a@example.com', termin: 'pilne' }),
+      env,
+      ctx
+    );
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, phone: '600100202', email: 'b@example.com', termin: 'pozniej' }),
+      env,
+      ctx
+    );
+
+    const cookie = await ciastkoPanelu(env);
+    const pobierz = async (query) =>
+      (
+        await (
+          await worker.fetch(
+            new Request(`https://k24h.example/panel/api/dane${query}`, {
+              headers: { origin: 'https://kam24h.pl', cookie },
+            }),
+            env,
+            ctx
+          )
+        ).json()
+      ).lista;
+
+    const wszyscy = await pobierz('');
+    const tylkoPilni = await pobierz('?termin=pilne');
+    assert.ok(wszyscy.length >= 2);
+    assert.ok(tylkoPilni.length >= 1);
+    assert.ok(tylkoPilni.every((k) => k.termin === 'pilne'), 'filtr przepuścił inny termin');
+    assert.ok(tylkoPilni.length < wszyscy.length, 'filtr niczego nie zawęził');
   });
 
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {

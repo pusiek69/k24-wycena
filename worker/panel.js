@@ -224,6 +224,7 @@ async function apiDane(request, env) {
   const p = new URL(request.url).searchParams;
   const filtry = {
     status: p.get('status') || '',
+    termin: p.get('termin') || '',
     szukaj: p.get('szukaj') || '',
     od: p.get('od') || '',
     do: p.get('do') || '',
@@ -629,6 +630,9 @@ border:1px solid var(--linia);border-radius:3px;padding:0 .28em;
 font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}
 /* Wyprzedaż płyt: miniatura obok opisu, żeby Dawid poznawał płytę po
    zdjęciu, a nie po nazwie — na placu leżą trzy podobne granity. */
+/* PILNE: jedyna plakietka, ktora ma krzyczec - reszta jest stonowana. */
+.znacznik.pilne{background:var(--zloto,#c9a86a);color:#13110f;font-weight:700;
+letter-spacing:.05em;border-color:transparent}
 .plyta-wiersz{display:flex;gap:.7rem;align-items:flex-start}
 .plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
 border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
@@ -741,6 +745,14 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
       <select id="f-status"><option value="">Każdy status</option></select>
+      <select id="f-termin">
+        <option value="">Każdy termin</option>
+        <option value="pilne">Tylko PILNE (do 2 tyg.)</option>
+        <option value="miesiac">W ciągu miesiąca</option>
+        <option value="kwartal">Za 1–3 miesiące</option>
+        <option value="pol_roku">Za 3–6 miesięcy</option>
+        <option value="pozniej">Później — dopiero planuje</option>
+      </select>
       <input id="f-kwota" type="number" inputmode="numeric" placeholder="Kwota od (zł)">
       <input id="f-od" type="date" aria-label="Zgłoszenia od">
       <input id="f-do" type="date" aria-label="Zgłoszenia do">
@@ -764,6 +776,7 @@ function tel(t){ return String(t||'').replace(/[^0-9+]/g,''); }
 function filtry(){
   var p = new URLSearchParams();
   var s = document.getElementById('f-status').value; if(s) p.set('status', s);
+  var t = document.getElementById('f-termin').value; if(t) p.set('termin', t);
   var k = document.getElementById('f-kwota').value; if(k) p.set('kwotaOd', k);
   var od = document.getElementById('f-od').value; if(od) p.set('od', od);
   var dd = document.getElementById('f-do').value; if(dd) p.set('do', dd);
@@ -819,11 +832,15 @@ function rysuj(){
 function kartaHtml(k, dzis){
   var flagi = (k.flagi||[]).map(function(f){ return '<span class="znacznik flaga">' + esc(opisFlagi(f)) + '</span>'; }).join('');
   if(k.feedback) flagi = znacznikFeedbacku(k) + flagi;
-  var goracy = k.feedback === 'pasuje' && (k.status === 'nowy' || k.status === 'cieply');
+  // PILNE idzie PRZED wszystkim innym - to jest ta jedna rzecz, po ktorej
+  // Dawid ustawia kolejnosc obdzwaniania (zlecenie z 30.08.2026).
+  if(k.termin === 'pilne') flagi = '<span class="znacznik pilne">PILNE - do 2 tygodni</span>' + flagi;
+  var goracy = (k.feedback === 'pasuje' || k.termin === 'pilne') && (k.status === 'nowy' || k.status === 'cieply');
   return '<article class="karta' + (dzis ? ' dzis' : '') + (goracy ? ' goracy' : '') + '" data-id="' + k.id + '">' +
     '<div class="gora"><div class="kto"><b>' + esc(k.imie || 'Klient') + ' · ' + esc(k.miejscowosc || '—') + '</b>' +
     '<span class="mini">' + esc(k.statusNazwa) + ' · ' + dzien(k.utworzono) +
     (k.wycen > 1 ? ' · ' + k.wycen + ' wyceny' : '') +
+    (k.termin ? ' · termin: ' + esc(krotkiTermin(k.termin)) : '') +
     (k.oddzwonic ? ' · oddzwonić ' + esc(k.oddzwonic) : '') + '</span></div>' +
     '<span class="kwota">' + zl(k.kwota) + '</span></div>' +
     (flagi ? '<div style="margin-top:.4rem">' + flagi + '</div>' : '') +
@@ -1088,6 +1105,19 @@ async function plytaUsun(id){
   document.getElementById('wyprzedaz-tresc').hidden = false;
 }
 
+/* Krotkie etykiety terminow - te same id, co w src/app/termin.js.
+   Panel jest osobnym, samodzielnym skryptem w przegladarce, wiec nie
+   moze zaimportowac tamtego modulu; lista jest tu przepisana swiadomie,
+   a testy pilnuja, zeby oba zestawy id byly identyczne. */
+var TERMINY_KROTKO = {
+  pilne: 'do 2 tygodni',
+  miesiac: 'w miesiac',
+  kwartal: '1-3 mies.',
+  pol_roku: '3-6 mies.',
+  pozniej: 'dopiero planuje'
+};
+function krotkiTermin(id){ return TERMINY_KROTKO[id] || ''; }
+
 function znacznikFeedbacku(k){
   if(k.feedback === 'pasuje')
     return '<span class="znacznik dobry">✓ prosi o kontakt' + (k.pora ? ': ' + esc(k.pora.toLowerCase()) : '') + '</span>';
@@ -1331,7 +1361,7 @@ document.addEventListener('click', function(e){
   }
 });
 
-['f-status','f-kwota','f-od','f-do'].forEach(function(id){
+['f-status','f-termin','f-kwota','f-od','f-do'].forEach(function(id){
   document.getElementById(id).addEventListener('change', wczytaj);
 });
 var czasomierz;
@@ -1339,7 +1369,7 @@ document.getElementById('f-szukaj').addEventListener('input', function(){
   clearTimeout(czasomierz); czasomierz = setTimeout(wczytaj, 350);
 });
 document.getElementById('f-czysc').addEventListener('click', function(){
-  ['f-status','f-kwota','f-od','f-do','f-szukaj'].forEach(function(id){ document.getElementById(id).value = ''; });
+  ['f-status','f-termin','f-kwota','f-od','f-do','f-szukaj'].forEach(function(id){ document.getElementById(id).value = ''; });
   wczytaj();
 });
 
