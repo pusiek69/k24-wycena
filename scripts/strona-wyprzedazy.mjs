@@ -127,9 +127,18 @@ function zbuduj() {
     ],
     ['<script type="module" src="/src/podstrona.js"></script>',
      '<script type="module" src="/src/wyprzedaz-strona.js"></script>'],
-    // Stopka: na WŁASNEJ stronie nie linkujemy sami do siebie. Wzorzec
-    // niesie zwykły link (bo dla niego wyprzedaż to obca strona), więc
-    // zamieniamy go na „tu jesteś" — tak samo robi generator miast.
+    /*
+     * STOPKA — dwie podmiany, obie konieczne.
+     *
+     * 1. Na WŁASNEJ stronie nie linkujemy sami do siebie: link do wyprzedaży
+     *    zamieniamy na „tu jesteś" (tak samo robi generator miast).
+     * 2. ⚠ Wzorcem jest strona blatów łazienkowych, więc niesie „tu jesteś"
+     *    przy SOBIE. Bez odwrócenia tego klient na stronie wyprzedaży miał
+     *    w stopce wyszarzone „Blaty łazienkowe", w które nie dało się kliknąć.
+     *    Znalezione 30.08.2026 na zrzucie z telefonu.
+     */
+    ['<span class="foot-tu">Blaty łazienkowe</span>',
+     '<a href="/blaty-lazienkowe">Blaty łazienkowe</a>'],
     ['<a href="/wyprzedaz-plyt">Wyprzedaż płyt</a>',
      '<span class="foot-tu">Wyprzedaż płyt</span>'],
   ];

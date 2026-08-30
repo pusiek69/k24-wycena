@@ -114,17 +114,23 @@ export default {
       }
     }
 
-    // Odczyt diagnostyczny — GET, bo wola go skrypt i czlowiek z przegladarki.
-    if (sciezka === '/kolekcje') return obsluzKolekcje(cors);
-
-    // Zdjęcie płyty z wyprzedaży — GET, bo wchodzi wprost w <img src>.
-    // Musi stać PRZED bramką „tylko POST" niżej.
-    if (sciezka.startsWith('/wyprzedaz/zdjecie/'))
-      return await obsluzZdjecieWyprzedazy(sciezka, env, cors);
-
-    if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
-
+    /*
+     * Trasy GET i cała reszta idą pod WSPÓLNY `try`. Wcześniej dwie trasy
+     * GET stały przed nim i wyjątek z nich wychodził na zewnątrz jako
+     * surowy błąd workera (1101) zamiast czytelnego 500 z logiem.
+     * Złapane 30.08.2026 testem dymnym tras.
+     */
     try {
+      // Odczyt diagnostyczny — GET, bo woła go skrypt i człowiek z przeglądarki.
+      if (sciezka === '/kolekcje') return obsluzKolekcje(cors);
+
+      // Zdjęcie płyty z wyprzedaży — GET, bo wchodzi wprost w <img src>.
+      // Musi stać PRZED bramką „tylko POST" niżej.
+      if (sciezka.startsWith('/wyprzedaz/zdjecie/'))
+        return await obsluzZdjecieWyprzedazy(sciezka, env, cors);
+
+      if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
+
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
       if (sciezka === '/feedback') return await obsluzFeedback(request, env, cors);
@@ -485,6 +491,32 @@ async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
   let r = 0;
   for (let i = 0; i < wzor.length; i++) r |= wzor.charCodeAt(i) ^ podany.charCodeAt(i);
   return r === 0;
+}
+
+/**
+ * KTORE KOLEKCJE ZNA ASYSTENT (/kolekcje).
+ *
+ * POWÓD POWSTANIA (25.08.2026): po dodaniu cennika Pacific konsultant
+ * na produkcji twierdził, że takiego materiału nie ma — bo prompt jest
+ * generowany poprawnie z src/firms, ale WORKER NIE ZOSTAŁ WDROŻONY.
+ * Strona znała nowy cennik, asystent nie. Z zewnątrz nie dało się tego
+ * zobaczyć inaczej niż przez rozmowę.
+ *
+ * Ten endpoint pokazuje wprost, co siedzi w PROMPCIE wdrożonej wersji.
+ * `npm run sprawdz:asystent` porównuje to z lokalnymi cennikami i mówi,
+ * czy trzeba wdrożyć workera. Nazwy kolekcji są publiczne (widnieją
+ * w kalkulatorze), więc nic tu nie wycieka.
+ *
+ * ⚠ ZNIKNĘŁA RAZ (30.08.2026): przy przepisywaniu promocji na wyprzedaż
+ * podmieniłem blok kodu po NUMERACH LINII, a ta funkcja stała w środku
+ * tego zakresu. Trasa została, funkcji nie było — `/kolekcje` oddawało
+ * surowy wyjątek workera (1101), bo stoi POZA `try`. Stąd test dymny
+ * `scripts/test-worker-smoke.mjs`, który woła każdą trasę z osobna.
+ */
+function obsluzKolekcje(cors) {
+  const kolekcje = [...DEKORY.matchAll(/^##\s*(.+)$/gm)].map((m) => m[1].trim());
+  const dekorow = (DEKORY.match(/;/g) || []).length + kolekcje.length;
+  return json({ ok: true, kolekcje, dekorow }, 200, cors);
 }
 
 /**

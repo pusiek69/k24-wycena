@@ -272,6 +272,12 @@
   force = true
 
 [[redirects]]
+  from = "/licencja-zdjec.html"
+  to = "/licencja-zdjec"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/realizacje.html"
   to = "/realizacje"
   status = 301

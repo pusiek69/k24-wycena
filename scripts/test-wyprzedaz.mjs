@@ -11,6 +11,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 const { wczytajSilnik } = await import('./lib/silnik.mjs');
 const m = await wczytajSilnik();
 const {
@@ -30,6 +31,7 @@ const {
   charakterPlyty,
   firmaDlaPlyty,
   brakuje,
+  ostrzezenieOWyprzedazy,
   paczkaPodgladu,
   wycen,
   FIRMY,
@@ -306,4 +308,78 @@ test('marki z płytami w kilku formatach mają NIEPUSTĄ listę dekorów', () =>
     });
     assert.equal(zCena.length, dekory.length, `${slug}: ${dekory.length - zCena.length} dekorów bez ceny`);
   }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * OSTRZEŻENIE O BRAKU PŁYT — na CAŁEJ ścieżce, nie tylko w funkcji
+ *
+ * ⚠ Znalezione 30.08.2026 przy przeglądzie produkcji: `brakuje` miało
+ * własne testy i przechodziło, ale NIKT GO NIE WOŁAŁ. Na żywo blat
+ * z dwóch odcinków 300×90 cm liczył się z dwóch płyt wyprzedażowych,
+ * choć Dawid miał jedną — bez słowa ostrzeżenia.
+ *
+ * Dlatego te testy idą przez `wycen()` i sprawdzają, co realnie ląduje
+ * w `w.ostrzezenia` — czyli w tym, co widzi klient na karcie i w mailu.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+/** Wycena tego blatu z tej płyty, z dopiętym ostrzeżeniem — jak w kreatorze. */
+function wycenZOstrzezeniem(p, odcinki) {
+  const f = firmaDlaPlyty([p], kluczDekoru(p));
+  const w = wycen(f, { dekor: kluczDekoru(p), grubosc: String(p.gruboscMm), odcinki, opcje: {} });
+  const uwaga = ostrzezenieOWyprzedazy(w, [p]);
+  if (uwaga) w.ostrzezenia.push(uwaga);
+  return w;
+}
+
+test('blat mieszczący się w jednej płycie NIE straszy klienta', () => {
+  const w = wycenZOstrzezeniem(plyta({ plytRazem: 1, plytZostalo: 1 }), [{ dl: 260, gl: 62 }]);
+  assert.ok(w.ok);
+  assert.equal(w.pak.plytyPelne, 1);
+  assert.deepEqual(w.ostrzezenia.filter((o) => o.includes('wymaga')), []);
+});
+
+test('blat na DWIE płyty przy jednej dostępnej ostrzega w wycenie', () => {
+  // Dokładnie przypadek z produkcji: 2 × 300×90 cm na płycie 320×160.
+  const w = wycenZOstrzezeniem(
+    plyta({ plytRazem: 1, plytZostalo: 1 }),
+    [{ dl: 300, gl: 90 }, { dl: 300, gl: 90 }]
+  );
+  assert.ok(w.ok);
+  assert.ok(w.pak.plytyPelne >= 2, `rozkrój dał ${w.pak.plytyPelne} płyt`);
+  const uwaga = w.ostrzezenia.find((o) => o.includes('wymaga'));
+  assert.ok(uwaga, `brak ostrzeżenia; ostrzeżenia: ${JSON.stringify(w.ostrzezenia)}`);
+  assert.match(uwaga, /została 1 płyta/);
+  assert.match(uwaga, /kontakt/);
+});
+
+test('przy dwóch sztukach na placu ten sam blat NIE ostrzega', () => {
+  const w = wycenZOstrzezeniem(
+    plyta({ plytRazem: 2, plytZostalo: 2 }),
+    [{ dl: 300, gl: 90 }, { dl: 300, gl: 90 }]
+  );
+  assert.deepEqual(w.ostrzezenia.filter((o) => o.includes('wymaga')), []);
+});
+
+test('ostrzeżenie NIE dotyczy zwykłych materiałów z cennika', () => {
+  // Konglomerat kupujemy u dostawcy — tam liczba płyt nie jest ograniczona.
+  const f = FIRMY.find((x) => x.slug === 'avant-quartz');
+  const dekor = Object.keys(f.dekory)[0];
+  const w = wycen(f, {
+    dekor,
+    grubosc: '20',
+    odcinki: [{ dl: 300, gl: 90 }, { dl: 300, gl: 90 }],
+    opcje: {},
+  });
+  assert.equal(ostrzezenieOWyprzedazy(w, [plyta()]), null);
+});
+
+test('KREATOR naprawdę dopina to ostrzeżenie do wyceny', () => {
+  /*
+   * Test na ŹRÓDLE, nie na zachowaniu: pilnuje, że wywołanie w ogóle
+   * istnieje w kodzie kroku „Wynik". Bez tego cała reszta testów tego
+   * pliku przechodziła, a klient i tak nie widział ostrzeżenia.
+   */
+  const kroki = readFileSync(new URL('../src/app/kroki.js', import.meta.url), 'utf8');
+  assert.match(kroki, /dopiszOstrzezenieWyprzedazy\(w\)/, 'krokWynik nie dopina ostrzeżenia');
+  assert.match(kroki, /ostrzezenieOWyprzedazy/, 'brak importu funkcji ostrzegającej');
 });

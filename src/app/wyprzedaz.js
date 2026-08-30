@@ -231,6 +231,10 @@ export function firmaDlaPlyty(plyty, dekor) {
  * płyt, niż Dawid ma na placu, wycena byłaby obietnicą bez pokrycia.
  * Zwracamy komunikat zamiast kwoty.
  *
+ * Wołaj to przez `ostrzezenieOWyprzedazy` niżej, nie wprost — tamta funkcja
+ * sama wyciąga liczbę płyt z gotowej wyceny i pilnuje, żeby dotyczyło to
+ * WYŁĄCZNIE wyprzedaży.
+ *
  * @param {object} plyta   pozycja wyprzedaży
  * @param {number} plytPotrzeba  ile płyt wyszło z rozkroju
  */
@@ -243,6 +247,30 @@ export function brakuje(plyta, plytPotrzeba) {
     `${plyta.plytZostalo === 1 ? 'została 1 płyta' : `zostało ${plyta.plytZostalo} ${formaPlyty(plyta.plytZostalo)}`}. ` +
     'Prosimy o kontakt — dobierzemy materiał albo sprawdzimy, czy da się inaczej rozłożyć blat.'
   );
+}
+
+/**
+ * OSTRZEŻENIE DO GOTOWEJ WYCENY — jedyne miejsce, z którego wołamy `brakuje`.
+ *
+ * ⚠ POWÓD POWSTANIA (30.08.2026, przegląd produkcji): `brakuje` istniało
+ * i miało własne testy, ale NIGDZIE nie było wywoływane. Skutek na żywo:
+ * blat z dwóch odcinków 300×90 cm liczył się z DWÓCH płyt wyprzedażowych,
+ * mimo że Dawid miał na placu jedną — klient dostawał kwotę za materiał,
+ * którego nie ma. Test jednostkowy funkcji nie wystarczy, jeśli nikt jej
+ * nie woła; stąd ta funkcja i test na CAŁEJ ścieżce wyceny.
+ *
+ * @param {object} w      wynik `wycen()`
+ * @param {Array}  plyty  lista z `/wyprzedaz`
+ * @returns {string|null} komunikat do `w.ostrzezenia` albo null
+ */
+export function ostrzezenieOWyprzedazy(w, plyty) {
+  if (!w?.ok || w.firma?.slug !== SLUG) return null;
+  const plyta = plytaWgDekoru(plyty, w.dekor);
+  if (!plyta) return null;
+  // Rozkrój liczy pełne płyty i ewentualną połówkę; przy wyprzedaży
+  // połówki nie ma (`polowkaDozwolona: false`), ale liczymy ostrożnie.
+  const potrzeba = (w.pak?.plytyPelne || 0) + (w.pak?.polowka ? 1 : 0);
+  return brakuje(plyta, potrzeba);
 }
 
 /**

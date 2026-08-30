@@ -6,6 +6,7 @@ import { upakuj, opisPlyt } from '../engine/pakowanie.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { bramkaWyceny } from './bramka.js';
 import {
+  ostrzezenieOWyprzedazy,
   SLUG as WYPRZEDAZ_SLUG,
   firmaWyprzedazy,
   plytaWgDekoru,
@@ -597,6 +598,20 @@ function opcjaWidok(o, stan, a, f) {
   );
 }
 
+/**
+ * Wyprzedaż ma SKOŃCZONĄ liczbę sztuk — jeśli rozkrój wyszedł z większej
+ * liczby płyt, niż Dawid ma na placu, klient musi to zobaczyć PRZY WYCENIE,
+ * a nie dopiero przy telefonie. Dokładamy komunikat do ostrzeżeń, bo tam
+ * karta wyceny i mail już go pokażą.
+ *
+ * Osobna funkcja, bo to samo dotyczy kalkulatora w rozmowie (app/czat.js).
+ */
+export function dopiszOstrzezenieWyprzedazy(w) {
+  const uwaga = ostrzezenieOWyprzedazy(w, zaladowane());
+  if (uwaga && !w.ostrzezenia.includes(uwaga)) w.ostrzezenia.push(uwaga);
+  return w;
+}
+
 /* ============================= 5. WYNIK ============================= */
 
 export function krokWynik(stan, a) {
@@ -612,6 +627,8 @@ export function krokWynik(stan, a) {
   if (!w.ok) {
     return karta('Wycena', 'Brakuje jeszcze danych', w.blad, nawigacja(a, { wstecz: 'wymiary' }));
   }
+
+  dopiszOstrzezenieWyprzedazy(w);
 
   // Kwota odsłania się dopiero po zostawieniu kontaktu — tak samo jak
   // w rozmowie z konsultantem. Jedna zasada dla obu ścieżek.

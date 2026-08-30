@@ -66,16 +66,27 @@ async function start() {
   // Numer wersji zapamiętujemy przy feedbacku — Dawid ma wiedzieć,
   // NA KTÓRĄ wersję klient odpowiedział.
   window.__wersjaOferty = dane.wersjaNr || 1;
+  /*
+   * ⚠ `.filter(Boolean)` NIE JEST ozdobnikiem.
+   *
+   * `replaceChildren` to goły DOM: `null` zamienia na TEKST „null" i wstawia
+   * go jako węzeł. `h()` z dom.js takie dzieci odsiewa, ale tutaj wołamy
+   * DOM wprost — i przez to każdy klient, który nie był właścicielem
+   * (czyli każdy prawdziwy klient), widział nad swoją wyceną słowo „null".
+   * Na produkcji od 25.08.2026, znalezione przy przeglądzie 30.08.
+   */
   root.replaceChildren(
-    wlasciciel
-      ? h(
-          'div',
-          { class: 'info podglad-wlasciciela' },
-          'Podgląd z panelu — dokładnie to, co widzi klient. ' +
-            'Twoje wejście nie liczy się jako otwarcie oferty.'
-        )
-      : null,
-    widok(dane)
+    ...[
+      wlasciciel
+        ? h(
+            'div',
+            { class: 'info podglad-wlasciciela' },
+            'Podgląd z panelu — dokładnie to, co widzi klient. ' +
+              'Twoje wejście nie liczy się jako otwarcie oferty.'
+          )
+        : null,
+      widok(dane),
+    ].filter(Boolean)
   );
 }
 

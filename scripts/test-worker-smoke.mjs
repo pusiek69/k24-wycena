@@ -23,6 +23,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { readFile } from 'node:fs/promises';
 
 const SCIEZKA = new URL('../worker/worker.js', import.meta.url);
 const JEST = fs.existsSync(SCIEZKA);
@@ -269,6 +270,68 @@ if (JEST) {
     assert.ok(tylkoPilni.length >= 1);
     assert.ok(tylkoPilni.every((k) => k.termin === 'pilne'), 'filtr przepuścił inny termin');
     assert.ok(tylkoPilni.length < wszyscy.length, 'filtr niczego nie zawęził');
+  });
+
+  test('KAZDA trasa z routera ma swoja funkcje i nie rzuca wyjatkiem', async () => {
+    /*
+     * REGRESJA Z 30.08.2026, ktorej ten test pilnuje.
+     *
+     * Przepisujac promocje na wyprzedaz podmienilem blok kodu PO NUMERACH
+     * LINII, a w srodku tego zakresu stala `obsluzKolekcje`. Trasa
+     * `/kolekcje` zostala w routerze, funkcji juz nie bylo — i poniewaz
+     * ta trasa stala POZA `try`, produkcja oddawala surowy wyjatek workera
+     * (blad 1101), nie czytelne 500. Zaden test tego nie lapal, bo zaden
+     * nie wolal `/kolekcje`.
+     *
+     * Dlatego nie wypisujemy tras recznie: CZYTAMY je z routera. Dolozenie
+     * trasy automatycznie dokłada ja do tego testu.
+     */
+    const zrodlo = await readFile(new URL('../worker/worker.js', import.meta.url), 'utf8');
+
+    // `if (sciezka === '/cos')` oraz `sciezka.startsWith('/cos/')`
+    const dokladne = [...zrodlo.matchAll(/sciezka === '(\/[^']*)'/g)].map((m) => m[1]);
+    const prefiksy = [...zrodlo.matchAll(/sciezka\.startsWith\('(\/[^']*)'\)/g)].map((m) => m[1]);
+    const trasy = [...new Set([...dokladne, ...prefiksy])]
+      // Panel ma wlasne logowanie i osobne testy nizej.
+      .filter((t) => !t.startsWith('/panel'));
+
+    assert.ok(trasy.length >= 8, `router zna tylko ${trasy.length} tras — cos nie tak z odczytem`);
+
+    const env = srodowisko();
+    const zle = [];
+    for (const trasa of trasy) {
+      // Prefiksowe trasy potrzebuja czegos po ukosniku.
+      const adres = prefiksy.includes(trasa) ? `${trasa}1` : trasa;
+      for (const metoda of ['GET', 'POST']) {
+        const zadanie =
+          metoda === 'GET'
+            ? new Request(`https://k24h.example${adres}`, { headers: { origin: 'https://kam24h.pl' } })
+            : zapytanie(adres, {});
+        const odp = await worker.fetch(zadanie, env, ctx);
+        /*
+         * Interesuje nas DOKLADNIE 500 — to kod z naszego `catch`,
+         * czyli „funkcja wybuchla albo jej nie ma". 503 jest odpowiedzia
+         * ZAMIERZONA (np. /chat bez klucza Anthropic w atrapie srodowiska),
+         * a nie awaria, wiec go nie liczymy.
+         */
+        if (odp.status === 500) zle.push(`${metoda} ${adres} -> 500`);
+      }
+    }
+    assert.deepEqual(zle, [], `trasy oddaly blad serwera:\n  ${zle.join('\n  ')}`);
+  });
+
+  test('/kolekcje mowi, jakie cenniki zna WDROZONY worker', async () => {
+    // Ten endpoint istnieje po to, zeby dalo sie sprawdzic, czy worker
+    // zostal wdrozony po zmianie cennika — patrz `npm run sprawdz:asystent`.
+    const odp = await worker.fetch(
+      new Request('https://k24h.example/kolekcje', { headers: { origin: 'https://kam24h.pl' } }),
+      srodowisko(),
+      ctx
+    );
+    assert.equal(odp.status, 200);
+    const d = await odp.json();
+    assert.ok(Array.isArray(d.kolekcje) && d.kolekcje.length >= 5, `kolekcje: ${JSON.stringify(d.kolekcje)}`);
+    assert.ok(d.dekorow > 100, `dekorow: ${d.dekorow}`);
   });
 
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {
