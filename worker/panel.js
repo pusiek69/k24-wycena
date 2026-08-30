@@ -42,11 +42,12 @@ import {
   rozmowaOferty,
 } from './baza.js';
 import {
-  listaPromocji,
-  zapiszPromocje,
+  listaPlyt,
+  zapiszPlyte,
   ustawPublikacje,
-  skasujPromocje,
-} from './promocje-baza.js';
+  ustawDostepnosc,
+  skasujPlyte,
+} from './wyprzedaz-baza.js';
 
 /*
  * STAWKI ZAKŁADU EDYTOWALNE W PANELU.
@@ -108,13 +109,15 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
   if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
     return await apiOdpowiedz(request, env);
-  if (sciezka === '/panel/api/promocje') return await apiPromocje(request, env);
-  if (sciezka === '/panel/api/promocje/zapisz' && request.method === 'POST')
-    return await apiPromocjeZapisz(request, env);
-  if (sciezka === '/panel/api/promocje/publikuj' && request.method === 'POST')
-    return await apiPromocjePublikuj(request, env);
-  if (sciezka === '/panel/api/promocje/usun' && request.method === 'POST')
-    return await apiPromocjeUsun(request, env);
+  if (sciezka === '/panel/api/wyprzedaz') return await apiWyprzedaz(request, env);
+  if (sciezka === '/panel/api/wyprzedaz/zapisz' && request.method === 'POST')
+    return await apiWyprzedazZapisz(request, env);
+  if (sciezka === '/panel/api/wyprzedaz/publikuj' && request.method === 'POST')
+    return await apiWyprzedazPublikuj(request, env);
+  if (sciezka === '/panel/api/wyprzedaz/dostepnosc' && request.method === 'POST')
+    return await apiWyprzedazDostepnosc(request, env);
+  if (sciezka === '/panel/api/wyprzedaz/usun' && request.method === 'POST')
+    return await apiWyprzedazUsun(request, env);
 
   return json({ error: 'Nieznany adres panelu.' }, 404);
 }
@@ -356,78 +359,88 @@ async function apiStawki(request, env) {
 }
 
 /**
- * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026).
+ * WYPRZEDAŻ PŁYT (zlecenie Dawida, 30.08.2026).
  *
- * Panel widzi WSZYSTKO — szkice i opublikowane naraz (`wszystkie: true`),
- * bo Dawid musi móc dokończyć niedopracowany szkic. Produkcja (worker
- * .template.js `/promocje`) widzi wyłącznie aktywne opublikowane — filtr
- * jest zamierzenie w dwóch różnych miejscach: tu decyduje WIDOCZNOŚĆ dla
- * Dawida, tam decyduje WIDOCZNOŚĆ dla klienta, i to są różne pytania.
+ * Panel widzi WSZYSTKO — szkice, opublikowane i sprzedane naraz
+ * (`wszystkie: true`), bo Dawid musi móc dokończyć szkic i odkręcić
+ * pomyłkowe „sprzedana". Produkcja (worker.template.js `/wyprzedaz`)
+ * widzi wyłącznie płyty dostępne. Filtr jest zamierzenie w dwóch
+ * miejscach: tu decyduje WIDOCZNOŚĆ DLA DAWIDA, tam WIDOCZNOŚĆ DLA
+ * KLIENTA — i to są dwa różne pytania.
  */
-async function apiPromocje(request, env) {
-  const promocje = await listaPromocji(env, { wszystkie: true });
+async function apiWyprzedaz(request, env) {
+  const plyty = await listaPlyt(env, { wszystkie: true });
   const zLinkiem = await Promise.all(
-    promocje.map(async (p) => ({ ...p, linkPodgladu: await linkPodgladuPromocji(env, p.id) }))
+    plyty.map(async (p) => ({ ...p, linkPodgladu: await linkPodgladuWyprzedazy(env, p.id) }))
   );
-  return json({ ok: true, promocje: zLinkiem });
+  return json({ ok: true, plyty: zLinkiem });
 }
 
 /**
- * Link „Podgląd" — Dawid otwiera DOKŁADNIE tę samą stronę i ten sam kod
- * banera, co klient zobaczy po publikacji, tylko z jednym doklejonym
- * szkicem. Podpis ważny 14 dni: dłużej niż zwykle trwa dopracowanie
- * promocji, a krócej niż „na zawsze", gdyby link kiedyś wyciekł.
+ * Link „Podgląd" — Dawid otwiera DOKŁADNIE tę samą stronę i ten sam kod,
+ * co klient zobaczy po publikacji, tylko z jednym doklejonym szkicem.
+ * Podpis ważny 14 dni: dłużej, niż zwykle trwa dopracowanie oferty,
+ * a krócej niż „na zawsze", gdyby link kiedyś wyciekł.
  */
-async function linkPodgladuPromocji(env, id) {
+async function linkPodgladuWyprzedazy(env, id) {
   const exp = Date.now() + 14 * 24 * 3600000;
-  const podpis = await podpisz(env.PANEL_HASLO, `promo|${id}|${exp}`);
+  const podpis = await podpisz(env.PANEL_HASLO, `wyprzedaz|${id}|${exp}`);
   const paczka = { podgladId: id, exp, podpis };
   const bajty = new TextEncoder().encode(JSON.stringify(paczka));
   const b64 = btoa(String.fromCharCode(...bajty))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
-  return `https://kam24h.pl/#promoPodglad=${b64}`;
+  return `https://kam24h.pl/wyprzedaz-plyt#wyprzedazPodglad=${b64}`;
 }
 
-/** Zapis (nowa promocja albo edycja) — walidacja siedzi w promocje-baza.js. */
-async function apiPromocjeZapisz(request, env) {
+/** Zapis (nowa płyta albo edycja) — walidacja siedzi w wyprzedaz-baza.js. */
+async function apiWyprzedazZapisz(request, env) {
   const d = await request.json().catch(() => null);
   if (!d || typeof d !== 'object') return json({ error: 'Niepoprawne dane.' }, 400);
-  const wynik = await zapiszPromocje(env, d);
+  const wynik = await zapiszPlyte(env, d);
   if (!wynik.ok) return json({ error: wynik.blad }, 400);
   return json({
     ok: true,
     id: wynik.id,
-    promocja: { ...wynik.promocja, linkPodgladu: await linkPodgladuPromocji(env, wynik.id) },
+    plyta: { ...wynik.plyta, linkPodgladu: await linkPodgladuWyprzedazy(env, wynik.id) },
   });
 }
 
 /**
- * Publikacja / cofnięcie — osobny krok od zapisu, żeby „chcę zobaczyć,
- * zanim to pójdzie na stronę" (zlecenie Dawida) było naprawdę osobnym
+ * Publikacja / cofnięcie — osobny krok od zapisu, żeby „chcę to zobaczyć,
+ * zanim pójdzie na stronę" (warunek Dawida) było naprawdę osobnym
  * kliknięciem, a nie zgadywaniem, czy zapis od razu publikuje.
  *
  * Wyłącznie z zalogowanego panelu (jak reszta /panel/api) — strona
- * podglądu NIE publikuje sama, tylko odsyła Dawida z powrotem do panelu
- * (patrz nota przy `#promoPodglad` w src/main.js). Jedno miejsce publikacji
- * jest prostsze do obronienia niż dwie ścieżki autoryzacji dla tej samej
- * operacji.
+ * podglądu NIE publikuje sama, tylko odsyła Dawida z powrotem do panelu.
+ * Jedno miejsce publikacji jest prostsze do obronienia niż dwie ścieżki
+ * autoryzacji dla tej samej operacji.
  */
-async function apiPromocjePublikuj(request, env) {
+async function apiWyprzedazPublikuj(request, env) {
   const d = await request.json().catch(() => null);
   const id = Number(d?.id);
-  if (!id) return json({ error: 'Brak promocji.' }, 400);
+  if (!id) return json({ error: 'Brak płyty.' }, 400);
   const ok = await ustawPublikacje(env, id, d?.opublikowana !== false);
-  if (!ok) return json({ error: 'Nie znaleziono promocji.' }, 404);
+  if (!ok) return json({ error: 'Nie znaleziono płyty.' }, 404);
   return json({ ok: true });
 }
 
-async function apiPromocjeUsun(request, env) {
+/** „Sprzedana" / „wróciła" — zmiana licznika sztuk bez kasowania wiersza. */
+async function apiWyprzedazDostepnosc(request, env) {
   const d = await request.json().catch(() => null);
   const id = Number(d?.id);
-  if (!id) return json({ error: 'Brak promocji.' }, 400);
-  return json({ ok: await skasujPromocje(env, id) });
+  if (!id) return json({ error: 'Brak płyty.' }, 400);
+  const ok = await ustawDostepnosc(env, id, d?.plytZostalo);
+  if (!ok) return json({ error: 'Nie znaleziono płyty.' }, 404);
+  return json({ ok: true });
+}
+
+async function apiWyprzedazUsun(request, env) {
+  const d = await request.json().catch(() => null);
+  const id = Number(d?.id);
+  if (!id) return json({ error: 'Brak płyty.' }, 400);
+  return json({ ok: await skasujPlyte(env, id) });
 }
 
 /**
@@ -614,6 +627,18 @@ a,button{font:inherit}
 .kod-plyty{user-select:all;background:var(--pole);color:var(--tekst);
 border:1px solid var(--linia);border-radius:3px;padding:0 .28em;
 font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}
+/* Wyprzedaż płyt: miniatura obok opisu, żeby Dawid poznawał płytę po
+   zdjęciu, a nie po nazwie — na placu leżą trzy podobne granity. */
+.plyta-wiersz{display:flex;gap:.7rem;align-items:flex-start}
+.plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
+border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
+.plyta-mini.pusta{display:flex;align-items:center;justify-content:center;
+font-size:.62rem;color:var(--szary);text-align:center;line-height:1.2}
+.plyta-tresc{flex:1;min-width:0}
+.plyta-akcje{margin-top:.45rem;display:flex;flex-wrap:wrap;gap:.3rem}
+.plyta-form label{display:block;margin:.5rem 0}
+.plyta-form input,.plyta-form select{width:100%;box-sizing:border-box}
+.plyta-form .dwie{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
 main{padding:.9rem;max-width:820px;margin:0 auto}
 section{margin-bottom:1.4rem}
 h2{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--szary);
@@ -711,7 +736,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
   <section id="dzis"></section>
   <section id="reakcje"></section>
   <section id="stawki"></section>
-  <section id="promocje"></section>
+  <section id="wyprzedaz"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
@@ -782,7 +807,7 @@ function rysuj(){
   document.getElementById('reakcje').innerHTML = reakcjeHtml(dane.feedback);
 
   rysujStawki();
-  rysujPromocje();
+  rysujWyprzedaz();
 
   document.getElementById('lista').innerHTML =
     dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
@@ -840,153 +865,227 @@ async function rysujStawki(){
 }
 
 /**
- * PROMOCJE „OSTATNIE PLYTY" (zlecenie Dawida, 27.08.2026) - panel.
+ * WYPRZEDAZ PLYT (zlecenie Dawida, 30.08.2026) - panel.
  *
- * Wyprzedaz fizycznie ograniczonej partii plyt: Dawid wpisuje GOTOWA cene
- * dla klienta i sam zmniejsza licznik sztuk (sprzedaje tez poza
- * kalkulatorem). Szkic (nieopublikowana) widac TYLKO tutaj i pod linkiem
- * podgladu - baner na stronie pokazuje wylacznie to, co Dawid opublikowal.
+ * Jeden wiersz = jedna fizyczna plyta z placu. Dawid wpisuje GOTOWA cene
+ * dla klienta (zl/m2 brutto) i sam pilnuje licznika sztuk - plyty schodza
+ * tez przez telefon i na miejscu.
+ *
+ * SZKIC widac TYLKO tutaj i pod podpisanym linkiem "Podglad". Klient
+ * zobaczy plyte dopiero po kliknieciu "Opublikuj" - to warunek Dawida.
+ *
+ * Ten sam formularz sluzy do dodawania i edycji; PLYTA_EDYTOWANA trzyma
+ * id edytowanej pozycji albo 'nowa'.
  */
-var PROMOCJE = [], PROMO_EDYTOWANA = null;
+var WYPRZEDAZ = [], PLYTA_EDYTOWANA = null;
 
-async function rysujPromocje(){
-  var d = await (await fetch('/panel/api/promocje')).json();
-  PROMOCJE = d.promocje || [];
+async function rysujWyprzedaz(){
+  var d = await (await fetch('/panel/api/wyprzedaz')).json();
+  WYPRZEDAZ = d.plyty || [];
 
-  var wiersze = PROMOCJE.length
-    ? PROMOCJE.map(promoWiersz).join('')
-    : '<p class="pusto">Brak promocji. Dodaj pierwsza - zobaczysz podglad, zanim trafi na strone.</p>';
+  var wiersze = WYPRZEDAZ.length
+    ? WYPRZEDAZ.map(plytaWiersz).join('')
+    : '<p class="pusto">Brak plyt. Dodaj pierwsza - zobaczysz podglad, zanim trafi na strone.</p>';
 
-  document.getElementById('promocje').innerHTML =
-    '<h2>Promocje „ostatnie plyty" <button class="chip" type="button" id="promocje-pokaz">pokaz / ukryj</button></h2>' +
-    '<div class="lejek" id="promocje-tresc" hidden>' +
-      '<p class="mini">Cena promocyjna to GOTOWA cena dla klienta (zl/m\u00b2 brutto) - wpisujesz ja wprost, ' +
-      'nic jej dalej nie przelicza. Licznik sztuk zmniejszasz recznie, bo sprzedajesz tez poza kalkulatorem.</p>' +
-      '<div id="promocje-lista">' + wiersze + '</div>' +
-      '<p><button class="btn" type="button" id="promo-nowa">+ Nowa promocja</button></p>' +
-      '<div id="promo-form"></div>' +
+  document.getElementById('wyprzedaz').innerHTML =
+    '<h2>Wyprzedaz plyt <button class="chip" type="button" id="wyprzedaz-pokaz">pokaz / ukryj</button></h2>' +
+    '<div class="lejek" id="wyprzedaz-tresc" hidden>' +
+      '<p class="mini">Kategoria "NATURA WYPRZEDAZ" w kalkulatorze i strona /wyprzedaz-plyt. ' +
+      'Cena jest GOTOWA dla klienta (zl/m2 brutto) - nic do niej nie doliczamy.</p>' +
+      '<p><button class="btn" type="button" id="wyprzedaz-nowa">+ Dodaj plyte</button></p>' +
+      '<div id="wyprzedaz-formularz"></div>' +
+      '<div id="wyprzedaz-lista">' + wiersze + '</div>' +
     '</div>';
 
-  if (PROMO_EDYTOWANA !== null) rysujPromoFormularz(PROMO_EDYTOWANA === 'nowa' ? null : PROMO_EDYTOWANA);
-}
-
-function promoWiersz(p){
-  var stan = p.opublikowana
-    ? '<span class="znacznik dobry">opublikowana</span>'
-    : '<span class="znacznik">szkic - widoczny tylko pod podgladem</span>';
-  var wyprzedana = p.plytZostalo <= 0 ? '<span class="znacznik flaga">wyprzedana</span>' : '';
-  var material = [p.opisMaterial, p.dekor].filter(Boolean).join(' \u00b7 ');
-  var cena = p.cenaNormalnaM2 > 0
-    ? '<s class="mini">' + zl(p.cenaNormalnaM2) + '/m\u00b2</s> ' + zl(p.cenaPromoM2) + '/m\u00b2'
-    : zl(p.cenaPromoM2) + '/m\u00b2';
-
-  return '<article class="karta">' +
-    '<div class="gora"><div class="kto"><b>' + esc(p.nazwa) + '</b>' +
-    '<span class="mini">' + esc(material || '\u2014') + ' \u00b7 ' + p.plytaDlCm + '\u00d7' + p.plytaGlCm + ' cm, ' + p.gruboscMm + ' mm' +
-    (p.dataKonca ? ' \u00b7 do ' + esc(p.dataKonca) : '') + '</span></div>' +
-    '<span class="kwota">' + cena + '</span></div>' +
-    '<div style="margin-top:.4rem">' + stan + ' ' + wyprzedana +
-    ' <span class="mini">zostalo ' + p.plytZostalo + ' z ' + p.plytRazem + '</span></div>' +
-    '<div class="akcje">' +
-      '<button type="button" data-promo-edytuj="' + p.id + '">Edytuj</button>' +
-      (p.plytZostalo > 0
-        ? '<button type="button" data-promo-minus="' + p.id + '">\u22121 plyta</button>'
-        : '') +
-      '<a href="' + esc(p.linkPodgladu) + '" target="_blank" rel="noopener">Podglad \u2197</a>' +
-      (p.opublikowana
-        ? '<button type="button" data-promo-cofnij="' + p.id + '">Cofnij publikacje</button>'
-        : '<button type="button" class="dzwon" data-promo-publikuj="' + p.id + '" style="background:var(--zielony);border-color:var(--zielony)">Opublikuj</button>') +
-      '<button type="button" data-promo-usun="' + p.id + '">Usun</button>' +
-    '</div></article>';
-}
-
-function promoPusta(){
-  return { id:null, nazwa:'', opisMaterial:'', firmaSlug:'', dekor:'', gruboscMm:20,
-    plytaDlCm:320, plytaGlCm:160, cenaNormalnaM2:'', cenaPromoM2:'', plytRazem:1, plytZostalo:1, dataKonca:'', zdjecieUrl:'' };
-}
-
-function rysujPromoFormularz(id){
-  var p = id ? PROMOCJE.find(function(x){ return x.id === id; }) : null;
-  var v = p ? Object.assign({}, p) : promoPusta();
-  PROMO_EDYTOWANA = id || 'nowa';
-
-  function pole(etyk, atrybuty){
-    return '<label class="stawka">' + etyk + '<input ' + atrybuty + '></label>';
-  }
-
-  document.getElementById('promo-form').innerHTML =
-    '<div class="szczegoly" style="margin-top:.8rem">' +
-    '<h3 style="margin:0 0 .4rem">' + (p ? 'Edycja promocji' : 'Nowa promocja') + '</h3>' +
-    '<div class="stawki-siatka">' +
-      pole('Nazwa (widzi klient)', 'id="pf-nazwa" value="' + esc(v.nazwa) + '" placeholder="np. Calacatta Gold \u2014 ostatnie plyty">') +
-      pole('Opis materialu (podtytul, opcjonalnie)', 'id="pf-opis" value="' + esc(v.opisMaterial) + '" placeholder="np. Konglomerat kwarcowy">') +
-      pole('Firma z cennika (slug, opcjonalnie)', 'id="pf-firma" value="' + esc(v.firmaSlug) + '" placeholder="np. avant-quartz">') +
-      pole('Dekor (opcjonalnie)', 'id="pf-dekor" value="' + esc(v.dekor) + '" placeholder="np. Dijon">') +
-      pole('Grubosc (mm)', 'id="pf-grubosc" type="number" min="1" value="' + v.gruboscMm + '">') +
-      pole('Dlugosc plyty (cm)', 'id="pf-dl" type="number" min="1" value="' + v.plytaDlCm + '">') +
-      pole('Glebokosc plyty (cm)', 'id="pf-gl" type="number" min="1" value="' + v.plytaGlCm + '">') +
-      pole('Cena normalna zl/m\u00b2 (przekreslona, opcjonalnie)', 'id="pf-cena-norm" type="number" min="0" value="' + v.cenaNormalnaM2 + '">') +
-      pole('Cena promocyjna zl/m\u00b2 \u2014 GOTOWA dla klienta *', 'id="pf-cena-promo" type="number" min="1" value="' + v.cenaPromoM2 + '">') +
-      pole('Ile plyt razem *', 'id="pf-razem" type="number" min="1" value="' + v.plytRazem + '">') +
-      pole('Ile zostalo teraz *', 'id="pf-zostalo" type="number" min="0" value="' + v.plytZostalo + '">') +
-      pole('Koniec promocji (opcjonalnie)', 'id="pf-koniec" type="date" value="' + esc(v.dataKonca) + '">') +
-      pole('Zdjecie \u2014 adres URL (opcjonalnie)', 'id="pf-zdjecie" value="' + esc(v.zdjecieUrl) + '" placeholder="https://\u2026">') +
-    '</div>' +
-    '<p class="mini" id="promo-blad" style="color:var(--czerwony)"></p>' +
-    '<p><button class="btn" type="button" id="promo-zapisz" data-id="' + (v.id || '') + '">Zapisz</button> ' +
-    '<button class="btn cichy" type="button" id="promo-anuluj">Anuluj</button></p>' +
-    '</div>';
-}
-
-function promoZFormularza(id){
-  return {
-    id: id || undefined,
-    nazwa: document.getElementById('pf-nazwa').value.trim(),
-    opisMaterial: document.getElementById('pf-opis').value.trim(),
-    firmaSlug: document.getElementById('pf-firma').value.trim(),
-    dekor: document.getElementById('pf-dekor').value.trim(),
-    gruboscMm: Number(document.getElementById('pf-grubosc').value) || 20,
-    plytaDlCm: Number(document.getElementById('pf-dl').value) || 0,
-    plytaGlCm: Number(document.getElementById('pf-gl').value) || 0,
-    cenaNormalnaM2: Number(document.getElementById('pf-cena-norm').value) || 0,
-    cenaPromoM2: Number(document.getElementById('pf-cena-promo').value) || 0,
-    plytRazem: Number(document.getElementById('pf-razem').value) || 0,
-    plytZostalo: Number(document.getElementById('pf-zostalo').value),
-    dataKonca: document.getElementById('pf-koniec').value || '',
-    zdjecieUrl: document.getElementById('pf-zdjecie').value.trim(),
+  document.getElementById('wyprzedaz-pokaz').onclick = function(){
+    var t = document.getElementById('wyprzedaz-tresc');
+    t.hidden = !t.hidden;
   };
+  document.getElementById('wyprzedaz-nowa').onclick = function(){
+    document.getElementById('wyprzedaz-tresc').hidden = false;
+    PLYTA_EDYTOWANA = 'nowa';
+    rysujPlyteFormularz(null);
+  };
+  if (PLYTA_EDYTOWANA !== null) {
+    document.getElementById('wyprzedaz-tresc').hidden = false;
+    rysujPlyteFormularz(PLYTA_EDYTOWANA === 'nowa' ? null : PLYTA_EDYTOWANA);
+  }
 }
 
-async function promoZapisz(id){
-  var dane = promoZFormularza(id);
-  var btn = document.getElementById('promo-zapisz');
-  btn.disabled = true;
-  var odp = await (await fetch('/panel/api/promocje/zapisz', {method:'POST',
+function plytaWiersz(p){
+  var sprzedana = p.plytZostalo <= 0;
+  var stan = sprzedana
+    ? '<span class="znacznik">sprzedana</span>'
+    : p.opublikowana
+      ? '<span class="znacznik dobry">widoczna dla klientow</span>'
+      : '<span class="znacznik">szkic - klient jej nie widzi</span>';
+
+  var bylo = p.cenaNormalnaM2 > 0
+    ? '<s>' + p.cenaNormalnaM2 + '</s> ' : '';
+
+  var mini = p.zdjecie
+    ? '<img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="" loading="lazy">'
+    : '<span class="plyta-mini pusta">bez zdjecia</span>';
+
+  return '<div class="wiersz plyta-wiersz" data-id="' + p.id + '">' +
+    mini +
+    '<div class="plyta-tresc">' +
+      '<b>' + esc(p.nazwa) + '</b> ' + stan +
+      (p.kodPlyty ? ' <span class="kod-plyty">' + esc(p.kodPlyty) + '</span>' : '') +
+      '<div class="mini">' + p.plytaDlCm + ' x ' + p.plytaGlCm + ' cm, ' + p.gruboscMm + ' mm' +
+        ' &middot; ' + bylo + '<b>' + p.cenaM2 + ' zl/m2</b>' +
+        ' &middot; zostalo ' + p.plytZostalo + ' z ' + p.plytRazem +
+        (p.opis ? ' &middot; ' + esc(p.opis) : '') +
+      '</div>' +
+      '<div class="plyta-akcje">' +
+        '<button class="btn cichy" type="button" data-akcja="edytuj">Edytuj</button> ' +
+        '<a class="btn cichy" href="' + esc(p.linkPodgladu) + '" target="_blank" rel="noopener">Podglad ↗</a> ' +
+        '<button class="btn' + (p.opublikowana ? ' cichy' : '') + '" type="button" data-akcja="publikuj">' +
+          (p.opublikowana ? 'Cofnij publikacje' : 'Opublikuj') + '</button> ' +
+        '<button class="btn cichy" type="button" data-akcja="dostepnosc">' +
+          (sprzedana ? 'Wrocila na plac' : 'Sprzedana') + '</button> ' +
+        '<button class="btn cichy" type="button" data-akcja="usun">Usun</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function rysujPlyteFormularz(id){
+  var p = id ? WYPRZEDAZ.find(function(x){ return x.id === id; }) : null;
+  var w = function(n, d){ return p && p[n] != null && p[n] !== '' ? p[n] : (d == null ? '' : d); };
+
+  document.getElementById('wyprzedaz-formularz').innerHTML =
+    '<div class="lejek plyta-form">' +
+      '<h3>' + (p ? 'Edytujesz: ' + esc(p.nazwa) : 'Nowa plyta') + '</h3>' +
+      '<label>Nazwa (widzi ja klient)<input id="pl-nazwa" value="' + esc(String(w('nazwa'))) + '" placeholder="np. Granit Star Galaxy"></label>' +
+      '<label>Dopisek pod nazwa<input id="pl-opis" value="' + esc(String(w('opis'))) + '" placeholder="np. polerowany, ostatnia sztuka"></label>' +
+      '<label>Numer plyty z magazynu<input id="pl-kod" value="' + esc(String(w('kodPlyty'))) + '" placeholder="dla Ciebie - trafia na karte wyceny"></label>' +
+      '<label>Rodzaj materialu' +
+        '<select id="pl-firma">' +
+          '<option value=""' + (w('firmaSlug') ? '' : ' selected') + '>Konglomerat / spiek</option>' +
+          '<option value="interstone"' + (w('firmaSlug') === 'interstone' ? ' selected' : '') + '>Kamien naturalny (granit, marmur, kwarcyt)</option>' +
+        '</select>' +
+      '</label>' +
+      '<div class="dwie">' +
+        '<label>Dlugosc plyty (cm)<input id="pl-dl" type="number" step="1" value="' + esc(String(w('plytaDlCm', 320))) + '"></label>' +
+        '<label>Glebokosc plyty (cm)<input id="pl-gl" type="number" step="1" value="' + esc(String(w('plytaGlCm', 160))) + '"></label>' +
+      '</div>' +
+      '<div class="dwie">' +
+        '<label>Grubosc (mm)<input id="pl-grubosc" type="number" step="1" value="' + esc(String(w('gruboscMm', 20))) + '"></label>' +
+        '<label>Ile sztuk masz<input id="pl-razem" type="number" step="1" min="1" value="' + esc(String(w('plytRazem', 1))) + '"></label>' +
+      '</div>' +
+      '<div class="dwie">' +
+        '<label>Cena dla klienta (zl/m2 brutto)<input id="pl-cena" type="number" step="1" value="' + esc(String(w('cenaM2'))) + '"></label>' +
+        '<label>Cena "bylo" (opcjonalnie)<input id="pl-cena-bylo" type="number" step="1" value="' + esc(String(w('cenaNormalnaM2', 0))) + '"></label>' +
+      '</div>' +
+      (p ? '<label>Zostalo sztuk<input id="pl-zostalo" type="number" step="1" min="0" value="' + esc(String(w('plytZostalo', 1))) + '"></label>' : '') +
+      '<label>Zdjecie - adres w internecie<input id="pl-zdjecie-url" value="' + esc(String(w('zdjecieUrl'))) + '" placeholder="https://..."></label>' +
+      '<label>...albo wgraj plik z dysku<input id="pl-zdjecie-plik" type="file" accept="image/*"></label>' +
+      '<p class="mini" id="pl-zdjecie-info">' +
+        (p && p.zdjecie ? 'Teraz: <img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="">' : 'Bez zdjecia karta pokaze sama nazwe.') +
+      '</p>' +
+      '<p><button class="btn" type="button" id="pl-zapisz">Zapisz</button> ' +
+      '<button class="btn cichy" type="button" id="pl-anuluj">Anuluj</button></p>' +
+      '<p class="mini" id="pl-info"></p>' +
+    '</div>';
+
+  document.getElementById('pl-anuluj').onclick = function(){
+    PLYTA_EDYTOWANA = null;
+    document.getElementById('wyprzedaz-formularz').innerHTML = '';
+  };
+  document.getElementById('pl-zdjecie-plik').onchange = wczytajZdjecie;
+  document.getElementById('pl-zapisz').onclick = function(){ plytaZapisz(id); };
+}
+
+/*
+ * ZDJECIE Z DYSKU - zmniejszamy je W PRZEGLADARCE, przed wyslaniem.
+ *
+ * Telefon Dawida robi zdjecia po kilka megabajtow. Wiersz D1 tego nie
+ * uniesie, a i tak nikt nie oglada plyty w rozdzielczosci aparatu.
+ * Skalujemy do 1200 px dluzszego boku i zapisujemy jako JPEG - z 4 MB
+ * robi sie okolo 200 kB.
+ */
+var ZDJECIE_DANE = '';
+var ZDJECIE_MAKS_BOK = 1200;
+
+function wczytajZdjecie(e){
+  var plik = e.target.files && e.target.files[0];
+  var info = document.getElementById('pl-zdjecie-info');
+  if (!plik) { ZDJECIE_DANE = ''; return; }
+
+  var czytnik = new FileReader();
+  czytnik.onload = function(){
+    var obraz = new Image();
+    obraz.onload = function(){
+      var skala = Math.min(1, ZDJECIE_MAKS_BOK / Math.max(obraz.width, obraz.height));
+      var plotno = document.createElement('canvas');
+      plotno.width = Math.round(obraz.width * skala);
+      plotno.height = Math.round(obraz.height * skala);
+      plotno.getContext('2d').drawImage(obraz, 0, 0, plotno.width, plotno.height);
+      ZDJECIE_DANE = plotno.toDataURL('image/jpeg', 0.82);
+      info.innerHTML = 'Wgrane: <img class="plyta-mini" src="' + ZDJECIE_DANE + '" alt="">';
+    };
+    obraz.onerror = function(){ info.textContent = 'Nie umiem odczytac tego pliku.'; };
+    obraz.src = czytnik.result;
+  };
+  czytnik.readAsDataURL(plik);
+}
+
+async function plytaZapisz(id){
+  var info = document.getElementById('pl-info');
+  var wart = function(x){ return document.getElementById(x).value; };
+  var dane = {
+    id: id || 0,
+    nazwa: wart('pl-nazwa'),
+    opis: wart('pl-opis'),
+    kodPlyty: wart('pl-kod'),
+    firmaSlug: wart('pl-firma'),
+    gruboscMm: wart('pl-grubosc'),
+    plytaDlCm: wart('pl-dl'),
+    plytaGlCm: wart('pl-gl'),
+    cenaM2: wart('pl-cena'),
+    cenaNormalnaM2: wart('pl-cena-bylo'),
+    plytRazem: wart('pl-razem'),
+    zdjecieUrl: wart('pl-zdjecie-url')
+  };
+  if (id) dane.plytZostalo = wart('pl-zostalo');
+  if (ZDJECIE_DANE) dane.zdjecieDane = ZDJECIE_DANE;
+
+  info.textContent = 'Zapisuje...';
+  var odp = await (await fetch('/panel/api/wyprzedaz/zapisz', {method:'POST',
     headers:{'content-type':'application/json'}, body: JSON.stringify(dane)})).json();
-  btn.disabled = false;
-  if (odp.error) { document.getElementById('promo-blad').textContent = odp.error; return; }
-  PROMO_EDYTOWANA = null;
-  await rysujPromocje();
+  if (odp.error) { info.textContent = odp.error; return; }
+
+  ZDJECIE_DANE = '';
+  PLYTA_EDYTOWANA = null;
+  document.getElementById('wyprzedaz-formularz').innerHTML = '';
+  await rysujWyprzedaz();
+  document.getElementById('wyprzedaz-tresc').hidden = false;
 }
 
-async function promoUstawPublikacje(id, opublikowana){
-  await fetch('/panel/api/promocje/publikuj', {method:'POST', headers:{'content-type':'application/json'},
+async function plytaPublikuj(id, opublikowana){
+  await fetch('/panel/api/wyprzedaz/publikuj', {method:'POST', headers:{'content-type':'application/json'},
     body: JSON.stringify({id: id, opublikowana: opublikowana})});
-  await rysujPromocje();
+  await rysujWyprzedaz();
+  document.getElementById('wyprzedaz-tresc').hidden = false;
 }
 
-async function promoMinusJedna(id){
-  var p = PROMOCJE.find(function(x){ return x.id === id; });
-  if (!p || p.plytZostalo <= 0) return;
-  var dane = Object.assign({}, p, { id: id, plytZostalo: p.plytZostalo - 1 });
-  await fetch('/panel/api/promocje/zapisz', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(dane)});
-  await rysujPromocje();
+async function plytaDostepnosc(id){
+  var p = WYPRZEDAZ.find(function(x){ return x.id === id; });
+  if (!p) return;
+  // "Sprzedana" zeruje licznik, "wrocila" przywraca pelen stan.
+  await fetch('/panel/api/wyprzedaz/dostepnosc', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({id: id, plytZostalo: p.plytZostalo > 0 ? 0 : p.plytRazem})});
+  await rysujWyprzedaz();
+  document.getElementById('wyprzedaz-tresc').hidden = false;
 }
 
-async function promoUsun(id){
-  if (!confirm('Skasowac te promocje? Tego nie da sie cofnac.')) return;
-  await fetch('/panel/api/promocje/usun', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({id: id})});
-  await rysujPromocje();
+async function plytaUsun(id){
+  if (!confirm('Skasowac te plyte? Tego nie da sie cofnac.')) return;
+  await fetch('/panel/api/wyprzedaz/usun', {method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({id: id})});
+  await rysujWyprzedaz();
+  document.getElementById('wyprzedaz-tresc').hidden = false;
 }
 
 function znacznikFeedbacku(k){
@@ -1210,22 +1309,20 @@ document.addEventListener('click', function(e){
     });
     return;
   }
-  if(e.target.id === 'promocje-pokaz'){
-    var pt = document.getElementById('promocje-tresc'); pt.hidden = !pt.hidden; return;
+  // Wyprzedaz plyt: kazdy wiersz niesie swoje id, a przycisk - nazwe akcji.
+  // Jeden zestaw atrybutow zamiast szesciu osobnych data-* na kazda operacje.
+  var przyciskPlyty = e.target.closest('.plyta-wiersz [data-akcja]');
+  if(przyciskPlyty){
+    var idPlyty = Number(przyciskPlyty.closest('.plyta-wiersz').dataset.id);
+    var akcja = przyciskPlyty.dataset.akcja;
+    if(akcja === 'edytuj'){ PLYTA_EDYTOWANA = idPlyty; rysujPlyteFormularz(idPlyty); return; }
+    if(akcja === 'publikuj'){
+      var plyta = WYPRZEDAZ.find(function(x){ return x.id === idPlyty; });
+      plytaPublikuj(idPlyty, !(plyta && plyta.opublikowana)); return;
+    }
+    if(akcja === 'dostepnosc'){ plytaDostepnosc(idPlyty); return; }
+    if(akcja === 'usun'){ plytaUsun(idPlyty); return; }
   }
-  if(e.target.id === 'promo-nowa'){ rysujPromoFormularz(null); return; }
-  if(e.target.id === 'promo-anuluj'){ PROMO_EDYTOWANA = null; document.getElementById('promo-form').innerHTML = ''; return; }
-  if(e.target.id === 'promo-zapisz'){ promoZapisz(Number(e.target.dataset.id) || null); return; }
-  var pEdytuj = e.target.closest('[data-promo-edytuj]');
-  if(pEdytuj){ rysujPromoFormularz(Number(pEdytuj.dataset.promoEdytuj)); return; }
-  var pMinus = e.target.closest('[data-promo-minus]');
-  if(pMinus){ promoMinusJedna(Number(pMinus.dataset.promoMinus)); return; }
-  var pPublikuj = e.target.closest('[data-promo-publikuj]');
-  if(pPublikuj){ promoUstawPublikacje(Number(pPublikuj.dataset.promoPublikuj), true); return; }
-  var pCofnij = e.target.closest('[data-promo-cofnij]');
-  if(pCofnij){ promoUstawPublikacje(Number(pCofnij.dataset.promoCofnij), false); return; }
-  var pUsun = e.target.closest('[data-promo-usun]');
-  if(pUsun){ promoUsun(Number(pUsun.dataset.promoUsun)); return; }
   var chip = e.target.closest('[data-status]');
   if(chip){
     var sel = document.getElementById('f-status');

@@ -1,11 +1,22 @@
 import { h, zl, liczba, uprosc } from './dom.js';
 import { opcjaDostepna } from '../engine/opcje-dekoru.js';
-import { FIRMY, grubosciDekoru } from '../firms/index.js';
+import { FIRMY, grubosciDekoru, cenaWpisu } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { upakuj, opisPlyt } from '../engine/pakowanie.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { bramkaWyceny } from './bramka.js';
-import { formaPlyty, dataPl } from './promo-plyt.js';
+import {
+  SLUG as WYPRZEDAZ_SLUG,
+  firmaWyprzedazy,
+  plytaWgDekoru,
+  kluczDekoru,
+  doPokazania,
+  cenaCalejPlyty,
+  upustProcent,
+  formaPlyty,
+} from './wyprzedaz.js';
+import { zaladowane } from './wyprzedaz-dane.js';
+import { kartaPlyty } from './wyprzedaz-karta.js';
 
 const TEL = '796 991 128';
 const TEL_HREF = 'tel:+48796991128';
@@ -13,6 +24,20 @@ const TEL_HREF = 'tel:+48796991128';
 /* ============================ 1. MATERIAŁ ============================ */
 
 export function krokMaterial(stan, a) {
+  /*
+   * Kategorie to firmy z `src/firms/` PLUS wyprzedaż, jeśli Dawid ma dziś
+   * coś na placu. Wyprzedaż nie jest plikiem w rejestrze, bo jej zawartość
+   * zmienia się bez wdrożenia strony — dlatego dokładamy ją tutaj,
+   * a nie w `firms/index.js`.
+   *
+   * Gdy nie ma żadnej opublikowanej płyty, kategoria po prostu się nie
+   * pojawia: klient nie ma powodu widzieć pustej „wyprzedaży".
+   */
+  const plyty = doPokazania(zaladowane());
+  const kategorie = plyty.length
+    ? [...FIRMY, firmaWyprzedazy(plyty)].sort((x, y) => (x.kolejnosc ?? 99) - (y.kolejnosc ?? 99))
+    : FIRMY;
+
   return karta(
     'Krok 1 z 4',
     'Z czego ma być blat?',
@@ -20,11 +45,15 @@ export function krokMaterial(stan, a) {
     h(
       'div',
       { class: 'choices cols-2' },
-      FIRMY.map((f) => {
+      kategorie.map((f) => {
+        const wyprzedaz = f.slug === WYPRZEDAZ_SLUG;
         return h(
           'button',
           {
-            class: 'choice' + (stan.firma === f.slug ? ' sel' : ''),
+            class:
+              'choice' +
+              (stan.firma === f.slug ? ' sel' : '') +
+              (wyprzedaz ? ' choice-wyprzedaz' : ''),
             type: 'button',
             onclick: () => a.wybierzFirme(f.slug),
           },
@@ -32,7 +61,7 @@ export function krokMaterial(stan, a) {
             'div',
             { class: 'c-top' },
             h('span', { class: 'c-name' }, f.nazwa),
-            h('span', { class: 'c-tag' }, f.typ)
+            h('span', { class: 'c-tag' }, wyprzedaz ? `${plyty.length} ${formaPlyty(plyty.length)}` : f.typ)
           ),
           h('span', { class: 'c-desc' }, f.krotki)
         );
@@ -47,6 +76,9 @@ export function krokDekor(stan, a) {
   const f = a.firma();
 
   if (f.trybCeny === 'reczna') return krokKamienNaturalny(stan, a, f);
+  // Wyprzedaż pokazuje ZDJĘCIA konkretnych płyt, nie listę nazw dekorów —
+  // przy resztce z placu klient kupuje TĘ płytę i chce zobaczyć, jak wygląda.
+  if (f.slug === WYPRZEDAZ_SLUG) return krokWyprzedaz(stan, a);
 
   const lista = przygotujDekory(f);
   const box = h('div', {});
@@ -94,7 +126,16 @@ export function krokDekor(stan, a) {
 function przygotujDekory(f) {
   const poz = Object.entries(f.dekory || {}).map(([nazwa, ceny]) => {
     const dostepne = Object.entries(ceny).filter(([g]) => !(f.pomijGrubosci || []).includes(g));
-    const min = Math.min(...dostepne.map(([, c]) => c));
+    /*
+     * ⚠ Wpis cennika bywa OBIEKTEM `{cena, plyta}`, nie samą liczbą —
+     * tak wygląda Atlas Plan (płyty 324×162 i 324×159) i Pacific.
+     * `Math.min` po obiektach dawał NaN, `Number.isFinite` niżej wycinał
+     * takie pozycje i w efekcie przy tych dwóch markach klient widział
+     * PUSTĄ listę dekorów. Od tego jest `cenaWpisu` w firms/index.js.
+     * Znalezione 30.08.2026 przy dokładaniu kategorii wyprzedaży, która
+     * używa tej samej postaci wpisu.
+     */
+    const min = Math.min(...dostepne.map(([, c]) => cenaWpisu(c)));
     return { nazwa, min, grubosci: dostepne.map(([g]) => g) };
   });
   return poz.filter((p) => Number.isFinite(p.min)).sort((x, y) => x.min - y.min || x.nazwa.localeCompare(y.nazwa, 'pl'));
@@ -208,6 +249,47 @@ function krokKamienNaturalny(stan, a, f) {
   );
 }
 
+/**
+ * WYPRZEDAŻ — wybór konkretnej płyty z placu.
+ *
+ * Zamiast listy nazw (jak przy cenniku) klient dostaje karty ze zdjęciem,
+ * wymiarem, ceną za m² i ceną za całą płytę. Cena całej płyty jest tu
+ * najważniejszą liczbą: przy resztce magazynowej klient kupuje SZTUKĘ,
+ * a nie metry z niej, więc to ona mówi, ile realnie wyda na materiał.
+ */
+function krokWyprzedaz(stan, a) {
+  const plyty = doPokazania(zaladowane());
+
+  if (!plyty.length) {
+    return karta(
+      'Krok 2 z 4',
+      'Wyprzedaż płyt',
+      'W tej chwili nie mamy nic na wyprzedaży — wszystko zeszło.',
+      h(
+        'p',
+        { class: 'pusto' },
+        `Zapraszamy do zwykłego cennika albo telefonicznie: ${TEL} — czasem coś pojawia się na placu z dnia na dzień.`
+      ),
+      nawigacja(a, { wstecz: 'material', dalejBlokada: true })
+    );
+  }
+
+  const karty = plyty.map((p) =>
+    kartaPlyty(p, {
+      wybrana: stan.dekor === kluczDekoru(p),
+      onWybierz: () => a.wybierzDekor(kluczDekoru(p)),
+    })
+  );
+
+  return karta(
+    'Krok 2 z 4',
+    'Którą płytę bierzemy?',
+    'Każda z nich leży u nas na placu i jest jedna. Cena obejmuje sam materiał — obróbkę i montaż policzymy w kolejnych krokach.',
+    h('div', { class: 'plyty-wyprzedaz' }, karty),
+    nawigacja(a, { wstecz: 'material', dalejBlokada: true })
+  );
+}
+
 /* ============================ 3. WYMIARY ============================ */
 
 export function krokWymiary(stan, a) {
@@ -292,7 +374,7 @@ export function krokWymiary(stan, a) {
     'Podaj każdy prosty odcinek blatu osobno — blat w literę L to dwa odcinki. ' +
       'Typowa głębokość blatu kuchennego to 60–65 cm. Wymiary mogą być przybliżone, dokładne bierzemy na pomiarze.',
 
-    stan.promo ? promoPasek(stan.promo, a) : null,
+    plytaPasek(stan, a),
 
     grubosci.length > 1
       ? h(
@@ -322,43 +404,45 @@ export function krokWymiary(stan, a) {
     listaOdcinkow,
     szkic,
     podsumowanie,
-    // W trybie promocji nie ma dokąd wracać po „Wstecz" — kroki 1 i 2 były
-    // pominięte. Wyjście z trybu jest jedno: przycisk „Zmień materiał"
-    // w `promoPasek` wyżej, więc tutaj chowamy zwykły przycisk cofania.
-    nawigacja(a, stan.promo ? { dalej: 'obrobki' } : { wstecz: 'dekor', dalej: 'obrobki' })
+    nawigacja(a, { wstecz: 'dekor', dalej: 'obrobki' })
   );
 }
 
 /**
- * Podsumowanie wybranej promocji na kroku „Wymiary" — klient wszedł tu
- * z banera z pominięciem kroków „Materiał"/„Dekor", więc musi widzieć
- * OD RAZU, co dokładnie liczy: nazwę, cenę Dawida (nie do zmiany) i ile
- * płyt zostało. „Zmień materiał" to jedyne wyjście z trybu promocji.
+ * Pasek wybranej płyty wyprzedaży na kroku „Wymiary".
+ *
+ * Klient mógł tu wejść prosto ze strony wyprzedaży, z pominięciem kroków
+ * „Materiał" i „Dekor" — musi więc widzieć OD RAZU, którą płytę liczy,
+ * po ile i ile ich zostało. Przy zwykłym cenniku pasek się nie pojawia:
+ * tam klient dopiero co przeszedł przez wybór dekoru i pamięta, co wybrał.
  */
-function promoPasek(promo, a) {
+function plytaPasek(stan, a) {
+  if (stan.firma !== WYPRZEDAZ_SLUG) return null;
+  const p = plytaWgDekoru(zaladowane(), stan.dekor);
+  if (!p) return null;
+
   return h(
     'div',
-    { class: 'promo-pasek' },
+    { class: 'plyta-pasek' },
     h(
       'div',
-      { class: 'promo-pasek-tekst' },
-      h('span', { class: 'promo-pasek-etykieta' }, 'Wybrana promocja'),
-      h('b', {}, promo.nazwa),
+      { class: 'plyta-pasek-tekst' },
+      h('span', { class: 'plyta-pasek-etykieta' }, 'Wybrana płyta z wyprzedaży'),
+      h('b', {}, p.nazwa),
       h(
         'span',
-        { class: 'promo-pasek-cena' },
-        `${zl(promo.cenaPromoM2)}/m² · zostało ${promo.plytZostalo} ${formaPlyty(promo.plytZostalo)}` +
-          (promo.dataKonca ? ` · do ${dataPl(promo.dataKonca)}` : '')
+        { class: 'plyta-pasek-cena' },
+        `${zl(p.cenaM2)}/m² · cała płyta ${zl(cenaCalejPlyty(p))} · ` +
+          (p.plytZostalo === 1 ? 'ostatnia sztuka' : `zostało ${p.plytZostalo} ${formaPlyty(p.plytZostalo)}`)
       )
     ),
     h(
       'button',
-      { class: 'link-btn', type: 'button', onclick: () => a.zmienMaterial() },
-      'Zmień materiał'
+      { class: 'link-btn', type: 'button', onclick: () => a.idz('dekor') },
+      'Zmień płytę'
     )
   );
 }
-
 function odswiezPodsumowanie(box, szkic, stan, f) {
   // `narzutOdpad` NIE dotyczy pakowania — o liczbie płyt decyduje geometria
   // rozkroju, a procent na odpad zawyżałby ją drugi raz (patrz engine/pakowanie.js).

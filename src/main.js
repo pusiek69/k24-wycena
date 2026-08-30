@@ -8,8 +8,8 @@ import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
 import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 import { gotoweStawki } from './app/stawki-klient.js';
-import { paczkaPodgladu } from './app/promo-plyt.js';
-import { gotowePromocje, renderBaner } from './app/promocje-baner.js';
+import { pobierzPlyty, zaladowane } from './app/wyprzedaz-dane.js';
+import { doPokazania, kluczDekoru } from './app/wyprzedaz.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
@@ -56,20 +56,22 @@ przyklejonyPrzycisk();
 gotoweStawki();
 
 /*
- * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026).
+ * WYPRZEDAŻ PŁYT (zlecenie Dawida, 30.08.2026).
  *
- * TRYB PODGLĄDU: link z panelu niesie fragment #promoPodglad=… — dokładnie
- * ta sama strona, dokładnie ten sam kod banera, tylko źródło danych inne
- * (dokłada JEDEN wskazany szkic, z podpisem właściciela). Dawid widzi
- * DOKŁADNIE to, co zobaczy klient, zanim jeszcze cokolwiek opublikuje.
+ * Płyty pobieramy RAZ, zanim wystartuje kreator — kategoria „NATURA
+ * WYPRZEDAŻ" musi być gotowa już przy pierwszym rysowaniu kroku
+ * „Materiał", inaczej pojawiłaby się z opóźnieniem i przeskoczyła
+ * klientowi pod kursorem.
  *
- * Baner NIE pokazuje się w trybie „Powtórz wycenę" (edytor ofert dla
- * Dawida) — to inny kontekst: on wtedy przygotowuje wycenę KONKRETNEMU
- * klientowi, a nie sam nią przegląda jak kupujący.
+ * Gdy pobranie się nie uda (albo Dawid nic nie wystawił), lista jest
+ * pusta i kategoria po prostu się nie pokazuje. Wyprzedaż jest dodatkiem —
+ * jej awaria nie ma prawa zatrzymać kalkulatora.
+ *
+ * TRYB PODGLĄDU: link z panelu niesie fragment `#wyprzedazPodglad=…`.
+ * Obsługuje go `wyprzedaz-dane.js` — dokłada JEDEN wskazany szkic,
+ * z podpisem właściciela. Dalej wszystko idzie tym samym kodem, więc
+ * Dawid widzi DOKŁADNIE to, co zobaczy klient po publikacji.
  */
-const podgladPromocji = paczkaPodgladu(location.hash);
-const banerBox = document.getElementById('promo-baner');
-
 const powtorka = paczkaPowtorki();
 if (!FIRMY.length) {
   root.innerHTML =
@@ -78,18 +80,27 @@ if (!FIRMY.length) {
 } else if (powtorka) {
   uruchomOferteDawida(root, powtorka);
 } else {
-  if (banerBox) {
-    gotowePromocje(podgladPromocji).then((promocje) => {
-      renderBaner(banerBox, promocje, {
-        podglad: !!podgladPromocji,
-        onWybierz: (promo) => {
-          zdarzenie('promo_plyt_wybrana', { promocja: promo.nazwa });
-          uruchomKreator(root, { promo });
-        },
-      });
-    });
-  }
-  uruchomAplikacje(root);
+  pobierzPlyty().finally(() => {
+    /*
+     * Wejście prosto z konkretnej płyty: strona wyprzedaży linkuje do
+     * `/#wyprzedaz=<klucz płyty>`. Numer idzie w ADRESIE, a nie w pamięci
+     * przeglądarki, żeby link dało się wysłać klientowi i żeby działał
+     * po otwarciu w nowej karcie.
+     *
+     * Gdy płyta zeszła między kliknięciem a wejściem tutaj, nie
+     * udajemy, że nadal jest — kreator startuje normalnie, od materiału.
+     */
+    const zLinku = /^#wyprzedaz=(.+)$/.exec(location.hash);
+    const plyta = zLinku
+      ? doPokazania(zaladowane()).find((p) => kluczDekoru(p) === decodeURIComponent(zLinku[1]))
+      : null;
+
+    uruchomAplikacje(root);
+    if (plyta) {
+      zdarzenie('wyprzedaz_kreator', { plyta: plyta.nazwa });
+      uruchomKreator(root.querySelector('.panel') || root, { plyta });
+    }
+  });
 }
 
 /**

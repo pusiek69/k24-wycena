@@ -162,49 +162,63 @@ CREATE INDEX IF NOT EXISTS wyceny_watek ON wyceny (watek, id);
 UPDATE wyceny SET watek = token WHERE watek = '' AND token <> '';
 
 -- ═══════════════════════════════════════════════════════════════════════
---  PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026)
+--  WYPRZEDAŻ PŁYT — kategoria „NATURA WYPRZEDAŻ" w kalkulatorze
+--  oraz strona /wyprzedaz-plyt  (zlecenie Dawida, 30.08.2026)
 --
---  Wyprzedaż resztek magazynowych — nie ma nic wspólnego z kampaniami
---  dostawców (Avant/Caesarstone/Keralini/Laminam), które żyją w
---  pricing/zrodla/*.promocje.json. Tu Dawid ma FIZYCZNIE ograniczoną
---  liczbę sztuk jednej konkretnej płyty i sam ustawia GOTOWĄ cenę dla
---  klienta — żadnych przeliczników marży w kodzie.
+--  Jeden wiersz = JEDNA fizyczna płyta z magazynu, którą Dawid chce
+--  sprzedać: zdjęcie, wymiar, grubość i GOTOWA cena dla klienta.
 --
---  Licznik `plyt_zostalo` zmniejsza Dawid RĘCZNIE z panelu — sprzedaje
---  też poza kalkulatorem (telefonicznie, na miejscu), więc automatyczne
---  liczenie z zamówień online byłoby nieprawdziwe.
+--  DLACZEGO CENA JEST GOTOWA: Dawid wpisuje kwotę, którą klient ma
+--  zobaczyć. Silnik nie nakłada na nią żadnej marży ani upustu —
+--  wyprzedaż to resztka magazynowa, jej cena nie wynika z cennika
+--  dostawcy i nie ma się do czego odnosić.
 --
---  `opublikowana = 0` to SZKIC: baner na stronie go nie pokazuje, widzi go
---  wyłącznie Dawid pod podpisanym linkiem podglądu (dokładnie ten sam
---  baner, jaki zobaczy klient po kliknięciu „Opublikuj").
+--  `cena_normalna_m2 = 0` znaczy „nie pokazuj przekreślonej ceny".
+--  Gdy większa od zera, na karcie płyty widać „było … jest …".
+--
+--  `plyt_zostalo = 0` to płyta SPRZEDANA: znika z kalkulatora i ze strony,
+--  ale zostaje w panelu — Dawid widzi, co poszło, i może cofnąć pomyłkę.
+--
+--  `opublikowana = 0` to SZKIC: ani kategoria w kalkulatorze, ani strona
+--  wyprzedaży go nie pokazują. Widzi go wyłącznie Dawid pod podpisanym
+--  linkiem podglądu — tym samym kodem, który zobaczy klient po
+--  kliknięciu „Opublikuj".
+--
+--  POPRZEDNICZKA: tabela `promocje_plyt` (baner „ostatnie płyty"
+--  z licznikiem). Dawid zmienił koncepcję na prostszą, zanim cokolwiek
+--  trafiło na produkcję — tamta tabela była pusta i została usunięta.
 -- ═══════════════════════════════════════════════════════════════════════
-CREATE TABLE IF NOT EXISTS promocje_plyt (
+DROP TABLE IF EXISTS promocje_plyt;
+
+CREATE TABLE IF NOT EXISTS wyprzedaz_plyt (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  -- Nazwa widoczna dla klienta, np. „Granit Star Galaxy".
   nazwa             TEXT NOT NULL,
-  -- Wolny opis pod nazwą na banerze, np. „Avant Quartz · Calacatta Chery".
-  opis_material     TEXT NOT NULL DEFAULT '',
-  -- Gdy promocja odwołuje się do realnego dekoru z cennika (nie „płyty
-  -- własnej") — po co: link do zdjęć, rodzaj materiału, narzut odpadu.
-  -- Same ceny w wycenie i tak biorą się z cena_promo_m2, nie z cennika.
+  -- Wolny dopisek pod nazwą, np. „polerowany, jedna sztuka".
+  opis              TEXT NOT NULL DEFAULT '',
+  -- Numer płyty z magazynu — trafia na kartę wyceny i w temat maila,
+  -- tak samo jak przy kamieniu naturalnym, żeby Dawid wiedział, o którą chodzi.
+  kod_plyty         TEXT NOT NULL DEFAULT '',
+  -- Gdy płyta pochodzi z konkretnego cennika: dziedziczymy po niej rodzaj
+  -- materiału, narzut odpadu i dodatek za obróbkę kamienia naturalnego.
+  -- Cena i tak bierze się z `cena_m2`, nigdy z cennika.
   firma_slug        TEXT NOT NULL DEFAULT '',
-  dekor             TEXT NOT NULL DEFAULT '',
   grubosc_mm        INTEGER NOT NULL DEFAULT 20,
   plyta_dl_cm       REAL NOT NULL,
   plyta_gl_cm       REAL NOT NULL,
-  -- Obie ceny to zł/m² BRUTTO, wpisywane wprost przez Dawida — silnik
-  -- ich nie przelicza żadną marżą. cena_normalna to marketingowe „było",
-  -- stabilne przez cały czas trwania promocji (nie goni za cennikiem).
+  -- Obie kwoty to zł/m² BRUTTO, wpisywane wprost przez Dawida.
   cena_normalna_m2  INTEGER NOT NULL DEFAULT 0,
-  cena_promo_m2     INTEGER NOT NULL,
-  plyt_razem        INTEGER NOT NULL,
-  plyt_zostalo      INTEGER NOT NULL,
-  -- Opcjonalny koniec promocji (YYYY-MM-DD) — pusty string = bez terminu,
-  -- kończy ją wtedy tylko wyzerowanie sztuk.
-  data_konca        TEXT NOT NULL DEFAULT '',
+  cena_m2           INTEGER NOT NULL,
+  plyt_razem        INTEGER NOT NULL DEFAULT 1,
+  plyt_zostalo      INTEGER NOT NULL DEFAULT 1,
+  -- Zdjęcie: albo adres (`zdjecie_url`), albo wgrany plik trzymany jako
+  -- data URI (`zdjecie_dane`). Panel zmniejsza obrazek w przeglądarce
+  -- PRZED wysłaniem, żeby wiersz D1 nie urósł ponad limit.
   zdjecie_url       TEXT NOT NULL DEFAULT '',
+  zdjecie_dane      TEXT NOT NULL DEFAULT '',
   opublikowana      INTEGER NOT NULL DEFAULT 0,
   utworzono         TEXT NOT NULL,
   zmieniono         TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS promocje_plyt_opublikowana ON promocje_plyt (opublikowana);
+CREATE INDEX IF NOT EXISTS wyprzedaz_plyt_opublikowana ON wyprzedaz_plyt (opublikowana);

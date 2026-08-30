@@ -231,21 +231,21 @@ if (JEST) {
     });
   }
 
-  test('/promocje bez żadnej promocji zwraca pustą listę, nie błąd', async () => {
+  test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
-    const odp = await worker.fetch(zapytanie('/promocje', {}), env, ctx);
+    const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);
     const dane = await odp.json();
-    assert.equal(odp.status, 200, `/promocje oddał ${odp.status}: ${JSON.stringify(dane)}`);
-    assert.deepEqual(dane.promocje, []);
+    assert.equal(odp.status, 200, `/wyprzedaz oddał ${odp.status}: ${JSON.stringify(dane)}`);
+    assert.deepEqual(dane.plyty, []);
   });
 
-  test('szkic z panelu NIE pojawia się w publicznym /promocje', async () => {
+  test('szkic z panelu NIE pojawia się w publicznym /wyprzedaz', async () => {
     const env = srodowisko();
     const cookie = await ciastkoPanelu(env);
     const zapis = await worker.fetch(
       zapytaniePanel(
-        '/panel/api/promocje/zapisz',
-        { nazwa: 'Test — ostatnie płyty', plytaDlCm: 320, plytaGlCm: 160, cenaPromoM2: 890, plytRazem: 3 },
+        '/panel/api/wyprzedaz/zapisz',
+        { nazwa: 'Granit testowy', plytaDlCm: 320, plytaGlCm: 160, cenaM2: 890, plytRazem: 3 },
         cookie
       ),
       env,
@@ -253,11 +253,14 @@ if (JEST) {
     );
     const zapisDane = await zapis.json();
     assert.equal(zapis.status, 200, `zapisz oddał ${zapis.status}: ${JSON.stringify(zapisDane)}`);
-    assert.ok(zapisDane.id, 'brak id nowej promocji');
-    assert.ok(zapisDane.promocja.linkPodgladu.includes('#promoPodglad='), 'brak linku podglądu');
+    assert.ok(zapisDane.id, 'brak id nowej płyty');
+    assert.ok(
+      zapisDane.plyta.linkPodgladu.includes('/wyprzedaz-plyt#wyprzedazPodglad='),
+      'link podglądu nie prowadzi na stronę wyprzedaży'
+    );
 
-    const publiczny = await (await worker.fetch(zapytanie('/promocje', {}), env, ctx)).json();
-    assert.deepEqual(publiczny.promocje, [], 'szkic wyciekł do publicznego /promocje');
+    const publiczny = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
+    assert.deepEqual(publiczny.plyty, [], 'szkic wyciekł do publicznego /wyprzedaz');
   });
 
   test('link podglądu pokazuje TEN szkic, a publikacja wprowadza go na produkcję', async () => {
@@ -266,8 +269,8 @@ if (JEST) {
     const zapis = await (
       await worker.fetch(
         zapytaniePanel(
-          '/panel/api/promocje/zapisz',
-          { nazwa: 'Podgląd — test', plytaDlCm: 320, plytaGlCm: 160, cenaPromoM2: 750, plytRazem: 2 },
+          '/panel/api/wyprzedaz/zapisz',
+          { nazwa: 'Podgląd — test', plytaDlCm: 320, plytaGlCm: 160, cenaM2: 750, plytRazem: 2 },
           cookie
         ),
         env,
@@ -276,53 +279,146 @@ if (JEST) {
     ).json();
 
     // Wyciągamy exp/podpis z gotowego linku, tak jak zrobiłaby to strona podglądu.
-    const b64 = zapis.promocja.linkPodgladu.split('#promoPodglad=')[1];
+    const b64 = zapis.plyta.linkPodgladu.split('#wyprzedazPodglad=')[1];
     const paczka = JSON.parse(Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
 
-    const podglad = await (
-      await worker.fetch(zapytanie('/promocje', paczka), env, ctx)
-    ).json();
-    assert.equal(podglad.promocje.length, 1, 'podgląd nie pokazał szkicu');
-    assert.equal(podglad.promocje[0].nazwa, 'Podgląd — test');
+    const podglad = await (await worker.fetch(zapytanie('/wyprzedaz', paczka), env, ctx)).json();
+    assert.equal(podglad.plyty.length, 1, 'podgląd nie pokazał szkicu');
+    assert.equal(podglad.plyty[0].nazwa, 'Podgląd — test');
+    assert.equal(podglad.podglad, true, 'podgląd nie oznaczył się jako podgląd');
 
     // Sfałszowany podpis nie ma prawa odsłonić szkicu.
     const falszywy = await (
-      await worker.fetch(zapytanie('/promocje', { ...paczka, podpis: 'x'.repeat(64) }), env, ctx)
+      await worker.fetch(zapytanie('/wyprzedaz', { ...paczka, podpis: 'x'.repeat(64) }), env, ctx)
     ).json();
-    assert.deepEqual(falszywy.promocje, [], 'zły podpis odsłonił szkic');
+    assert.deepEqual(falszywy.plyty, [], 'zły podpis odsłonił szkic');
 
     await worker.fetch(
-      zapytaniePanel('/panel/api/promocje/publikuj', { id: zapis.id, opublikowana: true }, cookie),
+      zapytaniePanel('/panel/api/wyprzedaz/publikuj', { id: zapis.id, opublikowana: true }, cookie),
       env,
       ctx
     );
-    const naProdukcji = await (await worker.fetch(zapytanie('/promocje', {}), env, ctx)).json();
-    assert.equal(naProdukcji.promocje.length, 1, 'opublikowana promocja nie trafiła na produkcję');
+    const naProdukcji = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
+    assert.equal(naProdukcji.plyty.length, 1, 'opublikowana płyta nie trafiła na produkcję');
   });
 
-  test('promocje/zapisz bez ciasteczka panelu nie przepuszcza', async () => {
+  test('płyta oznaczona jako sprzedana znika z publicznej listy, ale zostaje w panelu', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const zapis = await (
+      await worker.fetch(
+        zapytaniePanel(
+          '/panel/api/wyprzedaz/zapisz',
+          { nazwa: 'Zejdzie', plytaDlCm: 300, plytaGlCm: 150, cenaM2: 600, plytRazem: 1 },
+          cookie
+        ),
+        env,
+        ctx
+      )
+    ).json();
+    await worker.fetch(
+      zapytaniePanel('/panel/api/wyprzedaz/publikuj', { id: zapis.id, opublikowana: true }, cookie),
+      env,
+      ctx
+    );
+    const przed = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
+    assert.equal(przed.plyty.length, 1);
+
+    await worker.fetch(
+      zapytaniePanel('/panel/api/wyprzedaz/dostepnosc', { id: zapis.id, plytZostalo: 0 }, cookie),
+      env,
+      ctx
+    );
+    const po = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
+    assert.deepEqual(po.plyty, [], 'sprzedana płyta nadal widoczna dla klienta');
+
+    // ...ale zostaje w panelu, żeby Dawid mógł odkręcić pomyłkę.
+    const wPanelu = await (
+      await worker.fetch(zapytaniePanel('/panel/api/wyprzedaz', {}, cookie), env, ctx)
+    ).json();
+    assert.equal(wPanelu.plyty.length, 1, 'sprzedana płyta zniknęła też z panelu');
+  });
+
+  test('wyprzedaz/zapisz bez ciasteczka panelu nie przepuszcza', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(
-      zapytanie('/panel/api/promocje/zapisz', { nazwa: 'x', plytaDlCm: 1, plytaGlCm: 1, cenaPromoM2: 1, plytRazem: 1 }),
+      zapytanie('/panel/api/wyprzedaz/zapisz', { nazwa: 'x', plytaDlCm: 1, plytaGlCm: 1, cenaM2: 1, plytRazem: 1 }),
       env,
       ctx
     );
-    assert.equal(odp.status, 401, `klient bez panelu nie może zapisać promocji, oddał ${odp.status}`);
+    assert.equal(odp.status, 401, `klient bez panelu nie może zapisać płyty, oddał ${odp.status}`);
   });
 
-  test('promocje/zapisz odrzuca cenę promocyjną wyższą niż normalna', async () => {
+  test('wyprzedaz/zapisz odrzuca cenę „było" niższą od wyprzedażowej', async () => {
     const env = srodowisko();
     const cookie = await ciastkoPanelu(env);
     const odp = await worker.fetch(
       zapytaniePanel(
-        '/panel/api/promocje/zapisz',
-        { nazwa: 'x', plytaDlCm: 320, plytaGlCm: 160, cenaNormalnaM2: 500, cenaPromoM2: 800, plytRazem: 1 },
+        '/panel/api/wyprzedaz/zapisz',
+        { nazwa: 'x', plytaDlCm: 320, plytaGlCm: 160, cenaNormalnaM2: 500, cenaM2: 800, plytRazem: 1 },
         cookie
       ),
       env,
       ctx
     );
     assert.equal(odp.status, 400);
-    assert.match((await odp.json()).error, /okazja/);
+    assert.match((await odp.json()).error, /przekreślenie/);
+  });
+
+  test('zdjęcie wgrane w panelu wraca pod własnym adresem, nie w liście płyt', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    // Najmniejszy poprawny PNG (1×1 px) — chodzi o obsługę, nie o obrazek.
+    const png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const zapis = await (
+      await worker.fetch(
+        zapytaniePanel(
+          '/panel/api/wyprzedaz/zapisz',
+          { nazwa: 'Ze zdjęciem', plytaDlCm: 320, plytaGlCm: 160, cenaM2: 700, plytRazem: 1, zdjecieDane: png },
+          cookie
+        ),
+        env,
+        ctx
+      )
+    ).json();
+    await worker.fetch(
+      zapytaniePanel('/panel/api/wyprzedaz/publikuj', { id: zapis.id, opublikowana: true }, cookie),
+      env,
+      ctx
+    );
+
+    const lista = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
+    assert.equal(lista.plyty[0].zdjecie, `/wyprzedaz/zdjecie/${zapis.id}`);
+    // Base64 NIE MA prawa jechać w liście — przy kilku płytach urosłaby
+    // do megabajtów i spowolniła kalkulator każdemu klientowi.
+    assert.ok(!JSON.stringify(lista).includes('iVBORw0KGgo'), 'zdjęcie pojechało w liście płyt');
+
+    const obraz = await worker.fetch(
+      new Request(`https://k24h.example/wyprzedaz/zdjecie/${zapis.id}`, {
+        headers: { origin: 'https://kam24h.pl' },
+      }),
+      env,
+      ctx
+    );
+    assert.equal(obraz.status, 200);
+    assert.equal(obraz.headers.get('content-type'), 'image/png');
+  });
+
+  test('wgrane zdjęcie ponad limit jest odrzucane, a nie zapisywane', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const zaDuze = 'data:image/jpeg;base64,' + 'A'.repeat(800_000);
+    const odp = await worker.fetch(
+      zapytaniePanel(
+        '/panel/api/wyprzedaz/zapisz',
+        { nazwa: 'x', plytaDlCm: 320, plytaGlCm: 160, cenaM2: 700, plytRazem: 1, zdjecieDane: zaDuze },
+        cookie
+      ),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 400);
+    assert.match((await odp.json()).error, /za duże/);
   });
 }

@@ -266,6 +266,12 @@
   force = true
 
 [[redirects]]
+  from = "/wyprzedaz-plyt.html"
+  to = "/wyprzedaz-plyt"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/realizacje.html"
   to = "/realizacje"
   status = 301

@@ -14,8 +14,10 @@
  *    POST /oferta/wyslij — zapis wersji Dawida + mail do klienta (token z panelu)
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
  *                     odczyt, z którego korzysta konsultant przez narzędzie)
- *    POST /promocje — promocje „ostatnie płyty" dla banera (publicznie tylko
- *                     aktywne; podgląd szkicu — patrz worker/promocje-baza.js)
+ *    POST /wyprzedaz — płyty z wyprzedaży dla kategorii „NATURA WYPRZEDAŻ"
+ *                      i strony /wyprzedaz-plyt (publicznie tylko dostępne;
+ *                      podgląd szkicu — patrz worker/wyprzedaz-baza.js)
+ *    GET  /wyprzedaz/zdjecie/<id> — zdjęcie płyty wgrane przez panel
  *    GET  /panel    — baza klientów dla Dawida (worker/panel.js), za hasłem
  *
  *  Sekrety (Cloudflare → Settings → Variables and Secrets):
@@ -46,12 +48,7 @@ import {
   ofertaPoTokenie,
   odczytajStawki,
 } from './baza.js';
-import {
-  listaPromocji,
-  zapiszPromocje,
-  ustawPublikacje,
-  skasujPromocje,
-} from './promocje-baza.js';
+import { listaPlyt, zdjeciePlyty, dostepna } from './wyprzedaz-baza.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -119,6 +116,11 @@ export default {
     // Odczyt diagnostyczny — GET, bo wola go skrypt i czlowiek z przegladarki.
     if (sciezka === '/kolekcje') return obsluzKolekcje(cors);
 
+    // Zdjęcie płyty z wyprzedaży — GET, bo wchodzi wprost w <img src>.
+    // Musi stać PRZED bramką „tylko POST" niżej.
+    if (sciezka.startsWith('/wyprzedaz/zdjecie/'))
+      return await obsluzZdjecieWyprzedazy(sciezka, env, cors);
+
     if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
 
     try {
@@ -130,7 +132,7 @@ export default {
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
       if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
-      if (sciezka === '/promocje') return await obsluzPromocje(request, env, cors);
+      if (sciezka === '/wyprzedaz') return await obsluzWyprzedaz(request, env, cors);
       return json({ error: 'Nieznany adres.' }, 404, cors);
     } catch (e) {
       console.error(sciezka, e?.message || e);
@@ -148,18 +150,20 @@ export default {
  */
 const NARZEDZIA = [
   {
-    name: 'sprawdz_promocje',
+    name: 'sprawdz_wyprzedaz',
     description: [
-      'Sprawdza AKTUALNE promocje „ostatnie płyty" — pojedyncze, fizycznie',
-      'ograniczone partie płyt (konglomerat, spiek albo kamień naturalny),',
-      'które Dawid wyprzedaje po gotowej, obniżonej cenie za m². To NIE jest',
-      'to samo, co zwykłe ceny katalogowe — to osobna, krótkoterminowa pula.',
+      'Sprawdza AKTUALNĄ WYPRZEDAŻ PŁYT — pojedyncze, konkretne płyty',
+      'z magazynu Dawida (konglomerat, spiek albo kamień naturalny), które',
+      'Dawid sprzedaje po gotowej, niższej cenie za m². W kalkulatorze siedzą',
+      'w osobnej kategorii „NATURA WYPRZEDAŻ", a na stronie pod adresem',
+      'kam24h.pl/wyprzedaz-plyt. To NIE są zwykłe ceny katalogowe — to',
+      'policzone sztuki, które znikają, gdy zejdą.',
       '',
-      'Używaj na początku rozmowy o materiale i kolorze, żeby WSPOMNIEĆ o pasującej',
-      'promocji, jeśli akurat trwa — i zawsze, gdy klient pyta wprost o okazje,',
-      'wyprzedaże albo „coś taniej". Nigdy nie zgaduj cen ani liczby sztuk —',
-      'tylko z odpowiedzi tego narzędzia. Gdy zwróci brak promocji, po prostu',
-      'nie wspominaj o nich — to nie błąd.',
+      'Używaj na początku rozmowy o materiale i kolorze, żeby WSPOMNIEĆ',
+      'o pasującej płycie, jeśli akurat jakaś jest — i zawsze, gdy klient',
+      'pyta wprost o okazje, wyprzedaże albo „coś taniej". Nigdy nie zgaduj',
+      'cen ani liczby sztuk — tylko z odpowiedzi tego narzędzia. Gdy zwróci',
+      'brak płyt, po prostu nie wspominaj o wyprzedaży — to nie błąd.',
     ].join('\n'),
     input_schema: { type: 'object', properties: {} },
   },
@@ -235,8 +239,8 @@ async function wykonajNarzedzie(blok, ctx, env) {
       // go po samym numerze — pełny kod tokenizuje inaczej i gubi trafienie.
       const fraza = numerPlytyZKodu(blok.input?.fraza) || blok.input?.fraza;
       tresc = opiszPlyty(await pobierzMagazyn(fraza, ctx));
-    } else if (blok.name === 'sprawdz_promocje') {
-      tresc = await opiszPromocjeDlaAsystenta(env);
+    } else if (blok.name === 'sprawdz_wyprzedaz') {
+      tresc = await opiszWyprzedazDlaAsystenta(env);
     } else {
       tresc = `NIEDOSTĘPNE: Nieznane narzędzie „${blok.name}".`;
     }
@@ -475,14 +479,14 @@ async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
 }
 
 /**
- * Autoryzacja podglądu promocji „ostatnie płyty" — te NIE są przypięte
- * do żadnego klienta (`leadId`), więc mają WŁASNY, prostszy podpis:
- * `promo|<id>|<exp>`. Panel wkleja go w link „Podgląd" przy szkicu.
+ * Autoryzacja podglądu wyprzedaży — szkice płyt NIE są przypięte do
+ * żadnego klienta (`leadId`), więc mają WŁASNY, prostszy podpis:
+ * `wyprzedaz|<id>|<exp>`. Panel wkleja go w link „Podgląd" przy szkicu.
  */
-async function tokenPromocji(env, id, exp, podpisKlienta) {
+async function tokenWyprzedazy(env, id, exp, podpisKlienta) {
   if (!env.PANEL_HASLO) return false;
   if (!id || !exp || Number(exp) < Date.now()) return false;
-  const wzor = await podpisz(env.PANEL_HASLO, `promo|${id}|${exp}`);
+  const wzor = await podpisz(env.PANEL_HASLO, `wyprzedaz|${id}|${exp}`);
   const podany = String(podpisKlienta || '');
   if (podany.length !== wzor.length) return false;
   let r = 0;
@@ -490,73 +494,78 @@ async function tokenPromocji(env, id, exp, podpisKlienta) {
   return r === 0;
 }
 
-/** Wycena online: dane po tokenie. Otwarcie klienta podbija licznik. */
 /**
- * KTORE KOLEKCJE ZNA ASYSTENT (/kolekcje).
+ * WYPRZEDAŻ PŁYT (POST /wyprzedaz).
  *
- * POWÓD POWSTANIA (25.08.2026): po dodaniu cennika Pacific konsultant
- * na produkcji twierdził, że takiego materiału nie ma — bo prompt jest
- * generowany poprawnie z src/firms, ale WORKER NIE ZOSTAł WDROŻONY.
- * Strona znała nowy cennik, asystent nie. Z zewnątrz nie dało się tego
- * zobaczyć inaczej niż przez rozmowę.
- *
- * Ten endpoint pokazuje wprost, co siedzi w PROMPCIE wdrożonej wersji.
- * `npm run sprawdz:asystent` porównuje to z lokalnymi cennikami i mówi,
- * czy trzeba wdrożyć workera. Nazwy kolekcji są publiczne (widnieja
- * w kalkulatorze), więc nic tu nie wycieka.
- */
-function obsluzKolekcje(cors) {
-  const kolekcje = [...DEKORY.matchAll(/^##\s*(.+)$/gm)].map((m) => m[1].trim());
-  const dekorow = (DEKORY.match(/;/g) || []).length + kolekcje.length;
-  return json({ ok: true, kolekcje, dekorow }, 200, cors);
-}
-
-/**
- * PROMOCJE „OSTATNIE PŁYTY" (POST /promocje).
- *
- * PUBLICZNIE zwraca wyłącznie AKTYWNE opublikowane promocje (są sztuki,
- * nie minął termin) — dokładnie to, co ma pokazać baner na produkcji.
+ * PUBLICZNIE zwraca wyłącznie płyty DOSTĘPNE: opublikowane i takie,
+ * z których coś jeszcze zostało. Dokładnie to, co ma zobaczyć klient
+ * w kategorii „NATURA WYPRZEDAŻ" i na stronie wyprzedaży.
  *
  * PODGLĄD WŁAŚCICIELA: `{ podgladId, exp, podpis }` z ważnym podpisem
- * dokłada JEDEN wskazany szkic do wyniku — Dawid widzi go razem z tym,
- * co już jest opublikowane, dokładnie tak, jak wyglądałaby strona,
- * gdyby ten szkic był live. Bez ważnego podpisu żądanie z `podgladId`
- * po prostu dostaje sam publiczny widok — nie ma jak podejrzeć cudzego
- * szkicu zgadując numer.
+ * dokłada JEDEN wskazany szkic — Dawid widzi go razem z tym, co już jest
+ * opublikowane, dokładnie tak, jak wyglądałaby strona, gdyby ten szkic
+ * był live. Bez ważnego podpisu żądanie z `podgladId` dostaje po prostu
+ * widok publiczny: nie da się podejrzeć cudzego szkicu, zgadując numer.
  */
-async function obsluzPromocje(request, env, cors) {
-  const d = await request.json().catch(() => ({})) || {};
-  const podglad = !!d.podgladId && (await tokenPromocji(env, d.podgladId, d.exp, d.podpis));
+async function obsluzWyprzedaz(request, env, cors) {
+  const d = (await request.json().catch(() => ({}))) || {};
+  const podglad = !!d.podgladId && (await tokenWyprzedazy(env, d.podgladId, d.exp, d.podpis));
 
-  const wszystkie = await listaPromocji(env, {
+  const wszystkie = await listaPlyt(env, {
     dolaczId: podglad ? Number(d.podgladId) : null,
   });
-  const dzis = new Date().toISOString().slice(0, 10);
-  const aktywne = wszystkie.filter(
-    (p) => p.plytZostalo > 0 && (!p.dataKonca || dzis <= p.dataKonca)
+
+  // Szkic w podglądzie jest z definicji `opublikowana = 0`, więc nie
+  // przeszedłby przez `dostepna`. Przepuszczamy dokładnie ten jeden.
+  const widoczne = wszystkie.filter(
+    (p) => dostepna(p) || (podglad && p.id === Number(d.podgladId) && p.plytZostalo > 0)
   );
 
-  return json({ ok: true, promocje: aktywne }, 200, cors);
+  return json({ ok: true, plyty: widoczne, podglad }, 200, cors);
 }
 
-/** Tekst dla narzędzia asystenta — te same promocje, które widzi baner. */
-async function opiszPromocjeDlaAsystenta(env) {
-  const wszystkie = await listaPromocji(env, {});
-  const dzis = new Date().toISOString().slice(0, 10);
-  const aktywne = wszystkie.filter(
-    (p) => p.plytZostalo > 0 && (!p.dataKonca || dzis <= p.dataKonca)
-  );
-  if (!aktywne.length) return 'Brak aktywnych promocji „ostatnie płyty" — nie wspominaj o żadnej.';
+/**
+ * Zdjęcie płyty wgrane przez panel (GET /wyprzedaz/zdjecie/<id>).
+ *
+ * Trzymamy je w D1 jako data URI, ale NIE wysyłamy go w liście płyt —
+ * przy kilku płytach lista urosłaby do megabajtów i kalkulator wstawałby
+ * wolniej dla wszystkich, także dla klientów, którzy wyprzedaży nie oglądają.
+ * Zamiast tego lista niesie sam adres, a obrazek idzie osobno i z cache.
+ */
+async function obsluzZdjecieWyprzedazy(sciezka, env, cors) {
+  const id = Number(sciezka.split('/').pop());
+  if (!id) return json({ error: 'Brak zdjęcia.' }, 404, cors);
 
-  return aktywne
+  const dane = await zdjeciePlyty(env, id);
+  const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dane || '');
+  if (!m) return json({ error: 'Brak zdjęcia.' }, 404, cors);
+
+  const bajty = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+  return new Response(bajty, {
+    headers: {
+      ...cors,
+      'Content-Type': m[1],
+      // Godzina, nie rok: adres zdjęcia jest zbudowany z `id` płyty, więc
+      // podmiana zdjęcia w panelu NIE zmienia adresu. Przy dłuższym cache
+      // Dawid poprawiłby zdjęcie i dalej widział stare.
+      'Cache-Control': 'public, max-age=3600',
+    },
+  });
+}
+
+/** Tekst dla narzędzia asystenta — te same płyty, które widzi klient. */
+async function opiszWyprzedazDlaAsystenta(env) {
+  const plyty = (await listaPlyt(env, {})).filter(dostepna);
+  if (!plyty.length) return 'Brak płyt na wyprzedaży — nie wspominaj o niej.';
+
+  return plyty
     .map((p, i) => {
-      const material = [p.opisMaterial, p.dekor].filter(Boolean).join(' · ');
-      const rabat = p.cenaNormalnaM2 > 0 ? ` (normalnie ${p.cenaNormalnaM2} zł/m²)` : '';
-      const termin = p.dataKonca ? `, promocja do ${p.dataKonca}` : '';
+      const bylo = p.cenaNormalnaM2 > 0 ? ` (normalnie ${p.cenaNormalnaM2} zł/m²)` : '';
+      const kod = p.kodPlyty ? `, płyta nr ${p.kodPlyty}` : '';
+      const opis = p.opis ? ` — ${p.opis}` : '';
       return (
-        `${i + 1}. „${p.nazwa}"${material ? ' — ' + material : ''} — zostało ${p.plytZostalo} ` +
-        `z ${p.plytRazem} płyt (${p.plytaDlCm}×${p.plytaGlCm} cm, ${p.gruboscMm} mm), ` +
-        `cena promocyjna ${p.cenaPromoM2} zł/m² brutto${rabat}${termin}.`
+        `${i + 1}. „${p.nazwa}"${opis} — ${p.plytaDlCm}×${p.plytaGlCm} cm, ${p.gruboscMm} mm${kod}; ` +
+        `${p.cenaM2} zł/m² brutto${bylo}; zostało ${p.plytZostalo} z ${p.plytRazem}.`
       );
     })
     .join('\n');

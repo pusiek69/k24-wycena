@@ -15,8 +15,6 @@ import {
 } from '../engine/alternatywy.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { NOTA_ODBIOR } from '../firms/_domyslne.js';
-import { podpowiedzPromocji } from './promo-plyt.js';
-import { promocjeZaladowane } from './promocje-baner.js';
 
 const TEL = '796 991 128';
 
@@ -76,7 +74,6 @@ export function kartaWyceny(w, ustawienia = {}) {
     { class: 'karta-wyceny' },
     w.promo ? plakietkaPromo(w) : null,
     naglowek(w),
-    podpowiedzPromoPlyt(w),
     h('div', { class: 'bloki' }, blokMaterialu(w), blokUslug(w)),
     ostrzezenia(w),
     wyborPlyty(w),
@@ -368,29 +365,6 @@ function plakietkaPromo(w) {
       w.oszczednosc > 0 ? ' ' : null,
       w.oszczednosc > 0 ? h('span', { class: 'promo-oszczednosc' }, `oszczędność ${zl(w.oszczednosc)}`) : null
     )
-  );
-}
-
-/**
- * Dyskretna podpowiedź: „ta sama kuchnia z płyty promocyjnej wyszłaby
- * taniej" (zlecenie Dawida, 27.08.2026). Nie mylić z `plakietkaPromo`
- * wyżej — tamta pokazuje RABAT DOSTAWCY na WYBRANY materiał, ta liczy
- * INNĄ, fizycznie ograniczoną partię płyt Dawida („ostatnie płyty").
- *
- * Czysto informacyjna, bez przycisku: karta wyceny renderuje się już PO
- * zostawieniu kontaktu (patrz app/bramka.js#odsloniecie), więc nie ma tu
- * do czego sensownie wracać kreatorem — to zapowiedź tematu na rozmowę
- * telefoniczną z Dawidem, nie osobna ścieżka zakupowa.
- */
-function podpowiedzPromoPlyt(w) {
-  const sugestia = podpowiedzPromocji(w, promocjeZaladowane());
-  if (!sugestia) return null;
-  return h(
-    'p',
-    { class: 'promo-plyt-podpowiedz' },
-    '💡 Ta sama kuchnia z płyty promocyjnej „',
-    h('b', {}, sugestia.promo.nazwa),
-    `" wyszłaby o ${zl(sugestia.oszczednosc)} taniej — możemy o tym porozmawiać przy telefonie.`
   );
 }
 

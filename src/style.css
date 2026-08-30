@@ -1510,65 +1510,93 @@ button { color: var(--cream); background: transparent; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
- * PROMOCJE „OSTATNIE PŁYTY" (zlecenie Dawida, 27.08.2026)
+ * WYPRZEDAŻ PŁYT — kategoria „NATURA WYPRZEDAŻ" (zlecenie Dawida, 30.08.2026)
  *
- * Nie mylić z .promo-plakietka wyżej (rabat DOSTAWCY na wybrany dekor) —
- * to osobna, fizycznie ograniczona partia płyt Dawida. Baner musi działać
- * IDENTYCZNIE na produkcji i w podglądzie właściciela — patrz
- * app/promocje-baner.js, jeden kod renderuje oba widoki.
+ * Nie mylić z .promo-plakietka wyżej (upust DOSTAWCY na wybrany dekor) —
+ * to konkretne, policzone sztuki z placu Dawida. Karty muszą wyglądać
+ * IDENTYCZNIE na produkcji i w podglądzie właściciela: jeden kod renderuje
+ * oba widoki (app/kroki.js#krokWyprzedaz, wyprzedaz-strona.js).
  * ═══════════════════════════════════════════════════════════════════════ */
-.promo-baner { display: flex; flex-direction: column; gap: 14px; margin: 22px auto 0; }
 
-.promo-podglad-info {
-  font-family: var(--sans); font-size: 13px; color: #e2cfa6;
-  background: rgba(201, 168, 106, .16); border: 1px solid var(--vein);
-  border-radius: var(--radius); padding: 11px 15px;
-}
-.promo-podglad-info b { color: var(--vein); }
+/* Kafelek kategorii na kroku „Materiał" — wyróżniony, ale bez krzyku:
+   to nadal jeden z materiałów, a nie baner reklamowy. */
+.choice-wyprzedaz { border-color: rgba(201, 168, 106, .45); }
+.choice-wyprzedaz .c-tag { color: var(--vein); }
 
-.promo-baner-karta {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px;
-  background: var(--slab); border: 1px solid var(--line); border-left: 3px solid var(--vein);
-  border-radius: var(--radius); padding: 18px 20px;
-}
-.promo-baner-tekst { flex: 1 1 220px; min-width: 0; }
-.promo-baner-etykieta {
-  display: block; font-family: var(--sans); font-size: 11px; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--vein); margin-bottom: 4px;
-}
-.promo-baner-nazwa { font-size: 19px; font-weight: 400; margin: 0; color: var(--cream); }
-.promo-baner-material { color: var(--dim); font-size: 13px; margin: 3px 0 0; }
-.promo-baner-cena { text-align: right; flex: 0 0 auto; }
-.promo-baner-cena-przed { color: var(--dim); font-size: 13px; display: block; }
-.promo-baner-cena-teraz { font-size: 23px; color: var(--vein); display: block; font-variant-numeric: tabular-nums; }
-.promo-baner-licznik {
-  font-family: var(--sans); font-size: 12px; color: var(--dim); display: block; margin-top: 3px;
-}
-.promo-baner-cta { flex: none; }
-
-@media (max-width: 560px) {
-  .promo-baner-karta { flex-direction: column; align-items: stretch; text-align: left; }
-  .promo-baner-cena { text-align: left; }
-  .promo-baner-cta { width: 100%; justify-content: center; }
+.plyty-wyprzedaz {
+  display: grid; gap: 14px; margin-top: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 
-/* Podsumowanie promocji na kroku „Wymiary" kreatora — patrz app/kroki.js#promoPasek. */
-.promo-pasek {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px 18px;
-  flex-wrap: wrap; background: rgba(201, 168, 106, .10); border: 1px solid var(--line-hi);
-  border-radius: var(--radius); padding: 12px 16px; margin-bottom: 20px;
+.plyta-karta {
+  display: flex; flex-direction: column; gap: 0; text-align: left;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 0; overflow: hidden;
+  cursor: pointer; color: inherit; font: inherit;
+  transition: border-color .15s, transform .15s;
 }
-.promo-pasek-tekst { display: flex; flex-direction: column; gap: 2px; }
-.promo-pasek-etykieta {
-  font-family: var(--sans); font-size: 10.5px; letter-spacing: .12em;
-  text-transform: uppercase; color: var(--vein);
-}
-.promo-pasek-cena { font-family: var(--sans); font-size: 13px; color: var(--dim); }
+.plyta-karta:hover { border-color: var(--vein); transform: translateY(-2px); }
+.plyta-karta.sel { border-color: var(--vein); box-shadow: 0 0 0 1px var(--vein) inset; }
 
-/* Dyskretna podpowiedź cross-sell na wyniku wyceny — patrz app/wynik-widok.js. */
-.promo-plyt-podpowiedz {
-  font-size: 14px; color: var(--dim); background: rgba(201, 168, 106, .08);
-  border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 10px 14px; margin: 16px 0 0;
+/* Stała proporcja kadru: płyty są fotografowane różnie (pion, poziom,
+   z ręki), a siatka ma zostać równa niezależnie od tego, co Dawid wgra. */
+.plyta-foto {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;
+  background: var(--panel);
 }
-.promo-plyt-podpowiedz b { color: var(--vein); }
+.plyta-foto.pusta {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--dim); font-size: 13px; letter-spacing: .04em;
+}
+
+.plyta-opis { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 14px; }
+.plyta-opis b { font-size: 16px; font-weight: 400; color: var(--cream); }
+.plyta-dopisek { color: var(--dim); font-size: 13px; }
+.plyta-wymiar { color: var(--dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+.plyta-cena {
+  display: flex; align-items: baseline; gap: 7px; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.plyta-cena b { font-size: 19px; color: var(--vein); }
+.plyta-cena s { color: var(--dim); font-size: 13px; }
+.plyta-upust {
+  font-size: 12px; letter-spacing: .04em; color: var(--vein);
+  border: 1px solid rgba(201, 168, 106, .45); border-radius: 3px; padding: 1px 5px;
+}
+.plyta-calosc { color: var(--dim); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* Pasek wybranej płyty na kroku „Wymiary" — patrz app/kroki.js#plytaPasek. */
+.plyta-pasek {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; background: rgba(201, 168, 106, .07);
+  border: 1px solid rgba(201, 168, 106, .3); border-radius: var(--radius);
+  padding: 11px 14px; margin-bottom: 16px;
+}
+.plyta-pasek-tekst { display: flex; flex-direction: column; gap: 2px; }
+.plyta-pasek-etykieta {
+  font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--vein);
+}
+.plyta-pasek-cena { font-family: var(--sans); font-size: 13px; color: var(--dim); }
+
+/* ── Strona /wyprzedaz-plyt ────────────────────────────────────────── */
+
+/* Wstążka podglądu: Dawid MUSI wiedzieć, że patrzy na szkic, którego
+   klient jeszcze nie widzi — inaczej uzna, że wyprzedaż już działa. */
+.wyprzedaz-podglad {
+  background: rgba(201, 168, 106, .12); border: 1px solid var(--vein);
+  border-radius: var(--radius); padding: 12px 16px; margin: 0 0 22px;
+  font-size: 14px; color: var(--cream);
+}
+.wyprzedaz-podglad b { color: var(--vein); }
+
+.wyprzedaz-pusto {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 26px 20px; text-align: center; color: var(--dim);
+}
+
+/* Na stronie karta ma jeszcze przycisk pod spodem — w kreatorze klikalna
+   jest cała karta, tutaj klik w kartę mógłby zaskoczyć kogoś, kto tylko
+   ogląda zdjęcia. */
+.plyty-wyprzedaz .plyta-karta.statyczna { cursor: default; }
+.plyty-wyprzedaz .plyta-karta.statyczna:hover { border-color: var(--line); transform: none; }
+.plyta-cta { margin: 10px 14px 14px; }

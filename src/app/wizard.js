@@ -2,7 +2,8 @@ import { h, pusty } from './dom.js';
 import { firmaWgSlug } from '../firms/index.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { krokMaterial, krokDekor, krokWymiary, krokObrobki, krokWynik } from './kroki.js';
-import { firmaZPromocji } from './promo-plyt.js';
+import { SLUG as WYPRZEDAZ_SLUG, firmaDlaPlyty, kluczDekoru, plytaWgDekoru } from './wyprzedaz.js';
+import { zaladowane } from './wyprzedaz-dane.js';
 
 const KROKI = [
   { id: 'material', label: 'Materiał' },
@@ -23,18 +24,30 @@ const WIDOKI = {
 /**
  * @param {HTMLElement} root
  * @param {object} [opcje]
- * @param {object} [opcje.promo]  klik w baner „ostatnie płyty" (app/promo-plyt.js)
- *   — kreator startuje z góry PRESELEKCJONOWANY: materiał i cena są już
- *   ustawione (Dawida cena promocyjna, nie do edycji przez klienta),
- *   a klient ląduje od razu na kroku „Wymiary". Patrz `zmienMaterial`,
- *   jedyne wyjście z tego trybu.
+ * @param {object} [opcje.plyta]  wejście z „policz blat z tej płyty" na
+ *   stronie wyprzedaży: kreator startuje z wybraną kategorią „NATURA
+ *   WYPRZEDAŻ" i tą konkretną płytą, od razu na kroku „Wymiary".
+ *   Klient nie klika przez „Materiał" i „Dekor", bo już wybrał.
  */
 export function uruchom(root, opcje = {}) {
   const stan = czystyStan();
-  if (opcje.promo) ustawPromocje(stan, opcje.promo);
+  if (opcje.plyta) ustawPlyteWyprzedazy(stan, opcje.plyta);
 
   const akcje = {
-    firma: () => (stan.promo ? firmaZPromocji(stan.promo) : firmaWgSlug(stan.firma)),
+    /*
+     * Kategoria wyprzedaży NIE JEST plikiem w `src/firms/` — powstaje
+     * w locie z płyt, które Dawid ma dziś na placu. Dlatego trafia tutaj,
+     * a nie do `firmaWgSlug`: gdyby wpaść z nią do rejestru firm, każde
+     * dołożenie płyty wymagałoby wdrożenia strony.
+     *
+     * Bierzemy firmę DLA KONKRETNEJ PŁYTY (`firmaDlaPlyty`), bo narzut
+     * odpadu i dodatek za obróbkę są cechą płyty, nie całej kategorii —
+     * granit z placu ma je inne niż resztka konglomeratu.
+     */
+    firma: () =>
+      stan.firma === WYPRZEDAZ_SLUG
+        ? firmaDlaPlyty(zaladowane(), stan.dekor)
+        : firmaWgSlug(stan.firma),
 
     idz(krok) {
       stan.krok = krok;
@@ -42,26 +55,26 @@ export function uruchom(root, opcje = {}) {
     },
 
     wybierzFirme(slug) {
-      if (stan.firma !== slug || stan.promo) {
+      if (stan.firma !== slug) {
         stan.firma = slug;
-        // Klient wraca do zwykłego wyboru — promocja (jeśli była aktywna)
-        // przestaje obowiązywać, inaczej `akcje.firma()` dalej brałaby
-        // starą pseudo-firmę promocyjną zamiast tego, co właśnie wybrał.
-        stan.promo = null;
         stan.dekor = null;
         stan.grubosc = null;
         stan.cenaRecznaM2 = '';
         stan.szukaj = '';
-        stan.opcje = domyslneOpcje(firmaWgSlug(slug));
+        stan.opcje = domyslneOpcje(akcje.firma());
       }
-      zdarzenie('wycena_start', { material: firmaWgSlug(slug)?.nazwa });
+      zdarzenie('wycena_start', { material: akcje.firma()?.nazwa });
       akcje.idz('dekor');
     },
 
     wybierzDekor(nazwa) {
-      zdarzenie('wycena_dekor', { material: firmaWgSlug(stan.firma)?.nazwa, dekor: nazwa });
+      zdarzenie('wycena_dekor', { material: akcje.firma()?.nazwa, dekor: nazwa });
       stan.dekor = nazwa;
-      stan.grubosc = null;
+      // Płyta z wyprzedaży ma JEDNĄ grubość — tę, którą Dawid ma na placu.
+      // Nie ma czego wybierać, więc ustawiamy ją od razu; przy zwykłym
+      // cenniku zostaje null i pyta o nią krok „Wymiary".
+      const plyta = plytaWgDekoru(zaladowane(), nazwa);
+      stan.grubosc = stan.firma === WYPRZEDAZ_SLUG && plyta ? String(plyta.gruboscMm) : null;
       akcje.idz('wymiary');
     },
 
@@ -75,7 +88,7 @@ export function uruchom(root, opcje = {}) {
       if (przerysuj) render();
     },
 
-    /** Jedyne wyjście z trybu promocji — klient jednak chce co innego. */
+    /** Wyjście z wyprzedaży — klient jednak chce coś z cennika. */
     zmienMaterial() {
       Object.assign(stan, czystyStan());
       akcje.idz('material');
@@ -96,7 +109,7 @@ export function uruchom(root, opcje = {}) {
     }
   }
 
-  render(!!opcje.promo);
+  render(!!opcje.plyta);
 }
 
 function czystyStan() {
@@ -109,32 +122,23 @@ function czystyStan() {
     szukaj: '',
     odcinki: [{ dl: 260, gl: 62 }],
     opcje: {},
-    // Promocja „ostatnie płyty" (app/promo-plyt.js) albo null — patrz
-    // `ustawPromocje` i `akcje.firma()` wyżej.
-    promo: null,
   };
 }
 
 /**
- * Wchodzimy w kreator z góry ustawieni na promocję: materiał i cena znane,
- * krok od razu „Wymiary" — klient nie klika przez „Materiał" i „Dekor",
- * bo Dawid już wybrał za niego. `stan.firma` dostaje ten sam slug, co
- * `firmaZPromocji` (spójność z resztą kreatora, który porównuje slugi).
+ * Wejście prosto z konkretnej płyty wyprzedaży (przycisk „Policz blat
+ * z tej płyty" na /wyprzedaz-plyt). Materiał i płyta są już wybrane,
+ * więc klient ląduje od razu na wymiarach.
+ *
+ * Ustawiamy TE SAME pola, co zwykły przeklik przez kroki — dzięki temu
+ * dalej wszystko działa identycznie i nie ma osobnego „trybu płyty",
+ * który mógłby rozjechać się z resztą kreatora.
  */
-function ustawPromocje(stan, promo) {
-  stan.promo = promo;
-  stan.firma = `promo-${promo.id}`;
-  // Pusty dekor CELOWO — przy promocji nazwa materiału i nazwa dekoru to
-  // to samo (jeden tytuł od Dawida, nie marka + wzór osobno). Karta
-  // klienta i maile sklejają „firma.nazwa · dekor" i przy dwóch takich
-  // samych wartościach pokazałyby ją dwa razy. Patrz promo-plyt.js#wycenPromocje.
-  stan.dekor = '';
-  stan.grubosc = String(promo.gruboscMm);
-  // Cena Dawida — GOTOWA, klient jej nie wpisuje ani nie zmienia.
-  // Patrz app/promo-plyt.js#firmaZPromocji: silnik i tak weźmie
-  // `cenaPromoM2`, to pole tylko trzyma wartość do wyświetlenia.
-  stan.cenaRecznaM2 = promo.cenaPromoM2;
-  stan.opcje = domyslneOpcje(firmaZPromocji(promo));
+function ustawPlyteWyprzedazy(stan, plyta) {
+  stan.firma = WYPRZEDAZ_SLUG;
+  stan.dekor = kluczDekoru(plyta);
+  stan.grubosc = String(plyta.gruboscMm);
+  stan.opcje = domyslneOpcje(firmaDlaPlyty(zaladowane(), stan.dekor));
   stan.krok = 'wymiary';
 }
 
@@ -171,11 +175,10 @@ function pasekKrokow(stan, akcje) {
 function dostepny(stan, krok) {
   if (krok === 'material') return true;
   if (!stan.firma) return false;
-  // Tryb promocji pomija krok „Dekor" na starcie (patrz `ustawPromocje`) —
-  // nawigacja tam nie ma prawa być dostępna, bo pokazałaby formularz
-  // ręcznej ceny i wyglądałoby, że klient może zmienić cenę Dawida.
-  if (stan.promo) return krok !== 'dekor';
   if (krok === 'dekor') return true;
+  // Wyprzedaż ma ceny w cenniku, więc wymaga wybranej płyty — tak samo
+  // jak każdy inny materiał cennikowy wymaga wybranego dekoru.
+  if (stan.firma === WYPRZEDAZ_SLUG) return !!stan.dekor;
   const f = firmaWgSlug(stan.firma);
   return f?.trybCeny === 'reczna' || !!stan.dekor;
 }
