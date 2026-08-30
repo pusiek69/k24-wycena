@@ -14,7 +14,8 @@
  * zwykły tekst na stronie. Tu wszystko wchodzi z JEDNEGO ŹRÓDŁA:
  *
  *   • kwoty  ← scripts/lib/ceny-tresc.json (to samo, co reszta serwisu)
- *   • wzory  ← src/generated/<marka>.dekory.json (policzone, nie przepisane)
+ *   • wzory  ← rejestr firm z silnika (policzone, nie przepisane) — tak samo
+ *              jak liczy je ceny-tresc.mjs, patrz `ile()` niżej
  *
  * Ramę strony (head, zgody, nagłówek, stopka, skrypty) bierzemy ZE WZORCA —
  * jak przy stronach miast i wyprzedaży — żeby nie rozjechała się z resztą
@@ -24,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tresc, schema, zl } from './lib/tresc-spieki.mjs';
+import { wczytajSilnik } from './lib/silnik.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tylkoSprawdz = process.argv.includes('--sprawdz');
@@ -38,11 +40,24 @@ const KWOTY = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'ceny-tresc.json'), 'utf8')
 ).kwoty;
 
-/** Ile dekorów ma marka — liczone z wygenerowanego cennika, nie wpisane. */
+/**
+ * Ile dekorów ma marka.
+ *
+ * ⚠ Liczymy z REJESTRU FIRM (`silnik.mjs`), a nie z pliku `*.dekory.json`.
+ * Różnica jest realna: `_promocje.js` dokłada do firmy wzory dostępne tylko
+ * na czas kampanii dostawcy — Laminam ma dziś 87 wzorów stałych i 110 razem
+ * z letnią kampanią. Klient w kalkulatorze może wybrać 110, więc taką liczbę
+ * ma widzieć na stronie.
+ *
+ * Tak samo liczy `ceny-tresc.mjs` dla wszystkich pozostałych marek. Zanim to
+ * ujednolicono (30.08.2026), oba generatory podawały inne liczby i nadpisywały
+ * sobie nawzajem te same strony.
+ */
+const FIRMY = (await wczytajSilnik()).FIRMY;
+
 function ile(marka) {
-  const plik = path.join(ROOT, 'src', 'generated', `${marka}.dekory.json`);
-  if (!fs.existsSync(plik)) return 0;
-  return Object.keys(JSON.parse(fs.readFileSync(plik, 'utf8')).dekory || {}).length;
+  const f = FIRMY.find((x) => x.slug === marka);
+  return f ? Object.keys(f.dekory || {}).length : 0;
 }
 
 /*

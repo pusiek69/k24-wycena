@@ -10,6 +10,8 @@
  * a nikt by tego nie zauważył, bo to zwykły tekst na stronie.
  */
 
+import { zOdmiana } from './odmiana.mjs';
+
 /** „5 550" — spacja nierozdzielająca, żeby kwota nie łamała się na końcu wiersza. */
 export const zl = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
@@ -69,7 +71,7 @@ export function pytania(k, w) {
     {
       p: 'Ile wzorów spieku macie w cenniku?',
       o:
-        `${w.razem} dekorów w pięciu kolekcjach: Atlas Plan (${w.atlas}), Marazzi (${w.marazzi}), ` +
+        `${zOdmiana(w.razem, 'dekor')} w pięciu kolekcjach: Atlas Plan (${w.atlas}), Marazzi (${w.marazzi}), ` +
         `Laminam (${w.laminam}), Florim Stone (${w.florim}) i Keralini (${w.keralini}). ` +
         'Każdy z ceną w kalkulatorze — nie trzeba dzwonić, żeby poznać rząd wielkości.',
     },
@@ -336,15 +338,15 @@ export function tresc(k, w) {
 
     <h2 id="kolekcje">Które kolekcje spieku mamy w cenniku</h2>
     <p>
-      <strong>${w.razem} dekorów w pięciu kolekcjach</strong>, każdy z ceną w kalkulatorze.
+      <strong>${zOdmiana(w.razem, 'dekor')} w pięciu kolekcjach</strong>, każdy z ceną w kalkulatorze.
       To nie jest „mamy dostęp do spieków" — to policzalne wzory, które możesz wycenić od ręki.
     </p>
     <ul>
-      <li><strong>Atlas Plan</strong> — ${w.atlas} dekorów. Włoski gres wielkoformatowy, bardzo szeroki wybór wzorów marmurowych, płyty do 324 cm.</li>
-      <li><strong>Marazzi</strong> — ${w.marazzi} dekorów. Klasyk włoskiej ceramiki, wzory kamienia i betonu.</li>
-      <li><strong>Laminam</strong> — ${w.laminam} dekorów. Marka, która wymyśliła ten format; cienkie płyty, mocne biele.</li>
-      <li><strong>Florim Stone</strong> — ${w.florim} dekorów. Wzory kamienia naturalnego na wielkiej płycie.</li>
-      <li><strong>Keralini</strong> — ${w.keralini} dekorów, grubości 12 i 20 mm. Można kupić połówkę płyty, co przy krótkim blacie realnie obniża koszt.</li>
+      <li><strong>Atlas Plan</strong> — ${zOdmiana(w.atlas, 'dekor')}. Włoski gres wielkoformatowy, bardzo szeroki wybór wzorów marmurowych, płyty do 324 cm.</li>
+      <li><strong>Marazzi</strong> — ${zOdmiana(w.marazzi, 'dekor')}. Klasyk włoskiej ceramiki, wzory kamienia i betonu.</li>
+      <li><strong>Laminam</strong> — ${zOdmiana(w.laminam, 'dekor')}. Marka, która wymyśliła ten format; cienkie płyty, mocne biele.</li>
+      <li><strong>Florim Stone</strong> — ${zOdmiana(w.florim, 'dekor')}. Wzory kamienia naturalnego na wielkiej płycie.</li>
+      <li><strong>Keralini</strong> — ${zOdmiana(w.keralini, 'dekor')}, grubości 12 i 20 mm. Można kupić połówkę płyty, co przy krótkim blacie realnie obniża koszt.</li>
     </ul>
     <p>
       Pełne ceny i wzory: <a href="/blaty-ze-spieku">blaty ze spieku — cennik i kolekcje</a>.

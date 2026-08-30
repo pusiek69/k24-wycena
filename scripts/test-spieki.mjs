@@ -33,8 +33,21 @@ const tekst = html
 /** „5550" → „5 550" — tak kwoty wyglądają w treści. */
 const zl = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
-const ile = (marka) =>
-  Object.keys(JSON.parse(czytaj(`src/generated/${marka}.dekory.json`)).dekory || {}).length;
+/**
+ * Ile dekorów ma marka — Z REJESTRU FIRM, tak samo jak liczą oba generatory.
+ *
+ * ⚠ NIE z pliku `src/generated/*.dekory.json`. Różnica jest realna:
+ * `_promocje.js` dokłada do firmy wzory dostępne tylko na czas kampanii
+ * dostawcy (Laminam: 87 stałych, 110 z kampanią letnią). Klient wybiera
+ * w kalkulatorze 110, więc taką liczbę widzi na stronie — i taką musi
+ * sprawdzać test.
+ */
+const { wczytajSilnik } = await import('./lib/silnik.mjs');
+const FIRMY = (await wczytajSilnik()).FIRMY;
+const ile = (marka) => {
+  const f = FIRMY.find((x) => x.slug === marka);
+  return f ? Object.keys(f.dekory || {}).length : 0;
+};
 
 /* ═════════════════════════════════════════ 1. kwoty z jednego źródła */
 
@@ -240,6 +253,115 @@ test('poradnik nie udaje, że mamy zdjęcia realizacji ze spieku', () => {
       html,
       /<img[^>]+\/realizacje\//,
       'poradnik pokazuje zdjęcia z galerii, choć nie ma tam ani jednej realizacji ze spieku'
+    );
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * STRONA OFERTOWA /blaty-ze-spieku — prawdziwe liczby
+ *
+ * ⚠ Do 30.08.2026 strona mówiła o 178 wzorach, mając w cennikach 504,
+ * i podawała zakres 764–2 110 zł/m², choć najtańszy spiek kosztuje 490.
+ * Obie liczby nie były podpięte do źródła prawdy i po cichu się rozjechały
+ * po dołożeniu trzech nowych cenników. Klient czytał, że mamy mniej
+ * i drożej, niż mamy naprawdę.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const OFERTA = 'blaty-ze-spieku.html';
+
+test('suma kolekcji na stronie ofertowej zgadza się z deklarowaną liczbą wzorów', () => {
+  const strona = czytaj(OFERTA);
+  const kolekcje = [...strona.matchAll(/<strong>[A-Za-z /]+<\/strong> — (\d+) dekor/g)].map((m) =>
+    Number(m[1])
+  );
+  assert.equal(kolekcje.length, 5, `wypisano ${kolekcje.length} kolekcji zamiast pięciu`);
+
+  const suma = kolekcje.reduce((a, b) => a + b, 0);
+  const deklarowana = Number(strona.match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  assert.equal(
+    suma,
+    deklarowana,
+    `lista kolekcji sumuje się do ${suma}, a strona deklaruje ${deklarowana}`
+  );
+});
+
+test('liczba wzorów spieku zgadza się z cennikami — wszystkie pięć marek', () => {
+  const zCennika = ['keralini', 'marazzi', 'atlas-plan', 'laminam', 'florim-stone'].reduce(
+    (a, m) => a + ile(m),
+    0
+  );
+  const naStronie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  assert.equal(naStronie, zCennika, 'strona ofertowa rozjechała się z cennikami');
+});
+
+test('zakresy zł/m² na stronach zgadzają się z ceny-tresc.json', () => {
+  /*
+   * `ceny-tresc.mjs` podmienia tylko te kwoty, które SIĘ ZMIENIŁY względem
+   * pamięci — więc raz powstałej rozbieżności strona↔pamięć sam nie naprawi.
+   * Ten test jest jedynym miejscem, które ją wyłapie.
+   */
+  const zakres = (od, doo) => new RegExp(`${od}\s*–\s*${String(doo).replace(/(\d)(?=\d{3})/, '$1 ?')}`);
+
+  for (const [plik, od, doo, co] of [
+    [OFERTA, KWOTY.spiekM2Od, KWOTY.spiekM2Do, 'spiek'],
+    ['blaty-z-konglomeratu.html', KWOTY.konglomeratM2Od, KWOTY.konglomeratM2Do, 'konglomerat'],
+    ['blaty-kuchenne-tarnobrzeg.html', KWOTY.spiekM2Od, KWOTY.spiekM2Do, 'spiek w tabeli'],
+    ['blaty-kuchenne-tarnobrzeg.html', KWOTY.konglomeratM2Od, KWOTY.konglomeratM2Do, 'konglomerat w tabeli'],
+  ]) {
+    assert.match(
+      czytaj(plik),
+      zakres(od, doo),
+      `${plik}: brak zakresu ${od}–${doo} zł/m² (${co}) — strona rozjechała się z cennikiem`
+    );
+  }
+});
+
+test('strona ofertowa nie zostawia po sobie starych, nieaktualnych kwot', () => {
+  for (const [plik, stara] of [
+    [OFERTA, '764'],
+    ['blaty-z-konglomeratu.html', '629'],
+    ['blaty-kuchenne-tarnobrzeg.html', '764'],
+    ['blaty-kuchenne-tarnobrzeg.html', '629'],
+  ]) {
+    assert.ok(!czytaj(plik).includes(stara), `${plik}: została stara kwota ${stara}`);
+  }
+});
+
+test('oba generatory liczą dekory TAK SAMO — z rejestru firm', () => {
+  /*
+   * `ceny-tresc.mjs` i `strona-spieki.mjs` piszą po tych samych stronach.
+   * Zanim to ujednolicono, jeden liczył z `src/generated/*.dekory.json`
+   * (87 wzorów Laminamu), a drugi z rejestru firm (110 — z kampanią letnią
+   * dostawcy) i każdy przebieg cofał zmianę drugiego.
+   */
+  const zrodlo = czytaj('scripts/strona-spieki.mjs');
+  assert.match(zrodlo, /wczytajSilnik/, 'generator poradnika nie liczy z rejestru firm');
+  assert.ok(
+    !/generated.*dekory\.json/.test(zrodlo),
+    'generator poradnika znów liczy z pliku cennika zamiast z rejestru firm'
+  );
+  // ...i obie strony podają tę samą sumę.
+  const wPoradniku = Number(html.match(/(\d+) dekor\w* w pięciu kolekcjach/)[1]);
+  const wOfercie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  assert.equal(wPoradniku, wOfercie, 'poradnik i strona ofertowa podają różne liczby');
+});
+
+test('liczebniki są poprawnie odmienione', () => {
+  // „143 dekorów" to błąd — po 143 idzie „dekory". Odmianę robi wspólny
+  // moduł `lib/odmiana.mjs`, ten sam, którego używa ceny-tresc.mjs.
+  for (const plik of [PORADNIK, OFERTA]) {
+    const zle = [...czytaj(plik).matchAll(/\b(\d+) (dekor\w*|wzor\w*)/g)].filter(([, n, slowo]) => {
+      const l = Number(n);
+      const ost = l % 10;
+      const dwie = l % 100;
+      const powinno = dwie >= 12 && dwie <= 14 ? 'wiele' : ost >= 2 && ost <= 4 ? 'kilka' : 'wiele';
+      const jestKilka = /y$/.test(slowo);
+      return powinno === 'kilka' ? !jestKilka : jestKilka;
+    });
+    assert.deepEqual(
+      zle.map((m) => m[0]),
+      [],
+      `${plik}: źle odmienione liczebniki`
     );
   }
 });

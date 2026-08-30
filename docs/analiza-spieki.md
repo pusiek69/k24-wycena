@@ -45,12 +45,18 @@ w treści. Realny stan cenników:
 |---|---:|
 | Atlas Plan | 143 |
 | Marazzi | 129 |
-| Laminam | 87 |
+| Laminam | 110 |
 | Florim Stone | 73 |
 | Keralini | 49 |
-| **razem** | **481** |
+| **razem** | **504** |
 
-Mówimy klientowi o 178 wzorach, mając 481. Trzy marki (Atlas Plan, Laminam,
+> Liczby są z REJESTRU FIRM, nie z plików cennika — bo `_promocje.js` dokłada
+> wzory dostępne tylko na czas kampanii dostawcy (Laminam: 87 stałych, 110
+> z kampanią letnią do 30.09.2026). Klient wybiera w kalkulatorze 110, więc
+> taką liczbę widzi na stronie. Po zakończeniu kampanii `npm run ceny:tresc`
+> zejdzie z powrotem — i o to chodzi.
+
+Mówimy klientowi o 178 wzorach, mając 504. Trzy marki (Atlas Plan, Laminam,
 Florim Stone) nie istnieją w treści serwisu, choć są w kalkulatorze.
 
 ## 3. Konkurencja w top10 — kto i z czym
@@ -94,7 +100,7 @@ na trzy tygodnie i nie dostaje nic, co by go zatrzymało.
 
 ## 5. Nasze atuty, których konkurencja nie ma
 
-1. **481 dekorów w pięciu realnych cennikach** — nie „mamy dostęp do spieków",
+1. **504 dekory w pięciu realnych cennikach** — nie „mamy dostęp do spieków",
    tylko policzalna liczba wzorów z cenami.
 2. **Kalkulator** liczący konkretny blat w dwie minuty, tym samym silnikiem,
    którym wyceniamy realne zamówienia.
@@ -177,7 +183,7 @@ linkuje do nich po szczegóły. Sygnały spływają w jedno miejsce zamiast się
 5. Grubość płyty a wygląd i cena krawędzi
 6. Łączenia — gdzie wypadną i jak je ukryć
 7. Pielęgnacja
-8. Które kolekcje mamy w cenniku (5 marek, 481 wzorów)
+8. Które kolekcje mamy w cenniku (5 marek, 504 wzory)
 9. Dla kogo spiek ma sens, a dla kogo nie
 10. FAQ (8 pytań) + `Article` i `FAQPage`
 
