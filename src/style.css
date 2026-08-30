@@ -312,6 +312,23 @@ table.zestawienie td small { display: block; color: var(--dim); font-family: var
 table.zestawienie tr.suma td { border-bottom: none; padding-top: 14px; font-size: 18px; }
 table.zestawienie tr.suma td.kw { color: var(--vein); font-weight: 700; }
 
+/* Tabela porównawcza w poradniku ma cztery kolumny — na telefonie musi
+   przewijać się SAMA, a nie rozpychać całą stronę w bok. Nagłówek wiersza
+   zostaje widoczny przy przewijaniu, bo bez niego liczby tracą znaczenie. */
+.tabela-szeroka { overflow-x: auto; margin-top: 22px; -webkit-overflow-scrolling: touch; }
+.tabela-szeroka .zestawienie { margin-top: 0; min-width: 520px; }
+.tabela-szeroka caption {
+  caption-side: top; text-align: left; padding-bottom: 8px;
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--vein);
+}
+.tabela-szeroka th, .tabela-szeroka td { padding-right: 14px; }
+.tabela-szeroka tbody td:first-child { position: sticky; left: 0; background: var(--ink); }
+
+/* Pytanie i odpowiedź w poradniku — ta sama konwencja co FAQ na stronach
+   miast (.faq-poz), tylko z odstępem, bo tu bloków jest osiem pod rząd. */
+.tekst .faq-poz { margin-top: 18px; }
+.tekst .faq-poz h3 { margin-bottom: 4px; }
+
 .uwaga {
   margin-top: 18px; background: rgba(208, 162, 74, .09); border: 1px solid rgba(208, 162, 74, .3);
   border-radius: var(--radius); padding: 13px 15px; color: #e2cfa6; font-size: 14px;

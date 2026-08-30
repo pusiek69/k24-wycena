@@ -272,6 +272,12 @@
   force = true
 
 [[redirects]]
+  from = "/blaty-ze-spieku-kwarcowego-poradnik.html"
+  to = "/blaty-ze-spieku-kwarcowego-poradnik"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/licencja-zdjec.html"
   to = "/licencja-zdjec"
   status = 301

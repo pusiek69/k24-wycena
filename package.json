@@ -27,6 +27,7 @@
     "sitemap": "node scripts/sitemap-lastmod.mjs",
     "gbp": "node scripts/gbp-grafiki.mjs",
     "wyprzedaz": "node scripts/strona-wyprzedazy.mjs",
+    "spieki": "node scripts/strona-spieki.mjs",
     "przeglad": "node scripts/przeglad.mjs",
     "miasta": "node scripts/strony-miast.mjs"
   },
