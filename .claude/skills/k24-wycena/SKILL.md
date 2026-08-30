@@ -76,6 +76,31 @@ Po wdrożeniu **sprawdź, co realnie leży na produkcji** — Netlify potrafi
 serwować starą paczkę z cache. Porównaj skrót pliku z `dist/` z tym, co
 zwraca kam24h.pl, zanim napiszesz Dawidowi „gotowe".
 
+### 3a. Po każdej większej zmianie: `npm run przeglad`
+
+```bash
+npm run przeglad                        # pełny (wymaga Playwrighta)
+npm run przeglad -- --bez-przegladarki  # same sprawdzenia HTTP, sekundy
+```
+
+Przechodzi produkcję od zewnątrz, tak jak zobaczy ją klient: kalkulator
+przez KAŻDĄ wdrożoną kategorię materiału aż do formularza, strony miast
+i wyprzedaży, błędy JavaScriptu, wszystkie trasy workera odczytane
+z routera, endpointy panelu bez hasła, CORS, sitemapa, linki, grafiki,
+układ na 390 px. Kończy się kodem 1, gdy cokolwiek jest nie tak.
+
+**Nie zastępuje testów — uzupełnia je.** Zlecenie z 30.08.2026 („sprawdź,
+czy nie mam błędów") wykazało pięć usterek na produkcji przy 613 zielonych
+testach jednostkowych. Wszystkie tego samego rodzaju: część działała,
+ale nie była **podłączona**. Funkcja z własnymi testami, której nikt nie
+wołał; trasa w routerze bez funkcji; widok czytający inne pole niż silnik.
+Testy sprawdzają części — przegląd sprawdza, czy części się ze sobą łączą.
+
+Przegląd NIE wysyła zgłoszeń ani maili: zatrzymuje się na formularzu
+kontaktowym. Odcina też `/chat`, żeby nie zużywać zapytań do modelu —
+kalkulator krok-po-kroku i tak jest ścieżką awaryjną, którą klient
+zobaczy przy awarii asystenta, więc musi działać.
+
 ### 4. Nie ruszaj cen bez zlecenia
 
 Ceny materiałów zmienia się **tylko wtedy, gdy Dawid o to poprosi**, i tylko
@@ -96,6 +121,7 @@ czy coś się rozjechało. Uruchom go, kiedy Dawid pyta „czy ceny są dobre".
 | `npm run sitemap` | odświeża `lastmod` w `public/sitemap.xml` (data z gita, nie z dysku) |
 | `npm run galeria` | przetwarza zdjęcia realizacji + generuje `realizacje.html` |
 | `npm run worker` | `worker.template.js` → `worker/worker.js` (robi to też `pretest`) |
+| `npm run przeglad` | przegląd zdrowia produkcji — po każdej większej zmianie |
 | `npm run gbp` | grafiki do wizytówki Google |
 | `npm run wyprzedaz` | strona `/wyprzedaz-plyt` ze wzorca (jak strony miast) |
 
@@ -157,6 +183,26 @@ trzytakt: dopóki Dawid nie kliknie „Opublikuj", klient nie widzi nic.
   wyprzedaż) jest to `{cena, plyta}`. Zawsze przechodź przez `cenaWpisu`
   z `firms/index.js`. `Math.min` po takich obiektach daje NaN — tak zniknęła
   cała lista dekorów Atlas Plan i Pacific z kalkulatora (30.08.2026).
+- **Test funkcji ≠ funkcja podłączona.** Trzy z pięciu usterek znalezionych
+  30.08.2026 na produkcji to kod, który istniał, miał zielone testy i nie
+  był nigdzie wołany. Pisząc zabezpieczenie, dopisz testowi asercję na
+  ŚCIEŻCE (przez `wycen()`, przez router, przez widok) albo na źródle
+  („czy wywołanie w ogóle jest w kodzie"). Sama funkcja w oderwaniu to
+  połowa roboty.
+- **Podmiana kodu po numerach linii zjada sąsiadów.** Tak zniknęła funkcja
+  obsługująca `/kolekcje` — trasa została, funkcji nie było, produkcja
+  oddawała surowy wyjątek workera. Podmieniaj po zakotwiczonym tekście,
+  a po większej operacji uruchom `npm run przeglad`.
+- **Goły DOM nie odsiewa pustych dzieci.** `h()` z `app/dom.js` pomija
+  `null` wśród dzieci, ale `replaceChildren`/`append` zamieniają go na
+  TEKST „null" i wstawiają na stronę. Tak przez pięć dni na każdej ofercie
+  wysłanej klientowi widniało słowo „null". Pilnuje tego
+  `scripts/test-dom-null.mjs`.
+- **Format płyty bierz z wyceny, nie z firmy.** `firma.plyta` to wartość
+  DOMYŚLNA; pierwszeństwo ma format kampanii, potem format przypisany do
+  pozycji cennika (Atlas Plan 20 mm tnie z innej płyty niż 12 mm,
+  wyprzedaż ma własny wymiar na każdą sztukę). Silnik oddaje użyty format
+  jako `w.plyta` — widoki i maile mają czytać stamtąd.
 - **Skrypty node a moduły Vite.** `src/firms/index.js` używa `import.meta.glob`,
   którego node nie zna. Do testów i skryptów jest mikro-paczka
   `scripts/lib/silnik.mjs` (esbuild) — dopisz tam eksport, zamiast obchodzić problem.
