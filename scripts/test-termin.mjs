@@ -156,3 +156,15 @@ test('panel i moduł mają IDENTYCZNE identyfikatory terminów', () => {
     );
   }
 });
+
+test('ścieżka AWARYJNA (formularz Netlify) też niesie termin', () => {
+  /*
+   * Gdy worker milczy, zgłoszenie idzie formularzem Netlify. Bez tego
+   * pola lead z awaryjnej ścieżki docierałby do Dawida bez informacji,
+   * czy klient się śpieszy — a to właśnie wtedy, gdy coś nie działa,
+   * najbardziej zależy na szybkim telefonie.
+   */
+  assert.match(zrodlo('src/api.js'), /termin: dane\.termin \|\| ''/);
+  // Netlify rozpoznaje pola po ukrytej kopii formularza w index.html.
+  assert.match(zrodlo('index.html'), /<input type="text" name="termin" \/>/);
+});

@@ -158,6 +158,10 @@ export async function wyslijLeadZapasowo(dane) {
     telefon: dane.phone || '',
     email: dane.email || '',
     miejscowosc: dane.city || '',
+    // Planowany termin realizacji — ścieżka awaryjna też musi go nieść,
+    // inaczej lead, który poszedł formularzem Netlify (bo worker milczał),
+    // trafiałby do Dawida bez informacji, czy klient się śpieszy.
+    termin: dane.termin || '',
     uwagi: dane.uwagi || '',
     wycena: dane.quote || '',
     kwota: String(dane.kwota || ''),
