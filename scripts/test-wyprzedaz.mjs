@@ -383,3 +383,54 @@ test('KREATOR naprawdę dopina to ostrzeżenie do wyceny', () => {
   assert.match(kroki, /dopiszOstrzezenieWyprzedazy\(w\)/, 'krokWynik nie dopina ostrzeżenia');
   assert.match(kroki, /ostrzezenieOWyprzedazy/, 'brak importu funkcji ostrzegającej');
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * FORMAT PŁYTY NA KARCIE — ten, z którego naprawdę liczyliśmy
+ *
+ * ⚠ Znalezione 30.08.2026 na produkcji: karta wyceny pisała „format
+ * 324 × 162 cm" przy blacie ciętym z płyt 324 × 159 (Atlas Plan 20 mm),
+ * a przy wyprzedaży pokazywała 300 × 180 zamiast prawdziwego wymiaru
+ * płyty z placu. Widok brał `firma.plyta` (domyślny format firmy) zamiast
+ * formatu przypisanego do pozycji cennika.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+test('wycena oddaje format płyty, z którego liczyła rozkrój', () => {
+  const p = plyta({ plytaDlCm: 320, plytaGlCm: 160 });
+  const f = firmaDlaPlyty([p], kluczDekoru(p));
+  const w = wycen(f, {
+    dekor: kluczDekoru(p),
+    grubosc: '20',
+    odcinki: [{ dl: 260, gl: 62 }],
+    opcje: {},
+  });
+  assert.deepEqual(
+    { w: w.plyta.w, h: w.plyta.h },
+    { w: 320, h: 160 },
+    'karta pokazałaby format inny niż płyta, którą klient kupuje'
+  );
+  // Domyślny format kategorii jest INNY — właśnie o to chodzi w tym teście.
+  assert.notDeepEqual({ w: w.firma.plyta.w, h: w.firma.plyta.h }, { w: 320, h: 160 });
+});
+
+test('marki z formatem per grubość też oddają właściwą płytę', () => {
+  // Atlas Plan: 12 mm z płyt 324×162, 20 mm z 324×159.
+  const f = FIRMY.find((x) => x.slug === 'atlas-plan');
+  if (!f) return;
+  const dekor = Object.entries(f.dekory).find(([, ceny]) => {
+    const a12 = ceny['12']?.plyta;
+    const a20 = ceny['20']?.plyta;
+    return a12 && a20 && (a12.w !== a20.w || a12.h !== a20.h);
+  })?.[0];
+  assert.ok(dekor, 'brak dekoru o różnych formatach — cennik Atlas Plan się zmienił');
+
+  const formaty = ['12', '20'].map((g) => {
+    const w = wycen(f, { dekor, grubosc: g, odcinki: [{ dl: 260, gl: 62 }], opcje: {} });
+    return `${w.plyta.w}×${w.plyta.h}`;
+  });
+  assert.notEqual(formaty[0], formaty[1], 'obie grubości pokazują ten sam format — regresja wróciła');
+});
+
+test('WIDOK bierze format z wyceny, nie z domyślnego formatu firmy', () => {
+  const widok = readFileSync(new URL('../src/app/wynik-widok.js', import.meta.url), 'utf8');
+  assert.match(widok, /w\.plyta \|\| w\.firma\.plyta/, 'opisPlyty znów czyta sam firma.plyta');
+});

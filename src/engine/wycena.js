@@ -347,6 +347,17 @@ export function wycen(firma, w, dataISO) {
     odcinki: w.odcinki || [],
     opcje: wybrane,
     pak,
+    /*
+     * Format płyty, z którego NAPRAWDĘ liczyliśmy rozkrój.
+     *
+     * ⚠ Nie zawsze jest to `firma.plyta`: pierwszeństwo ma format kampanii,
+     * potem format przypisany do pozycji cennika (Atlas Plan tnie 20 mm
+     * z płyt 324×159, a 12 mm z 324×162; wyprzedaż ma własny format
+     * na każdą płytę). Karta wyceny musi pokazywać TEN format, nie domyślny
+     * firmowy — inaczej mówi klientowi nieprawdę o tym, co kupuje.
+     * Znalezione 30.08.2026 przy przeglądzie produkcji.
+     */
+    plyta,
     m2Platne,
     wgMetrazu,
     pozycje,

@@ -497,7 +497,15 @@ function blokUslug(w) {
 /** Przy firmach bez połówek klient musi wiedzieć, że płaci za całą płytę. */
 function opisPlyty(w) {
   if (w.wgMetrazu) return null;
-  const p = w.firma.plyta;
+  /*
+   * ⚠ `w.plyta`, NIE `w.firma.plyta`. Format bywa przypisany do pozycji
+   * cennika albo do kampanii, więc firmowy domyślny potrafi się różnić
+   * od tego, z czego naprawdę liczyliśmy rozkrój. Zanim to poprawiono,
+   * karta pisała klientowi „format 324 × 162 cm" przy blacie ciętym
+   * z płyt 324 × 159, a przy wyprzedaży — 300 × 180 zamiast prawdziwego
+   * wymiaru płyty z placu.
+   */
+  const p = w.plyta || w.firma.plyta;
   return h(
     'span',
     { class: 'blok-detal' },
