@@ -67,6 +67,11 @@ Gdy ruszasz workera, dodatkowo smoke test na atrapie D1 i dopiero wdrożenie:
 node --test scripts/test-worker-smoke.mjs && npx wrangler deploy
 ```
 
+⚠ `wrangler` bywa odbijany błędem 7403 („account is not valid or is not
+authorized"), mimo poprawnego logowania. Lekarstwo: podaj konto jawnie —
+`CLOUDFLARE_ACCOUNT_ID=<id konta> npx wrangler …`. Identyfikator pokaże
+`npx wrangler whoami`. Dotyczy tak samo `deploy`, jak `d1 execute`.
+
 Po wdrożeniu **sprawdź, co realnie leży na produkcji** — Netlify potrafi
 serwować starą paczkę z cache. Porównaj skrót pliku z `dist/` z tym, co
 zwraca kam24h.pl, zanim napiszesz Dawidowi „gotowe".
@@ -92,6 +97,7 @@ czy coś się rozjechało. Uruchom go, kiedy Dawid pyta „czy ceny są dobre".
 | `npm run galeria` | przetwarza zdjęcia realizacji + generuje `realizacje.html` |
 | `npm run worker` | `worker.template.js` → `worker/worker.js` (robi to też `pretest`) |
 | `npm run gbp` | grafiki do wizytówki Google |
+| `npm run wyprzedaz` | strona `/wyprzedaz-plyt` ze wzorca (jak strony miast) |
 
 ## Konwencje
 
@@ -109,6 +115,14 @@ heurystyki i pokazywały klientowi dwie różne liczby płyt. Nie rozdzielaj ich
 **Strony miast są generowane**, nie pisane ręcznie. Miasto dodaje się w
 `scripts/lib/miasta.mjs` i uruchamia `npm run miasta`. Ręczna edycja
 `blaty-kuchenne-*.html` zostanie nadpisana przy następnym przebiegu.
+
+**Wyprzedaż płyt = osobna kategoria, nie osobny silnik.** „NATURA
+WYPRZEDAŻ" (`src/app/wyprzedaz.js`) to pseudo-firma budowana w locie
+z płyt w D1: jeden dekor = jedna fizyczna płyta, każda z własnym formatem
+(wpis cennika w postaci `{cena, plyta}`). Nie ma tam drugiego silnika ani
+drugiej ścieżki wyceny — jest jeden dodatkowy materiał. Uwaga: cennik
+w silniku jest NETTO, a Dawid wpisuje BRUTTO, więc jedyne przeliczenie
+to `cenaNettoM2`.
 
 **Podpisy HMAC właściciela.** Linki „tylko dla Dawida" (podgląd oferty, podgląd
 szkicu) są podpisane HMAC-SHA256 sekretem panelu i mają termin ważności.
@@ -138,6 +152,11 @@ trzytakt: dopóki Dawid nie kliknie „Opublikuj", klient nie widzi nic.
   w `_domyslne.js`. Sztuczny materiał zbudowany wprost ze stałych policzy
   obróbkę po staremu i cicho rozjedzie się z resztą aplikacji. Buduj taki
   materiał zawsze na bazie realnej firmy z `FIRMY`.
+- **Wpis cennika bywa obiektem.** `firma.dekory[nazwa][grubosc]` to zwykle
+  liczba, ale przy markach z kilkoma formatami płyt (Atlas Plan, Pacific,
+  wyprzedaż) jest to `{cena, plyta}`. Zawsze przechodź przez `cenaWpisu`
+  z `firms/index.js`. `Math.min` po takich obiektach daje NaN — tak zniknęła
+  cała lista dekorów Atlas Plan i Pacific z kalkulatora (30.08.2026).
 - **Skrypty node a moduły Vite.** `src/firms/index.js` używa `import.meta.glob`,
   którego node nie zna. Do testów i skryptów jest mikro-paczka
   `scripts/lib/silnik.mjs` (esbuild) — dopisz tam eksport, zamiast obchodzić problem.

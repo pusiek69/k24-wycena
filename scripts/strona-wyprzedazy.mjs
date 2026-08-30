@@ -127,6 +127,11 @@ function zbuduj() {
     ],
     ['<script type="module" src="/src/podstrona.js"></script>',
      '<script type="module" src="/src/wyprzedaz-strona.js"></script>'],
+    // Stopka: na WŁASNEJ stronie nie linkujemy sami do siebie. Wzorzec
+    // niesie zwykły link (bo dla niego wyprzedaż to obca strona), więc
+    // zamieniamy go na „tu jesteś" — tak samo robi generator miast.
+    ['<a href="/wyprzedaz-plyt">Wyprzedaż płyt</a>',
+     '<span class="foot-tu">Wyprzedaż płyt</span>'],
   ];
 
   for (const [z, na] of podmiany) {
