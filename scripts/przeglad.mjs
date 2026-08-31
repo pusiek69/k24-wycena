@@ -267,6 +267,27 @@ async function sprawdzPanel() {
   }
   if (przepuszczone) zglos(`panel: ${przepuszczone} endpointów bez poprawnej odmowy`);
   else ok(`${endpointy.length} endpointów panelu — wszystkie wymagają logowania`);
+
+  /*
+   * CSP panelu — da się sprawdzić BEZ HASŁA, a decyduje o tym, czy Dawid
+   * w ogóle zobaczy zdjęcia. 30.08.2026 brakowało `img-src`, więc
+   * przeglądarka blokowała każdy obrazek: upload zdjęć w wyprzedaży płyt
+   * nie działał dla żadnego pliku, a miniatury przy wierszach były puste.
+   */
+  const csp = logowanie.naglowki?.get?.('content-security-policy') || '';
+  const brakiCsp = [];
+  if (!/img-src/.test(csp)) brakiCsp.push('img-src (żadne zdjęcie się nie wyświetli)');
+  else {
+    const img = csp.match(/img-src ([^;]*)/)[1];
+    if (!/data:/.test(img)) brakiCsp.push('data: w img-src (podgląd przed wysłaniem)');
+    if (!/'self'/.test(img)) brakiCsp.push("'self' w img-src (miniatury zapisanych płyt)");
+  }
+  if (!/frame-ancestors 'none'/.test(csp)) brakiCsp.push("frame-ancestors 'none'");
+
+  if (brakiCsp.length) {
+    for (const b of brakiCsp) zle(`CSP panelu: brakuje ${b}`);
+    zglos('CSP panelu niekompletne');
+  } else ok('CSP panelu pozwala na zdjęcia i nie wpuszcza obcych skryptów');
 }
 
 /* ───────────────────────────────────────────────────────────── 6. CORS */

@@ -562,8 +562,25 @@ const odpowiedzHtml = (html, status = 200) =>
       'x-robots-tag': 'noindex, nofollow',
       'referrer-policy': 'no-referrer',
       'cache-control': 'no-store',
+      /*
+       * ⚠ `img-src` MUSI tu być — bez niego obowiązuje `default-src 'none'`
+       * i przeglądarka blokuje KAŻDY obrazek w panelu.
+       *
+       * Tak padł upload zdjęć w wyprzedaży płyt (30.08–31.08.2026): kod
+       * wczytywał plik, robił podgląd przez `data:` URI — i przeglądarka
+       * go blokowała, więc `Image.onerror` odpalał się dla POPRAWNEGO JPEG-a.
+       * Dawid dostawał „Nie umiem odczytać tego pliku" niezależnie od formatu
+       * i rozmiaru. Nie działały też miniatury przy wierszach płyt.
+       * Testy tego nie łapały, bo szły przez API, a nie przez przeglądarkę.
+       *
+       *   data:  — podgląd zdjęcia zrobiony z canvas przed wysłaniem
+       *   'self' — zdjęcia wgrane do bazy, serwowane z /wyprzedaz/zdjecie/<id>
+       *   https: — zdjęcia wskazane adresem, które Dawid wkleja w formularzu
+       *            (pole „adres w internecie")
+       */
       'content-security-policy':
         "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
         "connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     },
   });
@@ -1019,32 +1036,109 @@ function rysujPlyteFormularz(id){
  *
  * Telefon Dawida robi zdjecia po kilka megabajtow. Wiersz D1 tego nie
  * uniesie, a i tak nikt nie oglada plyty w rozdzielczosci aparatu.
- * Skalujemy do 1200 px dluzszego boku i zapisujemy jako JPEG - z 4 MB
- * robi sie okolo 200 kB.
+ *
+ * ⚠ HISTORIA BLEDU (30-31.08.2026). Ta funkcja NIE DZIALALA W OGOLE —
+ * dla zadnego pliku, nawet dla malego JPEG-a. Przyczyna nie byla tutaj,
+ * tylko w naglowku CSP panelu: brakowalo 'img-src', wiec przegladarka
+ * blokowala podglad z 'data:' URI i 'Image.onerror' odpalal sie zawsze.
+ * Przy okazji naprawy wyszly trzy dalsze usterki, opisane nizej.
  */
 var ZDJECIE_DANE = '';
 var ZDJECIE_MAKS_BOK = 1200;
 
+/*
+ * Limit z workera (wyprzedaz-baza.js) minus zapas na reszte pola.
+ * Kompresujemy TAK DLUGO, az sie zmiescimy - patrz 'sprezuj'.
+ */
+var ZDJECIE_LIMIT = 680000;
+
+/* Formaty, ktorych przegladarka nie zdekoduje - rozpoznajemy PO NAZWIE,
+   bo typ MIME z systemu bywa pusty albo ogolny. */
+var BEZ_DEKODERA = /\.(heic|heif|avif|tiff?|raw|cr2|nef|arw|dng)$/i;
+
+/**
+ * Zmniejsza obraz i dobiera jakosc tak, zeby zmiescic sie w limicie.
+ *
+ * ⚠ Samo skalowanie do 1200 px NIE WYSTARCZA. Zdjecie o duzej ilosci
+ * szczegolow (plyta z wyraznym rysunkiem kamienia) daje po kompresji
+ * ponad 900 kB base64 - powyzej limitu workera. Dawid widzial wtedy
+ * podglad, klikal „Zapisz" i DOPIERO wtedy dostawal blad. Teraz schodzimy
+ * z jakoscia, a potem z rozmiarem, i problem nie dociera do uzytkownika.
+ */
+function sprezuj(obraz){
+  var bok = ZDJECIE_MAKS_BOK;
+  var jakosci = [0.82, 0.7, 0.6, 0.5];
+
+  for (var proba = 0; proba < 3; proba++) {
+    var skala = Math.min(1, bok / Math.max(obraz.width, obraz.height));
+    var plotno = document.createElement('canvas');
+    plotno.width = Math.max(1, Math.round(obraz.width * skala));
+    plotno.height = Math.max(1, Math.round(obraz.height * skala));
+    var ctx = plotno.getContext('2d');
+    /* Bialy podklad: JPEG nie zna przezroczystosci, wiec PNG z alfa
+       wyszedlby na CZARNYM tle. Zdjecie plyty na czarnym to nie zdjecie. */
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, plotno.width, plotno.height);
+    ctx.drawImage(obraz, 0, 0, plotno.width, plotno.height);
+
+    for (var i = 0; i < jakosci.length; i++) {
+      var dane = plotno.toDataURL('image/jpeg', jakosci[i]);
+      if (dane.length <= ZDJECIE_LIMIT) return dane;
+    }
+    bok = Math.round(bok * 0.75);   // dalej za duzo - mniejszy obrazek
+  }
+  return null;
+}
+
 function wczytajZdjecie(e){
   var plik = e.target.files && e.target.files[0];
   var info = document.getElementById('pl-zdjecie-info');
-  if (!plik) { ZDJECIE_DANE = ''; return; }
+  ZDJECIE_DANE = '';
+  if (!plik) return;
+
+  var powiedz = function(tekst){ info.textContent = tekst; };
+
+  /* Format bez dekodera w przegladarce - mowimy WPROST co zrobic.
+     „Nie umiem odczytac tego pliku" nie pomaga nikomu. */
+  if (BEZ_DEKODERA.test(plik.name)) {
+    powiedz('Ten format (' + plik.name.split('.').pop().toUpperCase() + ') nie otwiera sie '
+      + 'w przegladarce. Zapisz zdjecie jako JPG albo PNG i wgraj ponownie. '
+      + 'W iPhone: Ustawienia > Aparat > Formaty > Najbardziej zgodne.');
+    return;
+  }
+
+  powiedz('Przetwarzam zdjecie...');
 
   var czytnik = new FileReader();
+
+  /* Bez tego blad odczytu konczyl sie CISZA - Dawid nie wiedzial,
+     czy trwa, czy padlo. */
+  czytnik.onerror = function(){
+    powiedz('Nie udalo sie odczytac pliku z dysku. Sprobuj ponownie albo wybierz inny.');
+  };
+
   czytnik.onload = function(){
     var obraz = new Image();
+
     obraz.onload = function(){
-      var skala = Math.min(1, ZDJECIE_MAKS_BOK / Math.max(obraz.width, obraz.height));
-      var plotno = document.createElement('canvas');
-      plotno.width = Math.round(obraz.width * skala);
-      plotno.height = Math.round(obraz.height * skala);
-      plotno.getContext('2d').drawImage(obraz, 0, 0, plotno.width, plotno.height);
-      ZDJECIE_DANE = plotno.toDataURL('image/jpeg', 0.82);
-      info.innerHTML = 'Wgrane: <img class="plyta-mini" src="' + ZDJECIE_DANE + '" alt="">';
+      var dane = sprezuj(obraz);
+      if (!dane) {
+        powiedz('Nie umiem zmniejszyc tego zdjecia na tyle, zeby je zapisac. '
+          + 'Sprobuj zdjeciem o mniejszej rozdzielczosci.');
+        return;
+      }
+      ZDJECIE_DANE = dane;
+      var kb = Math.round(dane.length * 0.75 / 1024);
+      info.innerHTML = 'Wgrane (' + kb + ' kB): <img class="plyta-mini" src="' + dane + '" alt="">';
     };
-    obraz.onerror = function(){ info.textContent = 'Nie umiem odczytac tego pliku.'; };
+
+    obraz.onerror = function(){
+      powiedz('Nie umiem odczytac tego zdjecia. Uzyj pliku JPG albo PNG.');
+    };
+
     obraz.src = czytnik.result;
   };
+
   czytnik.readAsDataURL(plik);
 }
 

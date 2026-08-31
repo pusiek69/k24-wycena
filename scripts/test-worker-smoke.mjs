@@ -334,6 +334,92 @@ if (JEST) {
     assert.ok(d.dekorow > 100, `dekorow: ${d.dekorow}`);
   });
 
+  test('PANEL POZWALA WYSWIETLAC OBRAZKI (img-src w CSP)', async () => {
+    /*
+     * ⚠ REGRESJA Z 30.08.2026, zgloszona przez Dawida jako „nie moge dodac
+     * zdjecia w wyprzedazy plyt".
+     *
+     * CSP panelu mialo `default-src 'none'` i NIE MIALO `img-src`. Efekt:
+     * przegladarka blokowala kazdy obrazek, wiec podglad z `data:` URI
+     * nie ladowal sie i `Image.onerror` odpalal sie dla POPRAWNEGO JPEG-a.
+     * Upload nie dzialal dla ZADNEGO pliku, a miniatury przy wierszach
+     * plyt tez byly puste.
+     *
+     * Testy tego nie lapaly, bo szly przez API (`worker.fetch`), a nie
+     * przez przegladarke — a CSP dziala dopiero w przegladarce.
+     */
+    const odp = await worker.fetch(
+      new Request('https://k24h.example/panel', { headers: { origin: 'https://kam24h.pl' } }),
+      srodowisko(),
+      ctx
+    );
+    const csp = odp.headers.get('content-security-policy') || '';
+    assert.ok(csp, 'panel bez CSP');
+    assert.match(csp, /img-src/, 'CSP panelu nie pozwala na zadne obrazki');
+
+    const img = csp.match(/img-src ([^;]*)/)[1];
+    assert.match(img, /data:/, 'brak `data:` — podglad zdjecia przed wyslaniem nie zadziala');
+    assert.match(img, /'self'/, "brak `'self'` — miniatury z /wyprzedaz/zdjecie/<id> nie zadzialaja");
+  });
+
+  test('panel nie rozluznia CSP bardziej, niz trzeba', async () => {
+    // Obrazki tak, ale skrypty i ramki z zewnatrz — nie.
+    const odp = await worker.fetch(
+      new Request('https://k24h.example/panel', { headers: { origin: 'https://kam24h.pl' } }),
+      srodowisko(),
+      ctx
+    );
+    const csp = odp.headers.get('content-security-policy') || '';
+    assert.ok(!/script-src[^;]*https:/.test(csp), 'CSP wpuszcza skrypty z zewnatrz');
+    assert.match(csp, /frame-ancestors 'none'/, 'panel da sie osadzic w ramce');
+    assert.match(csp, /default-src 'none'/, 'panel stracil domyslna blokade');
+  });
+
+  test('limit zdjecia po stronie panelu jest NIZSZY niz w workerze', async () => {
+    /*
+     * Panel kompresuje zdjecie do wlasnego limitu, worker odrzuca powyzej
+     * swojego. Gdyby panel mial limit rowny albo wyzszy, Dawid widzialby
+     * podglad, klikal „Zapisz" i DOPIERO wtedy dostawal blad — najgorsza
+     * mozliwa kolejnosc. Zapas jest po to, zeby problem nigdy do niego
+     * nie dotarl.
+     */
+    const { MAX_ZDJECIE_ZNAKOW } = await import('../worker/wyprzedaz-baza.js');
+    const zrodlo = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
+    const limitPanelu = Number(zrodlo.match(/var ZDJECIE_LIMIT = (\d+)/)[1]);
+
+    assert.ok(
+      limitPanelu < MAX_ZDJECIE_ZNAKOW,
+      `panel kompresuje do ${limitPanelu}, a worker przyjmuje do ${MAX_ZDJECIE_ZNAKOW}`
+    );
+  });
+
+  test('panel mowi WPROST, co zrobic z formatem bez dekodera', () => {
+    /*
+     * Zdjecia z telefonu bywaja w HEIC (iPhone, czesc Samsungow), ktorego
+     * przegladarka nie zdekoduje. „Nie umiem odczytac tego pliku" nie mowi
+     * uzytkownikowi nic — komunikat ma powiedziec, CO ZROBIC.
+     */
+    const zrodlo = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
+    assert.match(zrodlo, /BEZ_DEKODERA/, 'panel nie rozpoznaje formatow bez dekodera');
+    assert.match(zrodlo, /heic\|heif/, 'HEIC/HEIF nie sa rozpoznawane');
+    assert.match(zrodlo, /JPG albo PNG/, 'komunikat nie mowi, jakiego formatu uzyc');
+    // Blad odczytu z dysku tez nie moze konczyc sie cisza.
+    assert.match(zrodlo, /czytnik\.onerror/, 'brak obslugi bledu odczytu pliku');
+  });
+
+  test('kompresja zdjecia schodzi z jakoscia, gdy nie miesci sie w limicie', () => {
+    // Samo skalowanie do 1200 px nie wystarcza: szczegolowe zdjecie plyty
+    // dawalo 910 kB base64, czyli powyzej limitu workera.
+    const zrodlo = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
+    assert.match(zrodlo, /function sprezuj/, 'brak adaptacyjnej kompresji');
+    const jakosci = zrodlo.match(/var jakosci = \[([^\]]*)\]/);
+    assert.ok(jakosci, 'brak listy jakosci kompresji');
+    assert.ok(
+      jakosci[1].split(',').length >= 3,
+      'kompresja ma tylko jeden prog jakosci — przy szczegolowym zdjeciu nie zejdzie pod limit'
+    );
+  });
+
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/feedback', { feedback: 'pasuje' }), env, ctx);

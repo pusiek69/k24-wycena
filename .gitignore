@@ -22,3 +22,4 @@ dist-podglad/
 # Wstrzykiwane w Workera przez `npm run worker`.
 worker/prompt.local.md
 worker/worker.js
+.dev.vars
