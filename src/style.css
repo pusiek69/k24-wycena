@@ -651,6 +651,13 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 /* Wybór konkretnej płyty kamienia naturalnego — kod, wymiar, cena, zapas.
    Wiersz jest przyciskiem: klient wybiera płytę jednym kliknięciem. */
 .pom-plyty { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+/* Karty płyt z wyprzedaży w rozmowie — te same, co w kreatorze i na stronie,
+   tylko w jednej kolumnie, bo okno czatu jest wąskie. */
+.pom-plyty .plyta-karta { width: 100%; }
+.pom-plyty .plyta-foto { aspect-ratio: 16 / 9; }
+/* Kafelek kategorii wyprzedaży — wyróżniony jak w kreatorze, bez krzyku. */
+.pom-karta-wyprzedaz { border-color: rgba(201, 168, 106, .45); }
+.pom-karta-wyprzedaz .pom-karta-typ { color: var(--vein); }
 .pom-plyta {
   display: grid; grid-template-columns: 84px 1fr auto; gap: 2px 12px; align-items: start;
   background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);

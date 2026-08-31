@@ -1028,6 +1028,8 @@ function rysujPlyteFormularz(id){
     document.getElementById('wyprzedaz-formularz').innerHTML = '';
   };
   document.getElementById('pl-zdjecie-plik').onchange = wczytajZdjecie;
+  document.getElementById('pl-zdjecie-url').onchange = sprawdzAdresZdjecia;
+  document.getElementById('pl-zdjecie-url').onblur = sprawdzAdresZdjecia;
   document.getElementById('pl-zapisz').onclick = function(){ plytaZapisz(id); };
 }
 
@@ -1097,49 +1099,125 @@ function wczytajZdjecie(e){
   if (!plik) return;
 
   var powiedz = function(tekst){ info.textContent = tekst; };
+  powiedz('Przetwarzam zdjecie...');
 
-  /* Format bez dekodera w przegladarce - mowimy WPROST co zrobic.
-     „Nie umiem odczytac tego pliku" nie pomaga nikomu. */
-  if (BEZ_DEKODERA.test(plik.name)) {
-    powiedz('Ten format (' + plik.name.split('.').pop().toUpperCase() + ') nie otwiera sie '
-      + 'w przegladarce. Zapisz zdjecie jako JPG albo PNG i wgraj ponownie. '
-      + 'W iPhone: Ustawienia > Aparat > Formaty > Najbardziej zgodne.');
+  /* Gotowy obraz -> kompresja -> podglad. Wspolne zakonczenie obu drog. */
+  var zrob = function(obraz, zwolnij){
+    var dane = sprezuj(obraz);
+    if (zwolnij) zwolnij();
+
+    if (!dane) {
+      powiedz('Nie umiem zmniejszyc tego zdjecia na tyle, zeby je zapisac. '
+        + 'Sprobuj zdjeciem o mniejszej rozdzielczosci.');
+      return;
+    }
+    /*
+     * Puste plotno: telefony maja limit pamieci na canvas i przy bardzo duzym
+     * zdjeciu potrafia oddac obrazek CALKOWICIE PUSTY, bez zadnego bledu.
+     * Zapisalibysmy wtedy bialy prostokat zamiast plyty. Kilkaset znakow
+     * base64 to za malo na jakiekolwiek zdjecie - wtedy mowimy wprost.
+     */
+    if (dane.length < 2000) {
+      powiedz('Telefonowi zabraklo pamieci na to zdjecie. Zrob zdjecie w nizszej '
+        + 'rozdzielczosci albo wgraj je z komputera.');
+      return;
+    }
+    ZDJECIE_DANE = dane;
+    var kb = Math.round(dane.length * 0.75 / 1024);
+    info.innerHTML = 'Wgrane (' + kb + ' kB): <img class="plyta-mini" src="' + dane + '" alt="">';
+  };
+
+  var niepowodzenie = function(){
+    /*
+     * Dopiero TERAZ, gdy dekodowanie naprawde sie nie udalo, sprawdzamy
+     * rozszerzenie - zeby powiedziec konkretnie, co jest nie tak.
+     *
+     * ⚠ Kolejnosc ma znaczenie: Safari na iOS 17+ POTRAFI odczytac HEIC.
+     * Gdybysmy odrzucali po samej nazwie pliku, Dawid dostawalby odmowe
+     * na telefonie, na ktorym zdjecie zadzialaloby bez problemu.
+     */
+    if (BEZ_DEKODERA.test(plik.name)) {
+      powiedz('Ten format (' + plik.name.split('.').pop().toUpperCase() + ') nie otwiera sie '
+        + 'w tej przegladarce. Najprosciej: w telefonie ustaw Aparat na format zgodny '
+        + '(iPhone: Ustawienia > Aparat > Formaty > Najbardziej zgodne) albo wyslij '
+        + 'zdjecie jako JPG.');
+    } else {
+      powiedz('Nie umiem odczytac tego zdjecia. Uzyj pliku JPG albo PNG.');
+    }
+  };
+
+  /*
+   * DROGA PIERWSZA: createImageBitmap prosto z pliku.
+   *
+   * Na telefonie to jest istotne, nie kosmetyczne: stara droga robila
+   * najpierw base64 CALEGO oryginalu (zdjecie 4 MB -> ~5,5 MB napisu
+   * w pamieci), zanim cokolwiek zdekodowala. Tutaj przegladarka dekoduje
+   * plik bezposrednio i sama zwalnia pamiec po 'close()'.
+   */
+  if (typeof createImageBitmap === 'function') {
+    createImageBitmap(plik).then(
+      function(bitmapa){ zrob(bitmapa, function(){ bitmapa.close && bitmapa.close(); }); },
+      function(){ przezObrazek(); }
+    );
+    return;
+  }
+  przezObrazek();
+
+  /* DROGA DRUGA (zapasowa): starsze przegladarki bez createImageBitmap. */
+  function przezObrazek(){
+    var czytnik = new FileReader();
+    czytnik.onerror = function(){
+      powiedz('Nie udalo sie odczytac pliku z dysku. Sprobuj ponownie albo wybierz inny.');
+    };
+    czytnik.onload = function(){
+      var obraz = new Image();
+      obraz.onload = function(){ zrob(obraz, null); };
+      obraz.onerror = niepowodzenie;
+      obraz.src = czytnik.result;
+    };
+    czytnik.readAsDataURL(plik);
+  }
+}
+
+/*
+ * ADRES ZDJECIA - sprawdzamy, czy pod tym adresem NAPRAWDE jest obrazek.
+ *
+ * ⚠ Z zycia (31.08.2026): Dawid wkleil tu link „share.google/..." - czyli
+ * adres STRONY z Zdjeciami Google, nie samego pliku. Przegladarka nie ma
+ * z czego zrobic obrazka, wiec na stronie wyprzedazy klient widzial pustą
+ * ramkę, a panel milczał. Teraz mowimy od razu, zanim plyta trafi na strone.
+ */
+function sprawdzAdresZdjecia(){
+  var pole = document.getElementById('pl-zdjecie-url');
+  var info = document.getElementById('pl-zdjecie-info');
+  var adres = (pole.value || '').trim();
+
+  /* Wgrany plik ma pierwszenstwo - nie kasujemy jego podgladu. */
+  if (!adres || ZDJECIE_DANE) return;
+
+  if (!/^https:\/\//i.test(adres)) {
+    info.textContent = 'Adres musi zaczynac sie od https://';
     return;
   }
 
-  powiedz('Przetwarzam zdjecie...');
+  info.textContent = 'Sprawdzam adres...';
+  var probny = new Image();
 
-  var czytnik = new FileReader();
-
-  /* Bez tego blad odczytu konczyl sie CISZA - Dawid nie wiedzial,
-     czy trwa, czy padlo. */
-  czytnik.onerror = function(){
-    powiedz('Nie udalo sie odczytac pliku z dysku. Sprobuj ponownie albo wybierz inny.');
+  probny.onload = function(){
+    info.innerHTML = 'Adres dziala: <img class="plyta-mini" src="' + adres + '" alt="">';
   };
 
-  czytnik.onload = function(){
-    var obraz = new Image();
-
-    obraz.onload = function(){
-      var dane = sprezuj(obraz);
-      if (!dane) {
-        powiedz('Nie umiem zmniejszyc tego zdjecia na tyle, zeby je zapisac. '
-          + 'Sprobuj zdjeciem o mniejszej rozdzielczosci.');
-        return;
-      }
-      ZDJECIE_DANE = dane;
-      var kb = Math.round(dane.length * 0.75 / 1024);
-      info.innerHTML = 'Wgrane (' + kb + ' kB): <img class="plyta-mini" src="' + dane + '" alt="">';
-    };
-
-    obraz.onerror = function(){
-      powiedz('Nie umiem odczytac tego zdjecia. Uzyj pliku JPG albo PNG.');
-    };
-
-    obraz.src = czytnik.result;
+  probny.onerror = function(){
+    /* Najczestszy blad: link do STRONY ze zdjeciem zamiast do pliku. */
+    var udostepniony = /share\.google|photos\.app\.goo|drive\.google|dropbox\.com\/s\//i.test(adres);
+    info.textContent = udostepniony
+      ? 'To jest link do strony ze zdjeciem, a nie do samego pliku - przegladarka nie zrobi '
+        + 'z niego obrazka. Najprosciej: wgraj zdjecie z dysku przyciskiem wyzej.'
+      : 'Pod tym adresem nie ma zdjecia (albo serwer go nie udostepnia). Sprawdz link '
+        + 'albo wgraj plik z dysku.';
   };
 
-  czytnik.readAsDataURL(plik);
+  probny.src = adres;
 }
 
 async function plytaZapisz(id){

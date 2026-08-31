@@ -420,6 +420,19 @@ if (JEST) {
     );
   });
 
+  test('panel sprawdza, czy wklejony adres NAPRAWDE jest zdjeciem', () => {
+    /*
+     * ⚠ Z zycia (31.08.2026): Dawid wkleil w pole adresu link
+     * „share.google/..." — czyli adres STRONY ze zdjeciem, nie samego pliku.
+     * Przegladarka nie zrobi z tego obrazka, wiec klient na stronie
+     * wyprzedazy widzial pusta ramke, a panel milczal.
+     */
+    const zrodlo = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
+    assert.match(zrodlo, /function sprawdzAdresZdjecia/, 'panel nie sprawdza adresu zdjecia');
+    assert.match(zrodlo, /share\.google/, 'nie rozpoznajemy linku do strony zamiast pliku');
+    assert.match(zrodlo, /pl-zdjecie-url'\)\.onchange/, 'sprawdzanie nie jest podpiete do pola');
+  });
+
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/feedback', { feedback: 'pasuje' }), env, ctx);

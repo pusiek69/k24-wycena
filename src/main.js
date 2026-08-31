@@ -95,11 +95,13 @@ if (!FIRMY.length) {
       ? doPokazania(zaladowane()).find((p) => kluczDekoru(p) === decodeURIComponent(zLinku[1]))
       : null;
 
-    uruchomAplikacje(root);
-    if (plyta) {
-      zdarzenie('wyprzedaz_kreator', { plyta: plyta.nazwa });
-      uruchomKreator(root.querySelector('.panel') || root, { plyta });
-    }
+    /*
+     * Płyta z wyprzedaży wchodzi do TEJ SAMEJ rozmowy, co wszystko inne
+     * (zlecenie Dawida, 31.08.2026). Wcześniej otwierał się klasyczny
+     * kreator — czyli ścieżka awaryjna, którą klient normalnie widzi
+     * tylko wtedy, gdy asystent nie odpowiada.
+     */
+    uruchomAplikacje(root, plyta);
   });
 }
 
@@ -109,7 +111,7 @@ if (!FIRMY.length) {
  *   • kreator w kilka pytań — dla tych, którzy wolą klikać niż pisać,
  *     i awaryjnie, gdy konsultant jest niedostępny (np. podgląd z dysku).
  */
-function uruchomAplikacje(korzen) {
+function uruchomAplikacje(korzen, plyta) {
   const panel = h('div', { class: 'panel' });
   korzen.replaceChildren(panel);
 
@@ -117,6 +119,8 @@ function uruchomAplikacje(korzen) {
   // krok-po-kroku zostaje wyłącznie jako wyjście awaryjne, gdy konsultant
   // nie odpowiada — wtedy klient i tak policzy wycenę.
   uruchomCzat(panel, {
+    // Płyta wybrana na stronie wyprzedaży — rozmowa startuje od niej.
+    plyta,
     pokazKreator: () => {
       zdarzenie('tryb_awaryjny_kreator');
       uruchomKreator(panel);

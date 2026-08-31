@@ -434,3 +434,97 @@ test('WIDOK bierze format z wyceny, nie z domyślnego formatu firmy', () => {
   const widok = readFileSync(new URL('../src/app/wynik-widok.js', import.meta.url), 'utf8');
   assert.match(widok, /w\.plyta \|\| w\.firma\.plyta/, 'opisPlyty znów czyta sam firma.plyta');
 });
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * WYPRZEDAŻ W POZOSTAŁYCH ŚCIEŻKACH (zgłoszenia Dawida, 31.08.2026)
+ *
+ * 1. „Policz blat z tej płyty" prowadziło do KLASYCZNEGO kreatora, czyli
+ *    do ścieżki awaryjnej, którą klient normalnie widzi tylko przy awarii
+ *    asystenta. Ma prowadzić do tej samej rozmowy, co strona główna.
+ * 2. W edytorze właściciela („Powtórz wycenę") nie dało się wybrać płyty
+ *    z wyprzedaży — Dawid nie mógł powtórzyć wyceny na tej płycie.
+ *
+ * Testy idą po ŹRÓDLE, bo te moduły dotykają DOM-u i sieci, więc nie
+ * uruchomią się w node. Sprawdzamy WPIĘCIE — czyli dokładnie to, czego
+ * zabrakło: kod istniał, ale nikt go nie wołał.
+ * ═══════════════════════════════════════════════════════════════════════ */
+
+const zrodlo = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+
+test('link „Policz blat z tej płyty" prowadzi do ROZMOWY, nie do kreatora', () => {
+  const main = zrodlo('src/main.js');
+  assert.match(main, /uruchomAplikacje\(root, plyta\)/, 'płyta nie trafia do rozmowy');
+  assert.ok(
+    !/uruchomKreator\([^)]*plyta/.test(main),
+    'płyta wciąż uruchamia klasyczny kreator'
+  );
+  // Kreator zostaje WYŁĄCZNIE jako wyjście awaryjne.
+  assert.match(main, /pokazKreator/, 'zniknęło awaryjne wyjście do kreatora');
+});
+
+test('rozmowa przyjmuje płytę i zaczyna od niej', () => {
+  const czat = zrodlo('src/app/czat.js');
+  assert.match(czat, /akcje\.plyta/, 'rozmowa nie przyjmuje wybranej płyty');
+  assert.match(czat, /function zacznijOdPlyty/, 'brak preselekcji płyty');
+  assert.match(czat, /stan\.material = WYPRZEDAZ_SLUG/, 'preselekcja nie ustawia materiału');
+});
+
+test('rozmowa umie policzyć wyprzedaż — nie odsyła do telefonu', () => {
+  /*
+   * `firmaWgSlug('wyprzedaz')` zwraca null, bo kategoria powstaje w locie.
+   * Bez wspólnego resolvera rozmowa mówiłaby „przy tym materiale wycenę
+   * przygotowuje Dawid" i klient nie dostałby kwoty.
+   */
+  const czat = zrodlo('src/app/czat.js');
+  assert.match(czat, /function firmaMaterialu/, 'brak resolvera firmy');
+  assert.ok(
+    !/firmaWgSlug\(stan\.material\)/.test(czat),
+    'rozmowa liczy wciąż przez firmaWgSlug — wyprzedaży nie znajdzie'
+  );
+  assert.ok(
+    !/firmaWgSlug\(wybor\.slug\)/.test(czat),
+    'ścieżka z asystentem liczy przez firmaWgSlug'
+  );
+  // Ostrzeżenie o liczbie płyt musi działać także tutaj.
+  assert.match(czat, /ostrzezenieOWyprzedazy/, 'rozmowa nie ostrzega o braku płyt');
+});
+
+test('kategoria jest do wybrania także w samej rozmowie', () => {
+  // Inaczej klient w rozmowie nigdy jej nie zobaczy, choć w kreatorze jest.
+  const pom = zrodlo('src/app/pomocnicy.js');
+  assert.match(pom, /pom-karta-wyprzedaz/, 'brak kafelka kategorii w rozmowie');
+  assert.match(pom, /function pomocnikPlytWyprzedazy/, 'brak wyboru płyty w rozmowie');
+  assert.match(pom, /kartaPlyty/, 'rozmowa rysuje płyty innym kodem niż reszta');
+});
+
+test('EDYTOR WŁAŚCICIELA ma kategorię wyprzedaży i naprawdę nią liczy', () => {
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(ed, /WYPRZEDAZ_NAZWA.*płyta z placu/, 'brak pozycji w liście kolekcji');
+  assert.match(ed, /stan\.firma === WYPRZEDAZ_SLUG/, 'edytor nie liczy wyprzedaży');
+  assert.match(ed, /firmaDlaPlyty\(plyty, stan\.dekor\)/, 'edytor nie bierze firmy dla płyty');
+  assert.match(ed, /ostrzezenieOWyprzedazy/, 'edytor nie ostrzega o braku płyt');
+});
+
+test('edytor NIE gubi wyboru wyprzedaży przy przerysowaniu', () => {
+  /*
+   * Gałąź wypełniająca listę dekorów wołała `firmaWgSlug(stan.firma) || FIRMY[0]`
+   * i przypisywała `stan.firma = firma.slug`. Dla wyprzedaży dawało to ciche
+   * cofnięcie wyboru do pierwszej kolekcji z cennika — wybór Dawida znikał
+   * po jednym odświeżeniu formularza.
+   */
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(ed, /const zWyprzedazy = stan\.firma === WYPRZEDAZ_SLUG/, 'brak rozpoznania kategorii');
+  assert.match(
+    ed,
+    /if \(!naturalny && !plytaWlasna && !zWyprzedazy\)/,
+    'gałąź cennikowa wciąż łapie wyprzedaż i resetuje wybór'
+  );
+});
+
+test('kategoria pokazuje się TYLKO wtedy, gdy Dawid ma coś na placu', () => {
+  // Pusta pozycja „NATURA WYPRZEDAŻ" w liście kolekcji tylko myli.
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(ed, /doPokazania\(plytyWyprzedazy\(\)\)\.length/, 'edytor pokazuje pustą kategorię');
+  const pom = zrodlo('src/app/pomocnicy.js');
+  assert.match(pom, /plyty\.length &&/, 'rozmowa pokazuje pustą kategorię');
+});

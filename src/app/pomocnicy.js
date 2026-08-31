@@ -1,6 +1,15 @@
 import { h, uprosc } from './dom.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
+import {
+  SLUG as WYPRZEDAZ_SLUG,
+  NAZWA as WYPRZEDAZ_NAZWA,
+  doPokazania,
+  kluczDekoru,
+  formaPlyty,
+} from './wyprzedaz.js';
+import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
+import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 
@@ -138,11 +147,36 @@ export function pomocnikMaterial(wyslij, rodzaj) {
   const firmy = rodzaj ? FIRMY.filter((f) => rodzajMaterialu(f) === rodzaj) : FIRMY;
   const opisRodzaju = RODZAJE.find((r) => r.id === rodzaj);
 
+  /*
+   * Wyprzedaż dokładamy TU, a nie do `FIRMY` — kategoria powstaje z płyt
+   * w bazie i zmienia się bez wdrożenia strony. Bez tego klient w rozmowie
+   * w ogóle by jej nie zobaczył, choć w kreatorze awaryjnym jest.
+   *
+   * Pokazujemy ją przy kamieniu naturalnym i przy braku zawężenia: resztki
+   * z placu to najczęściej kamień, a klient, który wybrał konglomerat,
+   * szuka czegoś innego.
+   */
+  const plyty = doPokazania(plytyWyprzedazy());
+  const zWyprzedazy =
+    plyty.length && (!rodzaj || rodzaj === 'naturalny')
+      ? h(
+          'button',
+          {
+            class: 'pom-karta pom-karta-wyprzedaz',
+            type: 'button',
+            onclick: () => wyslij(WYPRZEDAZ_SLUG, 'Chcę zobaczyć płyty z wyprzedaży.'),
+          },
+          h('span', { class: 'pom-karta-nazwa' }, WYPRZEDAZ_NAZWA),
+          h('span', { class: 'pom-karta-typ' }, `${plyty.length} ${formaPlyty(plyty.length)} z placu`)
+        )
+      : null;
+
   return ramka(
     opisRodzaju ? `Kolekcje — ${opisRodzaju.nazwa.toLowerCase()}` : 'Wybierz materiał',
     h(
       'div',
       { class: 'pom-karty' },
+      zWyprzedazy,
       firmy.map((f) =>
         h(
           'button',
@@ -180,7 +214,34 @@ export function pomocnikMaterial(wyslij, rodzaj) {
 }
 
 /** 3. Dekor — lista wzorów wybranej kolekcji, z wyszukiwarką. */
+/** Płyty z wyprzedaży w rozmowie — te same karty, co w kreatorze i na stronie. */
+function pomocnikPlytWyprzedazy(wyslij) {
+  const plyty = doPokazania(plytyWyprzedazy());
+  if (!plyty.length) return null;
+
+  return ramka(
+    'Płyty z wyprzedaży',
+    h(
+      'div',
+      { class: 'pom-plyty' },
+      plyty.map((p) =>
+        kartaPlyty(p, {
+          onWybierz: () =>
+            wyslij(
+              kluczDekoru(p),
+              `Wybieram płytę ${p.nazwa}${p.kodPlyty ? ` (nr ${p.kodPlyty})` : ''}.`
+            ),
+        })
+      )
+    )
+  );
+}
+
 export function pomocnikDekor(slug, wyslij) {
+  // Przy wyprzedaży klient wybiera KONKRETNĄ PŁYTĘ ze zdjęciem, nie nazwę
+  // wzoru z listy — tak samo jak w kreatorze (kroki.js#krokWyprzedaz).
+  if (slug === WYPRZEDAZ_SLUG) return pomocnikPlytWyprzedazy(wyslij);
+
   const firma = firmaWgSlug(slug);
   if (!firma || firma.trybCeny === 'reczna') return null;
 

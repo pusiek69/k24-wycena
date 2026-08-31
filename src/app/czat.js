@@ -1,5 +1,14 @@
-import { h } from './dom.js';
+import { h, liczba } from './dom.js';
 import { FIRMY, firmaWgSlug, gruboscDomyslna } from '../firms/index.js';
+import {
+  SLUG as WYPRZEDAZ_SLUG,
+  doPokazania,
+  firmaDlaPlyty,
+  plytaWgDekoru,
+  kluczDekoru,
+  ostrzezenieOWyprzedazy,
+} from './wyprzedaz.js';
+import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { wycen } from '../engine/wycena.js';
 import { bramkaWyceny, bramkaKontaktu } from './bramka.js';
 import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
@@ -55,6 +64,26 @@ const POWITANIE =
   'i policzyć orientacyjny koszt blatu. Z czego ma być blat?';
 
 /** Nazwy kolekcji z promptu → pliki firm w aplikacji. */
+/**
+ * Firma dla materiału wybranego w rozmowie.
+ *
+ * ⚠ Kategoria „NATURA WYPRZEDAŻ" NIE JEST plikiem w `src/firms/` — powstaje
+ * w locie z płyt, które Dawid ma dziś na placu (patrz app/wyprzedaz.js).
+ * `firmaWgSlug` jej nie znajdzie, więc każde miejsce, które chce policzyć
+ * wycenę, musi przechodzić przez tę funkcję. Inaczej rozmowa mówi „przy tym
+ * materiale wycenę przygotowuje Dawid" i klient nie dostaje kwoty.
+ */
+function dopiszOstrzezenie(w) {
+  const uwaga = ostrzezenieOWyprzedazy(w, plytyWyprzedazy());
+  if (uwaga && !w.ostrzezenia.includes(uwaga)) w.ostrzezenia.push(uwaga);
+  return w;
+}
+
+function firmaMaterialu(slug, dekor) {
+  if (slug === WYPRZEDAZ_SLUG) return firmaDlaPlyty(plytyWyprzedazy(), dekor);
+  return firmaWgSlug(slug);
+}
+
 export function uruchomCzat(root, akcje = {}) {
   const historia = [];
   let zajety = false;
@@ -106,7 +135,38 @@ export function uruchomCzat(root, akcje = {}) {
   root.replaceChildren(wizytowka(), rozmowa, formularz);
   dodajWiadomosc('konsultant', POWITANIE);
   historia.push({ rola: 'assistant', tresc: POWITANIE });
+
+  /*
+   * WEJŚCIE Z WYPRZEDAŻY — „Policz blat z tej płyty".
+   *
+   * Klient przyszedł ze strony wyprzedaży z konkretną płytą, więc materiał
+   * i wzór są już wybrane. Zaczyna rozmowę od potwierdzenia wyboru — dalej
+   * idzie normalnie: pomieszczenie, wymiary, szczegóły.
+   *
+   * ⚠ Do 31.08.2026 ten link prowadził do KLASYCZNEGO kreatora, czyli do
+   * ścieżki awaryjnej, którą klient normalnie widzi tylko przy awarii
+   * asystenta. Zlecenie Dawida: liczenie ma się odbywać w tym samym
+   * miejscu, co na stronie głównej.
+   */
+  if (akcje.plyta) zacznijOdPlyty(akcje.plyta);
+
   odswiezPomocnika();
+
+  function zacznijOdPlyty(plyta) {
+    stan.material = WYPRZEDAZ_SLUG;
+    stan.dekor = kluczDekoru(plyta);
+    // Wyprzedaż to zawsze konkretna płyta, więc rodzaj mamy z góry —
+    // bez tego rozmowa pytałaby o materiał, który klient już wybrał.
+    stan.rodzaj = 'naturalny';
+
+    const wiadomosc =
+      `Wybrałem płytę z wyprzedaży: ${plyta.nazwa}` +
+      (plyta.kodPlyty ? ` (nr ${plyta.kodPlyty})` : '') +
+      `, ${liczba(plyta.plytaDlCm)} × ${liczba(plyta.plytaGlCm)} cm, ${plyta.gruboscMm} mm.`;
+    dodajWiadomosc('klient', wiadomosc);
+    historia.push({ rola: 'user', tresc: wiadomosc });
+    zdarzenie('wyprzedaz_czat', { plyta: plyta.nazwa });
+  }
 
   /* --------------------------------------------------------------- ruch */
 
@@ -193,7 +253,7 @@ export function uruchomCzat(root, akcje = {}) {
       return;
     }
 
-    const firma = firmaWgSlug(wybor.slug);
+    const firma = firmaMaterialu(wybor.slug, wybor.dane?.dekor);
     if (!firma) {
       // Marka spoza naszych cenników (Dekton, Neolith…). Kalkulator jej nie
       // policzy, ale klient ma usłyszeć konkret, a nie zobaczyć samego formularza.
@@ -205,6 +265,7 @@ export function uruchomCzat(root, akcje = {}) {
     }
 
     const w = wycen(firma, wybor.dane);
+    if (w.ok) dopiszOstrzezenie(w);
     if (!w.ok) {
       // Wzór po wygasłej promocji: nie ma czego doprecyzowywać, jest za to
       // konkretna sprawa dla Dawida — pokazujemy formularz kontaktowy.
@@ -516,7 +577,7 @@ export function uruchomCzat(root, akcje = {}) {
     // komunikatu o błędzie: zaraz pojawi się pytanie o szczegóły.
     if (!stan.szczegoly) return true;
 
-    const firma = firmaWgSlug(stan.material);
+    const firma = firmaMaterialu(stan.material, stan.dekor);
     if (!firma || firma.trybCeny === 'reczna') return false;
 
     const w = wycen(firma, {
@@ -526,6 +587,7 @@ export function uruchomCzat(root, akcje = {}) {
       opcje: opcjeZeSzczegolow(stan.opcje, stan.pomieszczenie),
     });
     if (!w.ok) return false;
+    dopiszOstrzezenie(w);
 
     dodajWiadomosc(
       'konsultant',
@@ -615,9 +677,19 @@ export function uruchomCzat(root, akcje = {}) {
       } else {
         stan.rodzaj = rodzaj;
         zdarzenie('wybor_rodzaju', { rodzaj });
-        // Jest tylko jedna kolekcja w tej grupie? Nie każemy klikać drugi raz.
+        /*
+         * Jest tylko jedna kolekcja w tej grupie? Nie każemy klikać drugi raz.
+         *
+         * ⚠ ALE: przy kamieniu naturalnym kolekcja jest jedna (Interstone),
+         * więc ten skrót przeskakiwał WYBÓR MATERIAŁU — a razem z nim
+         * kategorię wyprzedaży, która też jest kamieniem. Klient szedł
+         * prosto do wyszukiwarki płyt z magazynu i o wyprzedaży się nie
+         * dowiadywał. Skrót ma sens tylko wtedy, gdy naprawdę nie ma z czego
+         * wybierać.
+         */
         const wGrupie = FIRMY.filter((f) => rodzajMaterialu(f) === rodzaj);
-        if (wGrupie.length === 1) {
+        const jestWyprzedaz = rodzaj === 'naturalny' && doPokazania(plytyWyprzedazy()).length > 0;
+        if (wGrupie.length === 1 && !jestWyprzedaz) {
           stan.material = wGrupie[0].slug;
           zdarzenie('wybor_materialu', { material: stan.material });
           if (stan.material === 'interstone') stan.dekor = '(kamień naturalny)';

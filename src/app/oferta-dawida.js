@@ -16,6 +16,17 @@
 import { h, zl, liczba } from './dom.js';
 import { wycen } from '../engine/wycena.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
+import {
+  SLUG as WYPRZEDAZ_SLUG,
+  NAZWA as WYPRZEDAZ_NAZWA,
+  doPokazania,
+  kluczDekoru,
+  plytaWgDekoru,
+  firmaDlaPlyty,
+  ostrzezenieOWyprzedazy,
+  formaPlyty,
+} from './wyprzedaz.js';
+import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
@@ -210,6 +221,39 @@ function policz(stan) {
     );
   }
 
+  /*
+   * WYPRZEDAŻ — kategoria budowana z płyt, które Dawid ma dziś na placu,
+   * więc `firmaWgSlug` jej nie zna (patrz app/wyprzedaz.js).
+   *
+   * Zlecenie Dawida (31.08.2026): przy powtórnej wycenie dla klienta chce
+   * móc wybrać płytę z wyprzedaży. Rozliczenie jest takie samo jak wszędzie
+   * indziej — pełne płyty, cena wyprzedażowa, ostrzeżenie gdy blat wymaga
+   * więcej sztuk, niż zostało.
+   */
+  if (stan.firma === WYPRZEDAZ_SLUG) {
+    const plyty = plytyWyprzedazy();
+    const plyta = plytaWgDekoru(plyty, stan.dekor);
+    if (!plyta) {
+      return {
+        ok: false,
+        blad: doPokazania(plyty).length
+          ? 'Wybierz płytę z wyprzedaży.'
+          : 'Nie ma dziś żadnej opublikowanej płyty na wyprzedaży.',
+      };
+    }
+    const w = wycen(firmaDlaPlyty(plyty, stan.dekor), {
+      dekor: stan.dekor,
+      grubosc: String(plyta.gruboscMm),
+      odcinki,
+      opcje: stan.opcje,
+    });
+    if (w.ok) {
+      const uwaga = ostrzezenieOWyprzedazy(w, plyty);
+      if (uwaga && !w.ostrzezenia.includes(uwaga)) w.ostrzezenia.push(uwaga);
+    }
+    return w;
+  }
+
   const firma = firmaWgSlug(stan.firma);
   if (!firma) return { ok: false, blad: 'Nieznana firma.' };
   return wycen(firma, { dekor: stan.dekor, grubosc: stan.grubosc, odcinki, opcje: stan.opcje });
@@ -393,11 +437,28 @@ function ofertaZWariantami(stan, w) {
 function rysuj(box, stan, paczka) {
   const naturalny = stan.firma === NATURALNY;
   const plytaWlasna = stan.firma === WLASNA;
+  const zWyprzedazy = stan.firma === WYPRZEDAZ_SLUG;
   let dekory = [];
   let grubosci = [];
+
+  /*
+   * Wyprzedaż ma „dekory", ale są nimi konkretne płyty z placu, a grubość
+   * jest jedna — ta, którą ma wybrana płyta. Bez tej gałęzi `firmaWgSlug`
+   * nie znalazłoby kategorii i `stan.firma` wracałoby po cichu do pierwszej
+   * kolekcji z listy, czyli wybór Dawida znikałby po jednym przerysowaniu.
+   */
+  if (zWyprzedazy) {
+    const plyty = doPokazania(plytyWyprzedazy());
+    dekory = plyty.map(kluczDekoru);
+    if (!dekory.includes(stan.dekor)) stan.dekor = dekory[0] || '';
+    const wybrana = plytaWgDekoru(plyty, stan.dekor);
+    grubosci = wybrana ? [String(wybrana.gruboscMm)] : [];
+    stan.grubosc = grubosci[0] || stan.grubosc;
+  }
+
   // Ani kamień naturalny, ani płyta własna nie mają dekorów z cennika —
   // bez tego wyjątku `stan.firma` wracałoby tu do pierwszej kolekcji z listy.
-  if (!naturalny && !plytaWlasna) {
+  if (!naturalny && !plytaWlasna && !zWyprzedazy) {
     const firma = firmaWgSlug(stan.firma) || FIRMY[0];
     stan.firma = firma.slug;
     dekory = Object.keys(firma.dekory || {});
@@ -432,13 +493,23 @@ function rysuj(box, stan, paczka) {
           wybor(
             [
               ...FIRMY.filter((f) => f.trybCeny === 'katalog').map((f) => [f.slug, f.nazwa]),
+              // Wyprzedaż pokazujemy TYLKO wtedy, gdy coś na niej stoi —
+              // pusta pozycja w liście kolekcji tylko myli przy wycenie.
+              ...(doPokazania(plytyWyprzedazy()).length
+                ? [[WYPRZEDAZ_SLUG, `${WYPRZEDAZ_NAZWA} (płyta z placu)`]]
+                : []),
               [NATURALNY, 'Kamień naturalny (płyta z magazynu)'],
               [WLASNA, 'Płyta własna (spoza cenników)'],
             ],
             stan.firma,
             (v) => {
               stan.firma = v;
-              if (v !== NATURALNY && v !== WLASNA) {
+              if (v === WYPRZEDAZ_SLUG) {
+                // Pierwsza dostępna płyta, żeby wycena policzyła się od razu.
+                const pierwsza = doPokazania(plytyWyprzedazy())[0];
+                stan.dekor = pierwsza ? kluczDekoru(pierwsza) : '';
+                if (pierwsza) stan.grubosc = String(pierwsza.gruboscMm);
+              } else if (v !== NATURALNY && v !== WLASNA) {
                 const nowa = firmaWgSlug(v);
                 stan.dekor = Object.keys(nowa?.dekory || {})[0] || '';
               }
@@ -446,7 +517,18 @@ function rysuj(box, stan, paczka) {
             }
           )
         ),
-        naturalny ? null : pole('Dekor', wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => ((stan.dekor = v), odswiez()))),
+        naturalny
+          ? null
+          : pole(
+              zWyprzedazy ? 'Płyta z wyprzedaży' : 'Dekor',
+              wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => {
+                stan.dekor = v;
+                // Każda płyta ma własną grubość — bierzemy ją razem z płytą.
+                const p = zWyprzedazy ? plytaWgDekoru(plytyWyprzedazy(), v) : null;
+                if (p) stan.grubosc = String(p.gruboscMm);
+                odswiez();
+              })
+            ),
         naturalny ? null : pole('Grubość', wybor(grubosci.map((g) => [g, g + ' mm']), stan.grubosc, (v) => ((stan.grubosc = v), odswiez()))),
         pole('Pomieszczenie', wybor([['kuchnia', 'kuchnia'], ['lazienka', 'łazienka']], stan.opcje.pomieszczenie || 'kuchnia', (v) => {
           stan.opcje.pomieszczenie = v;
