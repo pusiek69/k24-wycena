@@ -290,6 +290,70 @@ async function sprawdzPanel() {
   } else ok('CSP panelu pozwala na zdjęcia i nie wpuszcza obcych skryptów');
 }
 
+/* ────────────────────────────────────── 5b. zdjęcia płyt z wyprzedaży */
+
+/**
+ * Czy zdjęcie KAŻDEJ wystawionej płyty da się pobrać z domeny klienta.
+ *
+ * ⚠ POWÓD (01.09.2026): worker wpisuje do listy adres względem korzenia
+ * (`/wyprzedaz/zdjecie/4`). Na k24h.kamieniarstwo24h.workers.dev trafia
+ * prosto do workera i działa — ale klient jest na kam24h.pl, gdzie ten sam
+ * adres szedł do Netlify i wracał 404. Każda karta wyprzedaży miała zbite
+ * zdjęcie, a Dawid zgłaszał to trzy razy pod różnymi objawami, bo z panelu
+ * (na domenie workera) wszystko wyglądało dobrze.
+ *
+ * Dlatego pytamy DWIE domeny osobno. Sprawdzenie jednej z nich niczego by
+ * nie dowiodło — a to właśnie ta różnica była błędem.
+ */
+async function sprawdzZdjeciaWyprzedazy() {
+  tytul('5b. ZDJĘCIA PŁYT Z WYPRZEDAŻY');
+
+  const odp = await pobierz(WORKER + '/wyprzedaz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://kam24h.pl' },
+    body: '{}',
+  });
+  let plyty = [];
+  try {
+    plyty = JSON.parse(odp.tekst || '{}').plyty || [];
+  } catch {
+    zle('lista płyt nie jest poprawnym JSON-em');
+    zglos('wyprzedaż nie oddaje listy płyt');
+    return;
+  }
+
+  if (!plyty.length) {
+    ok('brak wystawionych płyt — nie ma czego sprawdzać');
+    return;
+  }
+
+  const zeZdjeciem = plyty.filter((p) => p.zdjecie);
+  for (const p of plyty.filter((x) => !x.zdjecie)) {
+    // To nie jest błąd aplikacji, tylko brak w danych — ale Dawid ma
+    // o tym wiedzieć, bo karta bez zdjęcia sprzedaje dużo gorzej.
+    zle(`„${p.nazwa}" nie ma wcale zdjęcia — warto je wgrać w panelu`);
+  }
+
+  for (const p of zeZdjeciem) {
+    // Adres względny znaczy „ta sama domena, co strona" — a strona stoi
+    // na kam24h.pl, nie na workerze. Sprawdzamy dokładnie tak, jak zrobi
+    // to przeglądarka klienta.
+    const adres = /^https?:/i.test(p.zdjecie) ? p.zdjecie : ADRES + p.zdjecie;
+    const obraz = await pobierz(adres);
+    const typ = obraz.naglowki?.get?.('content-type') || '';
+
+    if (obraz.status !== 200) {
+      zle(`„${p.nazwa}": zdjęcie zwraca ${obraz.status || 'brak odpowiedzi'} — ${adres}`);
+      zglos(`zdjęcie płyty „${p.nazwa}" nie ładuje się na domenie klienta`);
+    } else if (!/^image\//.test(typ)) {
+      zle(`„${p.nazwa}": pod adresem zdjęcia jest ${typ || 'coś innego niż obrazek'}`);
+      zglos(`zdjęcie płyty „${p.nazwa}" nie jest obrazkiem`);
+    } else {
+      ok(`„${p.nazwa}" — zdjęcie ${typ} ładuje się z ${new URL(adres).host}`);
+    }
+  }
+}
+
 /* ───────────────────────────────────────────────────────────── 6. CORS */
 
 async function sprawdzCors() {
@@ -352,6 +416,7 @@ await sprawdzLinki();
 await sprawdzObrazki();
 await sprawdzWorkera();
 await sprawdzPanel();
+await sprawdzZdjeciaWyprzedazy();
 await sprawdzCors();
 if (!BEZ_PRZEGLADARKI) sprawdzKlienta();
 

@@ -21,13 +21,34 @@ import { cenaCalejPlyty, upustProcent, formaPlyty } from './wyprzedaz.js';
  * @param {boolean} [opcje.statyczna]  karta bez reakcji na klik (strona)
  * @param {object} [opcje.cta]         przycisk pod kartą: {href, label, onclick}
  */
+/**
+ * Zdjęcie płyty, które NIE ZNIKA po cichu.
+ *
+ * ⚠ Z życia (01.09.2026): adres zdjęcia wskazywał na trasę workera, ale na
+ * kam24h.pl trafiał do Netlify i wracał 404. Efekt był najgorszy z możliwych:
+ * pusta ramka bez słowa wyjaśnienia. Dawid widział „nie ma zdjęcia" i nie
+ * miał jak zgadnąć, czy zapomniał je wgrać, czy coś się popsuło.
+ *
+ * Sama przyczyna jest naprawiona (proxy w netlify.toml), ale zamiana cichej
+ * porażki na widoczną zostaje: gdy obrazek się nie wczyta, w jego miejsce
+ * wchodzi ten sam placeholder, co przy płycie bez zdjęcia.
+ */
+function zdjeciePlyty(p) {
+  const img = h('img', {
+    class: 'plyta-foto',
+    src: p.zdjecie,
+    alt: p.nazwa,
+    loading: 'lazy',
+    onerror: () => img.replaceWith(h('span', { class: 'plyta-foto pusta' }, 'bez zdjęcia')),
+  });
+  return img;
+}
+
 export function kartaPlyty(p, opcje = {}) {
   const upust = upustProcent(p);
 
   const srodek = [
-    p.zdjecie
-      ? h('img', { class: 'plyta-foto', src: p.zdjecie, alt: p.nazwa, loading: 'lazy' })
-      : h('span', { class: 'plyta-foto pusta' }, 'bez zdjęcia'),
+    p.zdjecie ? zdjeciePlyty(p) : h('span', { class: 'plyta-foto pusta' }, 'bez zdjęcia'),
     h(
       'span',
       { class: 'plyta-opis' },

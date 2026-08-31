@@ -665,3 +665,44 @@ test('zdjęcia płyt mają przejście przez Netlify na worker', () => {
   assert.match(blok[1], /workers\.dev\/wyprzedaz\/zdjecie\/:splat$/, 'proxy nie celuje w workera');
   assert.equal(blok[2], '200', 'zdjęcie musi iść przez proxy (200), nie przez 301');
 });
+
+test('zdjęcie, które się nie wczyta, ustępuje miejsca placeholderowi', () => {
+  /*
+   * ⚠ Z życia (01.09.2026): adres zdjęcia na kam24h.pl wracał 404 i na
+   * karcie zostawała PUSTA RAMKA bez slowa wyjasnienia. Dawid zglosil to
+   * trzy razy pod roznymi objawami („nie moge dodac zdjecia", „zdjecie sie
+   * nie pokazuje", „nie widze zdjecia w podgladzie"), bo za kazdym razem
+   * widzial to samo: nic. Cicha porazka kosztowala wiecej niz sam blad.
+   *
+   * Sama przyczyna jest naprawiona (proxy w netlify.toml), ale zamiana
+   * ciszy na czytelny komunikat zostaje — i tu jej pilnujemy.
+   */
+  const karta = zrodlo('src/app/wyprzedaz-karta.js');
+  assert.match(karta, /function zdjeciePlyty\(p\)/, 'brak osobnej obsługi zdjęcia');
+  assert.match(karta, /onerror:[\s\S]{0,120}plyta-foto pusta/, 'zdjęcie znika po cichu');
+
+  const panel = zrodlo('worker/panel.js');
+  assert.match(panel, /function zdjecieZapasowe\(el\)/, 'panel nie ma zapasowej miniatury');
+  // Obie miniatury w panelu: w wierszu płyty i w formularzu edycji.
+  assert.equal(
+    (panel.match(/onerror="zdjecieZapasowe\(this\)"/g) || []).length,
+    2,
+    'któraś miniatura w panelu wciąż znika po cichu'
+  );
+});
+
+test('przegląd sprawdza zdjęcia płyt NA DOMENIE KLIENTA', () => {
+  /*
+   * Sedno błędu było w RÓŻNICY między domenami: z panelu (workers.dev)
+   * zdjęcia działały, z kam24h.pl nie. Przegląd, który pyta tylko workera,
+   * przepuściłby to jeszcze raz.
+   */
+  const pr = zrodlo('scripts/przeglad.mjs');
+  assert.match(pr, /async function sprawdzZdjeciaWyprzedazy\(\)/, 'brak sekcji ze zdjęciami');
+  assert.match(pr, /await sprawdzZdjeciaWyprzedazy\(\);/, 'sekcja nie jest wołana');
+  assert.match(
+    pr,
+    /\/\^https\?:\/i\.test\(p\.zdjecie\) \? p\.zdjecie : ADRES \+ p\.zdjecie/,
+    'przegląd pyta o zdjęcie inną domenę niż klient'
+  );
+});

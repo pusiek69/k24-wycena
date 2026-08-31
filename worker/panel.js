@@ -958,7 +958,7 @@ function plytaWiersz(p){
     ? '<s>' + p.cenaNormalnaM2 + '</s> ' : '';
 
   var mini = p.zdjecie
-    ? '<img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="" loading="lazy">'
+    ? '<img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="" loading="lazy" onerror="zdjecieZapasowe(this)">'
     : '<span class="plyta-mini pusta">bez zdjecia</span>';
 
   return '<div class="wiersz plyta-wiersz" data-id="' + p.id + '">' +
@@ -1016,7 +1016,9 @@ function rysujPlyteFormularz(id){
       '<label>Zdjecie - adres w internecie<input id="pl-zdjecie-url" value="' + esc(String(w('zdjecieUrl'))) + '" placeholder="https://..."></label>' +
       '<label>...albo wgraj plik z dysku<input id="pl-zdjecie-plik" type="file" accept="image/*"></label>' +
       '<p class="mini" id="pl-zdjecie-info">' +
-        (p && p.zdjecie ? 'Teraz: <img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="">' : 'Bez zdjecia karta pokaze sama nazwe.') +
+        (p && p.zdjecie
+          ? 'Teraz: <img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="" onerror="zdjecieZapasowe(this)">'
+          : 'Bez zdjecia karta pokaze sama nazwe.') +
       '</p>' +
       '<p><button class="btn" type="button" id="pl-zapisz">Zapisz</button> ' +
       '<button class="btn cichy" type="button" id="pl-anuluj">Anuluj</button></p>' +
@@ -1045,6 +1047,22 @@ function rysujPlyteFormularz(id){
  * blokowala podglad z 'data:' URI i 'Image.onerror' odpalal sie zawsze.
  * Przy okazji naprawy wyszly trzy dalsze usterki, opisane nizej.
  */
+/*
+ * ZDJECIE, KTORE SIE NIE WCZYTALO — mowimy o tym wprost.
+ *
+ * ⚠ Z zycia (01.09.2026): adres zdjecia na kam24h.pl wracal 404, a w panelu
+ * i na stronie zostawala pusta ramka bez slowa wyjasnienia. Dawid widzial
+ * „nie ma zdjecia" i nie mial jak zgadnac, czy zapomnial je wgrac, czy cos
+ * sie popsulo. Przyczyna jest naprawiona (proxy w netlify.toml), ale cicha
+ * porazka zamieniona na widoczna zostaje.
+ */
+function zdjecieZapasowe(el) {
+  var s = document.createElement('span');
+  s.className = 'plyta-mini pusta';
+  s.textContent = 'zdjecia nie da sie wczytac';
+  el.replaceWith(s);
+}
+
 var ZDJECIE_DANE = '';
 var ZDJECIE_MAKS_BOK = 1200;
 
