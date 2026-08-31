@@ -1200,6 +1200,26 @@ function sprawdzAdresZdjecia(){
     return;
   }
 
+  /*
+   * ⚠ Adres MUSI byc z kam24h.pl.
+   *
+   * Strona wyprzedazy ma wlasne CSP (netlify.toml) i dopuszcza obrazki
+   * tylko z naszej domeny. Zdjecie z obcego adresu zaladuje sie TU,
+   * w panelu (ktory ma luzniejsze CSP), a u klienta bedzie pusta ramka —
+   * czyli Dawid zobaczylby „adres dziala" i uwierzyl, ze jest dobrze.
+   * Dlatego sprawdzamy domene, zanim cokolwiek pobierzemy.
+   */
+  var naszaDomena = /^https:\/\/(www\.)?kam24h\.pl\//i.test(adres);
+  if (!naszaDomena) {
+    var udostepniony = /share\.google|photos\.app\.goo|drive\.google|dropbox\.com\/s\//i.test(adres);
+    info.textContent = udostepniony
+      ? 'To link do STRONY ze zdjeciem, a nie do samego pliku — klient zobaczy pusta ramke. '
+        + 'Wgraj zdjecie z dysku przyciskiem wyzej, to najpewniejsza droga.'
+      : 'Zdjecia z obcych adresow nie wyswietla sie klientom (blokuje je zabezpieczenie '
+        + 'strony). Wgraj plik z dysku przyciskiem wyzej.';
+    return;
+  }
+
   info.textContent = 'Sprawdzam adres...';
   var probny = new Image();
 
@@ -1208,13 +1228,7 @@ function sprawdzAdresZdjecia(){
   };
 
   probny.onerror = function(){
-    /* Najczestszy blad: link do STRONY ze zdjeciem zamiast do pliku. */
-    var udostepniony = /share\.google|photos\.app\.goo|drive\.google|dropbox\.com\/s\//i.test(adres);
-    info.textContent = udostepniony
-      ? 'To jest link do strony ze zdjeciem, a nie do samego pliku - przegladarka nie zrobi '
-        + 'z niego obrazka. Najprosciej: wgraj zdjecie z dysku przyciskiem wyzej.'
-      : 'Pod tym adresem nie ma zdjecia (albo serwer go nie udostepnia). Sprawdz link '
-        + 'albo wgraj plik z dysku.';
+    info.textContent = 'Pod tym adresem nie ma zdjecia. Sprawdz link albo wgraj plik z dysku.';
   };
 
   probny.src = adres;

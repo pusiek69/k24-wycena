@@ -431,6 +431,20 @@ if (JEST) {
     assert.match(zrodlo, /function sprawdzAdresZdjecia/, 'panel nie sprawdza adresu zdjecia');
     assert.match(zrodlo, /share\.google/, 'nie rozpoznajemy linku do strony zamiast pliku');
     assert.match(zrodlo, /pl-zdjecie-url'\)\.onchange/, 'sprawdzanie nie jest podpiete do pola');
+
+    /*
+     * Adres MUSI byc z kam24h.pl: strona wyprzedazy ma wlasne CSP i obcych
+     * obrazkow nie pokaze. Panel ma luzniejsze CSP, wiec bez tej kontroli
+     * Dawid widzialby „adres dziala", a klient pusta ramke.
+     */
+    assert.match(zrodlo, /kam24h\.pl/, 'panel nie sprawdza, czy adres jest z naszej domeny');
+
+    const csp = fs.readFileSync(new URL('../netlify.toml', import.meta.url), 'utf8')
+      .match(/img-src ([^;]*)/)[1];
+    assert.ok(
+      !/https:(?!\/)/.test(csp),
+      'strona dopuszcza obrazki z dowolnego https — kontrola domeny w panelu jest wtedy za ostra'
+    );
   });
 
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {
