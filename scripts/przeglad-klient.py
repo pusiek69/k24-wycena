@@ -193,7 +193,12 @@ def przejdz_kategorie(page, nazwa):
         zglos(f'{nazwa}: formularz przepuszcza zgłoszenie bez terminu realizacji')
         return
 
-    ile = f'{dekorow} dekorów' if dekorow else (f'{plyt} płyt' if plyt else 'cena ręczna')
+    # Przy wyprzedaży „plyt" to liczba KART na ekranie, czyli wzorów — nie
+    # sztuk na placu. Nazywamy to wzorami, żeby przegląd nie mówił „1 płyt"
+    # wtedy, gdy klient czyta na pasku „8 płyt z placu" (poprawione 01.09.2026).
+    ile = f'{dekorow} dekorów' if dekorow else (
+        f'{plyt} {"wzór" if plyt == 1 else "wzory" if plyt < 5 else "wzorów"} na wyprzedaży'
+        if plyt else 'cena ręczna')
     ok(f'{nazwa} — {ile}, formularz kompletny, walidacja działa')
 
 
