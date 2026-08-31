@@ -1056,7 +1056,7 @@ var ZDJECIE_LIMIT = 680000;
 
 /* Formaty, ktorych przegladarka nie zdekoduje - rozpoznajemy PO NAZWIE,
    bo typ MIME z systemu bywa pusty albo ogolny. */
-var BEZ_DEKODERA = /\.(heic|heif|avif|tiff?|raw|cr2|nef|arw|dng)$/i;
+var BEZ_DEKODERA = /\\.(heic|heif|avif|tiff?|raw|cr2|nef|arw|dng)$/i;
 
 /**
  * Zmniejsza obraz i dobiera jakosc tak, zeby zmiescic sie w limicie.
@@ -1195,7 +1195,7 @@ function sprawdzAdresZdjecia(){
   /* Wgrany plik ma pierwszenstwo - nie kasujemy jego podgladu. */
   if (!adres || ZDJECIE_DANE) return;
 
-  if (!/^https:\/\//i.test(adres)) {
+  if (!/^https:\\/\\//i.test(adres)) {
     info.textContent = 'Adres musi zaczynac sie od https://';
     return;
   }
@@ -1209,9 +1209,9 @@ function sprawdzAdresZdjecia(){
    * czyli Dawid zobaczylby „adres dziala" i uwierzyl, ze jest dobrze.
    * Dlatego sprawdzamy domene, zanim cokolwiek pobierzemy.
    */
-  var naszaDomena = /^https:\/\/(www\.)?kam24h\.pl\//i.test(adres);
+  var naszaDomena = /^https:\\/\\/(www\\.)?kam24h\\.pl\\//i.test(adres);
   if (!naszaDomena) {
-    var udostepniony = /share\.google|photos\.app\.goo|drive\.google|dropbox\.com\/s\//i.test(adres);
+    var udostepniony = /share\\.google|photos\\.app\\.goo|drive\\.google|dropbox\\.com\\/s\\//i.test(adres);
     info.textContent = udostepniony
       ? 'To link do STRONY ze zdjeciem, a nie do samego pliku — klient zobaczy pusta ramke. '
         + 'Wgraj zdjecie z dysku przyciskiem wyzej, to najpewniejsza droga.'

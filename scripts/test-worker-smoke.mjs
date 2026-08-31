@@ -447,6 +447,67 @@ if (JEST) {
     );
   });
 
+  test('SKRYPT PANELU PARSUJE SIE W PRZEGLADARCE', async () => {
+    /*
+     * ⚠ REGRESJA Z 31.08.2026, zgloszona jako „w panelu nie widze zadnych zlecen".
+     *
+     * Skrypt panelu mieszka w TEMPLATE LITERALU, wiec pojedynczy ukosnik
+     * odwrotny jest w nim zjadany: regex sprawdzajacy adres dojechal do
+     * przegladarki bez ukosnikow i wywalil CALY skrypt panelu bledem
+     * skladni. Endpointy odpowiadaly poprawnie (200, 51 klientow), ale nic
+     * sie nie renderowalo: ani lista, ani lejek, ani „na dzis".
+     *
+     * `node --check worker/panel.js` tego NIE lapal, bo sprawdza modul,
+     * a nie tresc szablonu. Ten test bierze HTML z prawdziwej odpowiedzi
+     * i probuje sparsowac to, co naprawde dostaje przegladarka.
+     */
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const odp = await worker.fetch(
+      new Request('https://k24h.example/panel', {
+        headers: { origin: 'https://kam24h.pl', cookie },
+      }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200, 'panel nie oddal strony po zalogowaniu');
+
+    const html = await odp.text();
+    const skrypty = [...html.matchAll(/<script>([^]*?)<\/script>/g)].map((m) => m[1]);
+    assert.ok(skrypty.length, 'panel nie ma wcale skryptu');
+
+    for (const [i, kod] of skrypty.entries()) {
+      try {
+        // Sam parsing, bez uruchamiania — rzuca na bledzie skladni.
+        new Function(kod);
+      } catch (e) {
+        assert.fail(`skrypt ${i + 1} panelu nie parsuje sie: ${e.message}`);
+      }
+    }
+  });
+
+  test('panel po zalogowaniu naprawde niesie liste zgloszen', async () => {
+    // Druga strona tej samej regresji: sprawdzamy, ze endpoint oddaje karty,
+    // a nie tylko ze cos odpowiada.
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, phone: '600100301', email: 'lista@example.com' }), env, ctx);
+
+    const cookie = await ciastkoPanelu(env);
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+
+    assert.ok(Array.isArray(dane.lista), 'brak listy zgloszen');
+    assert.ok(dane.lista.length >= 1, 'lista zgloszen pusta mimo zapisanego leada');
+    assert.ok('termin' in dane.lista[0], 'karta klienta bez pola terminu');
+  });
+
   test('/feedback odpowiada, nawet gdy nie ma czego dopiąć', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/feedback', { feedback: 'pasuje' }), env, ctx);
