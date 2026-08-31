@@ -10,6 +10,7 @@ import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 import { gotoweStawki } from './app/stawki-klient.js';
 import { pobierzPlyty, zaladowane } from './app/wyprzedaz-dane.js';
 import { doPokazania, kluczDekoru } from './app/wyprzedaz.js';
+import { pasekWyprzedazy } from './app/pasek-wyprzedazy.js';
 
 // Zgody ustawiamy najwcześniej — zanim cokolwiek zdąży się wczytać.
 inicjujZgody();
@@ -102,7 +103,30 @@ if (!FIRMY.length) {
      * tylko wtedy, gdy asystent nie odpowiada.
      */
     uruchomAplikacje(root, plyta);
+    pasekWHero();
   });
+}
+
+/**
+ * BANER WYPRZEDAŻY W HERO — pierwszy ekran strony głównej.
+ *
+ * Zlecenie Dawida (01.09.2026): wyprzedaż ma być widoczna od razu, a nie
+ * dopiero dla kogoś, kto przeklika się przez rozmowę. Baner prowadzi na
+ * /wyprzedaz-plyt, gdzie leżą wszystkie płyty ze zdjęciami.
+ *
+ * Wstawiamy go DOPIERO po pobraniu listy — pusty plac znaczy brak banera.
+ * Dlatego stoi na końcu hero: gdy się pojawi, nie przesuwa ani nagłówka,
+ * ani przycisku „Wyceń swój blat", tylko treść, która i tak jest niżej.
+ */
+function pasekWHero() {
+  const miejsce = document.getElementById('pasek-wyprzedazy');
+  if (!miejsce) return;
+
+  const pasek = pasekWyprzedazy(zaladowane(), {
+    href: '/wyprzedaz-plyt',
+    miejsce: 'hero',
+  });
+  if (pasek) miejsce.replaceChildren(pasek);
 }
 
 /**

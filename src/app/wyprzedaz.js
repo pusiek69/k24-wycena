@@ -61,6 +61,60 @@ export function upustProcent(p) {
   return Math.round((1 - Number(p.cenaM2) / normalna) * 100);
 }
 
+/**
+ * Ile FIZYCZNYCH płyt leży na placu — suma sztuk, nie liczba pozycji.
+ *
+ * ⚠ To nie to samo, co `doPokazania(plyty).length`. Jedna pozycja może
+ * mieć osiem sztuk tego samego wzoru i klientowi trzeba powiedzieć „8 płyt",
+ * a nie „1 płyta" — inaczej wyprzedaż wygląda na resztkę, którą ktoś już
+ * sprzątnął sprzed nosa.
+ */
+export function plytNaPlacu(plyty) {
+  return doPokazania(plyty).reduce((suma, p) => suma + (Number(p.plytZostalo) || 0), 0);
+}
+
+/**
+ * HASŁO WYPRZEDAŻY — treść paska nad rozmową, kafelka przy wyborze
+ * materiału i banera na stronie głównej (zlecenie Dawida, 01.09.2026:
+ * „ciężko znaleźć wyprzedaż, a to powinno być aż KRZYKLIWE").
+ *
+ * Jedna funkcja, bo trzy miejsca muszą mówić DOKŁADNIE to samo. Gdyby
+ * każde liczyło po swojemu, prędzej czy później baner obiecywałby −40%,
+ * a karta pokazywała −25% — i to klient wyłapałby to pierwszy.
+ *
+ * Zwraca `null`, gdy Dawid nic nie wystawił. Wtedy nigdzie nie ma paska,
+ * kafelka ani banera — nie krzyczymy o pustym placu.
+ *
+ * @param {Array} plyty  surowa lista z `/wyprzedaz`
+ */
+export function hasloWyprzedazy(plyty) {
+  const widoczne = doPokazania(plyty);
+  if (!widoczne.length) return null;
+
+  const upusty = widoczne.map(upustProcent).filter((u) => u !== null);
+  const sztuk = plytNaPlacu(plyty);
+
+  return {
+    /* Ile sztuk — to jest licznik, który widzi klient. */
+    sztuk,
+    /* Ile różnych wzorów — do liczby mnogiej w nocie. */
+    pozycji: widoczne.length,
+    /*
+     * NAJWIĘKSZY upust, nie średni. Pasek zapowiada „nawet −43%",
+     * a nie „średnio −31%" — i tak jest uczciwie, dopóki taka płyta
+     * naprawdę leży na placu. Gdy Dawid nie podał ceny „było" przy
+     * żadnej płycie, upustu nie ma i pasek o nim nie wspomina.
+     */
+    upust: upusty.length ? Math.max(...upusty) : null,
+    tytul: 'WYPRZEDAŻ PŁYT',
+    nota:
+      sztuk === 1
+        ? 'ostatnia płyta z placu — konkretna sztuka w niższej cenie'
+        : `${sztuk} ${formaPlyty(sztuk)} z placu — konkretne sztuki w niższej cenie`,
+    akcja: 'Zobacz płyty',
+  };
+}
+
 /** „3 płyty" / „1 płyta" — ta sama odmiana, co w opisie rozkroju. */
 export function formaPlyty(n) {
   const liczba = Number(n) || 0;

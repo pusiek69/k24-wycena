@@ -9,6 +9,7 @@ import {
   ostrzezenieOWyprzedazy,
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
+import { pasekWyprzedazy } from './pasek-wyprzedazy.js';
 import { wycen } from '../engine/wycena.js';
 import { bramkaWyceny, bramkaKontaktu } from './bramka.js';
 import { zapytajKonsultanta, sprawdzMagazyn } from '../api.js';
@@ -132,7 +133,22 @@ export function uruchomCzat(root, akcje = {}) {
     pole.style.height = Math.min(pole.scrollHeight, 140) + 'px';
   });
 
-  root.replaceChildren(wizytowka(), rozmowa, formularz);
+  /*
+   * PASEK WYPRZEDAŻY stoi NAD wizytówką — czyli nad pierwszą rzeczą, którą
+   * klient widzi po otwarciu kalkulatora (zlecenie Dawida, 01.09.2026).
+   *
+   * Nie pokazujemy go temu, kto przyszedł już z konkretną płytą ze strony
+   * wyprzedaży: reklamowanie komuś czegoś, co właśnie wybrał, to hałas.
+   */
+  const pasek = akcje.plyta ? null : pasekWyprzedazy(plytyWyprzedazy(), {
+    // Smukły wariant: na stronie głównej ten pasek stoi kilkadziesiąt
+    // pikseli pod wstążką w hero i nie może być jej kopią.
+    wariant: 'rozmowa',
+    miejsce: 'czat',
+    onKlik: pokazWyprzedaz,
+  });
+
+  root.replaceChildren(...[pasek, wizytowka(), rozmowa, formularz].filter(Boolean));
   dodajWiadomosc('konsultant', POWITANIE);
   historia.push({ rola: 'assistant', tresc: POWITANIE });
 
@@ -151,6 +167,22 @@ export function uruchomCzat(root, akcje = {}) {
   if (akcje.plyta) zacznijOdPlyty(akcje.plyta);
 
   odswiezPomocnika();
+
+  /*
+   * Klik w pasek — klient chce zobaczyć płyty, a nie przejść trzech kroków,
+   * żeby do nich dotrzeć. Ustawiamy materiał na wyprzedaż i CZYŚCIMY wzór,
+   * bo pasek bywa klikany też w środku rozmowy, gdy coś już było wybrane.
+   * O pomieszczenie dopytamy zaraz potem — kolejność pilnuje
+   * `odswiezPomocnika`.
+   */
+  function pokazWyprzedaz() {
+    stan.rodzaj = 'naturalny';
+    stan.material = WYPRZEDAZ_SLUG;
+    stan.dekor = null;
+    stan.wyborPlyty = null;
+    stan.kodPlyty = null;
+    wyslij('Chcę zobaczyć płyty z wyprzedaży.');
+  }
 
   function zacznijOdPlyty(plyta) {
     stan.material = WYPRZEDAZ_SLUG;
@@ -642,6 +674,15 @@ export function uruchomCzat(root, akcje = {}) {
             : `Wybieram płytę ${wybrany}.`
         );
       });
+    /*
+     * Klient kliknął w pasek wyprzedaży — najpierw pokazujemy PŁYTY,
+     * dopiero potem pytamy o pomieszczenie. Inaczej klik w „Zobacz płyty"
+     * kończył się pytaniem „kuchnia czy łazienka?", a płyt jak nie było,
+     * tak nie ma. Zwykłą ścieżką (pomieszczenie → rodzaj → materiał)
+     * ten warunek nie rusza, bo pomieszczenie jest wtedy dawno ustawione.
+     */
+    else if (stan.material === WYPRZEDAZ_SLUG && !stan.dekor && doPokazania(plytyWyprzedazy()).length)
+      el = pomocnikDekor(WYPRZEDAZ_SLUG, wybrano);
     else if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
     else if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
@@ -688,7 +729,9 @@ export function uruchomCzat(root, akcje = {}) {
          * wybierać.
          */
         const wGrupie = FIRMY.filter((f) => rodzajMaterialu(f) === rodzaj);
-        const jestWyprzedaz = rodzaj === 'naturalny' && doPokazania(plytyWyprzedazy()).length > 0;
+        // Od 01.09.2026 kafelek wyprzedaży pokazuje się przy KAŻDYM rodzaju,
+        // więc skrót musi go omijać niezależnie od wybranej grupy.
+        const jestWyprzedaz = doPokazania(plytyWyprzedazy()).length > 0;
         if (wGrupie.length === 1 && !jestWyprzedaz) {
           stan.material = wGrupie[0].slug;
           zdarzenie('wybor_materialu', { material: stan.material });

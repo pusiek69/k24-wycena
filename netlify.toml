@@ -265,6 +265,25 @@
   status = 301
   force = true
 
+# ZDJĘCIA PŁYT Z WYPRZEDAŻY — proxy do workera.
+#
+# ⚠ Zdjęcia leżą w D1 i oddaje je worker, ale adres, który worker wpisuje
+# do listy (`/wyprzedaz/zdjecie/4`), jest względem KORZENIA — czyli na
+# kam24h.pl trafiał do Netlify, a ten nie ma takiego pliku. Efekt: każda
+# płyta na /wyprzedaz-plyt miała zbite zdjęcie i 404 w konsoli (znalezione
+# 01.09.2026 przy okazji paska wyprzedaży; Dawid zgłaszał wcześniej
+# „zdjęcie nie pokazuje się" — to jest ta druga połowa sprawy, publiczna).
+#
+# Proxy (status 200, nie 301) załatwia to bez ruszania nagłówka CSP:
+# przeglądarka widzi obrazek na WŁASNEJ domenie, więc `img-src 'self'`
+# wystarcza. Przepisanie adresów na *.workers.dev wymagałoby rozluźnienia
+# CSP dla obcej domeny — a to zbyt duża cena za jedno zdjęcie.
+[[redirects]]
+  from = "/wyprzedaz/zdjecie/*"
+  to = "https://k24h.kamieniarstwo24h.workers.dev/wyprzedaz/zdjecie/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/wyprzedaz-plyt.html"
   to = "/wyprzedaz-plyt"

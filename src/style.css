@@ -16,6 +16,11 @@
   --vein-soft: #8a7244;
   --line: rgba(201, 168, 106, 0.20);
   --line-hi: rgba(201, 168, 106, 0.45);
+  /* ŻAR — czerwień rozgrzanego kamienia. Jedyny kolor w całej stronie,
+     który nie jest ani kamieniem, ani złotem: dokładnie dlatego działa
+     jako akcent wyprzedaży i dlatego nie używamy go nigdzie indziej. */
+  --zar: #c2402c;
+  --zar-hi: #e2593d;
   --ok: #7a9d66;
   --warn: #d0a24a;
   --sans: "Helvetica Neue", Arial, sans-serif;
@@ -1624,3 +1629,201 @@ button { color: var(--cream); background: transparent; }
 .plyty-wyprzedaz .plyta-karta.statyczna { cursor: default; }
 .plyty-wyprzedaz .plyta-karta.statyczna:hover { border-color: var(--line); transform: none; }
 .plyta-cta { margin: 10px 14px 14px; }
+
+/* ── Pasek wyprzedaży ──────────────────────────────────────────────────
+   Zlecenie Dawida (01.09.2026): „ciężko znaleźć wyprzedaż, a to powinno
+   być aż KRZYKLIWE". Ten sam pasek stoi w hero strony głównej (jako link)
+   i nad rozmową w kalkulatorze (jako przycisk) — patrz app/pasek-wyprzedazy.js.
+
+   Głośno, ale bez tandety: żar wchodzi od lewej krawędzi i gaśnie w złocie
+   reszty strony, jak rozgrzana krawędź płyty. Bez migania, bez licznika
+   „oferta kończy się za 3:59", bez wykrzykników. Krzyczy kolor i wersaliki,
+   a nie efekty. */
+.pasek-wyprzedaz {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  overflow: hidden;
+  text-align: left;
+  text-decoration: none;
+  color: var(--cream);
+  font-family: var(--sans);
+  background:
+    linear-gradient(100deg,
+      rgba(194, 64, 44, .30) 0%,
+      rgba(194, 64, 44, .14) 38%,
+      rgba(201, 168, 106, .09) 70%,
+      transparent 100%),
+    var(--slab);
+  border: 1px solid rgba(226, 89, 61, .42);
+  border-left: 3px solid var(--zar);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .18s, transform .18s, box-shadow .18s;
+  /* Baner dojeżdża po pobraniu listy płyt — zjazd zamiast przeskoku. */
+  animation: pw-wjazd .45s ease-out both;
+}
+.pasek-wyprzedaz:hover,
+.pasek-wyprzedaz:focus-visible {
+  border-color: var(--zar-hi);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(194, 64, 44, .22);
+}
+
+/* Refleks przesuwający się raz na jakiś czas — jedyny ruch na pasku.
+   Na tyle rzadki, że przyciąga oko i nie męczy przy czytaniu strony. */
+.pasek-wyprzedaz::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 236, 210, .13), transparent);
+  animation: pw-refleks 6.5s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+
+/* Palenisko dla płomienia — bez kółka emoji wygląda jak literówka. */
+.pw-znak {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  font-size: 17px;
+  line-height: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 60%, rgba(226, 89, 61, .55), rgba(194, 64, 44, .18));
+  box-shadow: inset 0 0 0 1px rgba(226, 89, 61, .45);
+}
+
+.pw-tresc { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pw-tytul {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--vein-hi);
+}
+.pw-upust {
+  padding: 2px 7px;
+  font-size: 12px;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  color: #fff3ec;
+  background: var(--zar);
+  border-radius: 2px;
+}
+.pw-nota {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.pw-akcja {
+  flex: none;
+  margin-left: auto;
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--vein);
+  white-space: nowrap;
+}
+
+/* Telefon: akcja wskakuje w prawy górny róg, na wysokość tytułu, zamiast
+   zajmować trzeci wiersz. Bez tego wstążka rosła do 111 px i zjadała pół
+   ekranu, na którym ma się jeszcze zmieścić przycisk „Wyceń swój blat". */
+@media (max-width: 540px) {
+  .pasek-wyprzedaz { gap: 11px; padding: 10px 13px; }
+  .pw-znak { width: 30px; height: 30px; font-size: 15px; }
+  /* Akcja siada na wysokości NOTY, nie tytułu: obok tytułu stoi jeszcze
+     plakietka z upustem i przy 390 px oba nie mieszczą się w jednym wierszu
+     — tytuł łamał się na dwie linijki, a plakietka wjeżdżała pod „Zobacz
+     płyty". Miejsce na akcję wycinamy więc z noty, która łamie się bez szkody. */
+  .pw-tytul { font-size: 13px; }
+  .pw-nota { font-size: 12px; padding-right: 92px; }
+  .pw-akcja { position: absolute; right: 13px; bottom: 10px; margin: 0; font-size: 11px; }
+}
+
+/* W hero pasek trzyma tę samą kolumnę optyczną, co zdanie pod nagłówkiem
+   (.sub ma 46ch) — rozciągnięty na całą szerokość ekranu wyglądałby jak
+   pasek cookies, a nie jak oferta. */
+#pasek-wyprzedazy .pasek-wyprzedaz { margin: 24px 0 0; max-width: 560px; }
+
+@keyframes pw-wjazd {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pw-refleks {
+  0%, 62% { transform: translateX(0); }
+  92%, 100% { transform: translateX(340%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pasek-wyprzedaz { animation: none; }
+  .pasek-wyprzedaz::after { display: none; }
+}
+
+/* ── Kafelek wyprzedaży przy wyborze materiału ─────────────────────────
+   Ten sam żar, co na pasku, ale ciszej — kafelek stoi w siatce obok
+   jedenastu innych kolekcji i ma się wyróżniać, a nie ją rozsadzać. */
+.pom-karta-wyprzedaz {
+  position: relative;
+  border-color: rgba(226, 89, 61, .45);
+  background: linear-gradient(155deg, rgba(194, 64, 44, .20), rgba(19, 17, 15, 0) 62%), var(--ink);
+}
+.pom-karta-wyprzedaz:hover { border-color: var(--zar-hi); background: linear-gradient(155deg, rgba(194, 64, 44, .30), rgba(19, 17, 15, 0) 62%), var(--stone-hi); }
+.pom-karta-wyprzedaz .pom-karta-nazwa { color: var(--vein-hi); }
+.pom-karta-wyprzedaz .pom-karta-typ { color: var(--zar-hi); }
+.pom-karta-plakietka {
+  position: absolute;
+  top: -8px;
+  right: 10px;
+  padding: 2px 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  font-variant-numeric: tabular-nums;
+  color: #fff3ec;
+  background: var(--zar);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(194, 64, 44, .35);
+}
+
+/* Wariant smukły — nad startem rozmowy. Ten sam żar, jedna linijka i o połowę
+   niższy niż wstążka w hero: na stronie głównej oba paski widać naraz, więc
+   drugi musi czytać się jako AKCJA, a nie jako powtórzony baner. */
+.pasek-smukly {
+  gap: 9px;
+  padding: 8px 13px;
+  background:
+    linear-gradient(100deg, rgba(194, 64, 44, .22) 0%, rgba(194, 64, 44, .07) 45%, transparent 78%),
+    var(--slab);
+}
+.pasek-smukly .pw-plomien { flex: none; font-size: 14px; line-height: 1; }
+.pasek-smukly .pw-tytul { font-size: 12px; letter-spacing: .07em; }
+.pasek-smukly .pw-upust { padding: 1px 6px; font-size: 11px; }
+.pasek-smukly .pw-nota {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  /* Nota ustępuje pierwsza — tytuł i akcja mają być zawsze w całości. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pasek-smukly .pw-akcja { font-size: 11px; }
+
+/* Na telefonie nota nie mieści się obok tytułu — schodzi niżej całym
+   wierszem, zamiast skracać się do dwóch słów z wielokropkiem. */
+@media (max-width: 620px) {
+  .pasek-smukly { flex-wrap: wrap; }
+  .pasek-smukly .pw-nota { flex-basis: 100%; white-space: normal; }
+  .pasek-smukly .pw-akcja { margin-left: auto; }
+}

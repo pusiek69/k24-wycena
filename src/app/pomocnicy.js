@@ -7,6 +7,7 @@ import {
   doPokazania,
   kluczDekoru,
   formaPlyty,
+  hasloWyprzedazy,
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { kartaPlyty } from './wyprzedaz-karta.js';
@@ -152,24 +153,46 @@ export function pomocnikMaterial(wyslij, rodzaj) {
    * w bazie i zmienia się bez wdrożenia strony. Bez tego klient w rozmowie
    * w ogóle by jej nie zobaczył, choć w kreatorze awaryjnym jest.
    *
-   * Pokazujemy ją przy kamieniu naturalnym i przy braku zawężenia: resztki
-   * z placu to najczęściej kamień, a klient, który wybrał konglomerat,
-   * szuka czegoś innego.
+   * ⚠ Do 01.09.2026 kafelek pokazywał się WYŁĄCZNIE przy kamieniu naturalnym.
+   * Wyglądało to logicznie („resztki z placu to najczęściej kamień"), ale
+   * pierwsza płyta, którą Dawid wystawił, to konglomerat kwarcowy — więc
+   * klient szukający konglomeratu nie widział jej wcale. Wyprzedaż to okazja
+   * cenowa, a nie kategoria materiału: pokazujemy ją przy każdym rodzaju.
+   *
+   * Kafelek stoi PIERWSZY w siatce i jest wyróżniony żarem — razem z paskiem
+   * nad rozmową to odpowiedź na „ciężko znaleźć wyprzedaż" (zlecenie Dawida).
    */
-  const plyty = doPokazania(plytyWyprzedazy());
-  const zWyprzedazy =
-    plyty.length && (!rodzaj || rodzaj === 'naturalny')
-      ? h(
-          'button',
-          {
-            class: 'pom-karta pom-karta-wyprzedaz',
-            type: 'button',
-            onclick: () => wyslij(WYPRZEDAZ_SLUG, 'Chcę zobaczyć płyty z wyprzedaży.'),
-          },
-          h('span', { class: 'pom-karta-nazwa' }, WYPRZEDAZ_NAZWA),
-          h('span', { class: 'pom-karta-typ' }, `${plyty.length} ${formaPlyty(plyty.length)} z placu`)
+  const haslo = hasloWyprzedazy(plytyWyprzedazy());
+  const zWyprzedazy = haslo
+    ? h(
+        'button',
+        {
+          class: 'pom-karta pom-karta-wyprzedaz',
+          type: 'button',
+          onclick: () => wyslij(WYPRZEDAZ_SLUG, 'Chcę zobaczyć płyty z wyprzedaży.'),
+        },
+        // Plakietka z upustem tylko wtedy, gdy Dawid podał ceny „było".
+        // Płomień jest ozdobą — czytnik ekranu ma przeczytać sam upust,
+        // a nie „ogień minus czterdzieści trzy procent".
+        h(
+          'span',
+          { class: 'pom-karta-plakietka' },
+          h('span', { 'aria-hidden': 'true' }, '🔥 '),
+          haslo.upust ? `−${haslo.upust}%` : 'OKAZJA'
+        ),
+        h('span', { class: 'pom-karta-nazwa' }, WYPRZEDAZ_NAZWA),
+        h(
+          'span',
+          { class: 'pom-karta-typ' },
+          `${haslo.sztuk} ${formaPlyty(haslo.sztuk)} z placu`
+        ),
+        h(
+          'span',
+          { class: 'pom-karta-opis' },
+          'Konkretne płyty z magazynu w niższej cenie — rozliczenie za całą sztukę.'
         )
-      : null;
+      )
+    : null;
 
   return ramka(
     opisRodzaju ? `Kolekcje — ${opisRodzaju.nazwa.toLowerCase()}` : 'Wybierz materiał',

@@ -24,6 +24,8 @@ const {
   cenaNettoM2,
   upustProcent,
   formaPlyty,
+  plytNaPlacu,
+  hasloWyprzedazy,
   notaPlyty,
   firmaWyprzedazy,
   kluczDekoru,
@@ -525,6 +527,141 @@ test('kategoria pokazuje się TYLKO wtedy, gdy Dawid ma coś na placu', () => {
   // Pusta pozycja „NATURA WYPRZEDAŻ" w liście kolekcji tylko myli.
   const ed = zrodlo('src/app/oferta-dawida.js');
   assert.match(ed, /doPokazania\(plytyWyprzedazy\(\)\)\.length/, 'edytor pokazuje pustą kategorię');
+  // Od 01.09.2026 pilnuje tego `hasloWyprzedazy`, które przy pustym placu
+  // zwraca null — i kafelek, i pasek, i baner znikają jedną decyzją.
   const pom = zrodlo('src/app/pomocnicy.js');
-  assert.match(pom, /plyty\.length &&/, 'rozmowa pokazuje pustą kategorię');
+  assert.match(pom, /const zWyprzedazy = haslo/, 'rozmowa pokazuje pustą kategorię');
+});
+
+
+/* ───────────────────────── pasek wyprzedaży (01.09.2026) ─────────────────
+ * Zlecenie Dawida: „ciężko znaleźć wyprzedaż, a to powinno być aż KRZYKLIWE".
+ * Pasek stoi w trzech miejscach naraz, więc najważniejsze jest to, żeby
+ * wszystkie trzy liczyły TAK SAMO — i żeby milczały, gdy plac jest pusty.
+ */
+
+test('licznik płyt liczy SZTUKI, a nie pozycje w wykazie', () => {
+  /*
+   * ⚠ Pierwsza płyta Dawida to jedna pozycja, ale OSIEM sztuk. Kafelek
+   * mówił wtedy „1 płyta z placu" i wyprzedaż wyglądała na resztkę, którą
+   * ktoś już sprzątnął sprzed nosa.
+   */
+  const plyty = [
+    plyta({ id: 1, plytZostalo: 8 }),
+    plyta({ id: 2, plytZostalo: 3 }),
+  ];
+  assert.equal(plytNaPlacu(plyty), 11);
+  assert.equal(doPokazania(plyty).length, 2, 'pozycje to co innego niż sztuki');
+});
+
+test('sprzedane i nieopublikowane płyty nie wchodzą do licznika', () => {
+  const plyty = [
+    plyta({ id: 1, plytZostalo: 4 }),
+    plyta({ id: 2, plytZostalo: 0 }),
+    plyta({ id: 3, plytZostalo: 9, opublikowana: false }),
+  ];
+  assert.equal(plytNaPlacu(plyty), 4);
+});
+
+test('pusty plac = brak hasła, czyli brak paska w każdym miejscu naraz', () => {
+  assert.equal(hasloWyprzedazy([]), null);
+  assert.equal(hasloWyprzedazy([plyta({ plytZostalo: 0 })]), null);
+  assert.equal(hasloWyprzedazy([plyta({ opublikowana: false })]), null);
+});
+
+test('pasek zapowiada NAJWIĘKSZY upust, jaki naprawdę leży na placu', () => {
+  const haslo = hasloWyprzedazy([
+    plyta({ id: 1, cenaNormalnaM2: 1000, cenaM2: 800 }),   // −20%
+    plyta({ id: 2, cenaNormalnaM2: 1250, cenaM2: 715 }),   // −43%
+  ]);
+  assert.equal(haslo.upust, 43);
+  // Ta sama liczba musi wyjść na karcie płyty — inaczej baner obiecuje
+  // co innego, niż klient widzi po kliknięciu.
+  assert.equal(upustProcent(plyta({ cenaNormalnaM2: 1250, cenaM2: 715 })), 43);
+});
+
+test('bez ceny „było" pasek nie wymyśla procentu', () => {
+  // Przekreślona cena wzięta z powietrza to zwykłe oszustwo — wolimy
+  // pasek bez plakietki niż plakietkę bez pokrycia.
+  const haslo = hasloWyprzedazy([plyta({ cenaNormalnaM2: 0, cenaM2: 700 })]);
+  assert.equal(haslo.upust, null);
+  assert.ok(haslo.sztuk >= 1);
+});
+
+test('nota odmienia „płytę" po polsku i mówi o ostatniej sztuce', () => {
+  assert.match(hasloWyprzedazy([plyta({ plytZostalo: 1 })]).nota, /ostatnia płyta z placu/);
+  assert.match(hasloWyprzedazy([plyta({ plytZostalo: 2 })]).nota, /^2 płyty z placu/);
+  assert.match(hasloWyprzedazy([plyta({ plytZostalo: 8 })]).nota, /^8 płyt z placu/);
+});
+
+test('pasek w hero i pasek nad rozmową to DWA różne warianty', () => {
+  /*
+   * ⚠ Pierwsza wersja rysowała w obu miejscach ten sam pas. Na stronie
+   * głównej wychodziły dwa identyczne czerwone paski w jednym ekranie —
+   * czytelne raczej jako usterka niż jako oferta.
+   */
+  const zr = zrodlo('src/app/pasek-wyprzedazy.js');
+  assert.match(zr, /opcje\.wariant === 'rozmowa'/, 'brak wariantu smukłego');
+  assert.match(zr, /pasek-smukly/, 'brak klasy wariantu smukłego');
+
+  const css = zrodlo('src/style.css');
+  assert.match(css, /\.pasek-smukly \{/, 'wariant smukły bez własnego stylu');
+  assert.match(css, /--zar:/, 'brak koloru żaru w motywie');
+
+  const cz = zrodlo('src/app/czat.js');
+  assert.match(cz, /wariant: 'rozmowa'/, 'rozmowa rysuje wariant z hero');
+});
+
+test('klik w pasek prowadzi PROSTO do płyt, a nie do pytania o pomieszczenie', () => {
+  /*
+   * Klient klika „Pokaż płyty" i ma zobaczyć płyty. Bez tego wyjątku
+   * kolejność pomocnika (pomieszczenie → rodzaj → materiał) odpowiadała
+   * na klik pytaniem „kuchnia czy łazienka?".
+   */
+  const cz = zrodlo('src/app/czat.js');
+  assert.match(cz, /function pokazWyprzedaz\(\)/, 'brak wejścia z paska');
+  assert.match(
+    cz,
+    /stan\.material === WYPRZEDAZ_SLUG && !stan\.dekor && doPokazania\(plytyWyprzedazy\(\)\)\.length[\s\S]{0,80}pomocnikDekor\(WYPRZEDAZ_SLUG/,
+    'płyty nie mają pierwszeństwa po kliknięciu w pasek'
+  );
+  // Pasek czyści wcześniejszy wybór wzoru — inaczej klik w środku rozmowy
+  // ustawiał materiał na wyprzedaż i zostawiał dekor z poprzedniej kolekcji.
+  assert.match(cz, /stan\.dekor = null;/, 'pasek nie czyści poprzedniego wzoru');
+});
+
+test('kafelek wyprzedaży pokazuje się przy KAŻDYM rodzaju materiału', () => {
+  /*
+   * ⚠ Do 01.09.2026 kafelek wychodził tylko przy kamieniu naturalnym —
+   * a pierwsza płyta, którą Dawid wystawił, to konglomerat kwarcowy.
+   * Klient szukający konglomeratu nie widział jej wcale.
+   */
+  const pom = zrodlo('src/app/pomocnicy.js');
+  assert.doesNotMatch(
+    pom,
+    /rodzaj === 'naturalny'\s*\)?\s*$/m,
+    'kafelek wciąż zawężony do kamienia naturalnego'
+  );
+  const cz = zrodlo('src/app/czat.js');
+  assert.match(
+    cz,
+    /const jestWyprzedaz = doPokazania\(plytyWyprzedazy\(\)\)\.length > 0;/,
+    'skrót „jedna kolekcja w grupie" wciąż potrafi przeskoczyć wyprzedaż'
+  );
+});
+
+test('zdjęcia płyt mają przejście przez Netlify na worker', () => {
+  /*
+   * ⚠ ZNALEZIONE NA PRODUKCJI 01.09.2026: worker wpisuje do listy adres
+   * względem korzenia (`/wyprzedaz/zdjecie/4`), więc na kam24h.pl leciał
+   * do Netlify — 404 i zbite zdjęcie na KAŻDEJ karcie wyprzedaży.
+   *
+   * Proxy (status 200) trzyma obrazek na własnej domenie, dzięki czemu
+   * `img-src 'self'` w CSP wystarcza i nie trzeba wpuszczać obcej domeny.
+   */
+  const netlify = zrodlo('netlify.toml');
+  const blok = /\[\[redirects\]\]\s*\n\s*from = "\/wyprzedaz\/zdjecie\/\*"\s*\n\s*to = "([^"]+)"\s*\n\s*status = (\d+)/.exec(netlify);
+  assert.ok(blok, 'brak przekierowania dla zdjęć wyprzedaży');
+  assert.match(blok[1], /workers\.dev\/wyprzedaz\/zdjecie\/:splat$/, 'proxy nie celuje w workera');
+  assert.equal(blok[2], '200', 'zdjęcie musi iść przez proxy (200), nie przez 301');
 });
