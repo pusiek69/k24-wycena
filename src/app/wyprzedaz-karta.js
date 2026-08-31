@@ -11,7 +11,7 @@
  * pod spodem (ktoś może chcieć tylko obejrzeć zdjęcia).
  */
 import { h, zl, liczba } from './dom.js';
-import { cenaCalejPlyty, upustProcent, formaPlyty } from './wyprzedaz.js';
+import { cenaCalejPlyty, upustProcent, formaPlyty, etykietaTypu } from './wyprzedaz.js';
 
 /**
  * @param {object} p               płyta z `/wyprzedaz`
@@ -34,9 +34,15 @@ import { cenaCalejPlyty, upustProcent, formaPlyty } from './wyprzedaz.js';
  * wchodzi ten sam placeholder, co przy płycie bez zdjęcia.
  */
 function zdjeciePlyty(p) {
+  /*
+   * W liście idzie MINIATURA (~300 px), nie pełne zdjęcie. Pełne potrafi
+   * ważyć 200 kB — dwadzieścia kart to były 4 MB na jedno wejście.
+   * `zdjecieMini` cofa się do pełnego zdjęcia przy płytach sprzed
+   * 01.09.2026, które miniatury jeszcze nie mają.
+   */
   const img = h('img', {
     class: 'plyta-foto',
-    src: p.zdjecie,
+    src: p.zdjecieMini || p.zdjecie,
     alt: p.nazwa,
     loading: 'lazy',
     onerror: () => img.replaceWith(h('span', { class: 'plyta-foto pusta' }, 'bez zdjęcia')),
@@ -53,6 +59,15 @@ export function kartaPlyty(p, opcje = {}) {
       'span',
       { class: 'plyta-opis' },
       h('b', {}, p.nazwa),
+      /*
+       * POZOSTAŁOŚĆ Z PRODUKCJI musi być widoczna od pierwszego spojrzenia.
+       * To formatka po wcześniejszym zleceniu: nietypowy wymiar, jedna
+       * sztuka. Klient, który weźmie ją za pełną płytę, policzy kuchnię
+       * z materiału, którego nie ma.
+       */
+      p.typ === 'poprodukcyjna'
+        ? h('span', { class: 'plyta-znacznik' }, etykietaTypu(p.typ))
+        : null,
       p.opis ? h('span', { class: 'plyta-dopisek' }, p.opis) : null,
       h(
         'span',

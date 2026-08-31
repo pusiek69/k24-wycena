@@ -233,3 +233,31 @@ CREATE TABLE IF NOT EXISTS wyprzedaz_plyt (
 );
 
 CREATE INDEX IF NOT EXISTS wyprzedaz_plyt_opublikowana ON wyprzedaz_plyt (opublikowana);
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  WYPRZEDAŻ: KATEGORIE, TYP PŁYTY I MINIATURY  (zlecenie Dawida, 01.09.2026)
+--
+--  1. KATEGORIA — spiek / kamień naturalny / konglomerat. Klient filtruje
+--     nią kafelkami, bo przy kilkudziesięciu płytach jedna długa lista
+--     przestaje być ofertą, a zaczyna być spisem z magazynu.
+--
+--  2. TYP — pełna płyta czy POZOSTAŁOŚĆ Z PRODUKCJI (formatka o nietypowym
+--     wymiarze). To dwie różne rzeczy dla kupującego: przy formatce liczy
+--     się konkretny wymiar, a nie marka i wzór. Rozliczenie zostaje takie
+--     samo — za sztukę.
+--
+--  3. ZDJECIE_MINI — miniatura ~300 px do listy. Do tej pory każda karta
+--     ciągnęła PEŁNE zdjęcie (do 200 kB), więc dwadzieścia płyt to było
+--     4 MB na jedno wejście. Pełne zdjęcie zostaje — pokazujemy je dopiero
+--     po kliknięciu w kartę.
+--
+--  Wszystkie trzy kolumny mają DEFAULT '' — płyty wystawione wcześniej
+--  działają dalej bez żadnej zmiany, a panel prosi Dawida o uzupełnienie.
+--  Miniatury dorobią się same przy najbliższej edycji zdjęcia; do tego
+--  czasu lista pokazuje pełne zdjęcie, tak jak dotąd.
+-- ═══════════════════════════════════════════════════════════════════════
+ALTER TABLE wyprzedaz_plyt ADD COLUMN kategoria TEXT NOT NULL DEFAULT '';
+ALTER TABLE wyprzedaz_plyt ADD COLUMN typ TEXT NOT NULL DEFAULT '';
+ALTER TABLE wyprzedaz_plyt ADD COLUMN zdjecie_mini TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS wyprzedaz_plyt_kategoria ON wyprzedaz_plyt (kategoria);

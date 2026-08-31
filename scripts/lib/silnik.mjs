@@ -33,7 +33,7 @@ export async function wczytajSilnik(opcje = {}) {
     // Wyprzedaż płyt (30.08.2026) — ten sam powód co wyżej: moduł
     // dziedziczy stawki i charakter materiału po realnych firmach
     // przez firms/index.js, więc w node musi widzieć ten sam rejestr.
-    `export { SLUG as WYPRZEDAZ_SLUG, NAZWA as WYPRZEDAZ_NAZWA, dostepna, doPokazania, m2Plyty, cenaCalejPlyty, cenaNettoM2, upustProcent, formaPlyty, plytNaPlacu, hasloWyprzedazy, notaPlyty, firmaWyprzedazy, kluczDekoru, plytaWgDekoru, charakterPlyty, firmaDlaPlyty, brakuje, ostrzezenieOWyprzedazy, paczkaPodgladu } from ${JSON.stringify(path.join(ROOT, 'src/app/wyprzedaz.js'))};`,
+    `export { SLUG as WYPRZEDAZ_SLUG, NAZWA as WYPRZEDAZ_NAZWA, dostepna, doPokazania, m2Plyty, cenaCalejPlyty, cenaNettoM2, upustProcent, formaPlyty, plytNaPlacu, hasloWyprzedazy, notaPlyty, KATEGORIE, TYPY, etykietaKategorii, etykietaTypu, doUzupelnienia, filtruj, policzWKategoriach, policzWTypach, firmaWyprzedazy, kluczDekoru, plytaWgDekoru, charakterPlyty, firmaDlaPlyty, brakuje, ostrzezenieOWyprzedazy, paczkaPodgladu } from ${JSON.stringify(path.join(ROOT, 'src/app/wyprzedaz.js'))};`,
     ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
     `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}]`,
     `  .filter((f) => f.aktywna !== false)`,

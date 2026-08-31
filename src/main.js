@@ -79,7 +79,21 @@ if (!FIRMY.length) {
     '<div class="card"><p class="q-title">Brak skonfigurowanych firm.</p>' +
     '<p class="q-hint">Dodaj plik do src/firms/ — patrz pricing/README.md.</p></div>';
 } else if (powtorka) {
-  uruchomOferteDawida(root, powtorka);
+  /*
+   * ⚠ Edytor właściciela TEŻ musi poczekać na płyty (znalezione 01.09.2026
+   * przy weryfikacji liczbowej).
+   *
+   * Wcześniej ta gałąź wołała `uruchomOferteDawida` od razu, z pominięciem
+   * `pobierzPlyty()`. Kategoria „NATURA WYPRZEDAŻ" czyta listę przez
+   * `zaladowane()`, czyli z pamięci podręcznej — a ta była pusta, bo nikt
+   * jej nie napełnił. Skutek: w „Powtórz wycenę" Dawid widział „Nie ma dziś
+   * żadnej opublikowanej płyty na wyprzedaży" nawet wtedy, gdy miał na placu
+   * dwie, a wybór materiału cichcem wracał do pierwszej kolekcji z cennika.
+   *
+   * Dodanie kategorii do edytora (31.08.2026) tego NIE naprawiło — brakowało
+   * nie kategorii, tylko danych.
+   */
+  pobierzPlyty().finally(() => uruchomOferteDawida(root, powtorka));
 } else {
   pobierzPlyty().finally(() => {
     /*

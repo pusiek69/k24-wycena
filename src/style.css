@@ -1827,3 +1827,97 @@ button { color: var(--cream); background: transparent; }
   .pasek-smukly .pw-nota { flex-basis: 100%; white-space: normal; }
   .pasek-smukly .pw-akcja { margin-left: auto; }
 }
+
+/* ── Filtry wyprzedaży ─────────────────────────────────────────────────
+   Zlecenie Dawida (01.09.2026): przy kilkudziesięciu płytach jedna długa
+   lista przestaje być ofertą. Kafelki mają być ciche — to nawigacja po
+   ofercie, a nie druga rzecz krzycząca obok paska wyprzedaży. */
+.wyp-filtry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  background: var(--slab);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.wyp-grupa { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wyp-grupa-label {
+  flex: 0 0 auto;
+  min-width: 96px;
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.wyp-kafelki { display: flex; flex-wrap: wrap; gap: 7px; }
+.wyp-filtr {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--cream);
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.wyp-filtr:hover { border-color: var(--vein); }
+.wyp-filtr-sel { border-color: var(--vein); background: rgba(201, 168, 106, .12); color: var(--vein-hi); }
+.wyp-filtr-ile {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+.wyp-filtr-sel .wyp-filtr-ile { color: var(--vein); }
+.wyp-szukaj {
+  width: 100%;
+  max-width: 320px;
+  padding: 8px 12px;
+  font-family: var(--sans);
+  font-size: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.wyp-szukaj:focus { outline: none; border-color: var(--vein); }
+.wyp-wiecej { display: block; margin: 18px auto 0; }
+.wyp-czysc {
+  padding: 0;
+  font: inherit;
+  color: var(--vein);
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line-hi);
+  cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .wyp-grupa-label { flex-basis: 100%; min-width: 0; }
+  .wyp-szukaj { max-width: none; }
+}
+
+/* Pozostałość z produkcji — formatka po wcześniejszym zleceniu. Musi być
+   widoczna od pierwszego spojrzenia: kto weźmie ją za pełną płytę, policzy
+   kuchnię z materiału, którego nie ma. */
+.plyta-znacznik {
+  align-self: flex-start;
+  margin: 2px 0;
+  padding: 2px 7px;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--slab);
+  background: var(--vein);
+  border-radius: 2px;
+}
+
+/* Filtry w rozmowie stoją w węższej kolumnie niż na stronie. */
+.pom-plyty-box .wyp-filtry { margin-bottom: 12px; padding: 11px 12px; }
+.pom-plyty-box .wyp-filtr { font-size: 12px; padding: 5px 10px; }

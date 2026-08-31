@@ -26,6 +26,13 @@ const {
   formaPlyty,
   plytNaPlacu,
   hasloWyprzedazy,
+  KATEGORIE,
+  TYPY,
+  etykietaTypu,
+  doUzupelnienia,
+  filtruj,
+  policzWKategoriach,
+  policzWTypach,
   notaPlyty,
   firmaWyprzedazy,
   kluczDekoru,
@@ -705,4 +712,151 @@ test('przegląd sprawdza zdjęcia płyt NA DOMENIE KLIENTA', () => {
     /\/\^https\?:\/i\.test\(p\.zdjecie\) \? p\.zdjecie : ADRES \+ p\.zdjecie/,
     'przegląd pyta o zdjęcie inną domenę niż klient'
   );
+});
+
+test('edytor właściciela CZEKA na płyty, zanim się narysuje', () => {
+  /*
+   * ⚠ ZNALEZIONE 01.09.2026 przy weryfikacji liczbowej.
+   *
+   * `main.js` miał trzy gałęzie startu i tylko jedna z nich wołała
+   * `pobierzPlyty()`. Gałąź „Powtórz wycenę" rysowała edytor od razu, więc
+   * `zaladowane()` oddawało pustą listę i Dawid widział „Nie ma dziś żadnej
+   * opublikowanej płyty na wyprzedaży" — mając dwie na placu. Wybór materiału
+   * wracał wtedy do pierwszej kolekcji z cennika.
+   *
+   * Dodanie kategorii do edytora (31.08.2026) tego NIE naprawiło: brakowało
+   * nie kategorii, tylko danych. Dlatego pilnujemy tu samego pobrania.
+   */
+  const main = zrodlo('src/main.js');
+  assert.match(
+    main,
+    /pobierzPlyty\(\)\.finally\(\(\) => uruchomOferteDawida\(root, powtorka\)\)/,
+    'edytor właściciela znów rysuje się przed pobraniem płyt'
+  );
+  // Kontrola negatywna: gołe wywołanie bez czekania nie ma prawa wrócić.
+  assert.doesNotMatch(
+    main,
+    /^\s*uruchomOferteDawida\(root, powtorka\);\s*$/m,
+    'została gałąź rysująca edytor bez pobrania płyt'
+  );
+});
+
+/* ═════════════════ kategorie, typ płyty i filtry (01.09.2026) ═════════════
+ * Zlecenie Dawida: podział na SPIEKI / KAMIENIE NATURALNE / KONGLOMERATY,
+ * rozróżnienie pełnych płyt od pozostałości z produkcji i szukanie po nazwie.
+ */
+
+test('filtr kategorii przepuszcza tylko swoją kategorię', () => {
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Spiek Calacatta', kategoria: 'spiek' }),
+    plyta({ id: 2, nazwa: 'Granit Star Galaxy', kategoria: 'naturalny' }),
+    plyta({ id: 3, nazwa: 'Taj Mahal', kategoria: 'konglomerat' }),
+  ];
+  assert.deepEqual(filtruj(plyty, { kategoria: 'spiek' }).map((p) => p.id), [1]);
+  assert.deepEqual(filtruj(plyty, { kategoria: 'naturalny' }).map((p) => p.id), [2]);
+  assert.equal(filtruj(plyty, {}).length, 3, 'brak filtra ma pokazywać wszystko');
+});
+
+test('płyta BEZ kategorii nie wpada do żadnego kafelka, ale jest pod „wszystkie"', () => {
+  /*
+   * ⚠ Płyty Dawida sprzed 01.09.2026 nie mają kategorii. Zgadywanie za niego,
+   * że „Taj Mahal Konglomerat Kwarcowy" to konglomerat, byłoby wpisywaniem
+   * mu do oferty rzeczy, których nie potwierdził — a przy okazji ustawiłoby
+   * kategorię płycie, którą mógł chcieć opisać inaczej.
+   */
+  const stara = plyta({ id: 9, nazwa: 'Taj Mahal Konglomerat Kwarcowy', kategoria: '' });
+  assert.equal(filtruj([stara], {}).length, 1, 'stara płyta zniknęła z oferty');
+  assert.equal(filtruj([stara], { kategoria: 'konglomerat' }).length, 0);
+  assert.deepEqual(doUzupelnienia(stara), ['kategoria', 'typ']);
+});
+
+test('pozostałość z produkcji ma własny filtr i własną etykietę', () => {
+  const plyty = [
+    plyta({ id: 1, typ: 'pelna' }),
+    plyta({ id: 2, typ: 'poprodukcyjna', plytaDlCm: 137, plytaGlCm: 64 }),
+  ];
+  assert.deepEqual(filtruj(plyty, { typ: 'poprodukcyjna' }).map((p) => p.id), [2]);
+  assert.equal(etykietaTypu('poprodukcyjna'), 'Pozostałość z produkcji');
+  assert.equal(etykietaTypu(''), '', 'brak typu nie ma etykiety');
+});
+
+test('formatka o nietypowym wymiarze liczy się tak samo — za sztukę', () => {
+  /*
+   * Pozostałość z produkcji to inna informacja dla klienta, ale NIE inna
+   * arytmetyka: nadal kupuje konkretną sztukę o podanym wymiarze.
+   */
+  const formatka = plyta({
+    typ: 'poprodukcyjna', plytaDlCm: 137, plytaGlCm: 64, cenaM2: 700, plytZostalo: 1,
+  });
+  assert.ok(Math.abs(m2Plyty(formatka) - 0.8768) < 0.0001, 'zły metraż formatki');
+  assert.equal(cenaCalejPlyty(formatka), Math.round(0.8768 * 700));
+
+  // Silnik musi przyjąć nietypowy format bez mrugnięcia.
+  const f = firmaDlaPlyty([formatka], kluczDekoru(formatka));
+  const w = wycen(f, {
+    dekor: kluczDekoru(formatka),
+    grubosc: String(formatka.gruboscMm),
+    odcinki: [{ dl: 120, gl: 60 }],
+    opcje: { dostawa: 'odbior' },
+  });
+  assert.ok(w.ok, w.blad);
+  assert.equal(w.plyta.w, 137, 'rozkrój liczy z innego formatu niż formatka');
+  assert.equal(w.plyta.h, 64);
+});
+
+test('szukanie działa po nazwie, dopisku i numerze płyty', () => {
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Taj Mahal Light', opis: 'polerowany', kodPlyty: 'A-77' }),
+    plyta({ id: 2, nazwa: 'Star Galaxy', opis: 'satyna', kodPlyty: 'B-12' }),
+  ];
+  assert.deepEqual(filtruj(plyty, { szukaj: 'taj' }).map((p) => p.id), [1]);
+  assert.deepEqual(filtruj(plyty, { szukaj: 'SATYNA' }).map((p) => p.id), [2], 'szukanie ma nie zważać na wielkość liter');
+  assert.deepEqual(filtruj(plyty, { szukaj: 'a-77' }).map((p) => p.id), [1]);
+  assert.equal(filtruj(plyty, { szukaj: 'nie ma takiego' }).length, 0);
+});
+
+test('filtry składają się ze sobą', () => {
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Spiek Calacatta', kategoria: 'spiek', typ: 'pelna' }),
+    plyta({ id: 2, nazwa: 'Spiek Calacatta', kategoria: 'spiek', typ: 'poprodukcyjna' }),
+    plyta({ id: 3, nazwa: 'Granit', kategoria: 'naturalny', typ: 'poprodukcyjna' }),
+  ];
+  assert.deepEqual(
+    filtruj(plyty, { kategoria: 'spiek', typ: 'poprodukcyjna', szukaj: 'calacatta' }).map((p) => p.id),
+    [2]
+  );
+});
+
+test('kafelek, który nic by nie pokazał, w ogóle się nie rysuje', () => {
+  // Pusty filtr to zmarnowane kliknięcie i fałszywa obietnica, że coś mamy.
+  const plyty = [plyta({ id: 1, kategoria: 'spiek', typ: 'pelna' })];
+  assert.deepEqual(policzWKategoriach(plyty, {}).map((k) => k.id), ['spiek']);
+  assert.deepEqual(policzWTypach(plyty, {}).map((t) => t.id), ['pelna']);
+});
+
+test('liczby przy kafelkach uwzględniają pozostałe filtry', () => {
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Alfa', kategoria: 'spiek' }),
+    plyta({ id: 2, nazwa: 'Beta', kategoria: 'spiek' }),
+    plyta({ id: 3, nazwa: 'Alfa', kategoria: 'konglomerat' }),
+  ];
+  const zeSzukaniem = policzWKategoriach(plyty, { szukaj: 'alfa' });
+  assert.deepEqual(zeSzukaniem.map((k) => [k.id, k.ile]), [['spiek', 1], ['konglomerat', 1]]);
+});
+
+test('sprzedana płyta nie liczy się do żadnego filtra', () => {
+  const plyty = [
+    plyta({ id: 1, kategoria: 'spiek', plytZostalo: 0 }),
+    plyta({ id: 2, kategoria: 'spiek', opublikowana: false }),
+  ];
+  assert.equal(filtruj(plyty, { kategoria: 'spiek' }).length, 0);
+  assert.deepEqual(policzWKategoriach(plyty, {}), []);
+});
+
+test('słowniki kategorii i typów zgadzają się z bazą', () => {
+  // Rozjazd między frontem a walidacją w workerze znaczyłby, że Dawid
+  // wybiera w panelu kategorię, której żaden filtr klienta nie pokaże.
+  const baza = zrodlo('worker/wyprzedaz-baza.js');
+  for (const k of KATEGORIE) assert.match(baza, new RegExp(`'${k.id}'`), `baza nie zna kategorii ${k.id}`);
+  for (const t of TYPY) assert.match(baza, new RegExp(`'${t.id}'`), `baza nie zna typu ${t.id}`);
 });

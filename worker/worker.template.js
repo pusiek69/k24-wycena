@@ -100,7 +100,8 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-    const sciezka = new URL(request.url).pathname.replace(/\/$/, '');
+    const adres = new URL(request.url);
+    const sciezka = adres.pathname.replace(/\/$/, '');
 
     // Panel bazy klientów to jedyna część workera odpytywana z przeglądarki
     // przez GET — i jedyna z własnym logowaniem. Idzie przed regułą „tylko
@@ -127,7 +128,7 @@ export default {
       // Zdjęcie płyty z wyprzedaży — GET, bo wchodzi wprost w <img src>.
       // Musi stać PRZED bramką „tylko POST" niżej.
       if (sciezka.startsWith('/wyprzedaz/zdjecie/'))
-        return await obsluzZdjecieWyprzedazy(sciezka, env, cors);
+        return await obsluzZdjecieWyprzedazy(sciezka, env, cors, adres.searchParams);
 
       if (request.method !== 'POST') return json({ error: 'Tylko POST.' }, 405, cors);
 
@@ -573,11 +574,18 @@ async function obsluzWyprzedaz(request, env, cors) {
  * wolniej dla wszystkich, także dla klientów, którzy wyprzedaży nie oglądają.
  * Zamiast tego lista niesie sam adres, a obrazek idzie osobno i z cache.
  */
-async function obsluzZdjecieWyprzedazy(sciezka, env, cors) {
+async function obsluzZdjecieWyprzedazy(sciezka, env, cors, szukaj) {
   const id = Number(sciezka.split('/').pop());
   if (!id) return json({ error: 'Brak zdjęcia.' }, 404, cors);
 
-  const dane = await zdjeciePlyty(env, id);
+  // `?mini=1` — miniatura do listy (~300 px). Bez tego pełne zdjęcie.
+  const mini = szukaj?.get('mini') === '1';
+  // `?v=` — znacznik zmiany wiersza. Nie czytamy go, ale to on sprawia, że
+  // po podmianie zdjęcia w panelu klient dostaje NOWY adres, a nie stary
+  // obrazek z cache.
+  const wersjonowane = !!szukaj?.get('v');
+
+  const dane = await zdjeciePlyty(env, id, mini);
   const m = /^data:(image\/[a-z]+);base64,(.+)$/.exec(dane || '');
   if (!m) return json({ error: 'Brak zdjęcia.' }, 404, cors);
 
@@ -586,10 +594,16 @@ async function obsluzZdjecieWyprzedazy(sciezka, env, cors) {
     headers: {
       ...cors,
       'Content-Type': m[1],
-      // Godzina, nie rok: adres zdjęcia jest zbudowany z `id` płyty, więc
-      // podmiana zdjęcia w panelu NIE zmienia adresu. Przy dłuższym cache
-      // Dawid poprawiłby zdjęcie i dalej widział stare.
-      'Cache-Control': 'public, max-age=3600',
+      /*
+       * Adres ze znacznikiem `?v=` zmienia się przy KAŻDEJ edycji płyty,
+       * więc obrazek pod nim jest niezmienny — można go trzymać rok.
+       * Adres bez znacznika (stare linki, wklejone gdzieś wcześniej) dostaje
+       * godzinę, tak jak dotąd: tam podmiana zdjęcia nie zmienia adresu
+       * i dłuższy cache pokazywałby Dawidowi stare zdjęcie.
+       */
+      'Cache-Control': wersjonowane
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=3600',
     },
   });
 }

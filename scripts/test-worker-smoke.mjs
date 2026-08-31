@@ -722,6 +722,77 @@ if (JEST) {
     assert.match((await odp.json()).error, /przekreślenie/);
   });
 
+  test('SZEŚĆDZIESIĄT PŁYT nie topi listy — zdjęcia nie jadą w JSON-ie', async () => {
+    /*
+     * Pytanie Dawida (01.09.2026): „czy duża liczba płyt nie obciąży strony".
+     *
+     * ⚠ Zanim to napisałem, `listaPlyt` robiła `SELECT *` — a więc czytała
+     * z D1 KAŻDE zdjęcie (do 700 kB base64 na płytę), żeby po chwili je
+     * wyrzucić: front i tak dostaje sam ADRES obrazka. Przy dwóch płytach
+     * to było 389 kB na odsłonę, przy sześćdziesięciu byłoby ~12 MB.
+     *
+     * Ten test mierzy odpowiedź przy sześćdziesięciu płytach ze zdjęciami.
+     * Nie jest to test „czy szybko" (na atrapie SQLite to nic nie znaczy),
+     * tylko „czy w odpowiedzi nie ma bajtów, których nie powinno tam być".
+     */
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    // ~40 kB base64 na płytę — mniej niż realne zdjęcie, ale dość, żeby
+    // przypadkowy `SELECT *` rzucał się w oczy w rozmiarze odpowiedzi.
+    const zdjecie = 'data:image/jpeg;base64,' + 'A'.repeat(40_000);
+
+    const ILE = 60;
+    for (let i = 0; i < ILE; i += 1) {
+      const zapis = await (
+        await worker.fetch(
+          zapytaniePanel(
+            '/panel/api/wyprzedaz/zapisz',
+            {
+              nazwa: `Płyta testowa ${i}`,
+              plytaDlCm: 320,
+              plytaGlCm: 160,
+              cenaM2: 700 + i,
+              plytRazem: 1,
+              zdjecieDane: zdjecie,
+              zdjecieMini: 'data:image/jpeg;base64,' + 'B'.repeat(3000),
+              kategoria: ['spiek', 'naturalny', 'konglomerat'][i % 3],
+              typ: i % 4 === 0 ? 'poprodukcyjna' : 'pelna',
+            },
+            cookie
+          ),
+          env,
+          ctx
+        )
+      ).json();
+      await worker.fetch(
+        zapytaniePanel('/panel/api/wyprzedaz/publikuj', { id: zapis.id, opublikowana: true }, cookie),
+        env,
+        ctx
+      );
+    }
+
+    const surowa = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).text();
+    const dane = JSON.parse(surowa);
+
+    assert.equal(dane.plyty.length, ILE, 'lista zgubiła płyty');
+
+    // Żaden bajt zdjęcia nie ma prawa być w liście.
+    assert.ok(!surowa.includes('AAAAAAAAAA'), 'pełne zdjęcie pojechało w liście płyt');
+    assert.ok(!surowa.includes('BBBBBBBBBB'), 'miniatura pojechała w liście płyt');
+
+    /*
+     * Budżet na odpowiedź. Sześćdziesiąt płyt to ~25 kB metadanych — gdyby
+     * kiedyś ktoś dołożył do `zWiersza` kolumnę z base64, ten limit pęknie
+     * natychmiast i będzie wiadomo dlaczego.
+     */
+    const kb = Math.round(surowa.length / 1024);
+    assert.ok(kb < 60, `lista ${ILE} płyt waży ${kb} kB — ktoś dołożył do niej dane zdjęć`);
+
+    // Kategorie i typy przeżyły zapis i wracają do klienta.
+    assert.ok(dane.plyty.every((p) => p.kategoria), 'kategoria nie wróciła z bazy');
+    assert.ok(dane.plyty.some((p) => p.typ === 'poprodukcyjna'), 'typ nie wrócił z bazy');
+  });
+
   test('zdjęcie wgrane w panelu wraca pod własnym adresem, nie w liście płyt', async () => {
     const env = srodowisko();
     const cookie = await ciastkoPanelu(env);
@@ -746,7 +817,24 @@ if (JEST) {
     );
 
     const lista = await (await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx)).json();
-    assert.equal(lista.plyty[0].zdjecie, `/wyprzedaz/zdjecie/${zapis.id}`);
+    /*
+     * Adres niesie znacznik `?v=` (czas ostatniej zmiany wiersza). Bez niego
+     * podmiana zdjęcia w panelu nie zmieniałaby adresu i klient dostawałby
+     * z cache stare zdjęcie — a to właśnie znacznik pozwala trzymać obrazek
+     * przez rok zamiast godziny.
+     */
+    const adresZdjecia = lista.plyty[0].zdjecie;
+    assert.ok(
+      adresZdjecia.startsWith(`/wyprzedaz/zdjecie/${zapis.id}?v=`),
+      `adres zdjęcia bez znacznika wersji: ${adresZdjecia}`
+    );
+    assert.match(adresZdjecia, /\?v=\d{8,}$/, 'znacznik wersji nie jest datą zmiany');
+    // Miniatura idzie osobnym adresem — to ona ląduje na kartach listy.
+    assert.match(
+      lista.plyty[0].zdjecieMini,
+      /\?(mini=1&)?v=\d{8,}$/,
+      'brak osobnego adresu miniatury'
+    );
     // Base64 NIE MA prawa jechać w liście — przy kilku płytach urosłaby
     // do megabajtów i spowolniła kalkulator każdemu klientowi.
     assert.ok(!JSON.stringify(lista).includes('iVBORw0KGgo'), 'zdjęcie pojechało w liście płyt');

@@ -5,11 +5,13 @@ import {
   SLUG as WYPRZEDAZ_SLUG,
   NAZWA as WYPRZEDAZ_NAZWA,
   doPokazania,
+  filtruj,
   kluczDekoru,
   formaPlyty,
   hasloWyprzedazy,
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
+import { filtryWyprzedazy, przywrocFokus } from './wyprzedaz-filtry.js';
 import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
@@ -237,27 +239,85 @@ export function pomocnikMaterial(wyslij, rodzaj) {
 }
 
 /** 3. Dekor — lista wzorów wybranej kolekcji, z wyszukiwarką. */
-/** Płyty z wyprzedaży w rozmowie — te same karty, co w kreatorze i na stronie. */
+/**
+ * Płyty z wyprzedaży w rozmowie — te same karty, co w kreatorze i na stronie.
+ *
+ * Filtry i limit działają tu tak samo, jak na `/wyprzedaz-plyt` (wspólny
+ * `wyprzedaz-filtry.js`). Gdyby klient filtrował w dwóch miejscach na dwa
+ * różne sposoby, szybko przestałby ufać, że widzi całą ofertę.
+ *
+ * ⚠ Ten pomocnik jest PRZERYSOWYWANY w miejscu, bez ruszania rozmowy.
+ * `odswiezPomocnika` w czat.js usuwa i buduje go od nowa przy zmianie kroku,
+ * ale zmiana filtra to nie zmiana kroku — klient nadal wybiera płytę.
+ */
+const NA_RAZ_W_ROZMOWIE = 12;
+
 function pomocnikPlytWyprzedazy(wyslij) {
   const plyty = doPokazania(plytyWyprzedazy());
   if (!plyty.length) return null;
 
-  return ramka(
-    'Płyty z wyprzedaży',
-    h(
-      'div',
-      { class: 'pom-plyty' },
-      plyty.map((p) =>
-        kartaPlyty(p, {
-          onWybierz: () =>
-            wyslij(
-              kluczDekoru(p),
-              `Wybieram płytę ${p.nazwa}${p.kodPlyty ? ` (nr ${p.kodPlyty})` : ''}.`
-            ),
-        })
+  const stan = { kategoria: null, typ: null, szukaj: '', ile: NA_RAZ_W_ROZMOWIE };
+  const korzen = h('div', { class: 'pom-plyty-box' });
+  rysuj();
+  return ramka('Płyty z wyprzedaży', korzen);
+
+  function rysuj(opcje = {}) {
+    korzen.replaceChildren();
+
+    const filtry = filtryWyprzedazy(plyty, stan, (o) => rysuj(o));
+    if (filtry) korzen.append(filtry);
+
+    const wybrane = filtruj(plyty, stan);
+
+    if (!wybrane.length) {
+      korzen.append(
+        h(
+          'p',
+          { class: 'pom-podpowiedz' },
+          'Nic nie pasuje do tego wyboru — proszę zmienić filtr.'
+        )
+      );
+      przywrocFokus(korzen, opcje.zachowajFokus);
+      return;
+    }
+
+    const widoczne = wybrane.slice(0, stan.ile);
+    korzen.append(
+      h(
+        'div',
+        { class: 'pom-plyty' },
+        widoczne.map((p) =>
+          kartaPlyty(p, {
+            onWybierz: () =>
+              wyslij(
+                kluczDekoru(p),
+                `Wybieram płytę ${p.nazwa}${p.kodPlyty ? ` (nr ${p.kodPlyty})` : ''}.`
+              ),
+          })
+        )
       )
-    )
-  );
+    );
+
+    if (wybrane.length > widoczne.length) {
+      const zostalo = wybrane.length - widoczne.length;
+      korzen.append(
+        h(
+          'button',
+          {
+            class: 'pom-pomin',
+            type: 'button',
+            onclick: () => {
+              stan.ile += NA_RAZ_W_ROZMOWIE;
+              rysuj();
+            },
+          },
+          `Pokaż kolejne płyty (zostało ${zostalo} ${formaPlyty(zostalo)}) →`
+        )
+      );
+    }
+
+    przywrocFokus(korzen, opcje.zachowajFokus);
+  }
 }
 
 export function pomocnikDekor(slug, wyslij) {

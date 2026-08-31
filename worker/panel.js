@@ -651,6 +651,7 @@ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}
 .znacznik.pilne{background:var(--zloto,#c9a86a);color:#13110f;font-weight:700;
 letter-spacing:.05em;border-color:transparent}
 .plyta-wiersz{display:flex;gap:.7rem;align-items:flex-start}
+.znacznik.uwaga{background:rgba(194,64,44,.22);border-color:rgba(226,89,61,.5);color:#f0c9bd}
 .plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
 border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
 .plyta-mini.pusta{display:flex;align-items:center;justify-content:center;
@@ -789,6 +790,15 @@ function zl(n){ return (Math.round(Number(n)||0)).toLocaleString('pl-PL') + ' z�
 function dzien(iso){ if(!iso) return ''; var d = new Date(iso); return d.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
 function godzina(iso){ if(!iso) return ''; var d = new Date(iso); return d.toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }
 function tel(t){ return String(t||'').replace(/[^0-9+]/g,''); }
+
+/* Lista wyboru z zaznaczona wartoscia - uzywana przy kategorii i typie plyty. */
+function wybor(id, wartosc, pary){
+  var opcje = pary.map(function(para){
+    return '<option value="' + esc(para[0]) + '"'
+      + (String(wartosc) === para[0] ? ' selected' : '') + '>' + esc(para[1]) + '</option>';
+  }).join('');
+  return '<select id="' + id + '">' + opcje + '</select>';
+}
 
 function filtry(){
   var p = new URLSearchParams();
@@ -957,14 +967,31 @@ function plytaWiersz(p){
   var bylo = p.cenaNormalnaM2 > 0
     ? '<s>' + p.cenaNormalnaM2 + '</s> ' : '';
 
-  var mini = p.zdjecie
-    ? '<img class="plyta-mini" src="' + esc(p.zdjecie) + '" alt="" loading="lazy" onerror="zdjecieZapasowe(this)">'
+  /* W liscie panelu tez idzie MINIATURA, nie pelne zdjecie — przy
+     kilkudziesieciu plytach panel ladowalby sie tak samo dlugo jak strona. */
+  var mini = (p.zdjecieMini || p.zdjecie)
+    ? '<img class="plyta-mini" src="' + esc(p.zdjecieMini || p.zdjecie) + '" alt="" loading="lazy" onerror="zdjecieZapasowe(this)">'
     : '<span class="plyta-mini pusta">bez zdjecia</span>';
+
+  /*
+   * DO UZUPELNIENIA — kategoria i typ plyty (od 01.09.2026).
+   *
+   * Plyty wystawione wczesniej ich nie maja i to jest w porzadku: publikacja
+   * dziala dalej, cena i wycena bez zmian. Ale bez kategorii plyta nie wpada
+   * do zadnego filtra u klienta, wiec Dawid ma o tym wiedziec — brak jest
+   * WIDOCZNY, a nie domyslny.
+   */
+  var braki = [];
+  if (!p.kategoria) braki.push('kategoria');
+  if (!p.typ) braki.push('typ plyty');
+  var doUzup = braki.length
+    ? ' <span class="znacznik uwaga">uzupelnij: ' + braki.join(' i ') + '</span>'
+    : '';
 
   return '<div class="wiersz plyta-wiersz" data-id="' + p.id + '">' +
     mini +
     '<div class="plyta-tresc">' +
-      '<b>' + esc(p.nazwa) + '</b> ' + stan +
+      '<b>' + esc(p.nazwa) + '</b> ' + stan + doUzup +
       (p.kodPlyty ? ' <span class="kod-plyty">' + esc(p.kodPlyty) + '</span>' : '') +
       '<div class="mini">' + p.plytaDlCm + ' x ' + p.plytaGlCm + ' cm, ' + p.gruboscMm + ' mm' +
         ' &middot; ' + bylo + '<b>' + p.cenaM2 + ' zl/m2</b>' +
@@ -1013,6 +1040,24 @@ function rysujPlyteFormularz(id){
         '<label>Cena "bylo" (opcjonalnie)<input id="pl-cena-bylo" type="number" step="1" value="' + esc(String(w('cenaNormalnaM2', 0))) + '"></label>' +
       '</div>' +
       (p ? '<label>Zostalo sztuk<input id="pl-zostalo" type="number" step="1" min="0" value="' + esc(String(w('plytZostalo', 1))) + '"></label>' : '') +
+      /*
+       * KATEGORIA i TYP (zlecenie Dawida, 01.09.2026) — po nich klient
+       * filtruje ofere. Puste jest dozwolone: plyty wystawione wczesniej
+       * dzialaja dalej, a lista w panelu prosi o uzupelnienie.
+       */
+      '<label>Kategoria materialu' + wybor('pl-kategoria', String(w('kategoria')), [
+        ['', '— do uzupelnienia —'],
+        ['spiek', 'Spiek'],
+        ['naturalny', 'Kamien naturalny'],
+        ['konglomerat', 'Konglomerat']
+      ]) + '</label>' +
+      '<label>Typ plyty' + wybor('pl-typ', String(w('typ')), [
+        ['', '— do uzupelnienia —'],
+        ['pelna', 'Pelna plyta'],
+        ['poprodukcyjna', 'Pozostalosc z produkcji (formatka)']
+      ]) + '</label>' +
+      '<p class="mini">Przy pozostalosci z produkcji wpisz RZECZYWISTY wymiar formatki ' +
+      'wyzej - rozliczenie i tak idzie za sztuke.</p>' +
       '<label>Zdjecie - adres w internecie<input id="pl-zdjecie-url" value="' + esc(String(w('zdjecieUrl'))) + '" placeholder="https://..."></label>' +
       '<label>...albo wgraj plik z dysku<input id="pl-zdjecie-plik" type="file" accept="image/*"></label>' +
       '<p class="mini" id="pl-zdjecie-info">' +
@@ -1064,7 +1109,11 @@ function zdjecieZapasowe(el) {
 }
 
 var ZDJECIE_DANE = '';
+var ZDJECIE_MINI = '';
 var ZDJECIE_MAKS_BOK = 1200;
+/* Miniatura do listy kart. 300 px wystarcza na karcie i na siatce zdjec,
+   a wazy kilkanascie kB zamiast dwustu. */
+var ZDJECIE_MINI_BOK = 300;
 
 /*
  * Limit z workera (wyprzedaz-baza.js) minus zapas na reszte pola.
@@ -1110,10 +1159,35 @@ function sprezuj(obraz){
   return null;
 }
 
+/*
+ * MINIATURA (~300 px) do listy kart.
+ *
+ * Pelne zdjecie potrafi wazic 200 kB. Przy dwudziestu plytach strona
+ * wyprzedazy ciagnela 4 MB, zanim klient cokolwiek przeczytal. Miniature
+ * robimy TU, w przegladarce, razem z pelnym zdjeciem — worker dostaje oba
+ * i zapisuje w osobnych kolumnach.
+ */
+function miniaturka(obraz){
+  var bok = ZDJECIE_MINI_BOK;
+  var skala = Math.min(1, bok / Math.max(obraz.width, obraz.height));
+  var plotno = document.createElement('canvas');
+  plotno.width = Math.max(1, Math.round(obraz.width * skala));
+  plotno.height = Math.max(1, Math.round(obraz.height * skala));
+  var ctx = plotno.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, plotno.width, plotno.height);
+  ctx.drawImage(obraz, 0, 0, plotno.width, plotno.height);
+  var dane = plotno.toDataURL('image/jpeg', 0.72);
+  /* Puste plotno (telefon bez pamieci) — lepiej brak miniatury niz bialy
+     prostokat: lista cofnie sie wtedy do pelnego zdjecia. */
+  return dane.length > 1200 ? dane : '';
+}
+
 function wczytajZdjecie(e){
   var plik = e.target.files && e.target.files[0];
   var info = document.getElementById('pl-zdjecie-info');
   ZDJECIE_DANE = '';
+  ZDJECIE_MINI = '';
   if (!plik) return;
 
   var powiedz = function(tekst){ info.textContent = tekst; };
@@ -1141,6 +1215,7 @@ function wczytajZdjecie(e){
       return;
     }
     ZDJECIE_DANE = dane;
+    ZDJECIE_MINI = miniaturka(obraz);
     var kb = Math.round(dane.length * 0.75 / 1024);
     info.innerHTML = 'Wgrane (' + kb + ' kB): <img class="plyta-mini" src="' + dane + '" alt="">';
   };
@@ -1271,6 +1346,9 @@ async function plytaZapisz(id){
   };
   if (id) dane.plytZostalo = wart('pl-zostalo');
   if (ZDJECIE_DANE) dane.zdjecieDane = ZDJECIE_DANE;
+  if (ZDJECIE_MINI) dane.zdjecieMini = ZDJECIE_MINI;
+  dane.kategoria = document.getElementById('pl-kategoria').value;
+  dane.typ = document.getElementById('pl-typ').value;
 
   info.textContent = 'Zapisuje...';
   var odp = await (await fetch('/panel/api/wyprzedaz/zapisz', {method:'POST',
@@ -1278,6 +1356,7 @@ async function plytaZapisz(id){
   if (odp.error) { info.textContent = odp.error; return; }
 
   ZDJECIE_DANE = '';
+  ZDJECIE_MINI = '';
   PLYTA_EDYTOWANA = null;
   document.getElementById('wyprzedaz-formularz').innerHTML = '';
   await rysujWyprzedaz();

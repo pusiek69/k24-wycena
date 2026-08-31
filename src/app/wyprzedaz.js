@@ -347,3 +347,91 @@ export function paczkaPodgladu(hash) {
     return null;
   }
 }
+
+/* ═══════════════════ KATEGORIE, TYPY I FILTROWANIE (01.09.2026) ═══════════
+ *
+ * Zlecenie Dawida: przy kilkudziesięciu płytach jedna długa lista przestaje
+ * być ofertą, a zaczyna być spisem z magazynu. Klient ma móc zawęzić ją do
+ * tego, czego szuka: rodzaju materiału, typu płyty albo nazwy wzoru.
+ */
+
+/** Kategorie materiału — te same trzy, co w panelu i w bazie. */
+export const KATEGORIE = [
+  { id: 'spiek', nazwa: 'Spieki' },
+  { id: 'naturalny', nazwa: 'Kamienie naturalne' },
+  { id: 'konglomerat', nazwa: 'Konglomeraty' },
+];
+
+/**
+ * Typ płyty.
+ *
+ * „Pozostałość z produkcji" to formatka po wcześniejszym zleceniu: wymiar
+ * nietypowy, cena niższa, sztuka jedna. Dla kupującego to zupełnie inna
+ * oferta niż pełna płyta i musi być widoczna od pierwszego spojrzenia —
+ * nikt nie może przez pomyłkę policzyć dużej kuchni z formatki 90 × 60.
+ */
+export const TYPY = [
+  { id: 'pelna', nazwa: 'Pełne płyty', krotko: 'pełna płyta' },
+  { id: 'poprodukcyjna', nazwa: 'Pozostałości z produkcji', krotko: 'Pozostałość z produkcji' },
+];
+
+export function etykietaKategorii(id) {
+  return KATEGORIE.find((k) => k.id === id)?.nazwa || '';
+}
+
+export function etykietaTypu(id) {
+  return TYPY.find((t) => t.id === id)?.krotko || '';
+}
+
+/** Czy płyta czeka na uzupełnienie kategorii albo typu (widok panelu). */
+export function doUzupelnienia(p) {
+  const braki = [];
+  if (!p?.kategoria) braki.push('kategoria');
+  if (!p?.typ) braki.push('typ');
+  return braki;
+}
+
+/**
+ * Filtrowanie listy dla klienta.
+ *
+ * ⚠ Płyta BEZ kategorii (wystawiona przed 01.09.2026) nie wpada do żadnego
+ * kafelka kategorii — i tak ma być. Zgadywanie za Dawida, że „Taj Mahal
+ * Konglomerat Kwarcowy" to konglomerat, byłoby wpisywaniem mu do oferty
+ * rzeczy, których nie potwierdził. Takie płyty widać pod „Wszystkie",
+ * a panel prosi go o uzupełnienie.
+ *
+ * @param {Array} plyty
+ * @param {object} f  { kategoria, typ, szukaj }
+ */
+export function filtruj(plyty, f = {}) {
+  const szukaj = String(f.szukaj || '').trim().toLowerCase();
+
+  return doPokazania(plyty).filter((p) => {
+    if (f.kategoria && p.kategoria !== f.kategoria) return false;
+    if (f.typ && p.typ !== f.typ) return false;
+    if (!szukaj) return true;
+    // Szukamy po tym, co klient widzi na karcie: nazwa, dopisek, numer.
+    return `${p.nazwa} ${p.opis || ''} ${p.kodPlyty || ''}`.toLowerCase().includes(szukaj);
+  });
+}
+
+/**
+ * Ile płyt kryje się pod każdym kafelkiem — liczby przy filtrach.
+ * Kafelek, który po kliknięciu daje pustą listę, tylko marnuje klikanie,
+ * więc puste kategorie w ogóle się nie pokazują.
+ */
+export function policzWKategoriach(plyty, f = {}) {
+  const bezKategorii = { ...f, kategoria: null };
+  return KATEGORIE.map((k) => ({
+    ...k,
+    ile: filtruj(plyty, { ...bezKategorii, kategoria: k.id }).length,
+  })).filter((k) => k.ile > 0);
+}
+
+export function policzWTypach(plyty, f = {}) {
+  const bezTypu = { ...f, typ: null };
+  return TYPY.map((t) => ({
+    ...t,
+    ile: filtruj(plyty, { ...bezTypu, typ: t.id }).length,
+  })).filter((t) => t.ile > 0);
+}
