@@ -634,6 +634,18 @@ test('na stronie jest DOKŁADNIE JEDEN pasek wyprzedaży', () => {
     'rozmowa woła pasek więcej niż raz'
   );
   assert.match(cz, /akcje\.plyta \? null : pasekWyprzedazy/, 'pasek pokazuje się mimo wybranej płyty');
+
+  /*
+   * KOLEJNOŚĆ (poprawka Dawida z 01.09.2026, ze zrzutu z telefonu):
+   * nagłówek → wizytówka z telefonem → pasek wyprzedaży → rozmowa.
+   * Wcześniej pasek wchodził NAD wizytówkę i pierwszą rzeczą po nagłówku
+   * była promocja, a dopiero potem człowiek i numer telefonu.
+   */
+  assert.match(
+    cz,
+    /replaceChildren\(\.\.\.\[wizytowka\(\), pasek, rozmowa, formularz\]/,
+    'pasek wyprzedaży nie stoi pod wizytówką Dawida'
+  );
 });
 
 test('klik w pasek prowadzi PROSTO do płyt, a nie do pytania o pomieszczenie', () => {

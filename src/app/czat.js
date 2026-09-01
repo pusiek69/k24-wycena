@@ -135,8 +135,13 @@ export function uruchomCzat(root, akcje = {}) {
   });
 
   /*
-   * PASEK WYPRZEDAŻY stoi NAD wizytówką — czyli nad pierwszą rzeczą, którą
-   * klient widzi po otwarciu kalkulatora (zlecenie Dawida, 01.09.2026).
+   * PASEK WYPRZEDAŻY stoi POD wizytówką Dawida (poprawka z 01.09.2026,
+   * po zrzucie z telefonu). Kolejność: nagłówek → kto z Tobą rozmawia
+   * i pod jaki numer dzwonić → wyprzedaż → sama rozmowa.
+   *
+   * Wcześniej pasek wchodził NAD wizytówkę i pierwszą rzeczą po nagłówku
+   * „Policz swój blat" była promocja, a dopiero potem człowiek i telefon.
+   * Odwrotnie niż powinno: najpierw kto, potem oferta.
    *
    * Nie pokazujemy go temu, kto przyszedł już z konkretną płytą ze strony
    * wyprzedaży: reklamowanie komuś czegoś, co właśnie wybrał, to hałas.
@@ -146,7 +151,7 @@ export function uruchomCzat(root, akcje = {}) {
     onKlik: pokazWyprzedaz,
   });
 
-  root.replaceChildren(...[pasek, wizytowka(), rozmowa, formularz].filter(Boolean));
+  root.replaceChildren(...[wizytowka(), pasek, rozmowa, formularz].filter(Boolean));
   dodajWiadomosc('konsultant', POWITANIE);
   historia.push({ rola: 'assistant', tresc: POWITANIE });
 
