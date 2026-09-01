@@ -162,7 +162,9 @@ function wypelnijAlternatywy(w, box) {
  */
 function zajawkaPolowka(w, prop, propozycje, box, rodzaj) {
   const alt = prop.wycena;
-  const p = w.firma.plyta;
+  // Format z rozkroju, nie domyślny firmowy — zdanie mówi klientowi
+  // konkretny wymiar płyty, więc musi to być TA płyta, z której tniemy.
+  const p = w.plyta || w.firma.plyta;
 
   return h(
     'div',

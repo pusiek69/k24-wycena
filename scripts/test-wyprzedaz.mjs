@@ -1031,3 +1031,97 @@ test('klucz dekoru liczy JEDNA funkcja dla klienta i workera', () => {
   assert.match(zrodlo('worker/worker.template.js'), /from '\.\.\/src\/app\/wyprzedaz-klucz\.js'/);
   assert.match(zrodlo('src/app/wyprzedaz.js'), /from '\.\/wyprzedaz-klucz\.js'/);
 });
+
+/* ═══ FORMAT PŁYTY: rozkrój kontra domyślny format firmy (01.09.2026) ══════
+ *
+ * Zgłoszenie Dawida: w „Powtórz wycenę" przy płycie z wyprzedaży rozrys
+ * pokazywał 300×180, choć jego płyta ma 320×160.
+ *
+ * Przyczyna: pseudo-firma „NATURA WYPRZEDAŻ" nie ustawia formatu na swoim
+ * poziomie (każda płyta ma inny), więc `firma.plyta` schodziło do domyślnej
+ * stałej z `_domyslne.js`. Kalkulator klienta miał to naprawione od 30.08,
+ * edytor właściciela i mail leadowy — nie.
+ */
+
+test('silnik oddaje format płyty, z którego NAPRAWDĘ liczył', () => {
+  const p = plyta({ id: 6, nazwa: 'Taj Mahal Light', plytaDlCm: 320, plytaGlCm: 160 });
+  const f = firmaDlaPlyty([p], kluczDekoru(p));
+
+  // To jest ta pułapka: format firmowy ≠ format płyty.
+  assert.notDeepEqual(
+    { w: f.plyta?.w, h: f.plyta?.h },
+    { w: 320, h: 160 },
+    'test nic nie dowodzi — format firmowy przypadkiem równy formatowi płyty'
+  );
+
+  const w = wycen(f, {
+    dekor: kluczDekoru(p), grubosc: '20',
+    odcinki: [{ dl: 300, gl: 62 }], opcje: { dostawa: 'odbior' },
+  });
+  assert.ok(w.ok, w.blad);
+  assert.equal(w.plyta.w, 320, 'silnik nie oddaje rzeczywistej długości płyty');
+  assert.equal(w.plyta.h, 160, 'silnik nie oddaje rzeczywistej głębokości płyty');
+  assert.equal(w.plyta.polowkaDozwolona, false, 'resztka z placu nie ma połówki');
+});
+
+test('FORMATKA PORODUKCYJNA o nietypowym wymiarze idzie przez rozkrój', () => {
+  /*
+   * Ten sam mechanizm co wyżej, ale na wymiarze, którego nie ma żaden cennik.
+   * Bez poprawki rozrys rysowałby pełnowymiarową taflę i pokazywał odpad,
+   * którego nie ma — a klient płaci za sztukę 137 × 64 cm.
+   */
+  const f137 = plyta({
+    id: 9, nazwa: 'Formatka Calacatta', typ: 'poprodukcyjna',
+    plytaDlCm: 137, plytaGlCm: 64, cenaM2: 700, plytZostalo: 1,
+  });
+  const firma = firmaDlaPlyty([f137], kluczDekoru(f137));
+  const w = wycen(firma, {
+    dekor: kluczDekoru(f137), grubosc: '20',
+    odcinki: [{ dl: 120, gl: 60 }], opcje: { dostawa: 'odbior' },
+  });
+  assert.ok(w.ok, w.blad);
+  assert.equal(w.plyta.w, 137);
+  assert.equal(w.plyta.h, 64);
+  // Materiał nadal za sztukę, mimo nietypowego wymiaru.
+  const material = w.pozycje.find((x) => x.grupa === 'materiał');
+  assert.equal(Math.round(material.brutto), cenaCalejPlyty(f137));
+});
+
+test('EDYTOR WŁAŚCICIELA rysuje z formatu rozkroju, nie firmowego', () => {
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(
+    ed,
+    /const p = w\.plyta \|\| w\.firma\?\.plyta \|\| \{\};/,
+    'rozrys w edytorze wciąż bierze domyślny format firmy'
+  );
+  assert.match(ed, /function polowkaZRozkroju\(w\)/, 'brak wspólnego pytania o połówkę');
+  assert.doesNotMatch(
+    ed,
+    /polowkaDozwolona: w\.firma\?\.plyta\?\.polowkaDozwolona/,
+    'została połówka czytana z formatu firmowego'
+  );
+});
+
+test('MAIL LEADOWY niesie rzeczywisty wymiar płyty', () => {
+  /*
+   * To nie jest kosmetyka: ta liczba trafia w mail do Dawida, więc pomyłka
+   * znaczy, że dostaje wymiar płyty, której nie ma na placu.
+   */
+  const br = zrodlo('src/app/bramka.js');
+  assert.match(
+    br,
+    /const plyta = w\.plyta \|\| w\.firma\?\.plyta \|\| \{\};/,
+    'mail leadowy wciąż bierze domyślny format firmy'
+  );
+});
+
+test('nigdzie u klienta nie został goły firma.plyta jako format', () => {
+  // Kontrola całej rodziny błędu naraz — tak, żeby nie wracała po kawałku.
+  for (const plik of ['src/app/oferta-dawida.js', 'src/app/bramka.js', 'src/app/wynik-widok.js']) {
+    const t = zrodlo(plik);
+    const zle = t
+      .split('\n')
+      .filter((l) => /=\s*w\.firma\??\.?\.?plyta/.test(l) && !/w\.plyta \|\|/.test(l));
+    assert.deepEqual(zle, [], `${plik}: format brany wprost z firmy —\n  ${zle.join('\n  ')}`);
+  }
+});

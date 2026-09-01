@@ -404,7 +404,7 @@ function zamrozRozrys(stan, w) {
       rotacja: ustawienia.rotacja,
       // U części dostawców można kupić pół płyty — rysunek ma to pokazać,
       // bo inaczej odpad na rozrysie kłóci się z kwotą w wycenie.
-      polowkaDozwolona: w.firma?.plyta?.polowkaDozwolona === true,
+      polowkaDozwolona: polowkaZRozkroju(w),
     });
     if (!wynik.plyty.length) return null;
 
@@ -1294,7 +1294,7 @@ function pokazRozrys(stan, w, paczka, box) {
     {
       ...stan.rozrys,
       plyta: plytaDoRozrysu(stan, w),
-      polowkaDozwolona: w.firma?.plyta?.polowkaDozwolona === true,
+      polowkaDozwolona: polowkaZRozkroju(w),
       plytZWyceny: w.pak?.plytyPelne ?? 0,
       polowkaZWyceny: !!w.pak?.polowka,
       opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
@@ -1335,13 +1335,46 @@ function pokazRozrys(stan, w, paczka, box) {
  * WSKAZANEJ płyty z magazynu (każda jest inna), przy kolekcjach — format
  * z cennika firmy.
  */
+/**
+ * Format płyty do rozrysu i na kartę wyceny.
+ *
+ * ⚠ BIERZEMY `w.plyta`, CZYLI FORMAT, Z KTÓREGO SILNIK NAPRAWDĘ LICZYŁ —
+ * nie `w.firma.plyta`, czyli domyślny format firmy.
+ *
+ * To nie są te same liczby. Pierwszeństwo ma format kampanii, potem format
+ * przypisany do pozycji cennika (Atlas Plan tnie 20 mm z płyt 324×159,
+ * a 12 mm z 324×162; każda płyta z wyprzedaży ma własny wymiar z magazynu).
+ * Silnik rozstrzyga to raz i oddaje wynik w `w.plyta` — patrz engine/wycena.js.
+ *
+ * ⚠ Zgłoszenie Dawida (01.09.2026): w „Powtórz wycenę" przy płycie
+ * z wyprzedaży rozrys pokazywał 300×180, choć jego płyta ma 320×160.
+ * Pseudo-firma „NATURA WYPRZEDAŻ" nie ustawia formatu na swoim poziomie
+ * (bo każda płyta ma inny), więc `firma.plyta` schodziło do domyślnej stałej
+ * 300×180 z `_domyslne.js`. Kalkulator klienta miał to naprawione od 30.08,
+ * edytor właściciela — nie.
+ *
+ * Ten sam błąd dotyczyłby formatek poprodukcyjnych: przy płycie 137×64
+ * rozrys rysowałby pełnowymiarową taflę i pokazywał odpad, którego nie ma.
+ */
 function plytaDoRozrysu(stan, w) {
   const zWariantu = stan.firma === NATURALNY ? stan.nat.wariant?.plytaCm : null;
   if (zWariantu?.dl > 0) {
     return { szer: Math.round(zWariantu.dl * 10), wys: Math.round(zWariantu.gl * 10) };
   }
-  const p = w.firma?.plyta || {};
+  const p = w.plyta || w.firma?.plyta || {};
   return { szer: Math.round((p.w || 320) * 10), wys: Math.round((p.h || 160) * 10) };
+}
+
+/**
+ * Czy z tej płyty można kupić połówkę — z TEGO SAMEGO formatu, co rozrys.
+ *
+ * Osobna funkcja, bo pytanie zadajemy w dwóch miejscach (rysunek dla Dawida
+ * i widok dla klienta), a rozjechanie się ich dawałoby rysunek niezgodny
+ * z kwotą. Przy wyprzedaży odpowiedź brzmi „nie": resztka z placu jest jedna
+ * i cała, a domyślny format firmowy potrafił tu skłamać „tak".
+ */
+function polowkaZRozkroju(w) {
+  return (w.plyta || w.firma?.plyta)?.polowkaDozwolona === true;
 }
 
 /** Jedno wejście do workera: podgląd i wysyłka różnią się jedną flagą. */

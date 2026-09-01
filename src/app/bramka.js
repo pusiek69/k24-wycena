@@ -330,7 +330,14 @@ function etykietaWyceny(w) {
  * co widać na karcie klienta.
  */
 export function szczegolyWyceny(w) {
-  const plyta = w.firma?.plyta || {};
+  /*
+   * ⚠ `w.plyta` — format, Z KTÓREGO SILNIK NAPRAWDĘ LICZYŁ, nie domyślny
+   * format firmy. Ta liczba idzie w mail leadowy do Dawida, więc pomyłka
+   * tutaj nie jest kosmetyczna: Dawid dostaje na maila wymiar płyty,
+   * której nie ma na placu. Przy wyprzedaży schodziło do stałej 300×180
+   * zamiast rzeczywistych 320×160 (zgłoszenie z 01.09.2026).
+   */
+  const plyta = w.plyta || w.firma?.plyta || {};
   return {
     firma: w.firma?.nazwa || '',
     // Rodzaj materiału (konglomerat/spiek/naturalny) — baza klientów grupuje
