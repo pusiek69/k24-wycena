@@ -42,6 +42,7 @@ import {
 } from './promocje-lista.js';
 import promocjaNaturalna from '../generated/naturalny.promocje.json';
 import * as wlasna from './plyta-wlasna.js';
+import * as pozWlasne from './pozycje-wlasne.js';
 import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
@@ -117,6 +118,12 @@ export function uruchomOferteDawida(root, paczka) {
     warianty: [],
     // Płyta spoza cenników (zlecenie Dawida, 25.08.2026).
     wlasna: { ...wlasna.PUSTA },
+    /*
+     * Własne pozycje: demontaż starego blatu, cokoły, dopłata ekspresowa
+     * (zlecenie Dawida, 01.09.2026). Odtwarzamy je z parametrów, więc
+     * powtórna poprawka tej samej oferty ich nie gubi.
+     */
+    wlasnePozycje: pozWlasne.zParametrow(p.wlasnePozycje),
     // Aktualizacja pod tym samym linkiem: mail do klienta jest OPCJONALNY
     // i domyślnie wyłączony — Dawid zwykle poprawia wycenę w trakcie
     // rozmowy telefonicznej, a klient po prostu odświeża stronę.
@@ -284,7 +291,25 @@ function zamrozOferte(stan, w) {
     ...wCenie,
   ];
 
-  const przed = Math.round(w.razemZaokr || w.razem);
+  /*
+   * WŁASNE POZYCJE DAWIDA wchodzą na KONIEC listy, za pozycjami silnika.
+   *
+   * To nie jest kosmetyka kolejności: `rozbicieDlaKlienta` uznaje w zamrożonej
+   * ofercie za materiał wyłącznie PIERWSZĄ pozycję (bo pozycje silnika nie mają
+   * pola `grupa`). Nasze wiersze niosą `grupa` wprost, więc rozstrzyga ona —
+   * ale gdyby kiedyś zniknęła, na końcu listy i tak wpadną do prac, czyli tam,
+   * gdzie należy większość dodatków. Bezpiecznie w obie strony.
+   */
+  const wlasnePoz = pozWlasne.doOferty(stan.wlasnePozycje);
+  widoczne.push(...wlasnePoz.map((x) => ({ ...x, brutto: stan.gratisy.has(x.nazwa) ? 0 : x.brutto, gratis: stan.gratisy.has(x.nazwa) })));
+
+  // Suma własnych pozycji dolicza się PRZED upustem — upust procentowy
+  // ma objąć całość oferty, a nie tylko część policzoną przez silnik.
+  const wlasneRazem = wlasnePoz
+    .filter((x) => !stan.gratisy.has(x.nazwa))
+    .reduce((suma, x) => suma + x.brutto, 0);
+
+  const przed = Math.round(w.razemZaokr || w.razem) + wlasneRazem;
   // Punktem wyjścia jest kwota z karty klienta (z jej zaokrągleniem),
   // pomniejszona o wyzerowane pozycje — a nie surowa suma pozycji, która
   // przez zaokrąglenie potrafi różnić się o złotówkę i udawać upust.
@@ -353,8 +378,15 @@ function zamrozOferte(stan, w) {
     mb: w.pak?.mb ?? 0,
     pomieszczenie: stan.opcje.pomieszczenie || 'kuchnia',
     kategoria: rodzajMaterialu(firma),
-    parametry:
-      stan.firma === NATURALNY
+    /*
+     * ⚠ Własne pozycje muszą siedzieć W ŚRODKU `parametry`, nie obok.
+     * To `parametry` wraca do edytora przy „Powtórz wycenę" (czyta je
+     * `uruchomOferteDawida` jako `paczka.parametry`), więc pozycja położona
+     * piętro wyżej zniknęłaby przy pierwszej poprawce i Dawid wpisywałby
+     * demontaż od nowa.
+     */
+    parametry: {
+      ...(stan.firma === NATURALNY
         ? {
             firma: 'interstone',
             dekor: w.dekor,
@@ -375,7 +407,9 @@ function zamrozOferte(stan, w) {
             grubosc: stan.grubosc,
             odcinki: stan.odcinki,
             opcje: stan.opcje,
-          },
+          }),
+      wlasnePozycje: pozWlasne.doParametrow(stan.wlasnePozycje),
+    },
   };
 }
 
@@ -578,6 +612,9 @@ function rysuj(box, stan, paczka) {
         ),
         h('button', { class: 'link-btn', type: 'button', onclick: () => (stan.odcinki.push({ gl: 60, dl: 100 }), odswiez()) }, '+ kolejny odcinek')
       ),
+
+      /* ── własne pozycje: demontaż, cokoły, dopłaty ── */
+      blokWlasnychPozycji(stan, odswiez),
 
       /* ── podgląd pozycji / błąd ── */
       w.ok ? podgladPozycji(stan, oferta, odswiez) : h('div', { class: 'form-blad' }, w.blad || 'Nie udało się policzyć.'),
@@ -783,6 +820,131 @@ function podgladPozycji(stan, oferta, odswiez) {
         h('b', {}, zl(oferta.razem))
       )
     )
+  );
+}
+
+/**
+ * WŁASNE POZYCJE — usługi i dodatki dopisywane ręcznie (01.09.2026).
+ *
+ * Zlecenie Dawida: demontaż starego blatu, cokoły, dopłata ekspresowa.
+ * Do tej pory takie rzeczy trzeba było chować w upuście albo w nadpisanej
+ * kwocie — znikały wtedy z rozbicia i nie było po nich śladu ani w ofercie,
+ * ani w mailu.
+ *
+ * Cena jest BRUTTO, tak jak wszędzie tam, gdzie Dawid wpisuje kwotę ręcznie.
+ * Kwota wiersza to cena × ilość; suma wchodzi do oferty PRZED upustem,
+ * więc upust procentowy obejmuje także dodatki.
+ *
+ * Przełącznik „praca / materiał" decyduje, po której stronie rozbicia kwota
+ * wyląduje u klienta. Domyślnie praca, bo tak wygląda większość dodatków —
+ * ale cokoły to materiał i Dawid przełącza je jednym kliknięciem.
+ */
+function blokWlasnychPozycji(stan, odswiez) {
+  const lista = stan.wlasnePozycje;
+
+  const wiersz = (poz, i) => {
+    const brak = pozWlasne.czegoBrakuje(poz);
+    const suma = pozWlasne.kwota(poz);
+
+    return h(
+      'div',
+      { class: 'wlasna-poz' },
+      h('input', {
+        class: 'wp-nazwa',
+        value: poz.nazwa,
+        placeholder: 'np. demontaż starego blatu',
+        'aria-label': 'Nazwa pozycji',
+        oninput: (e) => {
+          poz.nazwa = e.target.value;
+          // Bez przerysowania: przepisywanie nazwy nie może gubić kursora.
+          odswiezSume();
+        },
+      }),
+      h('input', {
+        class: 'wp-cena',
+        type: 'number',
+        step: '1',
+        min: '0',
+        value: String(poz.cena || ''),
+        placeholder: 'cena',
+        'aria-label': 'Cena brutto',
+        oninput: (e) => {
+          poz.cena = Number(e.target.value) || 0;
+          odswiezSume();
+        },
+      }),
+      h('span', { class: 'wp-znak' }, '×'),
+      h('input', {
+        class: 'wp-ilosc',
+        type: 'number',
+        step: '0.5',
+        min: '0',
+        value: String(poz.ilosc ?? 1),
+        'aria-label': 'Ilość',
+        oninput: (e) => {
+          poz.ilosc = Number(e.target.value) || 0;
+          odswiezSume();
+        },
+      }),
+      wybor(
+        pozWlasne.GRUPY.map((g) => [g.id, g.nazwa]),
+        poz.grupa,
+        (v) => ((poz.grupa = v), odswiez())
+      ),
+      h('b', { class: 'wp-suma' }, suma > 0 ? zl(suma) : '—'),
+      h(
+        'button',
+        {
+          class: 'link-btn',
+          type: 'button',
+          title: 'Usuń pozycję',
+          onclick: () => (lista.splice(i, 1), odswiez()),
+        },
+        '✕'
+      ),
+      brak ? h('span', { class: 'wp-brak form-blad' }, brak) : null
+    );
+  };
+
+  /*
+   * Sumę i podgląd oferty przeliczamy dopiero na `change`/blur, a nie przy
+   * każdym wciśniętym klawiszu: pełne przerysowanie edytora zabierałoby
+   * kursor z pola w połowie wpisywania nazwy.
+   */
+  function odswiezSume() {
+    clearTimeout(odswiezSume.t);
+    odswiezSume.t = setTimeout(odswiez, 700);
+  }
+
+  return h(
+    'div',
+    { class: 'od-blok wlasne-pozycje' },
+    h('div', { class: 'od-blok-tytul' }, 'Własne pozycje'),
+    h(
+      'p',
+      { class: 'form-nota', style: 'margin:0 0 8px' },
+      'Demontaż, cokoły, dopłata ekspresowa. Cena brutto za sztukę — ' +
+        'klient zobaczy kwotę w „Pracach kamieniarskich" (albo w materiale, ' +
+        'jeśli przełączysz), bez nazwy pozycji.'
+    ),
+    ...lista.map(wiersz),
+    h(
+      'button',
+      {
+        class: 'link-btn',
+        type: 'button',
+        onclick: () => (lista.push({ ...pozWlasne.PUSTA }), odswiez()),
+      },
+      '+ dodaj pozycję'
+    ),
+    pozWlasne.razem(lista) > 0
+      ? h(
+          'div',
+          { class: 'wp-razem' },
+          h('span', {}, 'Razem dodatki'),
+          h('b', {}, zl(pozWlasne.razem(lista)))
+        )
+      : null
   );
 }
 

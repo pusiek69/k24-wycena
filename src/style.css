@@ -1921,3 +1921,58 @@ button { color: var(--cream); background: transparent; }
 /* Filtry w rozmowie stoją w węższej kolumnie niż na stronie. */
 .pom-plyty-box .wyp-filtry { margin-bottom: 12px; padding: 11px 12px; }
 .pom-plyty-box .wyp-filtr { font-size: 12px; padding: 5px 10px; }
+
+/* ── Własne pozycje w edytorze właściciela (01.09.2026) ────────────────
+   Demontaż, cokoły, dopłata ekspresowa — wiersz: nazwa, cena, ilość,
+   typ, kwota, usuń. Styl trzyma konwencję pozostałych bloków edytora
+   (patrz .od-odcinek wyżej): to narzędzie warsztatowe, nie karta klienta. */
+.wlasne-pozycje { margin-top: 18px; }
+.wlasna-poz {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.wlasna-poz input,
+.wlasna-poz select {
+  padding: 10px 12px;
+  background: var(--slab);
+  border: 1px solid var(--line-hi);
+  border-radius: var(--radius);
+  color: var(--cream);
+  font-family: var(--sans);
+  font-size: 15px;
+}
+.wlasna-poz .wp-nazwa { flex: 1 1 200px; min-width: 150px; }
+.wlasna-poz .wp-cena,
+.wlasna-poz .wp-ilosc { width: 92px; font-variant-numeric: tabular-nums; }
+.wlasna-poz .wp-znak { color: var(--dim); font-family: var(--sans); }
+.wlasna-poz select { flex: 0 0 auto; }
+.wlasna-poz .wp-suma {
+  min-width: 92px;
+  text-align: right;
+  font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--vein-hi);
+}
+/* Komunikat o brakującym polu zajmuje własny wiersz — inaczej rozpychałby
+   pola w bok i przy trzech pozycjach robił się bałagan. */
+.wlasna-poz .wp-brak { flex: 1 0 100%; margin: 0; font-size: 13px; }
+.wp-razem {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--muted);
+}
+.wp-razem b { color: var(--cream); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .wlasna-poz .wp-nazwa { flex-basis: 100%; }
+  .wlasna-poz .wp-suma { margin-left: auto; }
+}
