@@ -7,6 +7,7 @@ import {
   plytaWgDekoru,
   kluczDekoru,
   ostrzezenieOWyprzedazy,
+  plytaZTekstu,
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { pasekWyprzedazy } from './pasek-wyprzedazy.js';
@@ -141,9 +142,6 @@ export function uruchomCzat(root, akcje = {}) {
    * wyprzedaży: reklamowanie komuś czegoś, co właśnie wybrał, to hałas.
    */
   const pasek = akcje.plyta ? null : pasekWyprzedazy(plytyWyprzedazy(), {
-    // Smukły wariant: na stronie głównej ten pasek stoi kilkadziesiąt
-    // pikseli pod wstążką w hero i nie może być jej kopią.
-    wariant: 'rozmowa',
     miejsce: 'czat',
     onKlik: pokazWyprzedaz,
   });
@@ -262,6 +260,49 @@ export function uruchomCzat(root, akcje = {}) {
     params = { ...(params || {}) };
     if (!params.pomieszczenie && stan.pomieszczenie) params.pomieszczenie = stan.pomieszczenie;
     else if (params.pomieszczenie && !stan.pomieszczenie) stan.pomieszczenie = params.pomieszczenie;
+
+    /*
+     * ⚠ PŁYTA Z WYPRZEDAŻY WYGRYWA Z MODELEM (błąd zgłoszony 01.09.2026).
+     *
+     * Objaw u Dawida: asystent pisał „wycena blatu z płyty wyprzedażowej
+     * Taj Mahal Light jest gotowa", a w następnym dymku „NIE ZNAM DEKORU
+     * »Taj Mahal Light Konglomerat Kwarcowy«". Model podawał w `quote`
+     * materiał, którego wyprzedaż nie dotyczy, albo nazwę płyty bez numeru
+     * sztuki — a kalkulator szukał dokładnego klucza i odmawiał.
+     *
+     * Płyta w `stan` nie wzięła się z rozmowy: klient WYBRAŁ ją kliknięciem
+     * (z paska, z listy albo linkiem ze strony wyprzedaży). To fakt, a nie
+     * hipoteza modelu — więc ma pierwszeństwo. Model może się mylić co do
+     * nazwy; kliknięcie nie.
+     *
+     * Gdy klient sam nie wybrał płyty, ale model wskazał wyprzedaż,
+     * rozpoznajemy ją tolerancyjnie po tym, co napisał (`plytaZTekstu`).
+     */
+    const wybranaPlyta =
+      stan.material === WYPRZEDAZ_SLUG && stan.dekor
+        ? plytaWgDekoru(plytyWyprzedazy(), stan.dekor)
+        : null;
+
+    if (wybranaPlyta) {
+      params.material = WYPRZEDAZ_SLUG;
+      params.dekor = kluczDekoru(wybranaPlyta);
+      params.grubosc = params.grubosc || String(wybranaPlyta.gruboscMm);
+    } else if (slugMaterialu(params?.material) === WYPRZEDAZ_SLUG) {
+      const zTekstu = plytaZTekstu(plytyWyprzedazy(), params?.dekor);
+      if (zTekstu) {
+        params.dekor = kluczDekoru(zTekstu);
+        params.grubosc = params.grubosc || String(zTekstu.gruboscMm);
+      } else {
+        // Model mówi „wyprzedaż", ale nie wiemy o którą płytę chodzi.
+        // Lepiej pokazać listę niż wycenić losową sztukę.
+        dodajWiadomosc(
+          'konsultant',
+          'Chętnie policzę blat z wyprzedaży — proszę tylko wskazać, o którą płytę chodzi.'
+        );
+        stan.dekor = null;
+        return;
+      }
+    }
 
     // Kamień naturalny: cenę i wymiar płyty bierzemy z magazynu na żywo.
     if (slugMaterialu(params?.material) === 'interstone') {

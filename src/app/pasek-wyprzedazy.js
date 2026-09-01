@@ -1,5 +1,5 @@
 /**
- * PASEK WYPRZEDAŻY — głośny akcent, który ma być widać od pierwszego ekranu.
+ * PASEK WYPRZEDAŻY — jeden, nad startem rozmowy.
  *
  * Zlecenie Dawida (01.09.2026): „jako klient, jak uruchamiam kalkulator, to
  * ciężko znaleźć wyprzedaż — a to powinno być dobrze widoczne, aż KRZYKLIWE".
@@ -8,22 +8,24 @@
  * rozmowy. Klient musiał wybrać pomieszczenie, potem rodzaj kamienia, i dopiero
  * wtedy mógł ją zobaczyć — czyli praktycznie nie widział jej wcale.
  *
- * DWA WARIANTY, bo oba stoją na stronie głównej i widać je naraz:
+ * ⚠ BYŁY DWA PASKI, ZOSTAŁ JEDEN (poprawka tego samego dnia, po zrzucie
+ * z telefonu Dawida). Pierwsza wersja stawiała wstążkę w hero strony głównej
+ * ORAZ smukły pasek nad rozmową. Na telefonie oba wypadały kilkadziesiąt
+ * pikseli od siebie — nad sekcją „Policz swój blat" i zaraz pod jej
+ * nagłówkiem — i czytało się to jak usterka, a nie jak oferta.
  *
- *   • 'hero' — wstążka pod przyciskiem wyceny, prowadzi na /wyprzedaz-plyt.
- *     To ona jest głośna: dwie linijki, płomień w palenisku, żar od lewej.
- *   • 'rozmowa' — smukły pasek nad startem rozmowy, otwiera karty płyt
- *     w kalkulatorze. Jedna linijka, ten sam żar, o połowę niższy.
+ * Decyzja Dawida: zostaje ten przy kalkulatorze. I słusznie — on prowadzi
+ * PROSTO do kart płyt w rozmowie, zamiast przerzucać klienta na inną stronę
+ * w połowie drogi do wyceny. Wariant „hero" usunięty razem z kodem: martwy
+ * przełącznik prędzej czy później wróciłby przez pomyłkę.
  *
- * ⚠ Wariantów nie scalamy. Pierwsza wersja rysowała w obu miejscach ten sam
- * pas i na stronie głównej wychodziły dwa identyczne czerwone paski w jednym
- * ekranie — czytelne raczej jako usterka niż jako oferta. Krzykliwy ma być
- * JEDEN element, drugi ma być akcją.
+ * Głośny, ale nie tandetny: żar rozgrzanego kamienia i złoto z reszty strony,
+ * wersaliki, jeden przesuwający się refleks — bez migania, bez licznika
+ * „oferta kończy się za 3:59" i bez wykrzykników.
  *
- * Treść w obu miejscach bierze się z `hasloWyprzedazy`, żeby liczby nigdy nie
- * zaczęły się rozjeżdżać: baner nie ma prawa obiecywać −43%, gdy karta pokazuje
- * −25%. Gdy Dawid nic nie wystawił, funkcja zwraca `null` i nie ma paska nigdzie
- * — o pustym placu nie krzyczymy.
+ * Treść bierze się z `hasloWyprzedazy`, wspólnie z kafelkiem przy wyborze
+ * materiału — żeby liczby nie zaczęły się rozjeżdżać. Gdy Dawid nic nie
+ * wystawił, funkcja zwraca `null` i paska nie ma. O pustym placu nie krzyczymy.
  */
 import { h } from './dom.js';
 import { formaPlyty, hasloWyprzedazy } from './wyprzedaz.js';
@@ -32,9 +34,7 @@ import { zdarzenie } from '../analytics/zdarzenia.js';
 /**
  * @param {Array}  plyty            lista z `/wyprzedaz`
  * @param {object} opcje
- * @param {string} [opcje.wariant]  'hero' (domyślnie) albo 'rozmowa'
- * @param {string} [opcje.href]     gdy pasek ma być linkiem (strona główna)
- * @param {Function} [opcje.onKlik] gdy ma być przyciskiem (rozmowa)
+ * @param {Function} [opcje.onKlik] co zrobić po kliknięciu (pokazać płyty)
  * @param {string} [opcje.miejsce]  do statystyk — skąd klient kliknął
  * @returns {HTMLElement|null}
  */
@@ -42,57 +42,15 @@ export function pasekWyprzedazy(plyty, opcje = {}) {
   const haslo = hasloWyprzedazy(plyty);
   if (!haslo) return null;
 
-  const smukly = opcje.wariant === 'rozmowa';
   const miejsce = opcje.miejsce || 'nieznane';
   // Upust pokazujemy tylko wtedy, gdy Dawid podał ceny „było" — procent
   // wzięty z powietrza byłby zwykłym oszustwem.
   const upust = haslo.upust ? h('span', { class: 'pw-upust' }, `−${haslo.upust}%`) : null;
 
-  const tresc = smukly
-    ? [
-        h('span', { class: 'pw-plomien', 'aria-hidden': 'true' }, '🔥'),
-        h('span', { class: 'pw-tytul' }, haslo.tytul, upust),
-        h(
-          'span',
-          { class: 'pw-nota' },
-          `${haslo.sztuk} ${formaPlyty(haslo.sztuk)} z placu — policz blat z konkretnej sztuki`
-        ),
-        h('span', { class: 'pw-akcja' }, 'Pokaż płyty →'),
-      ]
-    : [
-        /*
-         * Płomień siedzi we własnym „palenisku" — kółku z żarem. Bez tego
-         * emoji zlewa się z tekstem i wygląda jak literówka, a nie jak znak.
-         */
-        h('span', { class: 'pw-znak', 'aria-hidden': 'true' }, '🔥'),
-        h(
-          'span',
-          { class: 'pw-tresc' },
-          h('span', { class: 'pw-tytul' }, haslo.tytul, upust),
-          h('span', { class: 'pw-nota' }, haslo.nota)
-        ),
-        h('span', { class: 'pw-akcja' }, haslo.akcja, ' →'),
-      ];
-
-  const klasa = 'pasek-wyprzedaz' + (smukly ? ' pasek-smukly' : '');
-
-  if (opcje.href) {
-    return h(
-      'a',
-      {
-        class: klasa,
-        href: opcje.href,
-        'data-miejsce': miejsce,
-        onclick: () => zdarzenie('wyprzedaz_pasek', { miejsce }),
-      },
-      tresc
-    );
-  }
-
   return h(
     'button',
     {
-      class: klasa,
+      class: 'pasek-wyprzedaz pasek-smukly',
       type: 'button',
       'data-miejsce': miejsce,
       onclick: () => {
@@ -100,6 +58,13 @@ export function pasekWyprzedazy(plyty, opcje = {}) {
         opcje.onKlik?.();
       },
     },
-    tresc
+    h('span', { class: 'pw-plomien', 'aria-hidden': 'true' }, '🔥'),
+    h('span', { class: 'pw-tytul' }, haslo.tytul, upust),
+    h(
+      'span',
+      { class: 'pw-nota' },
+      `${haslo.sztuk} ${formaPlyty(haslo.sztuk)} z placu — policz blat z konkretnej sztuki`
+    ),
+    h('span', { class: 'pw-akcja' }, 'Pokaż płyty →')
   );
 }

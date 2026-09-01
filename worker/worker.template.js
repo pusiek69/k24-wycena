@@ -37,6 +37,7 @@ import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
+import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
 import { resend, nadawca, doDawida } from './poczta.js';
 import {
@@ -215,6 +216,21 @@ async function obsluzChat(request, env, cors, ctx) {
   const messages = oczyscHistorie(dane?.messages);
   if (!messages.length) return json({ error: 'Pusta rozmowa.' }, 400, cors);
 
+  /*
+   * Stan wyprzedaży dokładamy do KAŻDEGO zapytania, a nie dopiero wtedy,
+   * gdy model sam sięgnie po narzędzie. Powód jest prosty: żeby po nie
+   * sięgnąć, musiałby najpierw wiedzieć, że taka kategoria istnieje —
+   * a do 01.09.2026 nie wiedział i dlatego nie umiał wycenić płyty,
+   * którą klient wybrał kliknięciem.
+   *
+   * Awaria bazy nie może wywalić rozmowy: bez tego bloku asystent nadal
+   * doradza, tylko nie wspomni o wyprzedaży.
+   */
+  const dodatkowy = await blokWyprzedazy(env).catch((e) => {
+    console.error('wyprzedaz-prompt', e?.message || e);
+    return null;
+  });
+
   // Pętla narzędziowa toczy się w CAŁOŚCI tutaj: front wysyła i dostaje
   // zwykły tekst, więc nie musi wiedzieć nic o blokach tool_use.
   let wynik = null;
@@ -223,7 +239,7 @@ async function obsluzChat(request, env, cors, ctx) {
     // W ostatniej turze zabieramy narzędzia — model musi wtedy odpowiedzieć
     // słowami, zamiast prosić o kolejne sprawdzenie w nieskończoność.
     const ostatnia = tura === MAKS_NARZEDZI;
-    wynik = await anthropic(env, messages, ostatnia ? null : NARZEDZIA);
+    wynik = await anthropic(env, messages, ostatnia ? null : NARZEDZIA, dodatkowy);
     if (!wynik) return json({ error: 'Konsultant chwilowo niedostępny.' }, 502, cors);
 
     const proby = (wynik.content || []).filter((b) => b?.type === 'tool_use');
@@ -262,13 +278,22 @@ async function wykonajNarzedzie(blok, ctx, env) {
 }
 
 /** Jedno wywołanie Anthropic. Zwraca odpowiedź albo null przy błędzie. */
-async function anthropic(env, messages, narzedzia) {
+async function anthropic(env, messages, narzedzia, dodatkowy) {
   // Prompt bierzemy ZAWSZE stąd — nawet jeśli front coś przyśle.
   // Dzięki temu wytycznych nie da się podmienić z przeglądarki.
   const cialo = {
     model: MODEL,
     max_tokens: MAX_TOKENS,
-    system: [{ type: 'text', text: PROMPT, cache_control: { type: 'ephemeral' } }],
+    /*
+     * Dwa bloki systemowe, celowo. Pierwszy jest STAŁY (wytyczne + dekory
+     * z cennika) i dlatego objęty cache. Drugi niesie stan wyprzedaży
+     * z D1 — zmienia się, gdy Dawid doda albo sprzeda płytę, więc cache
+     * go nie obejmuje. Sklejone w jedno psułyby cache całości.
+     */
+    system: [
+      { type: 'text', text: PROMPT, cache_control: { type: 'ephemeral' } },
+      ...(dodatkowy ? [{ type: 'text', text: dodatkowy }] : []),
+    ],
     messages,
   };
   if (narzedzia) cialo.tools = narzedzia;
@@ -608,7 +633,22 @@ async function obsluzZdjecieWyprzedazy(sciezka, env, cors, szukaj) {
   });
 }
 
-/** Tekst dla narzędzia asystenta — te same płyty, które widzi klient. */
+/**
+ * Płyty z wyprzedaży opisane dla asystenta.
+ *
+ * ⚠ KAŻDA POZYCJA NIESIE `dekor` — dokładny klucz, który asystent ma wpisać
+ * do wyceny. To jest sedno błędu z 01.09.2026, zgłoszonego przez Dawida:
+ * asystent mówił „wycena płyty Taj Mahal Light jest gotowa", a zaraz potem
+ * „NIE ZNAM DEKORU »Taj Mahal Light Konglomerat Kwarcowy«" — bo kalkulator
+ * szuka klucza z numerem sztuki („… #6"), a model podawał samą nazwę.
+ *
+ * Klucz liczy `kluczDekoru` z `src/app/wyprzedaz-klucz.js` — TA SAMA funkcja,
+ * której używa kalkulator. Przepisana tutaj „na chwilę" rozjechałaby się
+ * przy pierwszej zmianie formatu.
+ *
+ * Cen zakupowych ani rabatów Dawida tu NIE MA i być nie może — `cenaM2`
+ * to gotowa cena dla klienta, ta sama, którą widzi na karcie płyty.
+ */
 async function opiszWyprzedazDlaAsystenta(env) {
   const plyty = (await listaPlyt(env, {})).filter(dostepna);
   if (!plyty.length) return 'Brak płyt na wyprzedaży — nie wspominaj o niej.';
@@ -620,10 +660,57 @@ async function opiszWyprzedazDlaAsystenta(env) {
       const opis = p.opis ? ` — ${p.opis}` : '';
       return (
         `${i + 1}. „${p.nazwa}"${opis} — ${p.plytaDlCm}×${p.plytaGlCm} cm, ${p.gruboscMm} mm${kod}; ` +
-        `${p.cenaM2} zł/m² brutto${bylo}; zostało ${p.plytZostalo} z ${p.plytRazem}.`
+        `${p.cenaM2} zł/m² brutto${bylo}; zostało ${p.plytZostalo} z ${p.plytRazem}.\n` +
+        `   dekor do wyceny: "${kluczDekoru(p)}"`
       );
     })
     .join('\n');
+}
+
+/**
+ * DRUGI BLOK SYSTEMOWY — wyprzedaż na żywo.
+ *
+ * ⚠ DLACZEGO OSOBNY BLOK, A NIE DOKLEJENIE DO `PROMPT`.
+ * Lista dekorów w `PROMPT` powstaje przy BUDOWANIU workera, z plików
+ * cennika — i jest wysyłana z `cache_control`, bo się nie zmienia. Płyty
+ * z wyprzedaży leżą w D1 i zmieniają się bez wdrożenia, więc doklejone
+ * do tamtego bloku psułyby cache przy każdej zmianie stanu magazynu.
+ *
+ * ⚠ DLACZEGO W OGÓLE. Do 01.09.2026 prompt asystenta NIE WSPOMINAŁ
+ * o wyprzedaży ani słowem (0 trafień na „wyprzedaż" w wytycznych).
+ * Narzędzie `sprawdz_wyprzedaz` istniało, ale model nie wiedział, że jest
+ * taka kategoria, więc go nie wołał i nie umiał jej wycenić. To ta sama
+ * klasa błędu, co Pacific 25.08: ściąga materiałów nie obejmowała
+ * czegoś, co kalkulator liczył od dawna.
+ *
+ * Zwraca `null`, gdy Dawid nic nie wystawił — wtedy nie zajmujemy modelowi
+ * kontekstu na pustą listę.
+ */
+async function blokWyprzedazy(env) {
+  const opis = await opiszWyprzedazDlaAsystenta(env);
+  if (opis.startsWith('Brak płyt')) return null;
+
+  return [
+    '# WYPRZEDAŻ PŁYT — stan na teraz (dane z magazynu, nie z cennika)',
+    '',
+    'To pojedyncze, konkretne płyty z placu Dawida w gotowej, niższej cenie.',
+    'W kalkulatorze są osobną kategorią „NATURA WYPRZEDAŻ". Rozliczamy je',
+    'ZA CAŁĄ PŁYTĘ, nie za metry blatu — klient kupuje sztukę.',
+    '',
+    opis,
+    '',
+    'JAK JE WYCENIĆ. W poleceniu `quote` podaj:',
+    '  "material": "NATURA WYPRZEDAŻ"',
+    '  "dekor":    dokładnie ten ciąg z pola „dekor do wyceny" wyżej,',
+    '              razem z numerem sztuki — bez niego kalkulator odpowie',
+    '              „nie znam dekoru".',
+    '  "grubosc":  grubość tej płyty z listy wyżej.',
+    '',
+    'Nigdy nie podawaj kwoty wyceny w rozmowie — liczy ją kalkulator,',
+    'a klient widzi ją po zostawieniu kontaktu. Nie obiecuj też więcej sztuk,',
+    'niż jest na liście: gdy blat wymaga dwóch płyt, a została jedna,',
+    'powiedz o tym wprost i zaproponuj kontakt.',
+  ].join('\n');
 }
 
 async function obsluzOfertaDane(request, env, cors) {

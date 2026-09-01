@@ -40,6 +40,19 @@ const MATERIALY = {
   florim: 'florim-stone',
   kamien_naturalny: 'interstone',
   interstone: 'interstone',
+  /*
+   * WYPRZEDAŻ PŁYT. Bez tych wpisów `slugMaterialu('NATURA WYPRZEDAŻ')`
+   * dawało „natura-wyprzedaż", czego nie zna żadna firma — i rozmowa
+   * kończyła się zdaniem „przy tym materiale wycenę przygotuje Dawid",
+   * mimo że kalkulator umie tę płytę policzyć od 30.08.2026.
+   * Model bywa niekonsekwentny w zapisie, więc łapiemy kilka form.
+   */
+  wyprzedaz: 'wyprzedaz',
+  'wyprzedaż': 'wyprzedaz',
+  'natura wyprzedaz': 'wyprzedaz',
+  'natura wyprzedaż': 'wyprzedaz',
+  'natura-wyprzedaz': 'wyprzedaz',
+  'natura-wyprzedaż': 'wyprzedaz',
 };
 
 /** Odcinki z parametrów konsultanta: {d: głębokość, w: długość} w cm. */

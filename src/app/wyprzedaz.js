@@ -10,6 +10,7 @@
  * (pobiera ją `wyprzedaz-dane.js`) i zwraca kształty, które rozumie reszta
  * kreatora. Dzięki temu testuje się go w gołym node, tak samo jak silnik.
  */
+import { kluczDekoru } from './wyprzedaz-klucz.js';
 import { FIRMY, firmaWgSlug } from '../firms/index.js';
 
 /** Slug pseudo-firmy. Musi być stały — kreator porównuje po nim `stan.firma`. */
@@ -229,8 +230,45 @@ export function firmaWyprzedazy(plyty) {
  * (a ma prawo — dwie sztuki tego samego granitu w różnym wymiarze),
  * doklejamy numer, żeby druga nie nadpisała pierwszej w `dekory`.
  */
-export function kluczDekoru(p) {
-  return p.kodPlyty ? `${p.nazwa} (${p.kodPlyty})` : `${p.nazwa} #${p.id}`;
+/*
+ * `kluczDekoru` mieszka w osobnym pliku bez zależności, bo tej samej reguły
+ * potrzebuje WORKER (podaje asystentowi dokładną nazwę do wyceny), a tego
+ * modułu worker zaimportować nie może — ciągnie rejestr firm przez
+ * `import.meta.glob`. Re-eksport zostaje, żeby reszta kodu nic nie zauważyła.
+ */
+export { kluczDekoru };
+
+/**
+ * Płyta rozpoznana z tego, CO NAPISAŁ MODEL — a nie z dokładnego klucza.
+ *
+ * ⚠ Powód (błąd zgłoszony 01.09.2026): asystent podawał „Taj Mahal Light
+ * Konglomerat Kwarcowy", a klucz dekoru to „Taj Mahal Light Konglomerat
+ * Kwarcowy #6". Dokładne porównanie nie trafiało i klient dostawał
+ * „nie znam dekoru" tuż po zdaniu, że wycena jest gotowa.
+ *
+ * Kolejność prób jest ważna: najpierw dokładny klucz (jedyna forma pewna
+ * w 100%), potem sama nazwa, na końcu zawieranie. Gdy pasuje więcej niż
+ * jedna płyta, NIE zgadujemy — dwie sztuki o tej samej nazwie to dwie różne
+ * ceny i dwie różne dostępności, więc lepiej dopytać niż wycenić losową.
+ */
+export function plytaZTekstu(plyty, tekst) {
+  const szukane = String(tekst || '').trim().toLowerCase();
+  if (!szukane) return null;
+  const widoczne = doPokazania(plyty);
+
+  const dokladne = widoczne.find((p) => kluczDekoru(p).toLowerCase() === szukane);
+  if (dokladne) return dokladne;
+
+  const poNazwie = widoczne.filter((p) => String(p.nazwa).toLowerCase() === szukane);
+  if (poNazwie.length === 1) return poNazwie[0];
+  if (poNazwie.length > 1) return null;
+
+  const zawiera = widoczne.filter(
+    (p) =>
+      szukane.includes(String(p.nazwa).toLowerCase()) ||
+      String(p.nazwa).toLowerCase().includes(szukane)
+  );
+  return zawiera.length === 1 ? zawiera[0] : null;
 }
 
 /** Odwrotność `kluczDekoru` — z wybranego dekoru z powrotem do płyty. */

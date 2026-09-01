@@ -38,6 +38,7 @@ const {
   firmaWyprzedazy,
   kluczDekoru,
   plytaWgDekoru,
+  plytaZTekstu,
   charakterPlyty,
   firmaDlaPlyty,
   brakuje,
@@ -602,22 +603,37 @@ test('nota odmienia „płytę" po polsku i mówi o ostatniej sztuce', () => {
   assert.match(hasloWyprzedazy([plyta({ plytZostalo: 8 })]).nota, /^8 płyt z placu/);
 });
 
-test('pasek w hero i pasek nad rozmową to DWA różne warianty', () => {
+test('na stronie jest DOKŁADNIE JEDEN pasek wyprzedaży', () => {
   /*
-   * ⚠ Pierwsza wersja rysowała w obu miejscach ten sam pas. Na stronie
-   * głównej wychodziły dwa identyczne czerwone paski w jednym ekranie —
-   * czytelne raczej jako usterka niż jako oferta.
+   * ⚠ ZGŁOSZENIE DAWIDA ZE ZRZUTU Z TELEFONU (01.09.2026): baner
+   * „WYPRZEDAŻ PŁYT −43%" wyświetlał się PODWÓJNIE, jeden pod drugim —
+   * wstążka w hero („Zobacz płyty") i smukły pasek nad rozmową
+   * („Pokaż płyty"). Na telefonie wypadały kilkadziesiąt pikseli od siebie
+   * i czytało się to jak usterka, a nie jak oferta.
+   *
+   * Decyzja Dawida: zostaje ten przy kalkulatorze. Wariant „hero" usunięty
+   * razem z kodem — martwy przełącznik prędzej czy później wróciłby przez
+   * pomyłkę.
    */
-  const zr = zrodlo('src/app/pasek-wyprzedazy.js');
-  assert.match(zr, /opcje\.wariant === 'rozmowa'/, 'brak wariantu smukłego');
-  assert.match(zr, /pasek-smukly/, 'brak klasy wariantu smukłego');
+  const main = zrodlo('src/main.js');
+  assert.doesNotMatch(main, /pasekWyprzedazy/, 'strona główna znów rysuje własny pasek');
+  assert.doesNotMatch(main, /pasekWHero/, 'została funkcja banera w hero');
 
-  const css = zrodlo('src/style.css');
-  assert.match(css, /\.pasek-smukly \{/, 'wariant smukły bez własnego stylu');
-  assert.match(css, /--zar:/, 'brak koloru żaru w motywie');
+  const html = zrodlo('index.html');
+  assert.doesNotMatch(html, /id="pasek-wyprzedazy"/, 'w hero wciąż jest miejsce na pasek');
 
+  const modul = zrodlo('src/app/pasek-wyprzedazy.js');
+  assert.doesNotMatch(modul, /opcje\.href/, 'moduł wciąż umie rysować wariant linkowy');
+  assert.doesNotMatch(modul, /wariant/, 'został przełącznik wariantów');
+
+  // Rozmowa rysuje go raz i tylko wtedy, gdy klient nie przyszedł z płytą.
   const cz = zrodlo('src/app/czat.js');
-  assert.match(cz, /wariant: 'rozmowa'/, 'rozmowa rysuje wariant z hero');
+  assert.equal(
+    (cz.match(/pasekWyprzedazy\(/g) || []).length,
+    1,
+    'rozmowa woła pasek więcej niż raz'
+  );
+  assert.match(cz, /akcje\.plyta \? null : pasekWyprzedazy/, 'pasek pokazuje się mimo wybranej płyty');
 });
 
 test('klik w pasek prowadzi PROSTO do płyt, a nie do pytania o pomieszczenie', () => {
@@ -897,4 +913,109 @@ test('formatka jest w schemacie opisana jako pozostałość z produkcji', () => 
   assert.match(produkt.description, /137 × 64 cm/, 'brak rzeczywistego wymiaru formatki');
   assert.match(produkt.description, /Pozostałość z produkcji/, 'formatka podana jako pełna płyta');
   assert.equal(produkt.sku, 'A-7');
+});
+
+/* ═══ ASYSTENT A PŁYTY Z WYPRZEDAŻY — zgłoszenie Dawida z 01.09.2026 ═══════
+ *
+ * Objaw: klient wchodzi z /#wyprzedaz=Taj…, asystent pisze „wycena z płyty
+ * wyprzedażowej Taj Mahal Light jest gotowa", a w następnym dymku
+ * „NIE ZNAM DEKORU »Taj Mahal Light Konglomerat Kwarcowy«".
+ */
+
+test('nazwa płyty BEZ numeru sztuki wciąż trafia we właściwą płytę', () => {
+  /*
+   * Sedno błędu. Klucz dekoru to „Nazwa #id", a model podaje samą nazwę —
+   * dokładne porównanie nie trafiało i wycena kończyła się odmową.
+   */
+  const plyty = [plyta({ id: 6, nazwa: 'Taj Mahal Light Konglomerat Kwarcowy' })];
+
+  assert.equal(plytaWgDekoru(plyty, 'Taj Mahal Light Konglomerat Kwarcowy'), null,
+    'dokładne dopasowanie nie powinno trafiać — na tym polegał błąd');
+  assert.ok(plytaZTekstu(plyty, 'Taj Mahal Light Konglomerat Kwarcowy'),
+    'tolerancyjne dopasowanie nie znalazło płyty');
+  assert.ok(plytaZTekstu(plyty, 'Taj Mahal Light Konglomerat Kwarcowy #6'),
+    'dokładny klucz też musi działać');
+});
+
+test('przy dwóch płytach o tej samej nazwie NIE zgadujemy', () => {
+  // Dwie sztuki o tej samej nazwie to dwie różne ceny i dostępności.
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Taj Mahal', cenaM2: 700 }),
+    plyta({ id: 2, nazwa: 'Taj Mahal', cenaM2: 900 }),
+  ];
+  assert.equal(plytaZTekstu(plyty, 'Taj Mahal'), null, 'wybrał losową z dwóch');
+  // ...ale z numerem sztuki rozstrzygnięcie jest jednoznaczne.
+  assert.equal(plytaZTekstu(plyty, 'Taj Mahal #2')?.cenaM2, 900);
+});
+
+test('sprzedana płyta nie da się wycenić przez asystenta', () => {
+  const plyty = [plyta({ id: 3, nazwa: 'Zeszła', plytZostalo: 0 })];
+  assert.equal(plytaZTekstu(plyty, 'Zeszła'), null);
+});
+
+test('kategoria wyprzedaży jest rozpoznawana z tego, co pisze model', () => {
+  /*
+   * ⚠ Bez tych synonimów `slugMaterialu('NATURA WYPRZEDAŻ')` dawało
+   * „natura-wyprzedaż", czego nie zna żadna firma — i rozmowa kończyła się
+   * zdaniem „przy tym materiale wycenę przygotuje Dawid", mimo że
+   * kalkulator umie tę płytę policzyć.
+   *
+   * Model bywa niekonsekwentny w zapisie, więc sprawdzamy kilka form.
+   */
+  for (const forma of ["wyprzedaz:", "'wyprzedaż':", "'natura wyprzedaz':",
+                       "'natura wyprzedaż':", "'natura-wyprzedaz':"]) {
+    assert.ok(
+      zrodlo('src/app/parametry.js').includes(forma),
+      `brak synonimu ${forma}`
+    );
+  }
+});
+
+test('WYBÓR KLIKNIĘCIEM wygrywa z materiałem podanym przez model', () => {
+  /*
+   * Płyta w `stan` nie wzięła się z rozmowy — klient wybrał ją kliknięciem.
+   * To fakt, a nie hipoteza modelu, więc `policzWycene` ma ją narzucić.
+   */
+  const cz = zrodlo('src/app/czat.js');
+  assert.match(cz, /const wybranaPlyta =/, 'brak strażnika wybranej płyty');
+  assert.match(
+    cz,
+    /if \(wybranaPlyta\) \{[\s\S]{0,200}params\.material = WYPRZEDAZ_SLUG;[\s\S]{0,120}params\.dekor = kluczDekoru\(wybranaPlyta\);/,
+    'model wciąż może nadpisać wybraną płytę'
+  );
+  // Strażnik MUSI stać przed gałęzią kamienia naturalnego — inaczej
+  // model, który powie „interstone", ucieknie w wycenę z magazynu.
+  assert.ok(
+    cz.indexOf('const wybranaPlyta =') < cz.indexOf("slugMaterialu(params?.material) === 'interstone'"),
+    'strażnik stoi za gałęzią kamienia naturalnego'
+  );
+});
+
+test('asystent DOSTAJE płyty z wyprzedaży w każdym zapytaniu', () => {
+  /*
+   * ⚠ Do 01.09.2026 prompt nie wspominał o wyprzedaży ani słowem, więc model
+   * nie wiedział, że kategoria istnieje — i nie wołał narzędzia, które od
+   * dawna działało. Ta sama klasa błędu co Pacific 25.08.
+   */
+  const w = zrodlo('worker/worker.template.js');
+  assert.match(w, /async function blokWyprzedazy\(env\)/, 'brak bloku wyprzedaży');
+  assert.match(w, /const dodatkowy = await blokWyprzedazy\(env\)/, 'blok nie jest budowany');
+  assert.match(w, /\.\.\.\(dodatkowy \? \[\{ type: 'text', text: dodatkowy \}\] : \[\]\)/,
+    'blok nie trafia do zapytania');
+  // Klucz do wyceny MUSI być w tekście dla modelu — bez niego wraca ten błąd.
+  assert.match(w, /dekor do wyceny/, 'model nie dostaje klucza dekoru');
+  assert.match(w, /kluczDekoru\(p\)/, 'klucz liczony inaczej niż w kalkulatorze');
+  // Prompt statyczny zostaje w cache, dynamiczny nie — inaczej każda zmiana
+  // stanu magazynu psułaby cache całych wytycznych.
+  assert.match(w, /text: PROMPT, cache_control/, 'stały prompt stracił cache');
+});
+
+test('klucz dekoru liczy JEDNA funkcja dla klienta i workera', () => {
+  // Dwie kopie tej samej reguły zawsze się w końcu rozjeżdżają — i właśnie
+  // takie rozjechanie było przyczyną tego błędu.
+  const modul = zrodlo('src/app/wyprzedaz-klucz.js');
+  assert.match(modul, /export function kluczDekoru/, 'brak wspólnego modułu');
+  assert.doesNotMatch(modul, /^import /m, 'wspólny moduł ma zależności — worker go nie zaimportuje');
+  assert.match(zrodlo('worker/worker.template.js'), /from '\.\.\/src\/app\/wyprzedaz-klucz\.js'/);
+  assert.match(zrodlo('src/app/wyprzedaz.js'), /from '\.\/wyprzedaz-klucz\.js'/);
 });
