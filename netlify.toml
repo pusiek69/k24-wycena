@@ -297,6 +297,34 @@
   force = true
 
 [[redirects]]
+  from = "/blaty-z-konglomeratu-kwarcowego-poradnik.html"
+  to = "/blaty-z-konglomeratu-kwarcowego-poradnik"
+  status = 301
+  force = true
+
+# LIKWIDACJA KANIBALIZACJI (01.09.2026).
+#
+# `/baza-wiedzy/cena-blatu-z-konglomeratu` (816 słów) miał DOKŁADNIE tę samą
+# intencję co nowy poradnik filarowy (~2000 słów): „ile kosztuje blat
+# z konglomeratu". Dwie nasze strony biły się o tę samą frazę, więc Google
+# nie wiedział, którą pokazać — i pokazywał obie słabo, na pozycji 20–40.
+#
+# Przekierowanie przekazuje sygnały tej strony filarowi zamiast je dzielić.
+# Strona jest jednocześnie wyłączona z buildu (vite.config.js), żeby Netlify
+# nie serwował pliku zamiast przekierowania.
+[[redirects]]
+  from = "/baza-wiedzy/cena-blatu-z-konglomeratu"
+  to = "/blaty-z-konglomeratu-kwarcowego-poradnik"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/baza-wiedzy/cena-blatu-z-konglomeratu.html"
+  to = "/blaty-z-konglomeratu-kwarcowego-poradnik"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/licencja-zdjec.html"
   to = "/licencja-zdjec"
   status = 301

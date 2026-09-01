@@ -22,6 +22,7 @@ export default defineConfig({
         blaty_z_konglomeratu: resolve(import.meta.dirname, 'blaty-z-konglomeratu.html'),
         blaty_ze_spieku: resolve(import.meta.dirname, 'blaty-ze-spieku.html'),
         blaty_granitowe: resolve(import.meta.dirname, 'blaty-granitowe.html'),
+        blaty_z_konglomeratu_kwarcowego_poradnik: resolve(import.meta.dirname, 'blaty-z-konglomeratu-kwarcowego-poradnik.html'),
         baza_wiedzy_index: resolve(import.meta.dirname, 'baza-wiedzy/index.html'),
         baza_wiedzy_granit: resolve(import.meta.dirname, 'baza-wiedzy/granit.html'),
         baza_wiedzy_marmur: resolve(import.meta.dirname, 'baza-wiedzy/marmur.html'),
@@ -32,7 +33,13 @@ export default defineConfig({
         baza_wiedzy_spiek_kwarcowy: resolve(import.meta.dirname, 'baza-wiedzy/spiek-kwarcowy.html'),
         baza_wiedzy_pielegnacja_i_impregnacja: resolve(import.meta.dirname, 'baza-wiedzy/pielegnacja-i-impregnacja.html'),
         baza_wiedzy_kwarcyt_czy_granit: resolve(import.meta.dirname, 'baza-wiedzy/kwarcyt-czy-granit.html'),
-        baza_wiedzy_cena_blatu_z_konglomeratu: resolve(import.meta.dirname, 'baza-wiedzy/cena-blatu-z-konglomeratu.html'),
+        /*
+         * `/baza-wiedzy/cena-blatu-z-konglomeratu` CELOWO NIE JEST budowana
+         * od 01.09.2026: ma tę samą intencję co nowy poradnik filarowy
+         * i konkurowała z nim o frazę „blat z konglomeratu cena".
+         * Zamiast pliku Netlify oddaje 301 na poradnik (netlify.toml).
+         * Plik źródłowy zostaje w repo jako ślad po treści.
+         */
         baza_wiedzy_spiek_kwarcowy_wady_i_zalety: resolve(import.meta.dirname, 'baza-wiedzy/spiek-kwarcowy-wady-i-zalety.html'),
         blaty_kuchenne_sandomierz: resolve(import.meta.dirname, 'blaty-kuchenne-sandomierz.html'),
         blaty_kuchenne_stalowa_wola: resolve(import.meta.dirname, 'blaty-kuchenne-stalowa-wola.html'),

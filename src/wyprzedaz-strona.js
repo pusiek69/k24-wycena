@@ -20,6 +20,7 @@ import { doPokazania, filtruj, formaPlyty, kluczDekoru } from './app/wyprzedaz.j
 import { filtryWyprzedazy, przywrocFokus } from './app/wyprzedaz-filtry.js';
 import { pobierzPlyty, czyPodglad } from './app/wyprzedaz-dane.js';
 import { kartaPlyty } from './app/wyprzedaz-karta.js';
+import { dopiszSchemeWyprzedazy } from './app/wyprzedaz-schema.js';
 
 inicjujZgody();
 sledzTelefony();
@@ -47,6 +48,15 @@ if (box) {
     const stan = { kategoria: null, typ: null, szukaj: '', ile: NA_RAZ };
 
     if (plyty.length) zdarzenie('wyprzedaz_lista', { plyt: plyty.length });
+
+    /*
+     * Dane strukturalne z PRAWDZIWĄ listą płyt (ceny, dostępność, zdjęcia).
+     * Dokładamy je po pobraniu, bo lista zmienia się bez wdrożenia strony —
+     * wpisana na sztywno kłamałaby dzień po sprzedaniu pierwszej sztuki.
+     * Filtry klienta ich NIE dotyczą: Google ma widzieć całą ofertę,
+     * a nie to, co akurat wybrał jeden odwiedzający.
+     */
+    dopiszSchemeWyprzedazy(plyty);
 
     rysuj();
 

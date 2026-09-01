@@ -33,6 +33,7 @@ const {
   filtruj,
   policzWKategoriach,
   policzWTypach,
+  listaProduktow,
   notaPlyty,
   firmaWyprzedazy,
   kluczDekoru,
@@ -859,4 +860,41 @@ test('słowniki kategorii i typów zgadzają się z bazą', () => {
   const baza = zrodlo('worker/wyprzedaz-baza.js');
   for (const k of KATEGORIE) assert.match(baza, new RegExp(`'${k.id}'`), `baza nie zna kategorii ${k.id}`);
   for (const t of TYPY) assert.match(baza, new RegExp(`'${t.id}'`), `baza nie zna typu ${t.id}`);
+});
+
+test('dane strukturalne wyprzedaży nie obiecują płyt, których nie ma', () => {
+  /*
+   * Fałszywa dostępność w schema.org to nie drobiazg — za to leci kara ręczna
+   * w Search Console. Sprzedana i nieopublikowana płyta nie ma prawa
+   * pojawić się w ItemList, tak samo jak nie pojawia się na stronie.
+   */
+  const plyty = [
+    plyta({ id: 1, nazwa: 'Widoczna', cenaM2: 700, plytZostalo: 2 }),
+    plyta({ id: 2, nazwa: 'Sprzedana', plytZostalo: 0 }),
+    plyta({ id: 3, nazwa: 'Szkic', opublikowana: false }),
+  ];
+
+  const lista = listaProduktow(plyty);
+  assert.equal(lista.numberOfItems, 1, 'do schematu weszły płyty niedostępne');
+  const produkt = lista.itemListElement[0].item;
+  assert.equal(produkt.name, 'Widoczna');
+  assert.equal(produkt.offers.availability, 'https://schema.org/InStock');
+  assert.equal(produkt.offers.priceCurrency, 'PLN');
+
+  // Cena w schemacie = cena CAŁEJ PŁYTY, ta sama, co na karcie klienta.
+  assert.equal(produkt.offers.price, String(cenaCalejPlyty(plyty[0])));
+
+  // Pusty plac → brak bloku, a nie pusty ItemList.
+  assert.equal(listaProduktow([]), null);
+  assert.equal(listaProduktow([plyta({ plytZostalo: 0 })]), null);
+});
+
+test('formatka jest w schemacie opisana jako pozostałość z produkcji', () => {
+  const lista = listaProduktow([
+    plyta({ typ: 'poprodukcyjna', plytaDlCm: 137, plytaGlCm: 64, kodPlyty: 'A-7' }),
+  ]);
+  const produkt = lista.itemListElement[0].item;
+  assert.match(produkt.description, /137 × 64 cm/, 'brak rzeczywistego wymiaru formatki');
+  assert.match(produkt.description, /Pozostałość z produkcji/, 'formatka podana jako pełna płyta');
+  assert.equal(produkt.sku, 'A-7');
 });

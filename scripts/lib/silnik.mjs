@@ -34,6 +34,9 @@ export async function wczytajSilnik(opcje = {}) {
     // dziedziczy stawki i charakter materiału po realnych firmach
     // przez firms/index.js, więc w node musi widzieć ten sam rejestr.
     `export { SLUG as WYPRZEDAZ_SLUG, NAZWA as WYPRZEDAZ_NAZWA, dostepna, doPokazania, m2Plyty, cenaCalejPlyty, cenaNettoM2, upustProcent, formaPlyty, plytNaPlacu, hasloWyprzedazy, notaPlyty, KATEGORIE, TYPY, etykietaKategorii, etykietaTypu, doUzupelnienia, filtruj, policzWKategoriach, policzWTypach, firmaWyprzedazy, kluczDekoru, plytaWgDekoru, charakterPlyty, firmaDlaPlyty, brakuje, ostrzezenieOWyprzedazy, paczkaPodgladu } from ${JSON.stringify(path.join(ROOT, 'src/app/wyprzedaz.js'))};`,
+    // Dane strukturalne wyprzedaży (01.09.2026) — czyta `doPokazania`
+    // i ceny z modułu wyżej, więc też potrzebuje prawdziwego rejestru firm.
+    `export { listaProduktow } from ${JSON.stringify(path.join(ROOT, 'src/app/wyprzedaz-schema.js'))};`,
     ...firmy.map((f, i) => `import f${i} from ${JSON.stringify(path.join(ROOT, 'src/firms', f))};`),
     `export const FIRMY = [${firmy.map((_, i) => `f${i}`).join(', ')}]`,
     `  .filter((f) => f.aktywna !== false)`,

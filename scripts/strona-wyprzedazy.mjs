@@ -27,10 +27,17 @@ const tylkoSprawdz = process.argv.includes('--sprawdz');
 const WZORZEC = path.join(ROOT, 'blaty-lazienkowe.html');
 const CEL = path.join(ROOT, 'wyprzedaz-plyt.html');
 
-const TYTUL = 'Wyprzedaż płyt — kamień i konglomerat w niższej cenie';
+/*
+ * SEO (01.09.2026). Strona wyprzedaży to naturalny magnes na frazy
+ * „wyprzedaż płyt kamiennych", „outlet blaty kamienne", „płyty kamienne
+ * końcówki" — czyli intencję zakupową o wysokiej gotowości. Tytuł ma je
+ * nieść wprost, ale bez upychania: „wyprzedaż" i „outlet" to dwa różne
+ * słowa, których ludzie używają wymiennie, więc obu warto użyć raz.
+ */
+const TYTUL = 'Wyprzedaż płyt kamiennych — outlet blatów, Tarnobrzeg';
 const OPIS =
-  'Pojedyncze płyty granitu, konglomeratu i spieku z naszego placu w Tarnobrzegu, ' +
-  'w obniżonej cenie. Każda jest jedna — ze zdjęciem, wymiarem i ceną. Policz blat od ręki.';
+  'Końcówki płyt granitu, konglomeratu i spieku z naszego placu w Tarnobrzegu — ' +
+  'taniej niż z cennika. Każda płyta jedna, ze zdjęciem, wymiarem i ceną za sztukę.';
 
 /** Dane strukturalne strony — okruszki i przynależność do firmy. */
 const SCHEMA = `  <script type="application/ld+json">
@@ -45,7 +52,15 @@ const SCHEMA = `  <script type="application/ld+json">
         "description": ${JSON.stringify(OPIS)},
         "inLanguage": "pl-PL",
         "isPartOf": { "@type": "WebSite", "name": "Kamieniarstwo 24h", "url": "https://kam24h.pl/" },
-        "about": { "@id": "https://kam24h.pl/#firma" }
+        "about": { "@id": "https://kam24h.pl/#firma" },
+        "mainEntity": { "@id": "https://kam24h.pl/wyprzedaz-plyt#oferta" }
+      },
+      {
+        "@type": "OfferCatalog",
+        "@id": "https://kam24h.pl/wyprzedaz-plyt#oferta",
+        "name": "Płyty z wyprzedaży",
+        "url": "https://kam24h.pl/wyprzedaz-plyt",
+        "provider": { "@id": "https://kam24h.pl/#firma" }
       },
       {
         "@type": "BreadcrumbList",
