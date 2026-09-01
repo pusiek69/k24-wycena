@@ -76,6 +76,23 @@ const WZORY = {
 };
 WZORY.razem = Object.values(WZORY).reduce((a, b) => a + b, 0);
 
+/*
+ * ILE MAMY WŁASNYCH ZDJĘĆ BLATÓW Z KONGLOMERATU.
+ *
+ * ⚠ Analiza (sekcja 6) zakładała, że nie mamy żadnych — przez analogię
+ * do spieków, gdzie naprawdę jest zero. To było błędne: w galerii jest
+ * ich dziewięć, opisanych z nazwy wzoru. To atut, którego nie ma żaden
+ * artykuł w top10 — wszystkie ilustrują się zdjęciami stockowymi.
+ *
+ * Liczymy z pliku galerii, a nie wpisujemy — po sprzedaniu albo dołożeniu
+ * realizacji liczba na stronie ma się zmienić sama.
+ */
+const REALIZACJE = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'src', 'generated', 'realizacje.json'), 'utf8')
+);
+WZORY.realizacje = (Array.isArray(REALIZACJE) ? REALIZACJE : REALIZACJE.realizacje || [])
+  .filter((r) => /konglomerat|quartz|technistone|caesarstone/i.test(r.material || '')).length;
+
 // Do tabeli porównawczej — liczba wzorów spieku liczona tak samo.
 WZORY.spieki = ['keralini', 'marazzi', 'atlas-plan', 'laminam', 'florim-stone']
   .reduce((a, s) => a + ile(s), 0);

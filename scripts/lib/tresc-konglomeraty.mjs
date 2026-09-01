@@ -20,7 +20,7 @@
  * składniki — to jedyna rzecz, której cała stawka nie potrafi zrobić.
  */
 
-import { zOdmiana } from './odmiana.mjs';
+import { odmiana, zOdmiana } from './odmiana.mjs';
 
 /*
  * ⚠ ODMIANA LICZEBNIKA idzie przez wspólny moduł, a nie przez wpisane
@@ -37,6 +37,13 @@ import { zOdmiana } from './odmiana.mjs';
  */
 
 /** 12345 → „12 345" (spacja nierozdzielająca byłaby tu przesadą). */
+/*
+ * „realizacja" nie ma gotowej formy w `odmiana.mjs` (tamten moduł zna
+ * „dekor" i „wzór"), więc dokładamy ją tutaj — obok jedynego miejsca,
+ * które jej używa.
+ */
+const FORMY_REALIZACJI = ['realizacja', 'realizacje', 'realizacji'];
+
 export const zl = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 /**
@@ -368,6 +375,18 @@ export function tresc(k, w) {
       kolekcji konglomeratu</a>. Jeśli ktoś szuka konkretnej płyty taniej,
       warto zajrzeć na <a href="/wyprzedaz-plyt">wyprzedaż płyt</a> — leżą tam
       pojedyncze sztuki z naszego placu w niższej cenie.
+    </p>
+
+    <h2 id="realizacje">Jak to wygląda u klientów</h2>
+    <p>
+      W naszej galerii jest <strong>${w.realizacje} ${odmiana(w.realizacje, FORMY_REALIZACJI)}</strong> z konglomeratu —
+      zdjęcia blatów, które sami wycięliśmy i zamontowaliśmy, każde podpisane
+      nazwą konkretnego wzoru. To nie są zdjęcia z banku zdjęć: przy każdym
+      widać, jak dany dekor zachowuje się w prawdziwym świetle i przy prawdziwej
+      zabudowie — łącznie z tym, gdzie wypadło łączenie.
+    </p>
+    <p class="cta-tekst">
+      <a class="btn" href="/realizacje" data-miejsce="poradnik-konglomerat-realizacje">Zobacz realizacje z konglomeratu →</a>
     </p>
 
     <h2 id="pielegnacja">Pielęgnacja blatu z konglomeratu</h2>

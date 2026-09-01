@@ -128,8 +128,14 @@ Nie da się z tego policzyć własnej kuchni.
 
 ## 6. Czego NIE mamy — i czego nie udajemy
 
-- **Zero zdjęć realizacji z konglomeratu oznaczonych jako konglomerat.**
-  Nie podpiszemy cudzych zdjęć ani nie nazwiemy spieku konglomeratem.
+- ~~Zero zdjęć realizacji z konglomeratu.~~ **KOREKTA (etap 2):** to była
+  moja pomyłka przez analogię do spieków, gdzie naprawdę jest zero. W galerii
+  jest **9 realizacji z konglomeratu**, każda podpisana nazwą wzoru
+  (Avant Chantilly, Calacatta Evo, InterQ Lincoln White, Taj Amelie…).
+  To atut, którego nie ma ŻADEN artykuł w top10 — wszystkie ilustrują się
+  zdjęciami stockowymi. Poradnik ma więc sekcję „Jak to wygląda u klientów"
+  z linkiem do galerii.
+- Nie podpiszemy cudzych zdjęć ani nie nazwiemy spieku konglomeratem.
 - Nie mamy badań laboratoryjnych odporności — nie będziemy podawać liczb
   w stopniach ani w skali Mohsa udając, że to nasze pomiary.
 - Nie sprzedajemy Silestone ani Dekton — nie piszemy o nich jak o swojej ofercie.
