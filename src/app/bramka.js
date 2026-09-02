@@ -6,6 +6,7 @@ import { zrodloLeada } from './zrodlo.js';
 import { panelFeedbacku } from './feedback.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { TERMINY } from './termin.js';
+import { KANALY, potwierdzenie } from './kontakt-telefon.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -86,6 +87,48 @@ function formularzBramki(w, box, opcje) {
     h('label', { class: 'plik-pick', for: 'b-plik' }, plikOpis),
     plik,
 
+    /*
+     * CZY MAMY ZADZWONIĆ — pytanie, o które prosił Dawid (01.09.2026).
+     *
+     * Jego słowami: „nie będę od razu dzwonił do każdego, kto skorzysta
+     * z kalkulatora, tylko chcę dzwonić do osób faktycznie tych, co chcą
+     * rozmawiać. Bo miałem tak, że Pani odebrała telefon i nie bardzo
+     * była zadowolona, że dzwonię."
+     *
+     * ⚠ To NIE jest zgoda RODO — tę klient daje checkboxem niżej. To wybór
+     * KANAŁU. Dwie różne rzeczy i celowo nie mieszamy ich w jedno pole:
+     * ktoś może zgodzić się na kontakt w sprawie wyceny i jednocześnie
+     * nie chcieć telefonu.
+     *
+     * Wyróżnione wizualnie i BEZ podpowiedzianej odpowiedzi. Gdyby „tak"
+     * było zaznaczone z góry, wracalibyśmy do punktu wyjścia: Dawid
+     * dzwoniłby do ludzi, którzy o telefon nie prosili, tylko nie ruszyli
+     * pola. Brak wyboru nie jest zgodą — patrz `dzwonic()` w module.
+     */
+    h(
+      'fieldset',
+      { class: 'tel-wybor' },
+      h('legend', {}, 'Czy mamy zadzwonić? *'),
+      h(
+        'p',
+        { class: 'tel-nota' },
+        'Dzwonimy tylko do osób, które o to proszą. Wycena i tak pójdzie na e-mail.'
+      ),
+      h(
+        'div',
+        { class: 'tel-opcje' },
+        KANALY.map((k) =>
+          h(
+            'label',
+            { class: 'tel-opcja' },
+            h('input', { type: 'radio', name: 'telefonZgoda', value: k.id }),
+            h('span', { class: 'tel-znak' }, k.id === 'tak' ? '☎' : '✉'),
+            h('span', { class: 'tel-tekst' }, k.label)
+          )
+        )
+      )
+    ),
+
     h(
       'label',
       { class: 'switch zgoda' },
@@ -127,6 +170,8 @@ function formularzBramki(w, box, opcje) {
       city: wartosc(form, 'miejscowosc'),
       termin: wartosc(form, 'termin'),
       zgoda: form.querySelector('[name="zgoda"]').checked,
+      // Preferencja kanału — do maila leadowego i na kartę klienta.
+      telefonZgoda: form.querySelector('[name="telefonZgoda"]:checked')?.value || '',
     };
 
     const problem = sprawdz(dane);
@@ -248,10 +293,31 @@ function odsloniecie(w, box, { mailWyslany, dane = {} }) {
         {},
         h('b', {}, 'Zgłoszenie przyjęte. '),
         mailWyslany
-          ? 'Wycena poszła na podany adres e-mail. Oddzwonimy w godzinach 8–18.'
-          : 'Oddzwonimy w godzinach 8–18 i prześlemy wycenę mailem.'
+          ? 'Wycena poszła na podany adres e-mail.'
+          : 'Wycenę prześlemy mailem.'
       )
     ),
+    /*
+     * ⚠ Do 01.09.2026 stało tu „Oddzwonimy w godzinach 8–18" — dla KAŻDEGO,
+     * niezależnie od tego, czy ktoś o telefon prosił. Dokładnie ta obietnica
+     * kończyła się rozmową, której klient sobie nie życzył.
+     *
+     * Teraz potwierdzamy to, co klient sam wybrał: zadzwonimy albo nie
+     * zadzwonimy. Dawid prosił, żeby po wysłaniu było to widoczne — więc
+     * stoi osobno, nad wyceną, a nie w drobnym druku.
+     */
+    potwierdzenie(dane.telefonZgoda, dane.phone)
+      ? h(
+          'p',
+          {
+            class:
+              'tel-potwierdzenie' + (dane.telefonZgoda === 'tak' ? ' tel-tak' : ' tel-nie'),
+          },
+          h('span', { class: 'tel-znak', 'aria-hidden': 'true' },
+            dane.telefonZgoda === 'tak' ? '☎' : '✉'),
+          potwierdzenie(dane.telefonZgoda, dane.phone)
+        )
+      : null,
     // Jedno dotknięcie zamiast czekania na telefon: pasuje / za drogo /
     // zastanowię się. Rysuje się tylko przy pokazanej wycenie.
     w ? panelFeedbacku(w, dane) : null,
@@ -303,6 +369,16 @@ function sprawdz(d) {
   // przypominać, a nie brzmieć jak wyrzut.
   if (!d.termin)
     return { pole: 'termin', komunikat: 'Proszę zaznaczyć, kiedy planuje Pan/Pani blat — to jedno kliknięcie.' };
+  /*
+   * Pytanie o telefon jest WYMAGANE i celowo bez domyślnej odpowiedzi.
+   * Gdyby dało się je pominąć, większość zgłoszeń wracałaby pusta —
+   * a wtedy Dawid nadal nie wiedziałby, do kogo wolno zadzwonić.
+   */
+  if (!d.telefonZgoda)
+    return {
+      pole: 'telefonZgoda',
+      komunikat: 'Proszę zaznaczyć, czy mamy zadzwonić — to jedno kliknięcie.',
+    };
   if (!d.zgoda) return { pole: 'zgoda', komunikat: 'Potrzebujemy zgody na kontakt, żeby móc odpowiedzieć.' };
   return null;
 }

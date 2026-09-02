@@ -652,6 +652,9 @@ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}
 letter-spacing:.05em;border-color:transparent}
 .plyta-wiersz{display:flex;gap:.7rem;align-items:flex-start}
 .znacznik.uwaga{background:rgba(194,64,44,.22);border-color:rgba(226,89,61,.5);color:#f0c9bd}
+.znacznik.nie-dzwonic{background:#5a2418;border-color:#8d3a26;color:#ffd9cf;font-weight:700}
+.znacznik.prosi-telefon{background:#2f4a24;border-color:#4e7a3c;color:#d7edc9;font-weight:700}
+.dzwon.dzwon-stop{opacity:.45;text-decoration:line-through}
 .plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
 border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
 .plyta-mini.pusta{display:flex;align-items:center;justify-content:center;
@@ -862,6 +865,20 @@ function kartaHtml(k, dzis){
   // PILNE idzie PRZED wszystkim innym - to jest ta jedna rzecz, po ktorej
   // Dawid ustawia kolejnosc obdzwaniania (zlecenie z 30.08.2026).
   if(k.termin === 'pilne') flagi = '<span class="znacznik pilne">PILNE - do 2 tygodni</span>' + flagi;
+  /*
+   * NIE DZWONIC idzie jeszcze PRZED „PILNE" (zlecenie Dawida, 01.09.2026).
+   * Pilnosc mowi, KIEDY sie odezwac; ta plakietka mowi, CZY wolno dzwonic —
+   * i to jest wazniejsze. Dawid mial telefon, z ktorego klientka nie byla
+   * zadowolona, i wlasnie temu ma to zapobiec.
+   *
+   * Puste pole (zgloszenia sprzed tej daty) NIE dostaje zadnej plakietki:
+   * „nie pytalismy" to co innego niz „nie chce", a udawanie zgody byloby
+   * dokladnie tym bledem, ktory naprawiamy.
+   */
+  if(k.telefonZgoda === 'nie')
+    flagi = '<span class="znacznik nie-dzwonic">NIE DZWONIC - woli mail</span>' + flagi;
+  else if(k.telefonZgoda === 'tak')
+    flagi = '<span class="znacznik prosi-telefon">PROSI O TELEFON</span>' + flagi;
   var goracy = (k.feedback === 'pasuje' || k.termin === 'pilne') && (k.status === 'nowy' || k.status === 'cieply');
   return '<article class="karta' + (dzis ? ' dzis' : '') + (goracy ? ' goracy' : '') + '" data-id="' + k.id + '">' +
     '<div class="gora"><div class="kto"><b>' + esc(k.imie || 'Klient') + ' · ' + esc(k.miejscowosc || '—') + '</b>' +
@@ -872,7 +889,14 @@ function kartaHtml(k, dzis){
     '<span class="kwota">' + zl(k.kwota) + '</span></div>' +
     (flagi ? '<div style="margin-top:.4rem">' + flagi + '</div>' : '') +
     '<div class="akcje">' +
-      '<a class="dzwon" href="tel:' + esc(tel(k.telefon)) + '">Zadzwoń</a>' +
+      /*
+       * Przy odmowie przycisk zostaje KLIKALNY, ale wyszarzony i z ostrzezeniem
+       * w tytule. Blokowanie go na twardo byloby przesada — bywa, ze klient sam
+       * prosi mailem o telefon. Chodzi o to, zeby Dawid nie zadzwonil ODRUCHOWO.
+       */
+      '<a class="dzwon' + (k.telefonZgoda === 'nie' ? ' dzwon-stop' : '') + '" href="tel:' + esc(tel(k.telefon)) + '"' +
+        (k.telefonZgoda === 'nie' ? ' title="Klient prosil o kontakt mailem - nie dzwon bez potrzeby"' : '') +
+        '>Zadzwoń</a>' +
       '<a href="sms:' + esc(tel(k.telefon)) + '">SMS</a>' +
       '<a href="mailto:' + esc(k.email) + '">Mail</a>' +
       '<button type="button" data-rozwin="' + k.id + '">Szczegóły</button>' +

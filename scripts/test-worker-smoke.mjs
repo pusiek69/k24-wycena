@@ -186,6 +186,99 @@ if (JEST) {
     assert.equal(klient.termin, 'pilne');
   });
 
+  test('ZGODA NA TELEFON przechodzi całą drogę: formularz → baza → panel', async () => {
+    /*
+     * Zlecenie Dawida (01.09.2026): „chcę dzwonić do osób faktycznie tych,
+     * co chcą rozmawiać". Sprawdzamy, że wybór klienta naprawdę dojeżdża
+     * na kartę w panelu — testy modułu sprawdzają regułę, ten sprawdza drogę.
+     */
+    const env = srodowisko();
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'bezTelefonu@example.com', phone: '600100401',
+                           termin: 'miesiac', telefonZgoda: 'nie' }),
+      env, ctx
+    );
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'zTelefonem@example.com', phone: '600100402',
+                           termin: 'miesiac', telefonZgoda: 'tak' }),
+      env, ctx
+    );
+
+    const cookie = await ciastkoPanelu(env);
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env, ctx
+      )
+    ).json();
+
+    const bez = dane.lista.find((k) => k.email === 'bezTelefonu@example.com');
+    const z = dane.lista.find((k) => k.email === 'zTelefonem@example.com');
+    assert.ok(bez && z, 'nie znalazłem obu kart');
+    assert.equal(bez.telefonZgoda, 'nie', 'odmowa nie dojechała do panelu');
+    assert.equal(z.telefonZgoda, 'tak', 'zgoda nie dojechała do panelu');
+  });
+
+  test('DRUGA WYCENA bez odpowiedzi nie kasuje „nie dzwonić"', async () => {
+    /*
+     * ⚠ To jest ten telefon, którego Dawid chce uniknąć: klient raz poprosił
+     * o kontakt mailem, wrócił po drugą wycenę starą zakładką (bez nowego
+     * pola) — i gdyby zapis nadpisywał pustą wartością, karta znów
+     * wyglądałaby jak „nie pytaliśmy".
+     */
+    const env = srodowisko();
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'wraca@example.com', phone: '600100403',
+                           telefonZgoda: 'nie' }),
+      env, ctx
+    );
+    // Druga wycena — bez pola, jak ze starej zakładki.
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'wraca@example.com', phone: '600100403' }),
+      env, ctx
+    );
+
+    const cookie = await ciastkoPanelu(env);
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env, ctx
+      )
+    ).json();
+    const k = dane.lista.find((x) => x.email === 'wraca@example.com');
+    assert.equal(k.telefonZgoda, 'nie', 'druga wycena skasowała prośbę o kontakt mailem');
+    assert.equal(k.wycen, 2, 'to miała być ta sama karta, nie nowa');
+  });
+
+  test('MAIL do Dawida ostrzega, gdy klient nie chce telefonu', async () => {
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'mail-nie@example.com', telefonZgoda: 'nie' }),
+      srodowisko(), ctx
+    );
+    const doFirmy = listy[0];
+    assert.match(doFirmy.subject, /^NIE DZWONIĆ — /, `temat: ${doFirmy.subject}`);
+    assert.match(doFirmy.html, /NIE DZWONIĆ — KLIENT PROSI O KONTAKT MAILEM/);
+    assert.match(doFirmy.text, /\*\*\* NIE DZWONIĆ/);
+    assert.match(doFirmy.html, /Wolę mailem lub SMS-em/, 'brak wiersza „Kontakt"');
+  });
+
+  test('MAIL wyróżnia klienta, który PROSI o telefon', async () => {
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, email: 'mail-tak@example.com', telefonZgoda: 'tak' }),
+      srodowisko(), ctx
+    );
+    const doFirmy = listy[0];
+    assert.doesNotMatch(doFirmy.subject, /NIE DZWONIĆ/, `temat: ${doFirmy.subject}`);
+    assert.match(doFirmy.html, /PROSI O TELEFON/);
+    assert.match(doFirmy.text, /Kontakt: KLIENT PROSI O TELEFON/);
+  });
+
   test('KLIENT NA JUŻ wyróżnia się w mailu do Dawida', async () => {
     listy.length = 0;
     await worker.fetch(

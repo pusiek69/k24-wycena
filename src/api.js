@@ -162,6 +162,13 @@ export async function wyslijLeadZapasowo(dane) {
     // inaczej lead, który poszedł formularzem Netlify (bo worker milczał),
     // trafiałby do Dawida bez informacji, czy klient się śpieszy.
     termin: dane.termin || '',
+    /*
+     * Zgoda na telefon — ścieżka awaryjna też musi ją nieść. Lead, który
+     * poszedł formularzem Netlify (bo worker milczał), trafiałby do Dawida
+     * bez informacji, czy wolno zadzwonić — czyli dokładnie w stan sprzed
+     * tej zmiany. Puste znaczy „nie pytaliśmy", nie „można dzwonić".
+     */
+    telefonZgoda: dane.telefonZgoda || '',
     uwagi: dane.uwagi || '',
     wycena: dane.quote || '',
     kwota: String(dane.kwota || ''),

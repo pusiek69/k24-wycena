@@ -39,6 +39,7 @@ import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
+import { dzwonic, etykietaKanalu, odmowiono, znanyKanal } from '../src/app/kontakt-telefon.js';
 import { resend, nadawca, doDawida } from './poczta.js';
 import {
   zapiszLead,
@@ -407,6 +408,12 @@ async function obsluzLead(request, env, cors) {
    * a stara zakładka w przeglądarce klienta nie zna nowej listy.
    */
   const terminId = znanyTermin(d.termin) ? String(d.termin || '') : '';
+  /*
+   * ZGODA NA TELEFON. Nieznaną wartość zamieniamy na pustą, tak samo jak
+   * przy terminie — lead jest wart więcej niż jedno pole. Ale puste znaczy
+   * „nie pytaliśmy", a NIE „można dzwonić": patrz `dzwonic()` w module.
+   */
+  const telefonZgoda = znanyKanal(d.telefonZgoda) ? String(d.telefonZgoda || '') : '';
 
   if (telefon.replace(/\D/g, '').length < 9) return json({ error: 'Telefon.' }, 400, cors);
   if (!/^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/.test(email)) return json({ error: 'E-mail.' }, 400, cors);
@@ -435,7 +442,7 @@ async function obsluzLead(request, env, cors) {
   // ręcznym POST-em i taki brak nie ma prawa wywrócić wysyłki maili.
   const szczegoly = d.szczegoly && typeof d.szczegoly === 'object' ? d.szczegoly : null;
   if (szczegoly && !Array.isArray(szczegoly.pozycje)) szczegoly.pozycje = [];
-  const klient = { imie, telefon, email, miejscowosc, terminId, uwagi: String(d.uwagi || '').trim() };
+  const klient = { imie, telefon, email, miejscowosc, terminId, telefonZgoda, uwagi: String(d.uwagi || '').trim() };
 
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
@@ -469,6 +476,7 @@ async function obsluzLead(request, env, cors) {
       email,
       miejscowosc,
       termin: terminId,
+      telefonZgoda,
       kwota: d.kwota,
       opis: wycena,
       szczegoly,
@@ -1010,7 +1018,13 @@ function tematLeada(klient, s, wycenaTekst) {
   // „PILNE" na samym początku tematu: Dawid widzi to na liście maili
   // w telefonie, bez otwierania. To cały sens tego pola.
   const czesci = [
-    `${pilny(klient.terminId) ? 'PILNE — ' : ''}Nowa wycena: ${klient.imie}, ${klient.miejscowosc}`,
+    /*
+     * Temat niesie DWIE rzeczy naraz, bo obie decydują o tym, co Dawid
+     * zrobi w następnej minucie: czy to pilne i czy wolno zadzwonić.
+     * „NIE DZWONIĆ" stoi z przodu — łatwiej przeoczyć zgodę niż zakaz.
+     */
+    `${odmowiono(klient.telefonZgoda) ? 'NIE DZWONIĆ — ' : ''}` +
+      `${pilny(klient.terminId) ? 'PILNE — ' : ''}Nowa wycena: ${klient.imie}, ${klient.miejscowosc}`,
   ];
   if (s?.widelki?.od) {
     czesci.push(`${Math.round(s.widelki.od).toLocaleString('pl-PL')}–${zl(s.widelki.do)}`);
@@ -1183,6 +1197,17 @@ function mailDoFirmy(klient, s, extra) {
           'PILNE — KLIENT CHCE BLAT DO 2 TYGODNI</div>'
         : ''
     }
+    ${
+      odmowiono(klient.telefonZgoda)
+        ? '<div style="margin-top:9px;display:inline-block;background:#5a2418;color:#ffd9cf;' +
+          'border-radius:4px;padding:5px 11px;font-size:13px;font-weight:bold;letter-spacing:.06em">' +
+          'NIE DZWONIĆ — KLIENT PROSI O KONTAKT MAILEM</div>'
+        : dzwonic(klient.telefonZgoda)
+          ? '<div style="margin-top:9px;display:inline-block;background:#2f4a24;color:#d7edc9;' +
+            'border-radius:4px;padding:5px 11px;font-size:13px;font-weight:bold;letter-spacing:.06em">' +
+            'PROSI O TELEFON</div>'
+          : ''
+    }
     <table style="width:100%;margin-top:12px;font-size:15px;color:#ece6da">
       <tr>
         <td style="padding:3px 0;width:76px;color:#b6ad9d">Telefon</td>
@@ -1197,6 +1222,12 @@ function mailDoFirmy(klient, s, extra) {
         etykietaTerminu(klient.terminId)
           ? `<tr><td style="padding:3px 0;color:#b6ad9d">Termin</td>
           <td style="padding:3px 0">${esc(etykietaTerminu(klient.terminId))}</td></tr>`
+          : ''
+      }
+      ${
+        etykietaKanalu(klient.telefonZgoda)
+          ? `<tr><td style="padding:3px 0;color:#b6ad9d">Kontakt</td>
+          <td style="padding:3px 0">${esc(etykietaKanalu(klient.telefonZgoda))}</td></tr>`
           : ''
       }
       ${klient.uwagi ? `<tr><td style="padding:3px 0;color:#b6ad9d">Uwagi</td><td style="padding:3px 0">${esc(klient.uwagi)}</td></tr>` : ''}
@@ -1297,6 +1328,16 @@ function leadTekstem(klient, s, extra) {
     `E-mail:  ${klient.email}`,
   ];
   if (etykietaTerminu(klient.terminId)) l.push(`Termin:  ${etykietaTerminu(klient.terminId)}`);
+  /*
+   * W wersji tekstowej ostrzeżenie idzie WIELKIMI LITERAMI i przy samym
+   * numerze — tę wersję czyta się na telefonie w podglądzie powiadomienia,
+   * czyli dokładnie wtedy, gdy Dawid decyduje, czy oddzwonić.
+   */
+  if (odmowiono(klient.telefonZgoda)) {
+    l.push('*** NIE DZWONIĆ — KLIENT PROSI O KONTAKT MAILEM ***');
+  } else if (dzwonic(klient.telefonZgoda)) {
+    l.push('Kontakt: KLIENT PROSI O TELEFON');
+  }
   if (klient.uwagi) l.push(`Uwagi:   ${klient.uwagi}`);
 
   if (s) {

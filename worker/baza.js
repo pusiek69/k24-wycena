@@ -18,6 +18,7 @@
 // Lista planowanych terminów mieszka po stronie frontu — panel, mail
 // i formularz mają pokazywać dokładnie to samo. Patrz src/app/termin.js.
 import { znanyTermin } from '../src/app/termin.js';
+import { znanyKanal } from '../src/app/kontakt-telefon.js';
 
 /** Lejek sprzedaży. Kolejność ma znaczenie — w tej kolejności stoją w panelu. */
 export const STATUSY = [
@@ -96,6 +97,13 @@ export async function zapiszLead(env, lead) {
   // wartości, bo panel rysuje po nich kolumnę i filtr. Cokolwiek innego
   // (stary klient, podrobione żądanie) zapisujemy jako puste.
   const termin = znanyTermin(lead.termin) ? String(lead.termin || '') : '';
+  /*
+   * ZGODA NA TELEFON (01.09.2026) — ta sama zasada co przy terminie:
+   * do bazy wpuszczamy wyłącznie znane wartości, bo panel rysuje po nich
+   * plakietkę. Cokolwiek innego zapisujemy jako puste, czyli „nie pytaliśmy" —
+   * a to NIE jest zgoda na telefon.
+   */
+  const telefonZgoda = znanyKanal(lead.telefonZgoda) ? String(lead.telefonZgoda || '') : '';
   const kwota = liczba(lead.kwota || s.razem);
   const zrodlo = czytelneZrodlo(lead.zrodlo);
 
@@ -117,6 +125,12 @@ export async function zapiszLead(env, lead) {
                             -- podał: druga wycena bez zaznaczenia nie ma
                             -- prawa skasować tego, co powiedział za pierwszym.
                             termin = COALESCE(NULLIF(?, ''), termin),
+                            -- ⚠ Zgodę na telefon nadpisujemy TYLKO wtedy, gdy
+                            -- klient teraz coś zaznaczył. Druga wycena bez
+                            -- odpowiedzi nie ma prawa skasować „nie dzwonić",
+                            -- które powiedział za pierwszym razem — to jest
+                            -- dokładnie ten telefon, którego Dawid chce uniknąć.
+                            telefon_zgoda = COALESCE(NULLIF(?, ''), telefon_zgoda),
                             ruch = ?
          WHERE id = ?`
       )
@@ -131,6 +145,7 @@ export async function zapiszLead(env, lead) {
         kwota,
         kwota,
         termin,
+        telefonZgoda,
         czas,
         klientId
       )
@@ -141,8 +156,9 @@ export async function zapiszLead(env, lead) {
       .prepare(
         `INSERT INTO klienci (imie, telefon, email, miejscowosc, telefon_klucz, email_klucz,
                               status, zrodlo, zrodlo_szczegol, flagi, wycen,
-                              kwota_ostatnia, kwota_max, termin, utworzono, ruch)
-         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?, ?)`
+                              kwota_ostatnia, kwota_max, termin, telefon_zgoda,
+                              utworzono, ruch)
+         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         String(lead.imie || '').trim(),
@@ -157,6 +173,7 @@ export async function zapiszLead(env, lead) {
         kwota,
         kwota,
         termin,
+        telefonZgoda,
         czas,
         czas
       )
@@ -395,6 +412,8 @@ const kartaSkrocona = (k) => ({
   budzet: k.budzet || '',
   pora: k.pora || '',
   termin: k.termin || '',
+  // Puste znaczy „nie pytaliśmy" — panel odróżnia to od wyraźnego „nie".
+  telefonZgoda: k.telefon_zgoda || '',
   wycen: k.wycen,
   kwota: k.kwota_ostatnia,
   kwotaMax: k.kwota_max,

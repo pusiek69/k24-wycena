@@ -261,3 +261,21 @@ ALTER TABLE wyprzedaz_plyt ADD COLUMN typ TEXT NOT NULL DEFAULT '';
 ALTER TABLE wyprzedaz_plyt ADD COLUMN zdjecie_mini TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS wyprzedaz_plyt_kategoria ON wyprzedaz_plyt (kategoria);
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  ZGODA NA TELEFON  (zlecenie Dawida, 01.09.2026)
+--
+--  Dawid, jego słowami: „nie będę od razu dzwonił do każdego, kto skorzysta
+--  z kalkulatora, tylko chcę dzwonić do osób faktycznie tych, co chcą
+--  rozmawiać. Bo miałem tak, że Pani odebrała telefon i nie bardzo była
+--  zadowolona, że dzwonię."
+--
+--  ⚠ To NIE jest zgoda RODO — tę klient daje osobnym checkboxem i bez niej
+--  formularz w ogóle nie przechodzi. To PREFERENCJA KANAŁU: 'tak' = prosi
+--  o telefon, 'nie' = woli mail lub SMS.
+--
+--  DEFAULT '' znaczy „nie pytaliśmy" i dotyczy wszystkich zgłoszeń sprzed
+--  tej daty. Puste NIE JEST zgodą na telefon — panel maluje trzy stany
+--  osobno, żeby dało się odróżnić „nie chce" od „nie wiadomo".
+-- ═══════════════════════════════════════════════════════════════════════
+ALTER TABLE klienci ADD COLUMN telefon_zgoda TEXT NOT NULL DEFAULT '';
