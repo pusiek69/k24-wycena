@@ -23,10 +23,13 @@
  * `wycena_gotowa`, `bramka_pokazana` i `lead_wyslany`.
  */
 export const POMIAR = {
-  // ⚠ GA4 — DO WKLEJENIA. Dopóki jest puste, NIE MA ŻADNEJ statystyki ruchu:
-  //    nie widać ani ilu ludzi weszło, ani gdzie odpadli w lejku. Google Ads
-  //    (niżej) zbiera tylko konwersje, nie odsłony.
-  ga4: '',
+  // GA4 „kam24h.pl" (usługa założona 06.09.2026, strefa Polska, PLN).
+  //
+  // Startuje przy wejściu na stronę, jeszcze przed decyzją w banerze —
+  // domyślne `analytics_storage: 'denied'` ze wstawki w <head> sprawia,
+  // że do „Akceptuję" leci wyłącznie bezciasteczkowy ping. Szczegóły
+  // i powód tej kolejności: `wlaczGa4()` w zgody.js.
+  ga4: 'G-CE5X1JEGZG',
 
   googleAds: 'AW-18396227572',
 
