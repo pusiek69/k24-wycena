@@ -27,6 +27,7 @@ const DOZWOLONE = {
 };
 
 let zaladowane = false;
+let ga4Wlaczone = false;
 
 export function gtag() {
   window.dataLayer = window.dataLayer || [];
@@ -51,6 +52,22 @@ export function inicjujZgody() {
    */
 
   if (!pomiarWlaczony()) return; // nic nie skonfigurowane — brak banera, brak ciasteczek
+
+  /*
+   * ⚠ GA4 WŁĄCZAMY OD RAZU, jeszcze przed decyzją klienta.
+   *
+   * To nie jest obejście zgody — dokładnie o to chodzi w Consent Mode v2:
+   * wstawka w <head> ustawia `analytics_storage: 'denied'` ZANIM tag
+   * wystartuje, więc do kliknięcia „Akceptuję" GA4 nie zapisuje żadnego
+   * ciasteczka ani identyfikatora, a wysyła tylko zagregowany ping.
+   *
+   * Do 06.09.2026 GA4 konfigurowało się dopiero w `zaladujSkrypty()`, czyli
+   * PO kliknięciu w baner. Kto banera nie dotknął — a to większość ruchu —
+   * nie istniał w statystykach wcale. Wyszło to przy diagnozie ciszy
+   * w leadach (05–06.09): nie dało się odróżnić „nikt nie wchodzi" od
+   * „wchodzą i nie wysyłają", bo danych po prostu nie było.
+   */
+  wlaczGa4();
 
   const zapisana = odczytajWybor();
   if (zapisana === 'wszystkie') {
@@ -141,16 +158,26 @@ function zaladujSkrypty() {
   if (zaladowane) return;
   zaladowane = true;
 
-  // gtag.js jest już wczytany ze wstawki w <head>, razem z konfiguracją
-  // Google Ads. Zostaje GA4 — dokładamy je do tego samego tagu.
-  if (POMIAR.ga4) {
-    gtag('config', POMIAR.ga4, { anonymize_ip: true });
-  }
+  // GA4 chodzi już od `inicjujZgody()` — po zgodzie Consent Mode sam
+  // przełącza je z pingu bezciasteczkowego na pełny pomiar. Drugi
+  // `gtag('config')` zrobiłby z tego podwójne odsłony, więc go tu nie ma.
 
   // Meta Pixel ładujemy dopiero po zgodzie — nie ma odpowiednika Consent Mode.
   if (POMIAR.metaPixel && odczytajWybor() === 'wszystkie') {
     zaladujMeta(POMIAR.metaPixel);
   }
+}
+
+/**
+ * GA4 — jeden raz na stronę, niezależnie od banera.
+ *
+ * gtag.js jest już wczytany ze wstawki w <head> (razem z Google Ads),
+ * więc dokładamy tylko drugi cel do tego samego tagu.
+ */
+function wlaczGa4() {
+  if (ga4Wlaczone || !POMIAR.ga4) return;
+  ga4Wlaczone = true;
+  gtag('config', POMIAR.ga4, { anonymize_ip: true });
 }
 
 function zaladujMeta(id) {
