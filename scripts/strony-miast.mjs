@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { MIASTA, NOWE } from './lib/miasta.mjs';
 import { pytaniaMiasta, sekcjaHtml, schemaFaq } from './lib/faq-miasta.mjs';
 import { grafMiasta } from './lib/schema-miasta.mjs';
+import { blokCen, blokRealizacji, blokZasiegu, blokSasiadow } from './lib/bloki-miast.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tylkoSprawdz = process.argv.includes('--sprawdz');
@@ -32,6 +33,10 @@ const WZ = MIASTA.find((m) => m.slug === 'opatow');
 
 const pamiec = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'lib', 'ceny-tresc.json'), 'utf8'));
 const KWOTY = pamiec.kwoty;
+// Manifest galerii — z niego biorą się zdjęcia realizacji na stronach miast.
+const REALIZACJE = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'src', 'generated', 'realizacje.json'), 'utf8')
+);
 const WZOROW = pamiec.liczby?.wszystkieWzory ?? 700;
 
 /** ['A','B','C'] → „A, B i C" — polska lista, nie ciąg przecinków. */
@@ -227,35 +232,40 @@ function wstawTytulIOpis(t, m) {
   return t;
 }
 
-const OKOLICE_OD = '      <!-- OKOLICE:MIASTO — generowane przez `npm run miasta`. Nie edytuj ręcznie. -->';
-const OKOLICE_DO = '      <!-- /OKOLICE:MIASTO -->';
+const OKOLICE_OD = '      <!-- BLOKI:MIASTO — generowane przez `npm run miasta`. Nie edytuj ręcznie. -->';
+const OKOLICE_DO = '      <!-- /BLOKI:MIASTO -->';
+// Znacznik z pierwszej wersji (06.09.2026, sam akapit o okolicy) — zostaje
+// w kodzie, żeby strony wygenerowane wtedy dało się podmienić, a nie dołożyć
+// obok nich drugi blok.
+const STARY_OD = '      <!-- OKOLICE:MIASTO — generowane przez `npm run miasta`. Nie edytuj ręcznie. -->';
+const STARY_DO = '      <!-- /OKOLICE:MIASTO -->';
 
 /**
- * „I OKOLICE" — nazwy sąsiednich gmin w WIDOCZNEJ treści.
+ * BLOKI TREŚCI MIASTA — ceny, realizacje, zasięg, sąsiedzi.
  *
- * Same `areaServed` w danych strukturalnych nie wystarczy: dane strukturalne
- * opisują to, co na stronie widać, a nie zastępują treści. Ktoś szukający
- * „blaty kuchenne Przecław" ma trafić na stronę Mielca — i znaleźć tam
- * słowo, którego szukał.
+ * Cztery rzeczy, którymi konkurencja (IGNIKOM) wygrywała z naszą stroną
+ * miasta. Budowane w lib/bloki-miast.mjs, tutaj tylko wstawiane — zawsze
+ * w jednym miejscu, PRZED sekcją FAQ, żeby pytania zostały na końcu.
  *
- * Osobnych podstron dla tych miejscowości świadomie NIE robimy: byłyby to
- * kopie z podmienioną nazwą i Google nie pozycjonowałby żadnej z nich.
+ * Kolejność jest przemyślana: najpierw cena (po nią klient przyszedł),
+ * potem dowód że umiemy (zdjęcia), potem gdzie jeździmy, na końcu linki
+ * do innych miast dla kogoś, kto trafił na złą stronę.
  */
 function wstawOkolice(t, m) {
-  const re = new RegExp(`\\n?${OKOLICE_OD.trim()}[\\s\\S]*?${OKOLICE_DO.trim()}`);
-  if (!(m.okolice || []).length) return t.replace(re, ''); // miasto straciło listę
+  for (const [od, doo] of [[STARY_OD, STARY_DO], [OKOLICE_OD, OKOLICE_DO]]) {
+    t = t.replace(new RegExp(`\\n?${od.trim()}[\\s\\S]*?${doo.trim()}`), '');
+  }
 
-  const blok =
-    `${OKOLICE_OD}\n` +
-    `      <p>\n` +
-    `        Jeździmy nie tylko do samego miasta. Blaty wozimy i montujemy również\n` +
-    `        w okolicy: ${wyliczenie(m.okolice)} — dla nas to ten sam wyjazd,\n` +
-    `        a klientom spoza centrum oszczędza szukania wykonawcy na miejscu.\n` +
-    `      </p>\n` +
-    `${OKOLICE_DO}`;
+  const sekcje = [
+    blokCen(m, KWOTY, pamiec.liczby),
+    blokRealizacji(m, REALIZACJE, MIASTA.indexOf(m)),
+    blokZasiegu(m),
+    blokSasiadow(m, MIASTA),
+  ].filter(Boolean);
+  if (!sekcje.length) return t;
 
-  if (re.test(t)) return t.replace(re, `\n${blok}`);
-  // Przed sekcją FAQ — akapit ma zostać w treści, nie pod pytaniami.
+  const blok = `${OKOLICE_OD}\n${sekcje.join('\n\n')}\n${OKOLICE_DO}`;
+
   return t.includes(ZNACZNIK_OD)
     ? t.replace(ZNACZNIK_OD, `${blok}\n\n${ZNACZNIK_OD}`)
     : t.replace(/(\s*)<\/main>/, `\n${blok}\n$1</main>`);

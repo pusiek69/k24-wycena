@@ -13,10 +13,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { MIASTA, NOWE, wgSluga } from './lib/miasta.mjs';
 import { pytaniaMiasta, schemaFaq } from './lib/faq-miasta.mjs';
+import { blokCen, blokRealizacji, blokZasiegu, blokSasiadow } from './lib/bloki-miast.mjs';
 
 const pamiec = JSON.parse(fs.readFileSync(new URL('./lib/ceny-tresc.json', import.meta.url), 'utf8'));
 const KWOTY = pamiec.kwoty;
 const WZOROW = pamiec.liczby.wszystkieWzory;
+const REALIZACJE = JSON.parse(
+  fs.readFileSync(new URL('../src/generated/realizacje.json', import.meta.url), 'utf8')
+);
+/** 5500 → „5 500" — tak samo jak w blokach i w FAQ. */
+const zlSpacja = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 test('każde miasto ma komplet odmian — nie zgadujemy ich z końcówki', () => {
   for (const m of MIASTA) {
@@ -285,5 +291,118 @@ test('linkowanie miasto ↔ materiał działa w obie strony', () => {
         .includes('/blaty-kuchenne-krakow'),
       `/${strona} nie linkuje z powrotem do Krakowa`
     );
+  }
+});
+
+/* ═══════════════ BLOKI DOŁOŻONE PO ANALIZIE KONKURENCJI (06.09.2026) ══════
+   IGNIKOM pokazywał na stronie miasta ceny „od", zdjęcia realizacji,
+   dzielnice i linki do sąsiednich miast — my żadnej z tych rzeczy nie
+   mieliśmy. Te testy pilnują, żeby nie zniknęły przy kolejnym generowaniu
+   i — co ważniejsze — żeby nie zaczęły kłamać o cenach. */
+
+test('CENNIK na stronie miasta rozdziela płytę od gotowego blatu', () => {
+  /*
+   * ⚠ Najważniejszy test w tej grupie. `konglomeratM2Od` to cena SAMEJ
+   * PŁYTY. Podpisanie jej jako „blat od 505 zł/m²" byłoby wprowadzaniem
+   * klienta w błąd — do blatu dochodzi obróbka, pomiar, transport i montaż,
+   * czyli w praktyce kilka tysięcy złotych. Tabela musi więc nazywać obie
+   * kwoty wprost i osobno.
+   */
+  const html = blokCen(wgSluga('mielec'), KWOTY, pamiec.liczby);
+  assert.match(html, /Sama płyta/, 'brak kolumny z ceną materiału');
+  assert.match(html, /Gotowy blat z montażem/, 'brak kolumny z ceną gotowego blatu');
+  assert.match(html, new RegExp(`od ${String(KWOTY.konglomeratM2Od)} zł/m²`), 'zła cena m² konglomeratu');
+  assert.match(html, new RegExp(`od ${zlSpacja(KWOTY.konglomeratProste)} zł`), 'zła cena gotowego blatu');
+  assert.match(html, /obróbkę,\s*\n?\s*wycięcie pod zlew i płytę grzewczą, transport i montaż/,
+    'nie napisano, co obejmuje cena gotowego blatu');
+});
+
+test('CENNIK nie wymyśla ceny „od" dla kamienia naturalnego', () => {
+  /*
+   * Kamienia naturalnego nie da się uczciwie podać „od X zł/m²" — liczy się
+   * go z konkretnej płyty ze stanu magazynowego. Konkurencja taką liczbę
+   * podaje; my wolimy powiedzieć prawdę niż dopisać kwotę, której nikt nie
+   * obroni przy telefonie.
+   */
+  const html = blokCen(wgSluga('mielec'), KWOTY, pamiec.liczby);
+  const wiersz = html.slice(html.indexOf('Kamień naturalny'));
+  assert.doesNotMatch(wiersz.slice(0, 400), /od \d+ zł\/m²/, 'wymyślona cena „od" dla kamienia naturalnego');
+  assert.match(wiersz, /Wycena z konkretnej płyty/);
+});
+
+test('CENNIK linkuje do wyprzedaży i do kalkulatora', () => {
+  // Dwie nasze przewagi nad konkurencją: prawdziwy kalkulator i płyty
+  // z placu w niższej cenie. Na stronie miasta muszą być widoczne.
+  const html = blokCen(wgSluga('mielec'), KWOTY, pamiec.liczby);
+  assert.match(html, /href="\/wyprzedaz-plyt"/, 'brak linku do wyprzedaży');
+  assert.match(html, /href="\/#kreator"/, 'brak linku do kalkulatora');
+});
+
+test('REALIZACJE — każde miasto pokazuje INNY komplet zdjęć', () => {
+  /*
+   * Piętnaście stron z tym samym kompletem zdjęć wygląda dla Google jak
+   * jedna strona powielona piętnaście razy. Przesunięcie o numer miasta
+   * ma dawać różne trójki.
+   */
+  const komplety = MIASTA.map((m, i) =>
+    (blokRealizacji(m, REALIZACJE, i).match(/\/realizacje\/([a-z0-9-]+)-mini\.webp/g) || []).join('|')
+  );
+  assert.equal(new Set(komplety).size, komplety.length, 'dwa miasta mają ten sam komplet zdjęć');
+  for (const k of komplety) assert.equal(k.split('|').length, 3, 'miasto bez trzech zdjęć');
+});
+
+test('REALIZACJE nie twierdzą, że zdjęcie jest z TEGO miasta', () => {
+  /*
+   * Nie wiemy, gdzie stoi która kuchnia. Podpis „nasza realizacja w Mielcu"
+   * pod zdjęciem z innego miasta byłby zwykłym kłamstwem — a takie rzeczy
+   * wracają, kiedy klient zapyta o adres.
+   */
+  for (const [i, m] of MIASTA.entries()) {
+    const html = blokRealizacji(m, REALIZACJE, i);
+    const podpisy = html.match(/alt="[^"]*"|<figcaption>[\s\S]*?<\/figcaption>/g) || [];
+    for (const p of podpisy) {
+      assert.ok(!p.includes(m.nazwa) && !p.includes(m.wMiescie),
+        `${m.slug}: podpis sugeruje, że zdjęcie jest z tego miasta — ${p.slice(0, 70)}`);
+    }
+  }
+});
+
+test('REALIZACJE wskazują na pliki, które naprawdę istnieją', () => {
+  const html = blokRealizacji(wgSluga('mielec'), REALIZACJE, MIASTA.indexOf(wgSluga('mielec')));
+  for (const plik of html.match(/\/realizacje\/[a-z0-9.-]+/g) || []) {
+    assert.ok(fs.existsSync(new URL(`../public${plik}`, import.meta.url)), `brak pliku ${plik}`);
+  }
+});
+
+test('DZIELNICE i okoliczne gminy są w treści miast priorytetowych', () => {
+  // Ktoś szukający „blaty kuchenne Smoczka" ma trafić na stronę Mielca.
+  for (const slug of ['mielec', 'tarnobrzeg', 'sandomierz', 'rzeszow']) {
+    const m = wgSluga(slug);
+    assert.ok((m.dzielnice || []).length >= 5, `${slug}: brak dzielnic`);
+    const html = blokZasiegu(m);
+    for (const d of m.dzielnice) assert.ok(html.includes(d), `${slug}: brak „${d}" w treści`);
+    for (const o of m.okolice || []) assert.ok(html.includes(o), `${slug}: brak „${o}" w treści`);
+  }
+});
+
+test('SĄSIEDZI linkują do innych miast, nigdy do siebie', () => {
+  for (const m of MIASTA) {
+    const html = blokSasiadow(m, MIASTA);
+    assert.ok(!html.includes(`/blaty-kuchenne-${m.slug}"`), `${m.slug} linkuje sam do siebie`);
+    const linki = html.match(/\/blaty-kuchenne-[a-z-]+/g) || [];
+    assert.equal(linki.length, 4, `${m.slug}: ma ${linki.length} linków zamiast 4`);
+    assert.equal(new Set(linki).size, 4, `${m.slug}: powtórzony link`);
+  }
+});
+
+test('KAŻDA strona miasta niesie wszystkie cztery bloki', () => {
+  for (const m of MIASTA) {
+    const t = fs.readFileSync(new URL(`../blaty-kuchenne-${m.slug}.html`, import.meta.url), 'utf8');
+    assert.match(t, /Ile kosztuje blat kamienny w /, `${m.slug}: brak cennika`);
+    assert.match(t, /Nasze blaty — zdjęcia z montaży/, `${m.slug}: brak realizacji`);
+    assert.match(t, /Blaty kamienne w sąsiednich miastach/, `${m.slug}: brak linków do sąsiadów`);
+    // Stary znacznik z pierwszej wersji nie ma prawa zostać obok nowego.
+    assert.ok(!t.includes('<!-- OKOLICE:MIASTO'), `${m.slug}: został stary blok OKOLICE`);
+    assert.equal((t.match(/<!-- BLOKI:MIASTO/g) || []).length, 1, `${m.slug}: zdublowany blok`);
   }
 });

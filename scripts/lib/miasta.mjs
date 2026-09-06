@@ -23,6 +23,7 @@ export const MIASTA = [
       'Blaty kuchenne Tarnobrzeg — konglomerat, spiek i granit na wymiar. Zakład przy ' +
       'ul. Szpitalnej 8: płyty można obejrzeć na hali, pomiar Prolinerem bezpłatny.',
     okolice: ['Baranów Sandomierski', 'Gorzyce', 'Grębów', 'Zaleszany', 'Radomyśl nad Sanem'],
+    dzielnice: ['Dzików', 'Mokrzyszów', 'Wielowieś', 'Miechocin', 'Sobów', 'Zakrzów', 'Serbinów', 'Sielec', 'Nagnajów'],
   },
   {
     slug: 'sandomierz', nazwa: 'Sandomierz', wMiescie: 'Sandomierzu', doMiasta: 'Sandomierza',
@@ -32,6 +33,7 @@ export const MIASTA = [
       'Blaty kuchenne Sandomierz — blat z konglomeratu, spieku lub granitu na wymiar. ' +
       '25 km od naszego zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
     okolice: ['Dwikozy', 'Zawichost', 'Koprzywnica', 'Klimontów', 'Obrazów', 'Samborzec'],
+    dzielnice: ['Stare Miasto', 'Nadbrzezie', 'Mokoszyn', 'Gołębice', 'Krakówka', 'Kamień Plebański'],
   },
   { slug: 'stalowa-wola', nazwa: 'Stalowa Wola', wMiescie: 'Stalowej Woli', doMiasta: 'Stalowej Woli', km: 20, nowa: false, daleko: false },
   /*
@@ -53,6 +55,10 @@ export const MIASTA = [
     okolice: [
       'Przecław', 'Radomyśl Wielki', 'Tuszów Narodowy', 'Padew Narodowa',
       'Czermin', 'Borowa', 'Wadowice Górne', 'Gawłuszowice',
+    ],
+    dzielnice: [
+      'Smoczka', 'Wojsław', 'Rzochów', 'Cyranka', 'Borek',
+      'osiedle Lotników', 'osiedle Kusocińskiego', 'osiedle Szafera',
     ],
     pytaniaWlasne: [
       {
@@ -83,6 +89,10 @@ export const MIASTA = [
       'Blaty kuchenne Rzeszów — blat kamienny na wymiar: konglomerat kwarcowy, spiek ' +
       'i granit. Dojeżdżamy z Tarnobrzega, pomiar bezpłatny, montaż w cenie.',
     okolice: ['Głogów Małopolski', 'Boguchwała', 'Tyczyn', 'Trzebownisko', 'Krasne', 'Świlcza'],
+    dzielnice: [
+      'Śródmieście', 'Baranówka', 'Nowe Miasto', 'Staroniwa', 'Zalesie',
+      'Drabinianka', 'Przybyszówka', 'Budziwój', 'Słocina',
+    ],
   },
   { slug: 'kielce', nazwa: 'Kielce', wMiescie: 'Kielcach', doMiasta: 'Kielc', km: 110, nowa: false, daleko: true },
   { slug: 'nisko', nazwa: 'Nisko', wMiescie: 'Nisku', doMiasta: 'Niska', km: 30, nowa: false, daleko: false },

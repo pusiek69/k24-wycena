@@ -2050,3 +2050,68 @@ button { color: var(--cream); background: transparent; }
 .tel-potwierdzenie .tel-znak { font-size: 19px; margin-top: 1px; }
 .tel-potwierdzenie.tel-tak { border-left-color: var(--ok); }
 .tel-potwierdzenie.tel-tak .tel-znak { color: var(--ok); }
+
+/* ═══════════════ SEKCJE NA STRONACH MIAST ════════════════════════════════
+   Cena, realizacje, zasięg i sąsiedzi — cztery bloki dołożone 06.09.2026
+   po porównaniu z konkurencją, która na stronie miasta pokazywała ceny
+   i zdjęcia, a my nie. Generuje je scripts/lib/bloki-miast.mjs.
+
+   Wszystkie cztery są zwykłymi sekcjami tekstowymi: dziedziczą typografię
+   po `.tekst`, a tutaj dostają tylko to, czego same potrzebują. */
+
+.miasto-ceny, .miasto-realizacje, .miasto-zasieg, .miasto-sasiedzi {
+  padding-top: 26px; margin-top: 26px; border-top: 1px solid var(--line);
+}
+
+/* Cennik — trzy kolumny, więc na telefonie przewija się w swoim pudełku.
+   Kwota gotowego blatu jest tym, po co klient przyszedł, stąd złoty kolor. */
+.cennik-miasto { min-width: 520px; }
+.cennik-miasto caption {
+  text-align: left; padding-bottom: 10px; color: var(--dim);
+  font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+}
+.cennik-miasto th[scope="row"] { font-weight: 400; color: var(--cream); text-align: left; }
+.cennik-miasto th[scope="row"] .drobne {
+  font-family: var(--sans); font-size: 11px; color: var(--dim); letter-spacing: .02em;
+}
+.cennik-miasto td { font-family: var(--sans); font-size: 14px; white-space: nowrap; }
+.cennik-miasto td[colspan] { white-space: normal; font-family: var(--serif); font-size: 15px; }
+.cennik-miasto strong { color: var(--vein-hi); font-size: 16px; }
+
+.miasto-wyprzedaz {
+  border-left: 3px solid var(--zar); padding: 10px 14px; background: var(--slab);
+  border-radius: var(--radius);
+}
+.miasto-wyprzedaz strong { color: var(--zar-hi); }
+
+/* Trzy zdjęcia obok siebie, na telefonie jedno pod drugim. Zdjęcia są
+   pionowe (kadry z telefonu Dawida), więc kafel przycina je do 4:3 —
+   inaczej sekcja urosłaby na pół ekranu. */
+.miasto-galeria {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px; margin: 16px 0 14px;
+}
+.miasto-galeria figure { margin: 0; }
+.miasto-galeria img {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--stone);
+  /* ⚠ `height: auto` jest konieczne, nie kosmetyczne. Atrybut `height="1340"`
+     w HTML (zostawiony po to, żeby przeglądarka zarezerwowała miejsce i strona
+     nie skakała przy ładowaniu) mapuje się na `height: 1340px` i BIJE
+     `aspect-ratio`, bo proporcja działa tylko przy wysokości `auto`.
+     Bez tej linijki kafle rosły na pełną wysokość pionowego zdjęcia. */
+  height: auto;
+}
+.miasto-galeria figcaption {
+  margin-top: 7px; font-size: 13px; line-height: 1.45; color: var(--muted);
+}
+.miasto-galeria figcaption strong { color: var(--vein); }
+
+/* Sąsiednie miasta — lista linków z odległością pod spodem. */
+.lista-sasiadow { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+.lista-sasiadow li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  padding-bottom: 9px; border-bottom: 1px solid rgba(201, 168, 106, .09);
+}
+.lista-sasiadow a { font-family: var(--sans); font-size: 15px; }
+.lista-sasiadow .drobne { font-family: var(--sans); font-size: 12px; color: var(--dim); }
