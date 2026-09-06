@@ -36,10 +36,14 @@ export const POMIAR = {
   konwersjaLead: '',
   konwersjaTelefon: '',
 
-  // ⚠ Piksel Meta — DO WKLEJENIA. Same cyfry, np. '1234567890123456'.
-  //   Ładuje się dopiero po pełnej zgodzie na ciasteczka (Meta nie ma
-  //   odpowiednika Consent Mode), i wtedy dostaje `Lead` przy wysyłce.
-  metaPixel: '',
+  // Piksel Meta „Kalkulator kam24h" (wpięty 06.09.2026).
+  //
+  // ⚠ Ładuje się WYŁĄCZNIE po pełnej zgodzie na ciasteczka. Meta nie ma
+  //   odpowiednika Consent Mode, więc przy „Tylko niezbędne" albo przy
+  //   zignorowanym banerze piksel nie startuje wcale — i tak ma być.
+  //   W praktyce znaczy to, że Events Manager pokaże MNIEJ zdarzeń niż
+  //   GA4: to nie jest błąd wdrożenia, tylko skutek zgody.
+  metaPixel: '1051701110821733',
 };
 
 /** Adres docelowy strony — używany w meta tagach i mapie witryny. */
