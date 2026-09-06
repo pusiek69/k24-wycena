@@ -41,10 +41,52 @@ test('nowe miasta mają swoje strony', () => {
   }
 });
 
-test('każda strona miasta ma FAQ z siedmioma pytaniami', () => {
+test('każda strona miasta ma komplet pytań — siedem plus własne', () => {
+  /*
+   * Siedem pytań to podstawa wspólna dla wszystkich miast (sześć stałych
+   * i jedno z rotacji). Miasto priorytetowe może dołożyć własne przez
+   * `pytaniaWlasne` w lib/miasta.mjs — wtedy ma ich więcej i tak ma być.
+   */
   for (const [i, m] of MIASTA.entries()) {
-    assert.equal(pytaniaMiasta(m, KWOTY, WZOROW, i).length, 7, m.slug);
+    const oczekiwane = 7 + (m.pytaniaWlasne || []).length;
+    assert.equal(pytaniaMiasta(m, KWOTY, WZOROW, i).length, oczekiwane, m.slug);
   }
+});
+
+test('WŁASNE pytania miasta nie powtarzają się na innych stronach', () => {
+  /*
+   * Sens `pytaniaWlasne` jest taki, żeby strona miasta NIE była kopią
+   * pozostałych. Gdyby te same pytania weszły wszędzie, nie różnicowałyby
+   * niczego — a przy piętnastu bliźniaczych stronach to jedyne, co je
+   * odróżnia poza nazwą i kilometrami.
+   */
+  const wlasne = new Map();
+  for (const [i, m] of MIASTA.entries()) {
+    for (const p of pytaniaMiasta(m, KWOTY, WZOROW, i)) {
+      if (!(m.pytaniaWlasne || []).some((x) => x.pytanie === p.pytanie)) continue;
+      assert.ok(!wlasne.has(p.pytanie), `„${p.pytanie}" jest na dwóch stronach`);
+      wlasne.set(p.pytanie, m.slug);
+    }
+  }
+});
+
+test('MIELEC — priorytet Dawida — ma najbogatszą stronę ze wszystkich miast', () => {
+  /*
+   * Zlecenie z 06.09.2026: „zależy mi na miastach […] mielec (na tym
+   * najbardziej)". Ten test pilnuje, żeby Mielec przy kolejnej zmianie
+   * nie zsunął się z powrotem do wspólnego wzorca.
+   */
+  const m = MIASTA.find((x) => x.slug === 'mielec');
+  assert.ok(m, 'brak Mielca w rejestrze');
+  assert.ok(m.tytul?.includes('Mielec'), 'Mielec bez własnego tytułu');
+  assert.ok(m.opis?.includes('Mielec'), 'Mielec bez własnego opisu');
+  assert.ok((m.okolice || []).length >= 5, 'Mielec bez listy okolicznych gmin');
+  assert.ok((m.pytaniaWlasne || []).length >= 2, 'Mielec bez własnych pytań');
+
+  const i = MIASTA.indexOf(m);
+  const ile = (x) => pytaniaMiasta(x, KWOTY, WZOROW, MIASTA.indexOf(x)).length;
+  const najwiecej = Math.max(...MIASTA.map(ile));
+  assert.equal(pytaniaMiasta(m, KWOTY, WZOROW, i).length, najwiecej, 'inne miasto ma więcej pytań');
 });
 
 test('kwoty w odpowiedziach są TE SAME co na stronach', () => {
@@ -88,7 +130,7 @@ test('schema FAQPage jest poprawnym JSON-em', () => {
   const json = s.replace(/^[\s\S]*?<script type="application\/ld\+json">/, '').replace(/<\/script>[\s\S]*$/, '');
   const d = JSON.parse(json);
   assert.equal(d['@type'], 'FAQPage');
-  assert.equal(d.mainEntity.length, 7);
+  assert.equal(d.mainEntity.length, 7 + (MIASTA[0].pytaniaWlasne || []).length);
   assert.equal(d.mainEntity[0]['@type'], 'Question');
 });
 
@@ -114,6 +156,22 @@ test('Kraków jest w rejestrze z poprawną odmianą', () => {
   assert.equal(k.wMiescie, 'Krakowie');
   assert.equal(k.doMiasta, 'Krakowa');
   assert.ok(k.daleko, 'Kraków to 170 km — musi być oznaczony jako daleki');
+});
+
+test('KAŻDY własny tytuł i opis mieści się w tym, co Google pokazuje', () => {
+  /*
+   * Do 06.09.2026 ta reguła obowiązywała tylko Kraków — jedyne miasto,
+   * które miało wtedy własne pola. Przy dokładaniu kolejnych (Mielec,
+   * Tarnobrzeg, Sandomierz, Rzeszów, Staszów) dwa od razu wyszły za długie,
+   * więc limit dotyczy teraz wszystkich. Za długi tytuł Google ucina
+   * w połowie zdania i traci się to, co miało zachęcić do kliknięcia.
+   */
+  for (const m of MIASTA) {
+    if (m.tytul) assert.ok(m.tytul.length <= 60, `${m.slug}: tytuł ma ${m.tytul.length} znaków`);
+    if (m.opis) assert.ok(m.opis.length <= 160, `${m.slug}: opis ma ${m.opis.length} znaków`);
+    // Nazwa miasta musi być w tytule — bez niej strona nie konkuruje o frazę lokalną.
+    if (m.tytul) assert.ok(m.tytul.includes(m.nazwa), `${m.slug}: tytuł bez nazwy miasta`);
+  }
 });
 
 test('tytuł i opis Krakowa mieszczą się w tym, co Google pokazuje', () => {

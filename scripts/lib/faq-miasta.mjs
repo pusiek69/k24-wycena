@@ -132,6 +132,17 @@ export function pytaniaMiasta(miasto, kwoty, wzorow, i) {
         `cywilnego: ostateczną cenę potwierdzamy po ${daleko ? '' : 'bezpłatnym '}pomiarze, ` +
         'bo przy nietypowych kształtach, wyspach i blatach łączonych może się różnić.',
     },
+    /*
+     * PYTANIA WŁASNE MIASTA — jedyna część FAQ, która nie jest wspólna.
+     *
+     * Sześć pytań wyżej jest identycznych na wszystkich stronach miast
+     * (różnią się odmianą nazwy i kilometrami), a rotacja z DODATKOWE daje
+     * jedno pytanie na miasto. Przy piętnastu stronach to za mało, żeby
+     * którakolwiek wyróżniła się w wynikach. Miasto, na którym Dawidowi
+     * zależy, może więc dołożyć własne pytania — patrz `pytaniaWlasne`
+     * w lib/miasta.mjs.
+     */
+    ...(miasto.pytaniaWlasne || []),
     DODATKOWE[i % DODATKOWE.length],
   ];
 }

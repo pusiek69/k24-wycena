@@ -192,6 +192,75 @@ for (const m of NOWE) {
   zapisz(plik, nowaStrona(m), `${m.nazwa} → blaty-kuchenne-${m.slug}.html`);
 }
 
+/* ──────────────────────── 2a. tytuł, opis i okolice na ISTNIEJĄCYCH stronach */
+
+/**
+ * TYTUŁ I OPIS — z lib/miasta.mjs, także na stronach, które już istnieją.
+ *
+ * `nowaStrona()` wstawia `tytul` i `opis` tylko przy TWORZENIU pliku, więc
+ * do 06.09.2026 dopisanie ich istniejącemu miastu nic nie dawało — strona
+ * zostawała przy zdaniu z wzorca. A to właśnie tytuł i opis są tym, co
+ * Google pokazuje w wynikach, i jedyną rzeczą, którą klient czyta przed
+ * kliknięciem.
+ *
+ * Podmiana jest idempotentna i rusza wyłącznie miasta, które mają własne
+ * pola — reszta zostaje przy wzorcu, żeby nie przepisywać czternastu stron
+ * bez powodu.
+ */
+function wstawTytulIOpis(t, m) {
+  if (m.tytul) {
+    t = t.replace(/<title>[\s\S]*?<\/title>/, `<title>${m.tytul}</title>`);
+    t = t.replace(
+      /(<meta property="og:title" content=")[^"]*(")/,
+      (_, a, b) => a + m.tytul + b
+    );
+  }
+  if (m.opis) {
+    for (const wzor of [
+      /(<meta name="description" content=")[^"]*(")/,
+      /(<meta property="og:description" content=")[^"]*(")/,
+      /(<meta name="twitter:description" content=")[^"]*(")/,
+    ]) {
+      t = t.replace(wzor, (_, a, b) => a + m.opis + b);
+    }
+  }
+  return t;
+}
+
+const OKOLICE_OD = '      <!-- OKOLICE:MIASTO — generowane przez `npm run miasta`. Nie edytuj ręcznie. -->';
+const OKOLICE_DO = '      <!-- /OKOLICE:MIASTO -->';
+
+/**
+ * „I OKOLICE" — nazwy sąsiednich gmin w WIDOCZNEJ treści.
+ *
+ * Same `areaServed` w danych strukturalnych nie wystarczy: dane strukturalne
+ * opisują to, co na stronie widać, a nie zastępują treści. Ktoś szukający
+ * „blaty kuchenne Przecław" ma trafić na stronę Mielca — i znaleźć tam
+ * słowo, którego szukał.
+ *
+ * Osobnych podstron dla tych miejscowości świadomie NIE robimy: byłyby to
+ * kopie z podmienioną nazwą i Google nie pozycjonowałby żadnej z nich.
+ */
+function wstawOkolice(t, m) {
+  const re = new RegExp(`\\n?${OKOLICE_OD.trim()}[\\s\\S]*?${OKOLICE_DO.trim()}`);
+  if (!(m.okolice || []).length) return t.replace(re, ''); // miasto straciło listę
+
+  const blok =
+    `${OKOLICE_OD}\n` +
+    `      <p>\n` +
+    `        Jeździmy nie tylko do samego miasta. Blaty wozimy i montujemy również\n` +
+    `        w okolicy: ${wyliczenie(m.okolice)} — dla nas to ten sam wyjazd,\n` +
+    `        a klientom spoza centrum oszczędza szukania wykonawcy na miejscu.\n` +
+    `      </p>\n` +
+    `${OKOLICE_DO}`;
+
+  if (re.test(t)) return t.replace(re, `\n${blok}`);
+  // Przed sekcją FAQ — akapit ma zostać w treści, nie pod pytaniami.
+  return t.includes(ZNACZNIK_OD)
+    ? t.replace(ZNACZNIK_OD, `${blok}\n\n${ZNACZNIK_OD}`)
+    : t.replace(/(\s*)<\/main>/, `\n${blok}\n$1</main>`);
+}
+
 /* ────────────────────────────────────────── 2. FAQ na stronach miast */
 
 const ZNACZNIK_OD = '      <!-- FAQ:MIASTO — generowane przez `npm run miasta`. Nie edytuj ręcznie. -->';
@@ -221,6 +290,9 @@ MIASTA.forEach((m, i) => {
   // Sekcja w treści — przed zamknięciem <main>.
   const re = new RegExp(`${ZNACZNIK_OD.trim()}[\\s\\S]*?${ZNACZNIK_DO.trim()}`);
   t = re.test(t) ? t.replace(re, blok.trim()) : t.replace(/(\s*)<\/main>/, `\n${blok}\n$1</main>`);
+
+  t = wstawTytulIOpis(t, m);
+  t = wstawOkolice(t, m);
 
   /*
    * DANE STRUKTURALNE — dwa OSOBNE bloki, każdy podmieniany własnym,
