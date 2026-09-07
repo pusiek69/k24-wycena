@@ -18,6 +18,20 @@
 import { resend, nadawca, doDawida } from './poczta.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { sprawdzWiadomosc } from './rozmowa.js';
+import { sprawdzDostep, listaTablic } from './trello.js';
+import {
+  STATUSY as ZAKUPY_STATUSY,
+  wczytajKonfig,
+  zapiszKonfig,
+  konfigDlaPanelu,
+  synchronizuj,
+  zestawienie,
+  // `ustawStatus` istnieje juz w baza.js (status karty klienta) — bez aliasu
+  // worker nie startuje wcale: „Identifier has already been declared".
+  ustawStatus as ustawStatusZakupu,
+  ustawStatusGrupy,
+  ustawDostawce,
+} from './zakupy.js';
 import { TEMAT_DO_KLIENTA, mailDoKlienta } from './mail-rozmowa.js';
 
 import {
@@ -118,6 +132,19 @@ export async function obsluzPanel(request, env) {
     return await apiWyprzedazDostepnosc(request, env);
   if (sciezka === '/panel/api/wyprzedaz/usun' && request.method === 'POST')
     return await apiWyprzedazUsun(request, env);
+
+  // ZAKUPY Z TRELLO (06.09.2026) — patrz worker/zakupy.js.
+  if (sciezka === '/panel/api/zakupy') return await apiZakupy(request, env);
+  if (sciezka === '/panel/api/zakupy/konfig' && request.method === 'POST')
+    return await apiZakupyKonfig(request, env);
+  if (sciezka === '/panel/api/zakupy/tablice' && request.method === 'POST')
+    return await apiZakupyTablice(request, env);
+  if (sciezka === '/panel/api/zakupy/sync' && request.method === 'POST')
+    return await apiZakupySync(request, env);
+  if (sciezka === '/panel/api/zakupy/status' && request.method === 'POST')
+    return await apiZakupyStatus(request, env);
+  if (sciezka === '/panel/api/zakupy/dostawca' && request.method === 'POST')
+    return await apiZakupyDostawca(request, env);
 
   return json({ error: 'Nieznany adres panelu.' }, 404);
 }
@@ -585,6 +612,83 @@ const odpowiedzHtml = (html, status = 200) =>
     },
   });
 
+/* ═══════════════════════════════════════════════ ZAKUPY (Trello) ═══════
+ *
+ * Zlecenie Dawida (06.09.2026). Cała logika siedzi w worker/zakupy.js —
+ * tutaj są tylko trasy i to, co panel oddaje przeglądarce.
+ *
+ * ⚠ TOKEN TRELLO NIGDY NIE WYCHODZI DO PRZEGLĄDARKI. `konfigDlaPanelu`
+ * oddaje wyłącznie „czy jest" i cztery ostatnie znaki, żeby Dawid poznał,
+ * który token wkleił. Panel jest za hasłem, ale sekret w HTML-u to sekret
+ * w historii przeglądarki, w cache i w zrzucie ekranu.
+ */
+
+async function apiZakupy(request, env) {
+  const url = new URL(request.url);
+  const status = url.searchParams.get('status') || 'do_kupienia';
+  const konfig = await wczytajKonfig(env);
+  const ostatnia = await env.BAZA.prepare(`SELECT wartosc FROM zakupy_konfig WHERE klucz = 'ostatniaSync'`)
+    .first()
+    .catch(() => null);
+
+  return json({
+    ok: true,
+    konfig: konfigDlaPanelu(konfig),
+    statusy: ZAKUPY_STATUSY,
+    ostatniaSync: ostatnia?.wartosc || '',
+    grupy: await zestawienie(env, { status }),
+  });
+}
+
+async function apiZakupyKonfig(request, env) {
+  const d = await request.json().catch(() => null);
+  const pola = {};
+  // Puste pole znaczy „nie ruszaj", a nie „skasuj" — inaczej zapis samej
+  // tablicy kasowałby token, którego formularz nie odsyła z powrotem.
+  for (const p of ['klucz', 'token', 'tablica', 'tablicaNazwa']) {
+    if (typeof d?.[p] === 'string' && d[p].trim()) pola[p] = d[p].trim();
+  }
+  if (!Object.keys(pola).length) return json({ error: 'Nie ma czego zapisać.' }, 400);
+  await zapiszKonfig(env, pola);
+
+  // Od razu mówimy, czy klucze działają — Dawid ma się dowiedzieć teraz,
+  // a nie przy pierwszej nieudanej synchronizacji.
+  const konfig = await wczytajKonfig(env);
+  const test = konfig.klucz && konfig.token ? await sprawdzDostep(konfig) : { ok: false, blad: 'Brak kompletu.' };
+  return json({ ok: true, konfig: konfigDlaPanelu(konfig), test });
+}
+
+async function apiZakupyTablice(request, env) {
+  const konfig = await wczytajKonfig(env);
+  const odp = await listaTablic(konfig);
+  if (!odp.ok) return json({ error: odp.blad }, 400);
+  return json({ ok: true, tablice: odp.tablice });
+}
+
+async function apiZakupySync(request, env) {
+  const odp = await synchronizuj(env);
+  if (!odp.ok) return json({ error: odp.blad }, 400);
+  return json(odp);
+}
+
+async function apiZakupyStatus(request, env) {
+  const d = await request.json().catch(() => null);
+  if (d?.klucz) {
+    return json(await ustawStatusGrupy(env, { klucz: d.klucz, dostawca: d.dostawca || '', status: d.status }));
+  }
+  const id = Number(d?.id);
+  if (!id) return json({ error: 'Brak pozycji.' }, 400);
+  const odp = await ustawStatusZakupu(env, { id, status: d?.status });
+  if (!odp.ok) return json({ error: odp.blad }, 400);
+  return json(odp);
+}
+
+async function apiZakupyDostawca(request, env) {
+  const d = await request.json().catch(() => null);
+  if (!d?.klucz) return json({ error: 'Brak produktu.' }, 400);
+  return json(await ustawDostawce(env, { klucz: d.klucz, dostawca: d.dostawca || '' }));
+}
+
 async function stronaPanelu(env) {
   // Retencja RODO: karty bez ruchu dłużej niż RETENCJA_MIESIECY znikają.
   // Robimy to przy wejściu (raz dziennie), więc nie potrzeba osobnego crona.
@@ -716,6 +820,19 @@ textarea{min-height:4.2rem;resize:vertical}
 .btn{background:var(--akcent);color:var(--naAkcencie);border:0;border-radius:9px;padding:.55rem 1rem;
 cursor:pointer;font-weight:600}
 .btn.cichy{background:transparent;color:var(--szary);border:1px solid var(--linia);font-weight:400}
+/* ZAKUPY Z TRELLO (06.09.2026). Lista jest czytana przy telefonie do
+   dostawcy, wiec liczba sztuk ma byc widoczna od razu, a rozwiniecie
+   „ktore groby" ma nie rozpychac ekranu, dopoki nikt go nie otworzy. */
+.btn.maly{padding:.25rem .6rem;font-size:.82rem;border-radius:7px}
+.zakupy-grupa h3{margin:0 0 .5rem;font-size:1rem}
+.zakupy-produkt{padding:.45rem 0;border-top:1px solid var(--linia);line-height:1.9}
+.zakupy-produkt:first-of-type{border-top:0}
+.zakupy-karty{margin:.35rem 0 .2rem 1.1rem;padding:0;font-size:.88rem;color:var(--szary)}
+.zakupy-karty li{margin:.15rem 0}
+/* Podpowiedz dostawcy z historii to DOMYSL, nie fakt — zamowienie u zlego
+   dostawcy kosztuje, wiec musi sie roznic wygladem od dopisku Dawida. */
+.plakietka-podpowiedz{border:1px solid var(--akcent);color:var(--akcent);
+border-radius:9px;padding:0 .45em;font-size:.72rem}
 .log{list-style:none;margin:.5rem 0 0;padding:0;font-size:.88rem}
 .log li{border-top:1px solid var(--linia);padding:.4rem 0}
 .log .kiedy{color:var(--szary);font-size:.76rem}
@@ -762,6 +879,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
   <section id="reakcje"></section>
   <section id="stawki"></section>
   <section id="wyprzedaz"></section>
+  <section id="zakupy"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
     <div class="filtry">
@@ -1680,5 +1798,237 @@ document.getElementById('f-czysc').addEventListener('click', function(){
   wczytaj();
 });
 
+/* ═══════════════════════════════ ZAKUPY (Trello) ═══════════════════════
+ *
+ * UWAGA NA SKLADNIE: ten skrypt siedzi w szablonie JS po stronie workera.
+ * Zadnych odwroconych apostrofow, zadnego dolara z klamra, a kazdy
+ * ukosnik musi byc podwojony. Panel juz raz padl przez pojedynczy
+ * ukosnik w wyrazeniu regularnym (01.09.2026) i przez dwa dni nie dalo
+ * sie otworzyc bazy klientow.
+ */
+var zakupy = null, zakupyStatus = 'do_kupienia', zakupyRozwiniete = {};
+
+function zakupyKonfigHtml(k){
+  var gotowe = k.maKlucz && k.maToken;
+  var h = '<h2>Zakupy — polaczenie z Trello</h2>';
+  if(gotowe){
+    h += '<p class="mini">Klucz i token zapisane (token konczy sie na ' + esc(k.koncowkaTokenu) + ').'
+      + (k.tablicaNazwa ? ' Tablica: <b>' + esc(k.tablicaNazwa) + '</b>.' : ' Nie wybrano jeszcze tablicy.')
+      + '</p>';
+  } else {
+    h += '<p class="mini">Zeby zobaczyc liste zakupow, wklej klucz i token z Trello. '
+      + 'Instrukcja: <b>trello.com/power-ups/admin</b> → New → API key, '
+      + 'potem link „Token" obok klucza i „Zezwol".</p>';
+  }
+  h += '<div class="filtry">'
+    + '<input id="z-klucz" type="password" autocomplete="off" placeholder="' + (k.maKlucz ? 'Klucz API — zapisany, wpisz aby zmienic' : 'Klucz API z Trello') + '">'
+    + '<input id="z-token" type="password" autocomplete="off" placeholder="' + (k.maToken ? 'Token — zapisany, wpisz aby zmienic' : 'Token z Trello') + '">'
+    + '<button class="btn" id="z-zapisz" type="button">Zapisz i sprawdz</button>'
+    + '</div>';
+  if(gotowe){
+    h += '<div class="filtry"><button class="btn cichy" id="z-tablice" type="button">Wybierz tablice</button>'
+      + '<span id="z-tablice-lista"></span></div>';
+  }
+  return h;
+}
+
+function zakupyGrupaHtml(g){
+  var naglowek = g.nieznany ? 'Bez przypisanego dostawcy' : g.dostawca;
+  var h = '<div class="karta zakupy-grupa">'
+    + '<h3>' + esc(naglowek) + ' <span class="mini">' + g.sztukRazem + ' szt. lacznie</span></h3>';
+  if(g.nieznany){
+    h += '<p class="mini">Dopisz w Trello „ — Nazwa firmy" na koncu pozycji albo przypisz dostawce tutaj. '
+      + 'Zapamietamy go dla tego produktu.</p>';
+  }
+  g.produkty.forEach(function(p){
+    var otwarty = zakupyRozwiniete[g.dostawca + '|' + p.klucz];
+    var podpowiedz = p.pozycje.some(function(x){ return x.zrodloDostawcy === 'historia'; });
+    h += '<div class="zakupy-produkt">'
+      + '<b>' + esc(p.nazwa) + '</b> — <b>' + p.sztuk + ' szt.</b>'
+      + (podpowiedz ? ' <span class="mini plakietka-podpowiedz">dostawca z historii — sprawdz</span>' : '')
+      + ' <button class="btn cichy maly" data-zakupy-rozwin="' + esc(g.dostawca + '|' + p.klucz) + '" type="button">'
+      + (otwarty ? 'zwin' : 'ktore groby (' + p.pozycje.length + ')') + '</button>';
+    if(zakupyStatus === 'do_kupienia'){
+      h += ' <button class="btn maly" data-zakupy-grupa="zamowione" data-klucz="' + esc(p.klucz) + '" data-dostawca="' + esc(g.dostawca) + '" type="button">Zamowione</button>';
+    } else if(zakupyStatus === 'zamowione'){
+      h += ' <button class="btn maly" data-zakupy-grupa="otrzymane" data-klucz="' + esc(p.klucz) + '" data-dostawca="' + esc(g.dostawca) + '" type="button">Otrzymane</button>';
+      h += ' <button class="btn cichy maly" data-zakupy-grupa="do_kupienia" data-klucz="' + esc(p.klucz) + '" data-dostawca="' + esc(g.dostawca) + '" type="button">Cofnij</button>';
+    }
+    if(otwarty){
+      h += '<ul class="zakupy-karty">';
+      p.pozycje.forEach(function(poz){
+        h += '<li><a href="' + esc(poz.url) + '" target="_blank" rel="noopener">' + esc(poz.karta) + '</a>'
+          + (poz.ilosc > 1 ? ' <span class="mini">' + poz.ilosc + ' szt.</span>' : '')
+          + (poz.zamowiono ? ' <span class="mini">zamowione ' + esc(poz.zamowiono) + '</span>' : '')
+          + '</li>';
+      });
+      h += '</ul>';
+    }
+    h += '</div>';
+  });
+  h += '<div class="filtry"><button class="btn cichy" data-zakupy-kopiuj="' + esc(g.dostawca) + '" type="button">Kopiuj liste do maila</button></div>';
+  return h + '</div>';
+}
+
+function rysujZakupy(){
+  var el = document.getElementById('zakupy');
+  if(!zakupy){ el.innerHTML = ''; return; }
+  var k = zakupy.konfig;
+  var h = zakupyKonfigHtml(k);
+
+  if(k.maKlucz && k.maToken && k.tablica){
+    h += '<div class="filtry">'
+      + '<select id="z-status">'
+      + '<option value="do_kupienia"' + (zakupyStatus === 'do_kupienia' ? ' selected' : '') + '>Do kupienia</option>'
+      + '<option value="zamowione"' + (zakupyStatus === 'zamowione' ? ' selected' : '') + '>Zamowione</option>'
+      + '<option value="otrzymane"' + (zakupyStatus === 'otrzymane' ? ' selected' : '') + '>Otrzymane</option>'
+      + '<option value="wszystko"' + (zakupyStatus === 'wszystko' ? ' selected' : '') + '>Wszystko</option>'
+      + '</select>'
+      + '<button class="btn" id="z-sync" type="button">Odswiez z Trello</button>'
+      + '<span class="mini" id="z-info">' + (zakupy.ostatniaSync ? 'ostatnio: ' + godzina(zakupy.ostatniaSync) : 'jeszcze nie synchronizowano') + '</span>'
+      + '</div>';
+    if(!zakupy.grupy.length){
+      h += '<p class="mini">Nic tu nie ma. Sprawdz, czy na kartach w Trello jest checklista o nazwie '
+        + '<b>Zakupy</b> — tylko z niej bierzemy pozycje.</p>';
+    }
+    zakupy.grupy.forEach(function(g){ h += zakupyGrupaHtml(g); });
+  }
+  el.innerHTML = h;
+}
+
+async function wczytajZakupy(){
+  var odp = await fetch('/panel/api/zakupy?status=' + encodeURIComponent(zakupyStatus));
+  if(odp.status === 401){ location.reload(); return; }
+  zakupy = await odp.json();
+  rysujZakupy();
+}
+
+async function zakupyPost(sciezka, dane){
+  var odp = await fetch('/panel/api/zakupy/' + sciezka, {
+    method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(dane || {})
+  });
+  return await odp.json().catch(function(){ return {error:'Blad odpowiedzi.'}; });
+}
+
+/* Tekst listy budujemy w przegladarce z tych samych danych, ktore widac
+   na ekranie — Dawid kopiuje dokladnie to, co przed chwila zatwierdzil. */
+function zakupyTekst(g){
+  var linie = ['Zamowienie — ' + (g.dostawca || '(dostawca nieprzypisany)'), ''];
+  g.produkty.forEach(function(p){
+    linie.push(p.nazwa + ' — ' + p.sztuk + ' szt.');
+    p.pozycje.forEach(function(poz){
+      linie.push('    - ' + poz.karta + (poz.ilosc > 1 ? ' (' + poz.ilosc + ' szt.)' : ''));
+    });
+  });
+  linie.push('', 'Kamieniarstwo 24h · Tarnobrzeg, ul. Szpitalna 8 · tel. 796 991 128');
+  // Podwojony ukosnik jest KONIECZNY: ten skrypt siedzi w szablonie po
+  // stronie workera, wiec pojedyncze „backslash n" stalo by sie prawdziwym
+  // znakiem nowej linii i rozwalilo literal napisu.
+  return linie.join('\\n');
+}
+
+document.addEventListener('click', async function(e){
+  var zapisz = e.target.closest('#z-zapisz');
+  if(zapisz){
+    zapisz.disabled = true;
+    var wynik = await zakupyPost('konfig', {
+      klucz: document.getElementById('z-klucz').value,
+      token: document.getElementById('z-token').value
+    });
+    zapisz.disabled = false;
+    if(wynik.error){ alert(wynik.error); return; }
+    if(wynik.test && !wynik.test.ok){ alert('Zapisane, ale Trello odpowiedzialo: ' + wynik.test.blad); }
+    else if(wynik.test && wynik.test.uzytkownik){ alert('Polaczono z Trello jako ' + wynik.test.uzytkownik + '.'); }
+    await wczytajZakupy();
+    return;
+  }
+
+  var tablice = e.target.closest('#z-tablice');
+  if(tablice){
+    tablice.disabled = true;
+    var lista = await zakupyPost('tablice', {});
+    tablice.disabled = false;
+    if(lista.error){ alert(lista.error); return; }
+    var box = document.getElementById('z-tablice-lista');
+    var opcje = lista.tablice.map(function(t){
+      return '<option value="' + esc(t.id) + '" data-nazwa="' + esc(t.nazwa) + '">' + esc(t.nazwa) + '</option>';
+    }).join('');
+    box.innerHTML = '<select id="z-tablica">' + opcje + '</select> <button class="btn maly" id="z-tablica-ok" type="button">Uzyj tej tablicy</button>';
+    return;
+  }
+
+  var wybierz = e.target.closest('#z-tablica-ok');
+  if(wybierz){
+    var sel = document.getElementById('z-tablica');
+    var opt = sel.options[sel.selectedIndex];
+    await zakupyPost('konfig', { tablica: sel.value, tablicaNazwa: opt.dataset.nazwa });
+    await wczytajZakupy();
+    return;
+  }
+
+  var sync = e.target.closest('#z-sync');
+  if(sync){
+    sync.disabled = true;
+    document.getElementById('z-info').textContent = 'czytam Trello…';
+    var w = await zakupyPost('sync', {});
+    sync.disabled = false;
+    if(w.error){ document.getElementById('z-info').textContent = w.error; return; }
+    await wczytajZakupy();
+    var info = document.getElementById('z-info');
+    if(info) info.textContent = 'pobrano ' + w.pobrano + ' pozycji'
+      + (w.sugestie && w.sugestie.length ? ' · ' + w.sugestie.length + ' kart z „zamowic" w nazwie' : '');
+    return;
+  }
+
+  var rozwin = e.target.closest('[data-zakupy-rozwin]');
+  if(rozwin){
+    var kl = rozwin.dataset.zakupyRozwin;
+    zakupyRozwiniete[kl] = !zakupyRozwiniete[kl];
+    rysujZakupy();
+    return;
+  }
+
+  var grupa = e.target.closest('[data-zakupy-grupa]');
+  if(grupa){
+    grupa.disabled = true;
+    var odp = await zakupyPost('status', {
+      klucz: grupa.dataset.klucz,
+      dostawca: grupa.dataset.dostawca,
+      status: grupa.dataset.zakupyGrupa
+    });
+    if(odp.bledyTrello && odp.bledyTrello.length){
+      alert('Zapisane u nas, ale w Trello sie nie udalo: ' + odp.bledyTrello.join(' '));
+    }
+    await wczytajZakupy();
+    return;
+  }
+
+  var kopiuj = e.target.closest('[data-zakupy-kopiuj]');
+  if(kopiuj){
+    var szukana = kopiuj.dataset.zakupyKopiuj;
+    var g = (zakupy.grupy || []).filter(function(x){ return x.dostawca === szukana; })[0];
+    if(!g) return;
+    try {
+      await navigator.clipboard.writeText(zakupyTekst(g));
+      kopiuj.textContent = 'Skopiowane';
+      setTimeout(function(){ kopiuj.textContent = 'Kopiuj liste do maila'; }, 2000);
+    } catch(err){
+      // Schowek bywa zablokowany (brak HTTPS, odmowa) — wtedy pokazujemy
+      // tekst do recznego zaznaczenia, zamiast udawac, ze sie udalo.
+      var okno = window.open('', '_blank');
+      if(okno) okno.document.write('<pre>' + esc(zakupyTekst(g)) + '</pre>');
+    }
+    return;
+  }
+});
+
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id === 'z-status'){
+    zakupyStatus = e.target.value;
+    wczytajZakupy();
+  }
+});
+
+wczytajZakupy();
 wczytaj();
 </script></body></html>`;

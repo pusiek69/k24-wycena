@@ -48,3 +48,12 @@ enabled = true
 binding = "BAZA"
 database_name = "k24h-crm"
 database_id = "ef8cf85e-b185-4c1c-84b8-c1d62e03a023"
+
+# ZAKUPY Z TRELLO (06.09.2026) — odświeżanie listy co 30 minut.
+#
+# Ręczny przycisk „Odśwież z Trello" w panelu zostaje i jest ważniejszy:
+# cron ma sprawić, że Dawid wchodzi na gotowe, a nie że musi pamiętać
+# o kliknięciu. Bez wklejonego tokenu przebieg kończy się od razu i nic
+# nie kosztuje.
+[triggers]
+crons = ["*/30 * * * *"]

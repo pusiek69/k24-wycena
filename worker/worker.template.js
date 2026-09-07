@@ -52,6 +52,7 @@ import {
   odczytajStawki,
 } from './baza.js';
 import { listaPlyt, zdjeciePlyty, dostepna } from './wyprzedaz-baza.js';
+import { synchronizuj, wczytajKonfig } from './zakupy.js';
 import {
   pobierzMagazyn,
   opiszPlyty,
@@ -148,6 +149,40 @@ export default {
       console.error(sciezka, e?.message || e);
       return json({ error: 'Błąd serwera.' }, 500, cors);
     }
+  },
+
+  /**
+   * CRON — odświeżanie listy zakupów z Trello co 30 minut.
+   *
+   * Dawid ma wchodzić do panelu na gotowe, a nie pamiętać o klikaniu
+   * „Odśwież". Przycisk zostaje, bo po dopisaniu pozycji w Trello nikt
+   * nie chce czekać pół godziny.
+   *
+   * Bez wklejonego tokenu przebieg kończy się natychmiast i nic nie
+   * kosztuje — dlatego cron może działać od pierwszego wdrożenia,
+   * jeszcze zanim Dawid cokolwiek skonfiguruje.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          if (!env.BAZA) return;
+          /*
+           * Brak konfiguracji to NIE jest błąd — to stan przed wklejeniem
+           * tokenu przez Dawida. Bez tego sprawdzenia cron wpisywałby
+           * do logów błąd co pół godziny, czyli 48 razy dziennie, i utopił
+           * w nim prawdziwe awarie.
+           */
+          const konfig = await wczytajKonfig(env);
+          if (!konfig.klucz || !konfig.token || !konfig.tablica) return;
+
+          const wynik = await synchronizuj(env, { konfig });
+          if (!wynik.ok) console.error('cron zakupy', wynik.blad);
+        } catch (e) {
+          console.error('cron zakupy', e?.message || e);
+        }
+      })()
+    );
   },
 };
 

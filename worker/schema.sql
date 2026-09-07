@@ -279,3 +279,72 @@ CREATE INDEX IF NOT EXISTS wyprzedaz_plyt_kategoria ON wyprzedaz_plyt (kategoria
 --  osobno, żeby dało się odróżnić „nie chce" od „nie wiadomo".
 -- ═══════════════════════════════════════════════════════════════════════
 ALTER TABLE klienci ADD COLUMN telefon_zgoda TEXT NOT NULL DEFAULT '';
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  ZAKUPY Z TRELLO (zlecenie Dawida, 06.09.2026)
+--
+--  „Zróbmy tak, żeby to było jak najlepiej" — pozycje do kupienia leżą
+--  w checklistach na kartach grobów w Trello i nigdzie nie widać ich
+--  razem. Cztery ławeczki z czterech kart to były cztery telefony do
+--  dostawcy zamiast jednego zamówienia.
+--
+--  ⚠ Nazwy kart to nazwiska rodzin — dane osobowe. Zostają w D1,
+--  nigdy w repozytorium (jest publiczne) i nigdy w testach.
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- Klucz i token Trello. OSOBNA tabela, nie `ustawienia` — tamtą panel
+-- czyta w całości i odsyła do przeglądarki jako stawki zakładu; token
+-- wjechałby wtedy do HTML-a przy każdym otwarciu panelu.
+CREATE TABLE IF NOT EXISTS zakupy_konfig (
+  klucz     TEXT PRIMARY KEY,
+  wartosc   TEXT NOT NULL,
+  zmieniono TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS zakupy_pozycje (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  -- Identyfikator pozycji checklisty w Trello. Po nim rozpoznajemy, że to
+  -- ta sama rzecz — zmiana treści aktualizuje wiersz, nie tworzy drugiego.
+  trello_item_id    TEXT NOT NULL UNIQUE,
+  trello_card_id    TEXT NOT NULL,
+  karta_nazwa       TEXT NOT NULL DEFAULT '',
+  karta_url         TEXT NOT NULL DEFAULT '',
+  -- Surowa treść pozycji, tak jak stoi w Trello (z dopiskiem dostawcy).
+  tresc             TEXT NOT NULL,
+  -- Nazwa produktu bez ilości i bez dopisku dostawcy.
+  produkt           TEXT NOT NULL DEFAULT '',
+  -- Klucz sumowania: „ławeczka ze skrzyneczką" i „ławeczka" mają go wspólny.
+  klucz             TEXT NOT NULL DEFAULT '',
+  ilosc             INTEGER NOT NULL DEFAULT 1,
+  dostawca          TEXT NOT NULL DEFAULT '',
+  -- 'dopisek' (Dawid napisał wprost) | 'historia' (podpowiedź z nauki)
+  -- | 'reczne' (poprawione w panelu) | '' (nie wiadomo).
+  -- Panel MUSI pokazywać różnicę: pomyłka tu to zamówienie u złego dostawcy.
+  dostawca_zrodlo   TEXT NOT NULL DEFAULT '',
+  status            TEXT NOT NULL DEFAULT 'do_kupienia',
+  trello_odhaczone  INTEGER NOT NULL DEFAULT 0,
+  zamowiono         TEXT,
+  otrzymano         TEXT,
+  widziano          TEXT NOT NULL,
+  utworzono         TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS zakupy_status ON zakupy_pozycje (status);
+CREATE INDEX IF NOT EXISTS zakupy_grupa ON zakupy_pozycje (dostawca, klucz);
+
+-- Czego Dawid u kogo kupuje — uczone z pozycji, które miały dopisek.
+CREATE TABLE IF NOT EXISTS zakupy_dostawcy (
+  produkt   TEXT PRIMARY KEY,
+  dostawca  TEXT NOT NULL,
+  razy      INTEGER NOT NULL DEFAULT 1,
+  zmieniono TEXT NOT NULL
+);
+
+-- Ręczne scalanie nazw: „to jest to samo co…". Heurystyka z trello.js
+-- radzi sobie z typowymi przypadkami, ale polski jest nieregularny —
+-- każde odstępstwo Dawid poprawia raz i zostaje na stałe.
+CREATE TABLE IF NOT EXISTS zakupy_aliasy (
+  surowy    TEXT PRIMARY KEY,
+  produkt   TEXT NOT NULL,
+  zmieniono TEXT NOT NULL
+);
