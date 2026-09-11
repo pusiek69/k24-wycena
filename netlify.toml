@@ -21,6 +21,29 @@
   status = 301
   force = true
 
+# ADRES TECHNICZNY NETLIFY — 12.09.2026, analiza SEO.
+#
+# `k24-wycena.netlify.app` to darmowy adres, który Netlify nadaje każdemu
+# projektowi. Serwował CAŁĄ stronę pod drugim adresem i — sprawdzone w
+# wynikach wyszukiwania — Google zdążył go zaindeksować: zapytanie o markę
+# pokazywało podstronę bazy wiedzy z domeny netlify.app zamiast z kam24h.pl.
+# Dla wyszukiwarki to dwie kopie tej samej witryny, które konkurują ze sobą
+# o te same frazy.
+#
+# Dlaczego 301, a nie `noindex`: przekierowanie nie tylko usuwa kopię
+# z indeksu, ale i PRZENOSI na kam24h.pl to, co adres zdążył zebrać (linki,
+# sygnały). `noindex` zostawiłby adres żywy i wyrzucił dorobek do kosza.
+#
+# Reguła łapie WYŁĄCZNIE ten jeden host. Podglądy wdrożeń żyją pod adresami
+# `deploy-preview-N--k24-wycena.netlify.app` i `gałąź--k24-wycena.netlify.app`,
+# więc dalej działają normalnie — inaczej stracilibyśmy możliwość obejrzenia
+# zmiany przed wypuszczeniem jej na produkcję.
+[[redirects]]
+  from = "https://k24-wycena.netlify.app/*"
+  to = "https://kam24h.pl/:splat"
+  status = 301
+  force = true
+
 # STARE DOMENY FIRMY — wszystkie prowadzą na kam24h.pl.
 #
 # k24h.pl i kamieniarstwo24h.pl (z „www" i bez) są podpięte w Netlify jako
