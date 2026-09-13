@@ -390,8 +390,74 @@ test('SĄSIEDZI linkują do innych miast, nigdy do siebie', () => {
     const html = blokSasiadow(m, MIASTA);
     assert.ok(!html.includes(`/blaty-kuchenne-${m.slug}"`), `${m.slug} linkuje sam do siebie`);
     const linki = html.match(/\/blaty-kuchenne-[a-z-]+/g) || [];
-    assert.equal(linki.length, 4, `${m.slug}: ma ${linki.length} linków zamiast 4`);
-    assert.equal(new Set(linki).size, 4, `${m.slug}: powtórzony link`);
+    // 4 z automatu (albo z ręcznej listy) + ewentualne jawnie dopięte linki zwrotne.
+    const oczekiwane = m.sasiedzi?.length ?? 4 + (m.dodatkowiSasiedzi?.length ?? 0);
+    assert.ok(linki.length >= 4, `${m.slug}: ma ${linki.length} linków, minimum to 4`);
+    assert.ok(linki.length <= oczekiwane, `${m.slug}: ma ${linki.length} linków, więcej niż ${oczekiwane}`);
+    assert.equal(new Set(linki).size, linki.length, `${m.slug}: powtórzony link`);
+  }
+});
+
+/*
+ * MIELEC — sąsiedzi GEOGRAFICZNI, nie „tak samo daleko od Tarnobrzega"
+ * (13.09.2026). Automat dobierał Opatów, Staszów, Nisko i Sandomierz,
+ * bo leżą ~45 km od zakładu, tak jak Mielec — tyle że 60–90 km od samego
+ * Mielca. Ten test nie pozwoli wrócić do tamtej listy.
+ */
+test('MIELEC linkuje do realnych sąsiadów, z odległością liczoną od Mielca', () => {
+  const html = blokSasiadow(wgSluga('mielec'), MIASTA);
+  const pary = [...html.matchAll(/blaty-kuchenne-([a-z-]+)">[^<]*<\/a>\s*<span class="drobne">([^<]*)/g)]
+    .map(([, slug, opis]) => [slug, opis]);
+
+  assert.deepEqual(
+    pary.map(([slug]) => slug),
+    ['nowa-deba', 'debica', 'tarnobrzeg', 'stalowa-wola'],
+    'Mielec: zła lista sąsiadów'
+  );
+  for (const [slug, opis] of pary) {
+    assert.match(opis, /km od Mielca$/, `Mielec → ${slug}: odległość nie jest liczona od Mielca („${opis}")`);
+  }
+  for (const daleko of ['opatow', 'staszow', 'nisko', 'sandomierz']) {
+    assert.ok(!html.includes(`/blaty-kuchenne-${daleko}"`), `Mielec znów linkuje do odległego: ${daleko}`);
+  }
+});
+
+test('LINKI ZWROTNE do Mielca stoją na stronach Tarnobrzega i Stalowej Woli', () => {
+  for (const slug of ['tarnobrzeg', 'stalowa-wola']) {
+    const html = blokSasiadow(wgSluga(slug), MIASTA);
+    assert.ok(html.includes('href="/blaty-kuchenne-mielec"'), `${slug}: brak linku do Mielca`);
+    // …i ten sam link jest w zbudowanym pliku, nie tylko w generatorze.
+    const plik = fs.readFileSync(new URL(`../blaty-kuchenne-${slug}.html`, import.meta.url), 'utf8');
+    assert.ok(plik.includes('href="/blaty-kuchenne-mielec"'), `${slug}.html: link do Mielca nie trafił do strony`);
+  }
+});
+
+test('SĄSIEDZI: literówka w slugu wywala build, zamiast gubić link po cichu', () => {
+  const zepsute = { ...wgSluga('mielec'), sasiedzi: [{ slug: 'miasto-ktorego-nie-ma', km: 10 }] };
+  assert.throws(() => blokSasiadow(zepsute, MIASTA), /nie ma miasta/);
+});
+
+test('SĄSIEDZI: link do Tarnobrzega nie mówi „0 km od zakładu w Tarnobrzegu"', () => {
+  for (const m of MIASTA) {
+    assert.ok(!blokSasiadow(m, MIASTA).includes('>0 km od'), `${m.slug}: „0 km od naszego zakładu"`);
+  }
+});
+
+/*
+ * IDEMPOTENTNOŚĆ generatora (13.09.2026). Każde `npm run miasta` dokładało
+ * dwie puste linie do każdej strony, a sitemapa brała z tego świeże daty.
+ * Pilnujemy tu skutku: w zbudowanej stronie przed blokiem stoi dokładnie
+ * JEDNA pusta linia, a nie narastający stos.
+ */
+test('GENERATOR jest idempotentny — przed blokiem miasta nie narastają puste linie', () => {
+  for (const m of MIASTA) {
+    const t = fs
+      .readFileSync(new URL(`../blaty-kuchenne-${m.slug}.html`, import.meta.url), 'utf8')
+      .replace(/\r\n/g, '\n');
+    const i = t.indexOf('<!-- BLOKI:MIASTO');
+    assert.ok(i > 0, `${m.slug}: brak bloku miasta`);
+    const przed = t.slice(0, i).match(/\s*$/)[0];
+    assert.equal(przed, '\n\n      ', `${m.slug}: przed blokiem nagromadziły się puste linie`);
   }
 });
 

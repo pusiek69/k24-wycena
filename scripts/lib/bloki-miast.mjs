@@ -188,27 +188,72 @@ ${[dzielnice, okolice].filter(Boolean).join('\n')}
 
 /* ──────────────────────────────────────────────────── sąsiednie miasta */
 
-/**
- * LINKI DO SĄSIADÓW — po odległości między miastami, nie alfabetycznie.
+/*
+ * SĄSIEDZI — linki do stron innych miast.
  *
- * Stopka linkuje do wszystkich miast naraz, więc z punktu widzenia Google
- * każdy taki link waży tyle samo co czterdzieści innych. Link w treści,
- * z sensownym kontekstem („25 km stąd"), waży więcej — i klientowi, który
- * trafił na złe miasto, realnie pomaga.
+ * Po co w treści, skoro stopka i tak linkuje do wszystkich miast: link
+ * w stopce waży dla Google tyle co czterdzieści innych obok, a link w treści
+ * z kontekstem („ok. 30 km od Mielca") waży więcej — i realnie pomaga
+ * klientowi, który trafił na stronę nie swojego miasta.
+ *
+ * ⚠ BŁĄD ZNALEZIONY 13.09.2026 (zgłoszenie Dawida o stronie Mielca).
+ *
+ * Algorytm dobierał „sąsiadów" po PODOBNEJ ODLEGŁOŚCI OD TARNOBRZEGA
+ * (`|x.km − m.km|`), a nie po bliskości geograficznej. To daje pierścień,
+ * nie sąsiedztwo: Mielec leży 45 km od zakładu, więc dostał Opatów,
+ * Staszów, Nisko i Sandomierz — miasta też oddalone o ~45 km od
+ * Tarnobrzega, ale w zupełnie innych kierunkach, 60–90 km od samego
+ * Mielca. Klient z Mielca, który szuka firmy „bliżej", dostawał linki
+ * do miast dalej niż nasz zakład.
+ *
+ * Dane miast nie mają współrzędnych, więc algorytmu nie da się dziś
+ * przestawić na prawdziwą geografię bez dopisania ich do wszystkich
+ * piętnastu miast. Stąd dwa jawne, ręczne mechanizmy, które mają
+ * pierwszeństwo przed automatem:
+ *
+ *   • `sasiedzi: [{ slug, km }]` — pełna lista ustalona ręcznie, z
+ *     odległościami liczonymi OD TEGO MIASTA („ok. 30 km od Mielca");
+ *   • `dodatkowiSasiedzi: ['slug']` — dopięcie linku do automatycznej
+ *     czwórki, np. link zwrotny do Mielca ze stron najmocniejszych miast.
+ *     Etykieta zostaje w stylu automatu (km od zakładu w Tarnobrzegu),
+ *     żeby w jednej liście nie mieszać dwóch punktów odniesienia.
+ *
+ * Literówka w slugu wywala build, zamiast po cichu zgubić link.
  */
 export function blokSasiadow(m, miasta) {
-  const sasiedzi = miasta
-    .filter((x) => x.slug !== m.slug)
-    .map((x) => ({ ...x, roznica: Math.abs(x.km - m.km) }))
-    .sort((a, b) => a.roznica - b.roznica)
-    .slice(0, 4);
-  if (!sasiedzi.length) return '';
+  const wgSluga = new Map(miasta.map((x) => [x.slug, x]));
+  const znajdz = (slug) => {
+    const x = wgSluga.get(slug);
+    if (!x) throw new Error(`blokSasiadow(${m.slug}): nie ma miasta „${slug}"`);
+    if (slug === m.slug) throw new Error(`blokSasiadow(${m.slug}): miasto nie może linkować do siebie`);
+    return x;
+  };
+  // „0 km od naszego zakładu w Tarnobrzegu" przy linku do Tarnobrzega brzmi
+  // jak błąd — tam po prostu JEST zakład, więc mówimy to wprost.
+  const odZakladu = (x) =>
+    x.km === 0 ? 'tu jest nasz zakład' : `${x.km} km od naszego zakładu w Tarnobrzegu`;
 
-  const pozycje = sasiedzi
+  let pozycje;
+  if (m.sasiedzi?.length) {
+    pozycje = m.sasiedzi.map(({ slug, km }) => ({ x: znajdz(slug), opis: `ok. ${km} km od ${m.doMiasta}` }));
+  } else {
+    const auto = miasta
+      .filter((x) => x.slug !== m.slug)
+      .map((x) => ({ ...x, roznica: Math.abs(x.km - m.km) }))
+      .sort((a, b) => a.roznica - b.roznica)
+      .slice(0, 4);
+    const dodatkowi = (m.dodatkowiSasiedzi || [])
+      .filter((slug) => !auto.some((a) => a.slug === slug))
+      .map(znajdz);
+    pozycje = [...auto, ...dodatkowi].map((x) => ({ x, opis: odZakladu(x) }));
+  }
+  if (!pozycje.length) return '';
+
+  const lista = pozycje
     .map(
-      (x) => `          <li>
+      ({ x, opis }) => `          <li>
             <a href="/blaty-kuchenne-${x.slug}">Blaty kuchenne ${x.nazwa}</a>
-            <span class="drobne">${x.km} km od naszego zakładu w Tarnobrzegu</span>
+            <span class="drobne">${opis}</span>
           </li>`
     )
     .join('\n');
@@ -216,7 +261,7 @@ export function blokSasiadow(m, miasta) {
   return `      <section class="miasto-sasiedzi" aria-labelledby="sasiedzi-${m.slug}">
         <h2 id="sasiedzi-${m.slug}">Blaty kamienne w sąsiednich miastach</h2>
         <ul class="lista-sasiadow">
-${pozycje}
+${lista}
         </ul>
       </section>`;
 }

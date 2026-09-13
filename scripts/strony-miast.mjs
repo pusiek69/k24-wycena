@@ -252,8 +252,29 @@ const STARY_DO = '      <!-- /OKOLICE:MIASTO -->';
  * do innych miast dla kogoś, kto trafił na złą stronę.
  */
 function wstawOkolice(t, m) {
+  /*
+   * ⚠ BYŁ BŁĄD (znaleziony 13.09.2026): generator nie był IDEMPOTENTNY.
+   *
+   * Stary wzorzec usuwał blok razem z JEDNYM znakiem nowej linii przed nim,
+   * ale zostawiał wcięcie linii ze znacznikiem i pustą linię wokół. Wstawienie
+   * dokładało potem własne odstępy — i każde `npm run miasta` dopisywało
+   * dwie puste linie do KAŻDEJ z piętnastu stron.
+   *
+   * Dlaczego to nie kosmetyka: `npm run sitemap` bierze datę `lastmod`
+   * z ostatniego commitu pliku. Strona, w której przybyło tylko pustych
+   * linii, dostawała świeżą datę — czyli mówiliśmy Google „ta strona się
+   * zmieniła" o stronie, w której nie zmieniło się nic.
+   *
+   * MINI-LEKCJA: idempotentność. Operacja jest idempotentna, jeśli wykonana
+   * drugi raz niczego już nie zmienia. Generator treści MUSI taki być —
+   * inaczej samo jego uruchomienie staje się „zmianą". Gwarantuje to tu
+   * symetria: usunięcie zjada CAŁY biały znak przed blokiem (także śmieci
+   * nagromadzone przez wcześniejsze przebiegi) i zostawia nietknięte „\n\n"
+   * za nim, a wstawienie niżej zawsze odtwarza dokładnie ten sam układ.
+   * Pilnuje tego test w scripts/test-miasta.mjs.
+   */
   for (const [od, doo] of [[STARY_OD, STARY_DO], [OKOLICE_OD, OKOLICE_DO]]) {
-    t = t.replace(new RegExp(`\\n?${od.trim()}[\\s\\S]*?${doo.trim()}`), '');
+    t = t.replace(new RegExp(`\\s*${od.trim()}[\\s\\S]*?${doo.trim()}[ \\t]*`), '');
   }
 
   const sekcje = [

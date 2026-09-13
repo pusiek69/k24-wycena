@@ -18,6 +18,8 @@ export const MIASTA = [
   {
     slug: 'tarnobrzeg', nazwa: 'Tarnobrzeg', wMiescie: 'Tarnobrzegu', doMiasta: 'Tarnobrzega',
     km: 0, nowa: false, daleko: false,
+    // Link zwrotny do Mielca — miasta priorytetowego — z najmocniejszej strony.
+    dodatkowiSasiedzi: ['mielec'],
     tytul: 'Blaty kuchenne Tarnobrzeg — blat z kamienia na wymiar',
     opis:
       'Blaty kuchenne Tarnobrzeg — konglomerat, spiek i granit na wymiar. Zakład przy ' +
@@ -35,7 +37,13 @@ export const MIASTA = [
     okolice: ['Dwikozy', 'Zawichost', 'Koprzywnica', 'Klimontów', 'Obrazów', 'Samborzec'],
     dzielnice: ['Stare Miasto', 'Nadbrzezie', 'Mokoszyn', 'Gołębice', 'Krakówka', 'Kamień Plebański'],
   },
-  { slug: 'stalowa-wola', nazwa: 'Stalowa Wola', wMiescie: 'Stalowej Woli', doMiasta: 'Stalowej Woli', km: 20, nowa: false, daleko: false },
+  {
+    slug: 'stalowa-wola', nazwa: 'Stalowa Wola', wMiescie: 'Stalowej Woli', doMiasta: 'Stalowej Woli',
+    km: 20, nowa: false, daleko: false,
+    // Link zwrotny do Mielca (13.09.2026) — Stalowa Wola to jedna z dwóch
+    // najmocniejszych stron miast, a automat Mielca tu nie dobierał.
+    dodatkowiSasiedzi: ['mielec'],
+  },
   /*
    * MIELEC — miasto priorytetowe (Dawid, 06.09.2026: „na tym najbardziej").
    *
@@ -48,6 +56,15 @@ export const MIASTA = [
   {
     slug: 'mielec', nazwa: 'Mielec', wMiescie: 'Mielcu', doMiasta: 'Mielca',
     km: 45, nowa: false, daleko: false,
+    // Sąsiedzi ustaleni ręcznie (13.09.2026, Dawid): automat dobierał miasta
+    // ~45 km od TARNOBRZEGA (Opatów, Staszów, Nisko, Sandomierz), czyli
+    // 60–90 km od samego Mielca. Odległości poniżej liczone OD MIELCA.
+    sasiedzi: [
+      { slug: 'nowa-deba', km: 25 },
+      { slug: 'debica', km: 30 },
+      { slug: 'tarnobrzeg', km: 45 },
+      { slug: 'stalowa-wola', km: 55 },
+    ],
     tytul: 'Blaty kuchenne Mielec — blat kamienny, konglomerat, granit',
     opis:
       'Blaty kuchenne Mielec — blat kamienny na wymiar: konglomerat, spiek i granit. ' +

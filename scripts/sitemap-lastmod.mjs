@@ -33,14 +33,47 @@ function doPliku(url) {
   return czyKatalog ? `${sciezka}/index.html` : `${sciezka}.html`;
 }
 
-/** Data ostatniego commitu pliku (YYYY-MM-DD) albo null, gdy plik nieznany. */
+/**
+ * Data ostatniego commitu, który zmienił TREŚĆ pliku (YYYY-MM-DD), albo null.
+ *
+ * ⚠ ZMIANA 13.09.2026. Wcześniej brana była data ostatniego commitu
+ * JAKIEGOKOLWIEK. Tego dnia wyszło, że generator stron miast dopisywał puste
+ * linie przy każdym uruchomieniu — a sprzątnięcie ich w commicie dałoby
+ * jedenastu stronom świeży `lastmod`, choć nie zmieniło się w nich ani jedno
+ * słowo. To dokładnie ten fałszywy sygnał „strona się zmieniła", z którym
+ * walczyliśmy w sitemapie tydzień wcześniej, tylko w odwrotną stronę.
+ *
+ * Dlatego idziemy po historii pliku od najnowszego commitu i bierzemy
+ * pierwszy, którego diff NIE jest pusty po zignorowaniu białych znaków
+ * i pustych linii (`-w --ignore-blank-lines`). Commit czysto formatujący
+ * po prostu nie liczy się jako zmiana strony.
+ */
 function dataZGita(plik) {
+  const git = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' });
   try {
-    const out = execFileSync('git', ['log', '-1', '--format=%cs', '--', plik], {
-      cwd: ROOT,
-      encoding: 'utf8',
-    }).trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
+    const historia = git(['log', '--format=%H %cs', '--', plik])
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => l.split(' '));
+    if (!historia.length) return null;
+
+    for (const [hash, data] of historia) {
+      // Pierwszy commit pliku (brak rodzica) zawsze jest zmianą treści.
+      let rodzic;
+      try {
+        rodzic = git(['rev-parse', '--verify', '--quiet', `${hash}^`]).trim();
+      } catch {
+        return data;
+      }
+      const roznica = git([
+        'diff', '-w', '--ignore-blank-lines', '--name-only', rodzic, hash, '--', plik,
+      ]).trim();
+      if (roznica) return /^\d{4}-\d{2}-\d{2}$/.test(data) ? data : null;
+    }
+    // Sama historia formatowania — bierzemy najstarszy commit.
+    const najstarszy = historia[historia.length - 1][1];
+    return /^\d{4}-\d{2}-\d{2}$/.test(najstarszy) ? najstarszy : null;
   } catch {
     return null;
   }
