@@ -20,10 +20,12 @@ export const MIASTA = [
     km: 0, nowa: false, daleko: false,
     // Link zwrotny do Mielca — miasta priorytetowego — z najmocniejszej strony.
     dodatkowiSasiedzi: ['mielec'],
-    tytul: 'Blaty kuchenne Tarnobrzeg — blat z kamienia na wymiar',
+    // Tytuł i opis pod „blaty kuchenne kamienne tarnobrzeg" (poz. 6,5, 0 klik.)
+    // i „blaty granitowe tarnobrzeg" (Ignikom #1) — zmiana z 14.09.2026.
+    tytul: 'Blaty kuchenne kamienne Tarnobrzeg — granit, spiek, kwarc',
     opis:
-      'Blaty kuchenne Tarnobrzeg — konglomerat, spiek i granit na wymiar. Zakład przy ' +
-      'ul. Szpitalnej 8: płyty można obejrzeć na hali, pomiar Prolinerem bezpłatny.',
+      'Blaty kuchenne kamienne Tarnobrzeg — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      'Zakład przy ul. Szpitalnej 8, płyty do obejrzenia na hali, pomiar bezpłatny.',
     okolice: ['Baranów Sandomierski', 'Gorzyce', 'Grębów', 'Zaleszany', 'Radomyśl nad Sanem'],
     dzielnice: ['Dzików', 'Mokrzyszów', 'Wielowieś', 'Miechocin', 'Sobów', 'Zakrzów', 'Serbinów', 'Sielec', 'Nagnajów'],
   },
