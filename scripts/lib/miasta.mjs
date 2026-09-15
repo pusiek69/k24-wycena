@@ -163,7 +163,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
     opis:
       'Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Ok. 130 km od zakładu w Tarnobrzegu, pomiar i montaż, dojazd ustalany indywidualnie.',
+      'Ok. 130 km od Tarnobrzega, pomiar i montaż, dojazd ustalany indywidualnie.',
   },
 
   // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────
