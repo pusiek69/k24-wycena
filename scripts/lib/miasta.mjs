@@ -116,7 +116,14 @@ export const MIASTA = [
   { slug: 'kielce', nazwa: 'Kielce', wMiescie: 'Kielcach', doMiasta: 'Kielc', km: 110, nowa: false, daleko: true },
   { slug: 'nisko', nazwa: 'Nisko', wMiescie: 'Nisku', doMiasta: 'Niska', km: 30, nowa: false, daleko: false },
   { slug: 'nowa-deba', nazwa: 'Nowa Dęba', wMiescie: 'Nowej Dębie', doMiasta: 'Nowej Dęby', km: 20, nowa: false, daleko: false },
-  { slug: 'debica', nazwa: 'Dębica', wMiescie: 'Dębicy', doMiasta: 'Dębicy', km: 75, nowa: false, daleko: false },
+  {
+    slug: 'debica', nazwa: 'Dębica', wMiescie: 'Dębicy', doMiasta: 'Dębicy', km: 75, nowa: false, daleko: false,
+    // Pod „blaty kuchenne kamienne dębica" (poz. 9,6, 0 klik.) — zmiana z 15.09.2026.
+    tytul: 'Blaty kuchenne kamienne Dębica — granit, spiek, konglomerat',
+    opis:
+      'Blaty kuchenne kamienne Dębica — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      'Ok. 75 km od zakładu w Tarnobrzegu, pomiar Prolinerem i montaż jednym wyjazdem.',
+  },
   { slug: 'opatow', nazwa: 'Opatów', wMiescie: 'Opatowie', doMiasta: 'Opatowa', km: 50, nowa: false, daleko: false },
 
   // ── nowe (zlecenie Dawida, 25.08.2026) ──────────────────────────────
@@ -152,6 +159,11 @@ export const MIASTA = [
     km: 130, nowa: true, daleko: true,
     czas: 'około dwóch godzin drogi',
     krotki: 'Dalej niż nasz standardowy promień — warunki dojazdu ustalamy indywidualnie.',
+    // Pod „blaty kuchenne kamienne lublin" (11,4 / 12 wyśw.) i „blaty lublin" — zmiana z 15.09.2026.
+    tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
+    opis:
+      'Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      'Ok. 130 km od zakładu w Tarnobrzegu, pomiar i montaż, dojazd ustalany indywidualnie.',
   },
 
   // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────
