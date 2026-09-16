@@ -488,6 +488,163 @@ function etykietaOdcinkaWiersz(o, i, odswiez) {
 }
 
 /**
+ * WPROWADZANIE GŁOSOWE W EDYTORZE (zlecenie Dawida, 16.09.2026).
+ *
+ * „Mówię imię, nazwisko, email, telefon, wymiary blatów, a na tej podstawie
+ *  uzupełniają się dane w kalkulatorze."
+ *
+ * W edytorze klient jest już znany (karta #N), więc z całego dyktanda
+ * bierzemy to, czego tu naprawdę brakuje: WYMIARY ODCINKÓW razem z nazwami.
+ * Dane osobowe wpisuje się w panelu, przy „+ Dodaj klienta".
+ *
+ * Mowę na tekst zamienia sama przeglądarka (Web Speech API) — dźwięk nie
+ * opuszcza komputera, do workera idzie gotowy tekst. Bez obsługi mikrofonu
+ * (Firefox, stare przeglądarki) bloku po prostu nie ma.
+ */
+const PODPOWIEDZ_MIKROFONU =
+  'Kliknij i podyktuj wymiary, np. „blat trzysta na sześćdziesiąt, wyspa dwieście na dziewięćdziesiąt".';
+
+/** Jedno rozpoznawanie na ekran — trzymane poza stanem, bo to urządzenie. */
+let sluchEdytora = null;
+
+function blokDyktanda(stan, paczka, odswiez) {
+  const Mowa =
+    typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  if (!Mowa) return null;
+
+  /*
+   * Każde przerysowanie edytora wymienia węzły tego bloku. Gdyby nasłuch
+   * przeżył podmianę, pisałby transkrypt po elementach, których nie ma już
+   * na ekranie — mikrofon byłby włączony, a nie byłoby tego widać.
+   */
+  if (sluchEdytora) {
+    try {
+      sluchEdytora.abort();
+    } catch {
+      /* już zamknięty */
+    }
+    sluchEdytora = null;
+  }
+
+  const d = (stan.dyktando = stan.dyktando || { info: PODPOWIEDZ_MIKROFONU, przed: null });
+  const info = h('span', { class: 'dy-info' }, d.info);
+  const slychac = h('div', { class: 'dy-slychac' });
+  const przycisk = h('button', { class: 'dy-btn', type: 'button' }, '\u{1F3A4} Wpisz głosowo');
+  const powiedz = (t) => ((d.info = t), (info.textContent = t));
+
+  async function rozpoznaj(tekst) {
+    powiedz('Rozpoznaję…');
+    let odp = null;
+    try {
+      const r = await fetch(`${API_BASE}/dyktando`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          tekst,
+          leadId: paczka.leadId,
+          exp: paczka.exp,
+          podpis: paczka.podpis,
+        }),
+      });
+      odp = await r.json();
+    } catch {
+      powiedz('Brak połączenia — wpisz wymiary ręcznie.');
+      return;
+    }
+    if (odp?.error) return powiedz(odp.error);
+
+    const odcinki = odp?.dane?.odcinki || [];
+    if (!odcinki.length)
+      return powiedz('Nie usłyszałem wymiarów — powiedz np. „blat trzysta na sześćdziesiąt".');
+
+    /*
+     * Podmieniamy KOMPLET odcinków, bo blat dyktuje się w całości —
+     * dopisywanie do listy dawałoby przy drugim podejściu podwójne blaty.
+     * Poprzednie wymiary zostają pod „Cofnij": przesłyszany mikrofon nie
+     * ma prawa bezpowrotnie skasować tego, co klient podał w kalkulatorze.
+     */
+    d.przed = stan.odcinki;
+    stan.odcinki = odcinki.map((o) => ({ ...o, zGlosu: true }));
+    d.info = `Wpisałem: ${odcinki.map(opisOdcinkaZWymiarem).join(' + ')} cm. Sprawdź i popraw.`;
+    odswiez();
+  }
+
+  przycisk.addEventListener('click', () => {
+    if (sluchEdytora) return sluchEdytora.stop(); // drugie kliknięcie = koniec
+
+    let slyszane = '';
+    let porzucone = false;
+    const r = new Mowa();
+    r.lang = 'pl-PL';
+    r.continuous = true; // dyktuje się kilka odcinków naraz, nie jedno słowo
+    r.interimResults = true; // podgląd na żywo — widać, że mikrofon słucha
+
+    r.onresult = (e) => {
+      let wstepne = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) slyszane += e.results[i][0].transcript;
+        else wstepne += e.results[i][0].transcript;
+      }
+      slychac.replaceChildren(slyszane, h('span', { class: 'dy-niepewne' }, wstepne));
+    };
+    r.onerror = (e) => {
+      porzucone = true; // żeby `onend` nie nadpisał tego komunikatu
+      powiedz(
+        e.error === 'not-allowed' || e.error === 'service-not-allowed'
+          ? 'Przeglądarka nie dała dostępu do mikrofonu — kliknij kłódkę przy adresie i zezwól.'
+          : `Mikrofon nie zadziałał (${e.error}) — wpisz ręcznie.`
+      );
+    };
+    r.onend = () => {
+      sluchEdytora = null;
+      przycisk.classList.remove('nagrywa');
+      przycisk.textContent = '\u{1F3A4} Wpisz głosowo';
+      if (porzucone) return;
+      if (slyszane.trim()) rozpoznaj(slyszane);
+      else powiedz('Nic nie usłyszałem — spróbuj jeszcze raz.');
+    };
+
+    try {
+      r.start();
+    } catch {
+      return powiedz('Nie udało się włączyć mikrofonu.');
+    }
+    sluchEdytora = r;
+    przycisk.classList.add('nagrywa');
+    przycisk.textContent = '\u25A0 Zakończ i rozpoznaj';
+    powiedz('Słucham… mów spokojnie, potem kliknij „Zakończ".');
+  });
+
+  return h(
+    'div',
+    { class: 'dy-blok' },
+    h(
+      'div',
+      { class: 'dy-pasek' },
+      przycisk,
+      info,
+      d.przed
+        ? h(
+            'button',
+            {
+              class: 'link-btn',
+              type: 'button',
+              onclick: () => {
+                stan.odcinki = d.przed;
+                d.przed = null;
+                d.info = 'Przywróciłem poprzednie odcinki.';
+                odswiez();
+              },
+            },
+            'Cofnij'
+          )
+        : null
+    ),
+    slychac
+  );
+}
+
+/**
  * DODATKI I USŁUGI Z CENNIKA (zlecenie Dawida, 16.09.2026).
  *
  * Wszystkie pozycje liczone sztukowo, od metra albo od dnia — ociekacze,
@@ -718,26 +875,29 @@ function rysuj(box, stan, paczka) {
 
       /* ── odcinki ── */
       h('div', { class: 'q-kicker', style: 'margin-top:16px' }, 'Odcinki blatu (głębokość × długość, cm)'),
+      blokDyktanda(stan, paczka, odswiez),
       h(
         'div',
         {},
         ...stan.odcinki.map((o, i) =>
           h(
             'div',
-            { class: 'od-odcinek-blok' },
+            // Podswietlenie znika, gdy Dawid tknie wymiar recznie — ma mowic
+            // „tego nie pisales ty", a nie zostawac na ekranie na zawsze.
+            { class: 'od-odcinek-blok' + (o.zGlosu ? ' zglosu' : '') },
             h(
               'div',
               { class: 'od-odcinek' },
               h('input', {
                 type: 'number', inputmode: 'numeric', value: o.gl || '',
                 'aria-label': 'głębokość', placeholder: 'głęb.',
-                onchange: (e) => ((o.gl = Number(e.target.value)), odswiez()),
+                onchange: (e) => ((o.gl = Number(e.target.value)), delete o.zGlosu, odswiez()),
               }),
               h('span', {}, '×'),
               h('input', {
                 type: 'number', inputmode: 'numeric', value: o.dl || '',
                 'aria-label': 'długość', placeholder: 'dług.',
-                onchange: (e) => ((o.dl = Number(e.target.value)), odswiez()),
+                onchange: (e) => ((o.dl = Number(e.target.value)), delete o.zGlosu, odswiez()),
               }),
               stan.odcinki.length > 1
                 ? h('button', { class: 'link-btn', type: 'button', onclick: () => (stan.odcinki.splice(i, 1), odswiez()) }, '✕')

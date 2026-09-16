@@ -67,11 +67,29 @@ ok(
 const domyslne = czytaj('src/firms/_domyslne.js');
 ok(4, 'płyta 320 × 160, zapas 10%', domyslne.includes('w: 320, h: 160') && czytaj('src/firms/avant-quartz.js').includes('narzutOdpad: 0.1'));
 
-/* 5. Zawsze zlew 650 + indukcja 250 */
+/* 5. Zawsze zlew i płyta grzewcza — bez wariantu „brak"
+ *
+ * Kwoty stały tu na sztywno (650 i 250) do 16.09.2026, kiedy Dawid przysłał
+ * zdjęcie swojego cennika i stawki poszły za nim. Pilnuje ich teraz
+ * `scripts/test-cennik-uslug.mjs` — pozycja po pozycji, wprost z tamtej
+ * tabeli, razem z przelicznikiem VAT. Powtarzanie ich TUTAJ dawało tylko
+ * tyle, że po każdej zmianie cennika checklista świeciła się na czerwono
+ * bez żadnej usterki.
+ *
+ * Zostaje to, czego tamten test nie sprawdza, a co jest istotą §8.5:
+ * obie pozycje są OBOWIĄZKOWE, każdy ich wariant ma cenę i nigdzie nie ma
+ * wariantu „brak" — klient nie może wyklikać wyceny bez wycięcia.
+ */
+const { OPCJE: OPCJE_SPEC } = await import('../src/firms/_domyslne.js');
+const zawszeWWycenie = ['zlew', 'plyta'].every((id) => {
+  const o = OPCJE_SPEC.find((x) => x.id === id);
+  return o && o.wymagane === true && o.warianty?.length && o.warianty.every((w) => w.cena > 0);
+});
 ok(
   5,
   'zlew i płyta grzewcza zawsze w wycenie (bez wariantu „brak")',
-  domyslne.includes('cena: 650') && domyslne.includes('cena: 250') && !domyslne.includes("id: 'brak'")
+  zawszeWWycenie && !domyslne.includes("id: 'brak'"),
+  'kwoty pilnuje test-cennik-uslug.mjs, wprost z cennika Dawida'
 );
 
 /* 6. Mat 60 zł/m² */

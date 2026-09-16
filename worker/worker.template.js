@@ -10,6 +10,8 @@
  *    POST /chat     — rozmowa z konsultantem (klucz Anthropic zostaje tutaj)
  *    POST /lead     — dwa maile przez Resend: wycena do klienta + zgłoszenie do firmy
  *    POST /feedback — odpowiedź klienta na pokazaną wycenę (do bazy klientów)
+ *    POST /dyktando — transkrypt z mikrofonu → pola formularza (edytor właściciela,
+ *                     za podpisem z panelu; klucz Anthropic zostaje tutaj)
  *    POST /oferta/dane   — wycena online po tokenie (strona /oferta na kam24h.pl)
  *    POST /oferta/wyslij — zapis wersji Dawida + mail do klienta (token z panelu)
  *    POST /magazyn  — stan magazynowy Interstone (podgląd/diagnostyka; ten sam
@@ -33,6 +35,7 @@
  */
 
 import { obsluzPanel, podpisz } from './panel.js';
+import { rozpoznajDyktando } from './dyktando.js';
 import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
@@ -143,6 +146,7 @@ export default {
       if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
       if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors);
+      if (sciezka === '/dyktando') return await obsluzDyktando(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       if (sciezka === '/wyprzedaz') return await obsluzWyprzedaz(request, env, cors);
       return json({ error: 'Nieznany adres.' }, 404, cors);
@@ -552,9 +556,37 @@ async function obsluzUstawienia(env, cors) {
   }
 }
 
-async function tokenWlasciciela(env, leadId, exp, podpisKlienta) {
+/**
+ * WPROWADZANIE GŁOSOWE W EDYTORZE WŁAŚCICIELA (zlecenie Dawida, 16.09.2026).
+ *
+ * Bliźniak `/panel/api/dyktando`, tylko z inną bramką: edytor stoi na
+ * kam24h.pl, więc ciasteczko panelu (Path=/panel) tu nie dojedzie.
+ * Autoryzuje ten sam podpis właściciela, którym edytor zapisuje ofertę —
+ * bez niego każdy mógłby wołać model za pieniądze Dawida.
+ *
+ * Odpowiedź wraca do przeglądarki i wpada w pola. Nic się nie zapisuje.
+ */
+async function obsluzDyktando(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!(await tokenWlasciciela(env, d?.leadId, d?.exp, d?.podpis, true)))
+    return json({ error: 'Link wygasł — otwórz wycenę z panelu jeszcze raz.' }, 403, cors);
+
+  const wynik = await rozpoznajDyktando(env, d?.tekst);
+  if (!wynik.ok) return json({ error: wynik.blad }, 400, cors);
+  return json({ ok: true, dane: wynik.dane }, 200, cors);
+}
+
+async function tokenWlasciciela(env, leadId, exp, podpisKlienta, dopuscTestowa = false) {
   if (!env.PANEL_HASLO) return false;
-  if (!leadId || !exp || Number(exp) < Date.now()) return false;
+  /*
+   * `leadId === 0` to WYCENA TESTOWA z panelu — nie ma karty klienta, więc
+   * trasy zapisujące muszą ją odrzucać (i odrzucają: domyślnie `false`).
+   * Dyktando niczego nie zapisuje, a podpis i tak dowodzi, że żądanie
+   * wyszło z panelu — dlatego tam wpuszczamy ją jawnym argumentem.
+   */
+  const id = Number(leadId);
+  if (!Number.isFinite(id) || id < 0 || (id === 0 && !dopuscTestowa)) return false;
+  if (!exp || Number(exp) < Date.now()) return false;
   const wzor = await podpisz(env.PANEL_HASLO, `oferta|${leadId}|${exp}`);
   const podany = String(podpisKlienta || '');
   if (podany.length !== wzor.length) return false;

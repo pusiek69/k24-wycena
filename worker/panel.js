@@ -34,6 +34,7 @@ import {
   ustawDostawce,
 } from './zakupy.js';
 import { TEMAT_DO_KLIENTA, mailDoKlienta } from './mail-rozmowa.js';
+import { rozpoznajDyktando } from './dyktando.js';
 
 import {
   STATUSY,
@@ -119,6 +120,8 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/karta') return await apiKarta(request, env);
   if (sciezka === '/panel/api/zmien' && request.method === 'POST') return await apiZmien(request, env);
   // Klient z biura wpisywany ręcznie (zlecenie Dawida, 16.09.2026).
+  if (sciezka === '/panel/api/dyktando' && request.method === 'POST')
+    return await apiDyktando(request, env);
   if (sciezka === '/panel/api/klient' && request.method === 'POST')
     return await apiKlientNowy(request, env);
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
@@ -391,6 +394,23 @@ async function apiKarta(request, env) {
       });
   }
   return json(k);
+}
+
+/**
+ * WPROWADZANIE GŁOSOWE — transkrypt z mikrofonu na pola formularza.
+ *
+ * Trasa siedzi POD `/panel`, bo ciasteczko logowania ma `Path=/panel`
+ * i tylko tutaj w ogóle dojeżdża. To jest zarazem cała autoryzacja:
+ * bez hasła panelu nikt nie wywoła modelu za pieniądze Dawida.
+ *
+ * Nic nie zapisujemy — odpowiedź wraca do formularza, a zapis to osobne
+ * kliknięcie w `/panel/api/klient`.
+ */
+async function apiDyktando(request, env) {
+  const d = await request.json().catch(() => null);
+  const wynik = await rozpoznajDyktando(env, d?.tekst);
+  if (!wynik.ok) return json({ error: wynik.blad }, 400);
+  return json({ ok: true, dane: wynik.dane });
 }
 
 /**
@@ -816,6 +836,17 @@ letter-spacing:.05em;border-color:transparent}
 .nowy-klient .dwie{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
 .nowy-klient label.kratka{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--tekst)}
 .nowy-klient label.kratka input{width:auto}
+/* Wprowadzanie glosowe (16.09.2026). Ramka celowo skromna — to pomoc
+   przy formularzu, a nie osobny ekran. */
+.dyktando{border:1px dashed var(--linia);border-radius:10px;padding:.55rem .7rem;margin:0 0 .7rem}
+.dyktando .mikrofon{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.dyktando .slychac{margin-top:.5rem;font-size:.9rem;line-height:1.45;color:var(--tekst);
+white-space:pre-wrap;word-break:break-word}
+.dyktando .slychac:empty{display:none}
+.dyktando .niepewne{color:var(--szary)}
+.btn.nagrywa{background:var(--czerwony);color:#fff}
+/* Pola wypelnione z mikrofonu — zeby od razu bylo widac, czego nie pisala reka. */
+.zglosu{outline:2px solid var(--zielony);outline-offset:1px}
 .dzwon.dzwon-stop{opacity:.45;text-decoration:line-through}
 .plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
 border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
@@ -1051,13 +1082,149 @@ function rysuj(){
  */
 var recznyOtwarty = false;
 
+/* ═══════════ WPROWADZANIE GLOSOWE (zlecenie Dawida, 16.09.2026) ═══════════
+ *
+ * „Mowie imie, nazwisko, email, telefon, wymiary blatow, a na tej podstawie
+ *  uzupelniaja sie dane w kalkulatorze."
+ *
+ * Mowe na tekst zamienia SAMA PRZEGLADARKA (Web Speech API): nic nie kosztuje
+ * i zaden dzwiek nie opuszcza komputera. Do workera idzie dopiero TEKST,
+ * a model rozbiera go na pola (/panel/api/dyktando).
+ *
+ * Wynik LADUJE W POLACH, nie w bazie. Zapis to osobne kliknięcie — dzieki
+ * temu przeslyszany numer telefonu Dawid poprawia, zamiast go szukac.
+ *
+ * Bez obslugi mikrofonu (Firefox, stare przegladarki) przycisku po prostu
+ * nie ma, a formularz dziala dokladnie tak, jak dzialal.
+ */
+var Mowa = window.SpeechRecognition || window.webkitSpeechRecognition;
+var sluch = null, slyszane = '', porzucone = false;
+
+function mikrofonHtml(){
+  if(!Mowa) return '';
+  return '<div class="dyktando">' +
+    '<div class="mikrofon">' +
+      '<button class="btn" type="button" id="dy-start">&#127908; Wprowadź głosowo</button>' +
+      '<span class="mini" id="dy-info">Kliknij, powiedz dane klienta, kliknij drugi raz.</span>' +
+    '</div><div class="slychac" id="dy-slychac"></div></div>';
+}
+
+function dyInfo(t){ var e = document.getElementById('dy-info'); if(e) e.textContent = t; }
+
+function dyPrzycisk(nagrywa){
+  var b = document.getElementById('dy-start');
+  if(!b) return;
+  if(nagrywa){ b.classList.add('nagrywa'); b.textContent = '■ Zakończ i rozpoznaj'; }
+  else { b.classList.remove('nagrywa'); b.textContent = '🎤 Wprowadź głosowo'; }
+}
+
+/* Zwiniecie formularza w trakcie mowienia nie moze zostawic wlaczonego
+   mikrofonu ani wyslac tego, co akurat zdazyl uslyszec. */
+function zatrzymajMikrofon(){
+  if(!sluch) return;
+  porzucone = true;
+  try { sluch.abort(); } catch(e){}
+  sluch = null;
+  dyPrzycisk(false);
+}
+
+function przelaczMikrofon(){
+  if(sluch){ sluch.stop(); return; }   // drugie klikniecie = koniec dyktowania
+
+  slyszane = '';
+  porzucone = false;
+  var r = new Mowa();
+  r.lang = 'pl-PL';
+  r.continuous = true;      // Dawid mowi kilka zdan, nie jedno haslo
+  r.interimResults = true;  // podglad na zywo — widac, ze mikrofon slucha
+
+  r.onresult = function(e){
+    var pewne = '', wstepne = '';
+    for(var i = e.resultIndex; i < e.results.length; i++){
+      if(e.results[i].isFinal) pewne += e.results[i][0].transcript;
+      else wstepne += e.results[i][0].transcript;
+    }
+    slyszane += pewne;
+    var box = document.getElementById('dy-slychac');
+    if(box) box.innerHTML = esc(slyszane) +
+      (wstepne ? '<span class="niepewne">' + esc(wstepne) + '</span>' : '');
+  };
+
+  r.onerror = function(e){
+    porzucone = true;   // zeby onend nie nadpisal tego komunikatu
+    dyInfo(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+      ? 'Przeglądarka nie dała dostępu do mikrofonu — kliknij kłódkę przy adresie i zezwól.'
+      : 'Mikrofon nie zadziałał (' + e.error + ') — wpisz ręcznie.');
+  };
+
+  r.onend = function(){
+    sluch = null;
+    dyPrzycisk(false);
+    if(porzucone) return;
+    if(slyszane.trim()) rozpoznajGlos(slyszane);
+    else dyInfo('Nic nie usłyszałem — spróbuj jeszcze raz.');
+  };
+
+  try { r.start(); } catch(e){ dyInfo('Nie udało się włączyć mikrofonu.'); return; }
+  sluch = r;
+  dyPrzycisk(true);
+  dyInfo('Słucham… mów spokojnie, potem kliknij „Zakończ".');
+}
+
+async function rozpoznajGlos(tekst){
+  dyInfo('Rozpoznaję…');
+  var odp;
+  try {
+    odp = await (await fetch('/panel/api/dyktando', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify({ tekst: tekst })
+    })).json();
+  } catch(e){ dyInfo('Brak połączenia — wpisz ręcznie.'); return; }
+  if(odp.error){ dyInfo(odp.error); return; }
+  wpiszZDyktanda(odp.dane);
+}
+
+function wpiszZDyktanda(d){
+  if(!d){ dyInfo('Nic nie rozpoznałem — wpisz ręcznie.'); return; }
+  var wpisane = [];
+
+  function wstaw(id, wartosc, nazwa){
+    if(!wartosc) return;
+    var e = document.getElementById(id);
+    if(!e) return;
+    e.value = wartosc;
+    // Lista wyboru odrzuca wartosc, ktorej nie ma wsrod opcji — wtedy
+    // udawanie, ze cos wpisalismy, byloby klamstwem na ekranie.
+    if(e.value !== wartosc) return;
+    e.classList.add('zglosu');
+    wpisane.push(nazwa);
+  }
+
+  wstaw('rk-imie', d.imie, 'imię i nazwisko');
+  wstaw('rk-telefon', d.telefon, 'telefon');
+  wstaw('rk-email', d.email, 'e-mail');
+  wstaw('rk-miejscowosc', d.miejscowosc, 'miejscowość');
+  wstaw('rk-temat', d.temat, 'temat');
+  /* Wymiary nie maja w tym formularzu wlasnej rubryki (odcinki wpisuje sie
+     dopiero w wycenie) — ida do notatki, zeby nie przepadly. */
+  wstaw('rk-notatka', [d.notatka, d.wymiary].filter(Boolean).join(' '),
+    d.wymiary ? 'notatka z wymiarami' : 'notatka');
+
+  dyInfo(wpisane.length
+    ? 'Wpisałem: ' + wpisane.join(', ') + '. Sprawdź i popraw, zanim zapiszesz.'
+    : 'Nic nie rozpoznałem — powiedz jeszcze raz albo wpisz ręcznie.');
+}
+
 function formularzReczny(){
+  zatrzymajMikrofon();
   var opcje = TEMATY.map(function(t){
     return '<option value="' + esc(t.id) + '">' + esc(t.nazwa) + '</option>';
   }).join('');
 
   document.getElementById('reczny-formularz').innerHTML = recznyOtwarty ?
     '<div class="lejek nowy-klient">' +
+      mikrofonHtml() +
       '<div class="dwie">' +
         '<label>Imię i nazwisko *<input id="rk-imie" autocomplete="off"></label>' +
         '<label>Telefon *<input id="rk-telefon" type="tel" inputmode="tel" autocomplete="off" placeholder="np. 600 100 200"></label>' +
@@ -1941,6 +2108,7 @@ document.addEventListener('click', function(e){
   if(e.target.id === 'reczny-pokaz'){ recznyOtwarty = !recznyOtwarty; formularzReczny(); return; }
   if(e.target.id === 'rk-anuluj'){ recznyOtwarty = false; formularzReczny(); return; }
   if(e.target.id === 'rk-zapisz'){ zapiszRecznego(); return; }
+  if(e.target.id === 'dy-start'){ przelaczMikrofon(); return; }
   if(e.target.id === 'stawki-pokaz'){
     var t = document.getElementById('stawki-tresc'); t.hidden = !t.hidden; return;
   }

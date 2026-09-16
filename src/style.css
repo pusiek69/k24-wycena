@@ -864,6 +864,25 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .od-etykieta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .od-etykieta input { max-width: 200px; }
 .od-akcje-poz { display: flex; gap: 10px; align-items: baseline; white-space: nowrap; }
+/* WPROWADZANIE GŁOSOWE (zlecenie Dawida, 16.09.2026).
+   Blok siedzi nad odcinkami i ma być cichy: to skrót, a nie główny sposób
+   wpisywania wymiarów. Bez obsługi mikrofonu w ogóle go nie ma. */
+.dy-blok { margin: 4px 0 12px; padding: 10px 12px; border: 1px dashed var(--line-hi);
+  border-radius: var(--radius); }
+.dy-pasek { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.dy-btn { font-family: var(--sans); font-size: 13px; color: var(--cream); cursor: pointer;
+  background: var(--slab); border: 1px solid var(--line-hi); border-radius: var(--radius);
+  padding: 9px 14px; }
+.dy-btn:hover { border-color: var(--vein); }
+.dy-btn.nagrywa { background: #7a2418; border-color: #b4402c; color: #fff; }
+.dy-info { font-family: var(--sans); font-size: 12px; color: var(--vein); flex: 1 1 200px; }
+.dy-slychac { font-family: var(--sans); font-size: 13px; line-height: 1.5; color: var(--cream);
+  margin-top: 8px; white-space: pre-wrap; word-break: break-word; }
+.dy-slychac:empty { display: none; }
+.dy-niepewne { color: var(--vein); }
+/* Odcinek wpisany z mikrofonu — żeby było widać, czego nie pisała ręka. */
+.od-odcinek-blok.zglosu { border-left: 3px solid var(--vein); padding-left: 10px; }
+
 .od-pasek { margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--line-hi);
   border-radius: var(--radius); background: rgba(201, 168, 106, .05); }
 
