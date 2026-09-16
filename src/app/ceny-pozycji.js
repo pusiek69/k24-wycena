@@ -48,6 +48,12 @@ export const recznaCena = (ceny, nazwa) => !!ceny?.has?.(nazwa);
  */
 export function ustawCene(ceny, pozycja, nowa) {
   const cennikowa = Math.round(Number(pozycja?.brutto) || 0);
+  // Wyczyszczone pole = powrót do cennika. Inaczej skasowanie zawartości
+  // przed wpisaniem nowej kwoty zostawiałoby pozycję na sztywnym zerze.
+  if (String(nowa ?? '').trim() === '') {
+    ceny.delete(pozycja.nazwa);
+    return ceny;
+  }
   const czysta = kwota(nowa);
   if (czysta === cennikowa) ceny.delete(pozycja.nazwa);
   else ceny.set(pozycja.nazwa, czysta);
@@ -57,13 +63,18 @@ export function ustawCene(ceny, pozycja, nowa) {
 /**
  * O ile ręczne ceny zmieniają kwotę wyjściową oferty.
  *
- * Liczymy WYŁĄCZNIE pozycje, które w sumie silnika faktycznie siedzą:
- * bez tych „w cenie" (są za 0) i bez wyzerowanych na gratis (te odejmuje
- * osobny mechanizm, i to po cenie cennikowej, bo taka jest w sumie).
+ * Liczymy KAŻDĄ pozycję silnika, także tę „w cenie" — jej kwota bazowa
+ * to zero, więc wpisana cena wchodzi do sumy w całości. To jest dokładnie
+ * przypadek pomiaru Prolinerem: świadczenie stoi na liście za 0 zł, a Dawid
+ * chce mu czasem nadać cenę (zgłoszenie z 16.09.2026, po pierwszym podejściu,
+ * które te pozycje pomijało).
+ *
+ * Pomijamy tylko wyzerowane na gratis — te odejmuje osobny mechanizm,
+ * i to po cenie cennikowej, bo taka siedzi w sumie silnika.
  */
 export function roznicaRecznychCen(ceny, pozycje, gratisy) {
   return (pozycje || [])
-    .filter((p) => !p.wCenie && !gratisy?.has?.(p.nazwa))
+    .filter((p) => !gratisy?.has?.(p.nazwa))
     .reduce((suma, p) => suma + (cenaPozycji(ceny, p) - Math.round(Number(p.brutto) || 0)), 0);
 }
 

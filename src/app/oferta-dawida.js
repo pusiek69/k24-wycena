@@ -296,13 +296,18 @@ function policz(stan) {
 function zamrozOferte(stan, w) {
   // pozycje „w cenie" (0 zł) klient i tak widzi jako zawarte — renderujemy
   // je na końcu listy jako gratis, żeby oferta czytała się jak karta wyceny
+  /*
+   * Pozycja „w cenie" z RĘCZNĄ CENĄ przestaje być gratisem — Dawid właśnie
+   * powiedział, ile ma kosztować (zgłoszenie z 16.09.2026 o pomiarze
+   * Prolinerem). Bez tego wpisana kwota zniknęłaby w zamrożonej ofercie.
+   */
   const wCenie = w.pozycje
-    .filter((p) => p.wCenie)
+    .filter((p) => p.wCenie && !cenyPoz.recznaCena(stan.ceny, p.nazwa))
     .map((p) => ({ nazwa: p.nazwa, detal: bezCenJednostkowych(p.detal), brutto: 0, gratis: true }));
 
   const widoczne = [
     ...w.pozycje
-      .filter((p) => !p.wCenie)
+      .filter((p) => !p.wCenie || cenyPoz.recznaCena(stan.ceny, p.nazwa))
       .map((p) => ({
         nazwa: p.nazwa,
         // Bez stawek jednostkowych — patrz bezCenJednostkowych() na górze pliku.
@@ -902,15 +907,24 @@ function polaCeny(stan, pozycja, odswiez) {
 }
 
 function podgladPozycji(stan, oferta, odswiez, w) {
-  // Nadpisywać można pozycje SILNIKA, które coś kosztują. Własne pozycje
-  // Dawida mają swoją kwotę w bloku niżej, a te „w cenie" są z definicji za 0.
-  const zSilnika = new Map(
-    (w?.pozycje || []).filter((p) => !p.wCenie).map((p) => [p.nazwa, p])
-  );
+  /*
+   * Nadpisać można KAŻDĄ pozycję silnika — łącznie z tymi „w cenie"
+   * (pomiar Prolinerem, docięcie), bo to właśnie ich ceny Dawid chce czasem
+   * ustalić ręcznie. Własne pozycje mają swoją kwotę w bloku niżej.
+   */
+  const zSilnika = new Map((w?.pozycje || []).map((p) => [p.nazwa, p]));
 
   return h(
     'div',
     { class: 'oferta-pozycje' },
+    // Krótka instrukcja nad listą: pola z kwotami wyglądają jak tekst,
+    // dopóki się w nie nie kliknie — a Dawid szukał, gdzie zmienić cenę.
+    h(
+      'p',
+      { class: 'form-nota', style: 'margin:0 0 6px' },
+      'Każdą kwotę możesz nadpisać — kliknij w cenę i wpisz swoją. ' +
+        'Puste pole wraca do ceny z cennika.'
+    ),
     ...oferta.pozycje.map((p) =>
       h(
         'div',
@@ -919,11 +933,17 @@ function podgladPozycji(stan, oferta, odswiez, w) {
         h(
           'span',
           { class: 'od-akcje-poz' },
-          p.gratis || !zSilnika.has(p.nazwa)
+          /*
+           * Pole ceny dostaje każda pozycja silnika. Wyjątkiem jest wyzerowana
+           * na GRATIS — tam kwoty nie ma z wyboru Dawida i najpierw trzeba
+           * cofnąć zerowanie (przycisk obok), żeby nie było dwóch sprzecznych
+           * decyzji naraz.
+           */
+          stan.gratisy.has(p.nazwa) || !zSilnika.has(p.nazwa)
             ? h('b', {}, p.gratis ? 'GRATIS' : zl(p.brutto))
             : polaCeny(stan, zSilnika.get(p.nazwa), odswiez),
           // przełącznik „gratis" tylko dla pozycji, które coś kosztują
-          p.brutto > 0 || stan.gratisy.has(p.nazwa)
+          p.brutto > 0 || stan.gratisy.has(p.nazwa) || zSilnika.has(p.nazwa)
             ? h(
                 'button',
                 {

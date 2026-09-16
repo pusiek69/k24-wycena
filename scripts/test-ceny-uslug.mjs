@@ -84,15 +84,36 @@ test('różnica z nadpisań to dokładnie tyle, ile Dawid zmienił', () => {
   assert.equal(roznicaRecznychCen(ceny, POZYCJE, new Set()), 100);
 });
 
-test('pozycja „w cenie" nie wchodzi do różnicy', () => {
+test('pozycja „w cenie" DOSTAJE cenę, gdy Dawid ją poda', () => {
   /*
-   * Pomiar jest w cenie, czyli w sumie silnika siedzi jako zero. Gdyby jego
-   * nadpisanie doliczało się do kwoty wyjściowej, oferta rosłaby o pieniądze,
-   * których nie ma w żadnej pozycji.
+   * ⚠ ZGŁOSZENIE DAWIDA Z 16.09.2026, po pierwszym podejściu: „dalej nie mogę
+   * zmieniać cen — nie mogę zmienić np. ceny POMIARU PROLINEREM".
+   *
+   * Pomiar i docięcie stoją na liście jako świadczenia za 0 zł. Pierwsza
+   * wersja wykluczała je z nadpisań „bo są w cenie" — a to właśnie ich cenę
+   * Dawid czasem ustala ręcznie (dojazd dalej niż zwykle, pomiar u klienta
+   * bez zlecenia). Kwota bazowa to zero, więc wpisana cena wchodzi w całości.
    */
   const ceny = new Map();
   ustawCene(ceny, POZYCJE[4], 250);
-  assert.equal(roznicaRecznychCen(ceny, POZYCJE, new Set()), 0);
+  assert.equal(roznicaRecznychCen(ceny, POZYCJE, new Set()), 250);
+});
+
+test('pozycja „w cenie" bez nadpisania nadal nie rusza sumy', () => {
+  assert.equal(roznicaRecznychCen(new Map(), POZYCJE, new Set()), 0);
+});
+
+test('wyczyszczone pole wraca do ceny z cennika, a nie zeruje pozycji', () => {
+  /*
+   * Kasowanie zawartości pola przed wpisaniem nowej kwoty jest naturalnym
+   * ruchem. Gdyby puste pole znaczyło „0 zł", Dawid wysłałby ofertę z darmowym
+   * montażem tylko dlatego, że zaczął poprawiać kwotę i się rozmyślił.
+   */
+  const ceny = new Map();
+  ustawCene(ceny, POZYCJE[3], 700);
+  ustawCene(ceny, POZYCJE[3], '');
+  assert.equal(recznaCena(ceny, 'Montaż'), false);
+  assert.equal(cenaPozycji(ceny, POZYCJE[3]), 900);
 });
 
 test('gratis wygrywa z ręczną ceną i nie liczy się podwójnie', () => {
@@ -143,4 +164,19 @@ test('EDYTOR pokazuje, że cena jest ręczna, i pozwala wrócić do cennikowej',
   // Ceny zapisują się do parametrów, więc poprawka oferty ich nie gubi.
   assert.match(ed, /ceny: cenyPoz\.doParametrow\(stan\.ceny\)/);
   assert.match(ed, /ceny: cenyPoz\.zParametrow\(p\.ceny\)/);
+});
+
+test('EDYTOR daje pole ceny KAŻDEJ pozycji silnika, także tej „w cenie"', () => {
+  /*
+   * Dokładnie to zgłosił Dawid: pomiar Prolinerem stoi na liście, a nie dało
+   * się mu zmienić ceny, bo filtr wykluczał pozycje „w cenie".
+   */
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(
+    ed,
+    /const zSilnika = new Map\(\(w\?\.pozycje \|\| \[\]\)\.map\(\(p\) => \[p\.nazwa, p\]\)\);/,
+    'lista pozycji do nadpisania znów jest filtrowana'
+  );
+  // Pozycja „w cenie" z ręczną ceną przestaje być gratisem w zamrożonej ofercie.
+  assert.match(ed, /p\.wCenie && !cenyPoz\.recznaCena\(stan\.ceny, p\.nazwa\)/);
 });
