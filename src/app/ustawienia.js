@@ -10,11 +10,16 @@
  *   • DOMYSLNE to dokładnie to, co było zaszyte w kodzie — bez ustawień
  *     w bazie kalkulator liczy jak dotąd i nic się nie psuje,
  *   • kwoty są BRUTTO przy 23% (tak jak reszta stawek w cennikach) —
- *     silnik sam schodzi do stawki wariantu,
+ *     silnik sam schodzi do stawki wariantu. Cennik Dawida jest podany
+ *     NETTO, więc w polach stoi `netto × 1,23`; panel pokazuje przy każdym
+ *     polu przeliczenie na netto i na brutto 8%, żeby dało się je porównać
+ *     z cennikiem bez kalkulatora w ręku,
  *   • to są NASZE ceny sprzedaży, nie ceny zakupu materiału. Cen zakupowych
  *     ani przeliczników dostawców tu nie ma i być nie może — te zostają
  *     w pricing/zrodla, poza repozytorium.
  */
+
+import { zCennika } from '../firms/_domyslne.js';
 
 /** Parametry, które Dawid widzi w panelu. Kolejność = kolejność w formularzu. */
 export const PARAMETRY = [
@@ -50,13 +55,13 @@ export const PARAMETRY = [
     klucz: 'pomiar',
     label: 'Pomiar cyfrowy Proliner (tylko kuchnia)',
     jednostka: 'zł raz na zlecenie',
-    domyslnie: 1000,
+    domyslnie: zCennika(1000),
   },
   {
     klucz: 'zlewPodblatowy',
     label: 'Wycięcie + montaż zlewu podblatowego',
     jednostka: 'zł/szt.',
-    domyslnie: 650,
+    domyslnie: zCennika(450),
   },
   {
     klucz: 'udzialNablatowego',
@@ -70,18 +75,55 @@ export const PARAMETRY = [
     klucz: 'plytaNakladana',
     label: 'Wycięcie pod płytę nakładaną',
     jednostka: 'zł',
-    domyslnie: 250,
+    domyslnie: zCennika(250),
   },
   {
     klucz: 'plytaLicowana',
     label: 'Wycięcie pod płytę licowaną z blatem',
     jednostka: 'zł',
-    domyslnie: 650,
+    domyslnie: zCennika(700),
   },
-  { klucz: 'otwor', label: 'Otwór w blacie (bateria, dozownik…)', jednostka: 'zł/szt.', domyslnie: 150 },
+  { klucz: 'otwor', label: 'Otwór w blacie (bateria, dozownik…)', jednostka: 'zł/szt.', domyslnie: zCennika(150) },
   { klucz: 'mat', label: 'Dopłata za powierzchnię matową / strukturalną', jednostka: 'zł/m²', domyslnie: 60 },
   { klucz: 'listwa', label: 'Listwa przyścienna', jednostka: 'zł/m.b.', domyslnie: 180 },
   { klucz: 'krawedz', label: 'Wykończenie krawędzi', jednostka: 'zł/m.b.', domyslnie: 90 },
+
+  /*
+   * DODATKI Z CENNIKA DAWIDA (16.09.2026) — widoczne tylko w edytorze
+   * właściciela (`tylkoWlasciciel` w firms/_domyslne.js). Domyślnie 0 sztuk,
+   * więc żadna wycena nie rośnie sama; tu ustawia się ich CENĘ.
+   */
+  { klucz: 'zbrojenie', label: 'Zbrojenie otworów', jednostka: 'zł/szt.', domyslnie: zCennika(200) },
+  { klucz: 'kanaliki', label: 'Kanaliki / rowki ociekowe', jednostka: 'zł/szt.', domyslnie: zCennika(500) },
+  { klucz: 'ociekaczSpad', label: 'Ociekacz spadkowy (pochylnia)', jednostka: 'zł/szt.', domyslnie: zCennika(1000) },
+  { klucz: 'ociekaczRowki', label: 'Ociekacz z rowkami', jednostka: 'zł/szt.', domyslnie: zCennika(1500) },
+  { klucz: 'impregnacja', label: 'Impregnacja', jednostka: 'zł/szt.', domyslnie: zCennika(200) },
+  { klucz: 'projektCad', label: 'Wykonanie projektu CAD', jednostka: 'zł/szt.', domyslnie: zCennika(250) },
+  { klucz: 'podswietlenie', label: 'Podświetlenie blatów', jednostka: 'zł/m²', domyslnie: zCennika(1050) },
+  { klucz: 'frezowanie', label: 'Frezowanie płyty', jednostka: 'zł/m²', domyslnie: zCennika(100) },
+  { klucz: 'polerSpodu', label: 'Poler spodu', jednostka: 'zł/m²', domyslnie: zCennika(300) },
+  { klucz: 'nacieciaLed', label: 'Nacięcia pod ledy', jednostka: 'zł/m.b.', domyslnie: zCennika(100) },
+  {
+    klucz: 'transportKm',
+    label: 'Transport (dojazd)',
+    jednostka: 'zł/km',
+    domyslnie: zCennika(4),
+    krok: 0.01,
+    opis: 'Osobno od montażu automatycznego — wpisuje się kilometry w edytorze.',
+  },
+  {
+    klucz: 'montazDzien',
+    label: 'Montaż — dzień ekipy',
+    jednostka: 'zł/dzień',
+    domyslnie: zCennika(3000),
+    opis: 'Rozliczenie dniówkowe. Stoi OBOK montażu od m² — nie zastępuje go.',
+  },
+  {
+    klucz: 'dodatkowaOsoba',
+    label: 'Dodatkowa osoba przy montażu',
+    jednostka: 'zł/dzień',
+    domyslnie: zCennika(1000),
+  },
 
   /*
    * Poniższe dwa NIE są cenami — to parametry cięcia używane przez rozrys
@@ -177,6 +219,9 @@ export function zastosujUstawienia(firmy, ustawienia) {
       if (o.id === 'mat') return o.zCennika ? o : { ...o, cena: u.mat };
       if (o.id === 'listwa') return { ...o, cena: u.listwa };
       if (o.id === 'krawedz') return { ...o, cena: u.krawedz };
+      // Dodatki z cennika 16.09.2026 — klucz stawki = id opcji, więc nowa
+      // pozycja w cenniku nie wymaga kolejnego `if`-a tutaj.
+      if (o.id in u) return { ...o, cena: u[o.id] };
       return o;
     });
 

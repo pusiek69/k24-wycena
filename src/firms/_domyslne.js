@@ -26,6 +26,36 @@ export const VAT_TOWAR = 0.23;
 /** Stawka, przy której podane są ceny publiczne dostawców i stawki w cennikach. */
 export const VAT = VAT_TOWAR;
 
+/*
+ * ══════════════════════════════════════════════════════════════════════════
+ *  CENNIK USŁUG — AKTUALIZACJA WG CENNIKA DAWIDA (16.09.2026)
+ *
+ *  Dawid przysłał zrzut swojego cennika z kolumnami netto / jedn. / brutto
+ *  przy VAT 8%. Tu wszystkie stawki usług zapisujemy BRUTTO PRZY 23%
+ *  (tak działa `kwotaBrutto` w silniku: dzieli przez 1,23 i mnoży przez
+ *  stawkę wyceny), więc liczba w kodzie to `netto × 1,23`.
+ *
+ *  Sprawdzenie w drugą stronę, bo to jest ta pomyłka, która kosztuje:
+ *      netto 250 → w kodzie 308 → 308 / 1,23 × 1,08 = 270 zł brutto ✔
+ *      netto 1000 → w kodzie 1230 → 1080 zł brutto ✔
+ *
+ *  ⚠ STAWKI Z PANELU NADPISUJĄ TE LICZBY (src/app/ustawienia.js). Zmiana
+ *  tutaj działa tylko tam, gdzie Dawid nie zapisał własnej wartości —
+ *  po zmianie cennika trzeba też przejść przez panel.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * netto z cennika → zapis brutto przy 23%, którego używa silnik.
+ *
+ * Zostawiamy grosze (2 miejsca), zamiast zaokrąglać do złotówki: przy
+ * drobnych stawkach za jednostkę zaokrąglenie potrafi przesunąć cenę
+ * o kilka procent. Transport 4 zł/km netto zapisany jako 5 zł brutto@23
+ * dałby 4,39 zł/km zamiast 4,32 — a przy 200 km to już 14 zł różnicy.
+ * Kwoty pozycji i tak zaokrągla się na końcu do pełnych złotych.
+ */
+export const zCennika = (netto) => Math.round(netto * 1.23 * 100) / 100;
+
 export const ROBOCIZNA = [
   /*
    * DOCIĘCIE, POLEROWANIE I KLEJENIE — W CENIE, BEZ OSOBNEGO NALICZENIA.
@@ -61,7 +91,8 @@ export const ROBOCIZNA = [
   {
     id: 'pomiar',
     label: 'Pomiar cyfrowy Proliner',
-    cena: 1000,
+    // Cennik Dawida (16.09.2026): 1 000 zł netto = 1 080 zł brutto.
+    cena: zCennika(1000),
     tylkoKuchnia: true,
     tylkoZMontazem: true,
   },
@@ -128,7 +159,8 @@ export const NOTA_ODBIOR =
  * Dotyczy tak samo zlewu w kuchni, jak umywalki w łazience, i mnoży się
  * przez liczbę sztuk (`iloscZ` niżej).
  */
-export const ZLEW_PODBLATOWY = 650;
+// Cennik Dawida (16.09.2026): otwór pod zlew podwieszany 450 zł netto = 486 brutto.
+export const ZLEW_PODBLATOWY = zCennika(450);
 export const UDZIAL_NABLATOWEGO = 0.5;
 
 export const OPCJE = [
@@ -151,13 +183,14 @@ export const OPCJE = [
   {
     id: 'plyta',
     label: 'Płyta grzewcza',
-    opis: 'Licowana = równo z blatem, bez wystającej ramki (250 zł + 400 zł dopłaty).',
+    opis: 'Licowana = równo z blatem, bez wystającej ramki.',
     typ: 'wybor',
     domyslnie: 'nakladana',
     wymagane: true,
     warianty: [
-      { id: 'nakladana', label: 'Wycięcie pod płytę nakładaną', cena: 250 },
-      { id: 'licowana', label: 'Wycięcie pod płytę licowaną z blatem', cena: 650 },
+      // Cennik Dawida (16.09.2026): 250 zł netto = 270 brutto; licowana 700 = 756.
+      { id: 'nakladana', label: 'Wycięcie pod płytę nakładaną', cena: zCennika(250) },
+      { id: 'licowana', label: 'Wycięcie pod płytę licowaną z blatem', cena: zCennika(700) },
     ],
   },
   /*
@@ -171,7 +204,9 @@ export const OPCJE = [
     label: 'Otwory w blacie (bateria, dozownik, gniazdko)',
     opis: 'Każdy otwór wiercimy i wykańczamy osobno — bateria, dozownik, gniazdko blatowe, przelew.',
     typ: 'liczba',
-    cena: 150,
+    // Cennik Dawida: wycięcie pod otwór fi do 30 mm i fi 30–69 mm kosztuje
+    // tyle samo (150 zł netto = 162 brutto), więc zostaje jedna pozycja.
+    cena: zCennika(150),
     jednostka: 'szt.',
     domyslnie: 1,
     min: 0,
@@ -203,6 +238,159 @@ export const OPCJE = [
     jednostka: 'm.b.',
     max: 40,
     domyslnie: 0,
+  },
+
+  /*
+   * ════════════════════════════════════════════════════════════════════
+   *  DODATKI Z CENNIKA DAWIDA (16.09.2026) — WYŁĄCZNIE W EDYTORZE
+   *
+   *  `tylkoWlasciciel` trzyma je poza kalkulatorem klienta. Powód nie jest
+   *  kosmetyczny: klient, który zobaczy dziesięć dodatkowych „ptaszków",
+   *  przestaje rozumieć, co zamawia, a wycena online ma być prosta.
+   *  Dawid dokłada je przy konkretnej rozmowie, z ilością, którą uzgodnił.
+   *
+   *  Wszystkie domyślnie 0 — żadna wycena nie urośnie sama z siebie.
+   *  Kwoty: netto z cennika przez `zCennika` (patrz nagłówek pliku).
+   * ════════════════════════════════════════════════════════════════════
+   */
+  {
+    id: 'zbrojenie',
+    label: 'Zbrojenie otworów',
+    typ: 'liczba',
+    cena: zCennika(200),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 20,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'kanaliki',
+    label: 'Kanaliki / rowki ociekowe',
+    typ: 'liczba',
+    cena: zCennika(500),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 10,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'ociekaczSpad',
+    label: 'Ociekacz spadkowy (pochylnia)',
+    typ: 'liczba',
+    cena: zCennika(1000),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 10,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'ociekaczRowki',
+    label: 'Ociekacz z rowkami',
+    typ: 'liczba',
+    cena: zCennika(1500),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 10,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'impregnacja',
+    label: 'Impregnacja',
+    typ: 'liczba',
+    cena: zCennika(200),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 20,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'projektCad',
+    label: 'Wykonanie projektu CAD',
+    typ: 'liczba',
+    cena: zCennika(250),
+    jednostka: 'szt.',
+    domyslnie: 0,
+    max: 10,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'podswietlenie',
+    label: 'Podświetlenie blatów',
+    typ: 'liczba',
+    cena: zCennika(1050),
+    jednostka: 'm²',
+    domyslnie: 0,
+    max: 40,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'frezowanie',
+    label: 'Frezowanie płyty',
+    typ: 'liczba',
+    cena: zCennika(100),
+    jednostka: 'm²',
+    domyslnie: 0,
+    max: 60,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'polerSpodu',
+    label: 'Poler spodu',
+    typ: 'liczba',
+    cena: zCennika(300),
+    jednostka: 'm²',
+    domyslnie: 0,
+    max: 60,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'nacieciaLed',
+    label: 'Nacięcia pod ledy',
+    typ: 'liczba',
+    cena: zCennika(100),
+    jednostka: 'm.b.',
+    domyslnie: 0,
+    max: 60,
+    tylkoWlasciciel: true,
+  },
+  /*
+   * TRANSPORT, DZIEŃ EKIPY I DODATKOWA OSOBA.
+   *
+   * ⚠ Te trzy stoją OBOK automatycznego „Transportu i montażu u klienta"
+   * (baza + stawka od m²), a nie zamiast niego — kalkulator nie wie ani ile
+   * jest kilometrów, ani ile dni potrwa montaż. Domyślnie zero, więc nic się
+   * nie dubluje samo; przy wycenie liczonej na dni Dawid zeruje montaż
+   * automatyczny przyciskiem „0 zł" i wpisuje dni tutaj.
+   */
+  {
+    id: 'transportKm',
+    label: 'Transport (dojazd)',
+    typ: 'liczba',
+    cena: zCennika(4),
+    jednostka: 'km',
+    domyslnie: 0,
+    max: 2000,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'montazDzien',
+    label: 'Montaż — dzień ekipy',
+    typ: 'liczba',
+    cena: zCennika(3000),
+    jednostka: 'dzień',
+    domyslnie: 0,
+    max: 30,
+    tylkoWlasciciel: true,
+  },
+  {
+    id: 'dodatkowaOsoba',
+    label: 'Dodatkowa osoba przy montażu',
+    typ: 'liczba',
+    cena: zCennika(1000),
+    jednostka: 'dzień',
+    domyslnie: 0,
+    max: 30,
+    tylkoWlasciciel: true,
   },
 ];
 

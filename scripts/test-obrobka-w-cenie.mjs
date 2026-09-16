@@ -17,6 +17,10 @@ import assert from 'node:assert/strict';
 import { wycen } from '../src/engine/wycena.js';
 import { ROBOCIZNA, OPCJE, VAT_MONTAZ } from '../src/firms/_domyslne.js';
 
+// Cena z KONFIGURACJI, nie z literału — cennik Dawida bywa aktualizowany
+// (16.09.2026), a te testy pilnują przeliczenia VAT, nie konkretnej kwoty.
+const CENA_ZLEWU = OPCJE.find((o) => o.id === 'zlew').warianty.find((w) => w.id === 'podblat').cena;
+
 const FIRMA = {
   slug: 'test',
   nazwa: 'Test',
@@ -99,10 +103,10 @@ test('suma usług zgadza się mimo pozycji zerowej', () => {
 
 /* ───────────────────── stawki brutto 23% → netto → VAT wariantu */
 
-test('stawka 650 zł brutto 23% daje 650 ÷ 1,23 netto i VAT wariantu', () => {
+test('stawka zapisana brutto 23% schodzi na netto i VAT wariantu', () => {
   const w = licz(LAZIENKA, 'montaz');
   const zlew = w.pozycje.find((p) => /zlewu podblatowego/.test(p.nazwa));
-  const oczekiwane = (650 / 1.23) * (1 + VAT_MONTAZ);
+  const oczekiwane = (CENA_ZLEWU / 1.23) * (1 + VAT_MONTAZ);
   assert.ok(
     Math.abs(zlew.brutto - oczekiwane) < 0.01,
     `${zlew.brutto} ≠ ${oczekiwane}`
@@ -118,5 +122,5 @@ test('rozbicie firmowe mówi, przy jakiej stawce zapisano stawki', () => {
 test('przy odbiorze własnym stawki i sprzedaż są w tej samej stawce — bez dopisku', () => {
   const w = licz(LAZIENKA, 'odbior');
   const zlew = w.pozycje.find((p) => /zlewu podblatowego/.test(p.nazwa));
-  assert.ok(Math.abs(zlew.brutto - 650) < 0.01, 'przy 23% kwota wraca do stawki z konfiguracji');
+  assert.ok(Math.abs(zlew.brutto - CENA_ZLEWU) < 0.01, 'przy 23% kwota wraca do stawki z konfiguracji');
 });

@@ -562,6 +562,13 @@ export function krokObrobki(stan, a) {
         // Dopłata dostępna tylko przy części wzorów (Matt/Suede u Pacifica)
         // nie ma prawa pokazać się przy dekorze, który jej nie ma.
         .filter((o) => opcjaDostepna(o, stan.dekor))
+        /*
+         * Dodatki z cennika Dawida (ociekacze, impregnacja, dzień ekipy…)
+         * zostają w edytorze właściciela. Klient w kalkulatorze online ma
+         * wybrać materiał i wymiary, a nie przejść przez cennik warsztatu —
+         * te pozycje dokłada Dawid przy konkretnej rozmowie.
+         */
+        .filter((o) => !o.tylkoWlasciciel)
         .map((o) => opcjaWidok(o, stan, a, f))
     ),
     nawigacja(a, { wstecz: 'wymiary', dalej: 'wynik', dalejLabel: 'Pokaż wycenę →' })

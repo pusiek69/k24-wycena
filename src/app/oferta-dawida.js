@@ -487,6 +487,54 @@ function etykietaOdcinkaWiersz(o, i, odswiez) {
   );
 }
 
+/**
+ * DODATKI I USŁUGI Z CENNIKA (zlecenie Dawida, 16.09.2026).
+ *
+ * Wszystkie pozycje liczone sztukowo, od metra albo od dnia — ociekacze,
+ * impregnacja, projekt CAD, podświetlenie, transport, dzień ekipy. W kalkulatorze
+ * klienta ich nie ma (`tylkoWlasciciel`), bo to cennik warsztatu, a nie
+ * ekran do samodzielnego klikania.
+ *
+ * Blok rysuje się SAM z konfiguracji: nowa pozycja w cenniku pojawia się tu
+ * bez dopisywania kolejnego pola. Domyślnie wszystkie mają zero, więc wycena
+ * nie rośnie, dopóki Dawid czegoś nie wpisze.
+ */
+function blokDodatkow(stan, firma, odswiez) {
+  const dodatki = (firma?.opcje || []).filter((o) => o.typ === 'liczba' && o.id !== 'otwory');
+  if (!dodatki.length) return null;
+
+  const ile = (o) => Number(stan.opcje[o.id] ?? o.domyslnie ?? 0) || 0;
+  const wybrane = dodatki.filter((o) => ile(o) > 0).length;
+
+  return h(
+    'details',
+    { class: 'od-pasek', open: wybrane ? 'open' : undefined },
+    h(
+      'summary',
+      {},
+      'Dodatki i usługi',
+      wybrane ? h('b', { style: 'margin-left:8px' }, `${wybrane} wybrane`) : null
+    ),
+    h(
+      'div',
+      { class: 'od-siatka', style: 'margin-top:10px' },
+      ...dodatki.map((o) =>
+        pole(
+          `${o.label} (${o.jednostka || 'szt.'} · ${zl(Math.round((o.cena / 1.23) * 1.08))})`,
+          licznik(ile(o), 0, (v) => ((stan.opcje[o.id] = v), odswiez()), o.max ?? 99)
+        )
+      )
+    ),
+    h(
+      'p',
+      { class: 'form-nota', style: 'margin:8px 0 0' },
+      'Kwoty przy nazwach to ceny brutto przy montażu (VAT 8%). ' +
+        'Przy odbiorze własnym silnik przelicza je na 23%. ' +
+        'Ceny zmieniasz w panelu (Stawki zakładu) albo punktowo w wycenie niżej.'
+    )
+  );
+}
+
 const opisOdcinkow = (odcinki) => odcinki.map(opisOdcinkaZWymiarem).join(' + ') + ' cm';
 
 /**
@@ -652,6 +700,9 @@ function rysuj(box, stan, paczka) {
           : pole('Umywalki (szt.)', licznik(stan.opcje.umywalki ?? 1, 1, (v) => ((stan.opcje.umywalki = v), odswiez()))),
         pole('Otwory (szt.)', licznik(stan.opcje.otwory ?? 1, 0, (v) => ((stan.opcje.otwory = v), odswiez())))
       ),
+
+      /* ── dodatki i usługi z cennika (16.09.2026) ── */
+      blokDodatkow(stan, firma, odswiez),
 
       /* ── kamień naturalny: płyta z magazynu albo cena ręczna ── */
       naturalny ? blokNaturalny(stan, paczka, box, odswiez) : null,
@@ -1925,10 +1976,17 @@ function wybor(pary, wartosc, onchange) {
   return sel;
 }
 
-function licznik(wartosc, min, onchange) {
+function licznik(wartosc, min, onchange, max) {
   return h('input', {
-    type: 'number', inputmode: 'numeric', min: String(min), value: liczba(wartosc ?? min),
-    onchange: (e) => onchange(Math.max(min, Number(e.target.value) || min)),
+    type: 'number',
+    inputmode: 'numeric',
+    min: String(min),
+    ...(max != null ? { max: String(max) } : {}),
+    value: liczba(wartosc ?? min),
+    onchange: (e) => {
+      const v = Math.max(min, Number(e.target.value) || min);
+      onchange(max != null ? Math.min(v, max) : v);
+    },
   });
 }
 

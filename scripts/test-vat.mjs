@@ -81,9 +81,11 @@ test('ta sama pozycja kosztuje brutto mniej przy 8% niż przy 23%', () => {
   const odbior = licz('odbior');
   const zlew = (w) => w.pozycje.find((p) => /zlewu podblatowego/.test(p.nazwa)).brutto;
   assert.ok(zlew(zMontazem) < zlew(odbior));
-  // 650 zł netto → 702 zł przy 8%, 799,50 zł przy 23%.
-  assert.ok(Math.abs(zlew(zMontazem) - 650 * (1 + VAT_MONTAZ)) < 0.01);
-  assert.ok(Math.abs(zlew(odbior) - 650 * (1 + VAT_TOWAR)) < 0.01);
+  // Ta sama stawka netto, dwie różne stawki VAT — kwota z konfiguracji,
+  // żeby aktualizacja cennika nie wywracała testu reguły.
+  const netto = OPCJE.find((o) => o.id === 'zlew').warianty.find((w) => w.id === 'podblat').cena;
+  assert.ok(Math.abs(zlew(zMontazem) - netto * (1 + VAT_MONTAZ)) < 0.01);
+  assert.ok(Math.abs(zlew(odbior) - netto * (1 + VAT_TOWAR)) < 0.01);
 });
 
 test('materiał netto jest ten sam, brutto zależy od stawki', () => {

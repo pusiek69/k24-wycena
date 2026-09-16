@@ -17,6 +17,7 @@
 
 import { resend, nadawca, doDawida } from './poczta.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
+import { PARAMETRY } from '../src/app/ustawienia.js';
 import { sprawdzWiadomosc } from './rozmowa.js';
 import { sprawdzDostep, listaTablic } from './trello.js';
 import {
@@ -75,23 +76,20 @@ import {
  * To NASZE ceny sprzedaży. Cen zakupu materiału ani przeliczników
  * dostawców w panelu nie ma — te żyją w pricing/zrodla, poza repozytorium.
  */
-const STAWKI = [
-  { klucz: 'obrobkaZaM2', label: 'Obróbka blatu (docięcie, polerowanie, klejenie)', jednostka: 'zł/m² blatu', domyslnie: 200, opis: '0 = w cenie, bez naliczenia' },
-  { klucz: 'obrobkaNaturalnaZaM2', label: 'Dodatek: obróbka kamienia naturalnego', jednostka: 'zł/m² blatu', domyslnie: 0, opis: 'ponad stawkę obróbki, tylko kamień naturalny' },
-  { klucz: 'montazBaza', label: 'Montaż — baza (dojazd, wniesienie)', jednostka: 'zł raz na zlecenie', domyslnie: 1500 },
-  { klucz: 'montazZaM2', label: 'Montaż — stawka od powierzchni', jednostka: 'zł/m² blatu', domyslnie: 200 },
-  { klucz: 'pomiar', label: 'Pomiar Proliner (tylko kuchnia)', jednostka: 'zł raz na zlecenie', domyslnie: 1000 },
-  { klucz: 'zlewPodblatowy', label: 'Wycięcie + montaż zlewu podblatowego', jednostka: 'zł/szt.', domyslnie: 650 },
-  { klucz: 'udzialNablatowego', label: 'Zlew nablatowy — część ceny podblatowego', jednostka: '× (0,5 = połowa)', domyslnie: 0.5, krok: 0.05 },
-  { klucz: 'plytaNakladana', label: 'Wycięcie pod płytę nakładaną', jednostka: 'zł', domyslnie: 250 },
-  { klucz: 'plytaLicowana', label: 'Wycięcie pod płytę licowaną', jednostka: 'zł', domyslnie: 650 },
-  { klucz: 'otwor', label: 'Otwór w blacie', jednostka: 'zł/szt.', domyslnie: 150 },
-  { klucz: 'mat', label: 'Dopłata: powierzchnia matowa / strukturalna', jednostka: 'zł/m²', domyslnie: 60 },
-  { klucz: 'listwa', label: 'Listwa przyścienna', jednostka: 'zł/m.b.', domyslnie: 180 },
-  { klucz: 'krawedz', label: 'Wykończenie krawędzi', jednostka: 'zł/m.b.', domyslnie: 90 },
-  { klucz: 'rzazMm', label: 'Rozrys: rzaz piły', jednostka: 'mm', domyslnie: 3, opis: 'parametr cięcia, nie cena' },
-  { klucz: 'marginesPlytyMm', label: 'Rozrys: margines krawędzi płyty', jednostka: 'mm', domyslnie: 10, opis: 'parametr cięcia, nie cena' },
-];
+/*
+ * Lista pochodzi teraz WPROST z src/app/ustawienia.js. Do 16.09.2026 stała
+ * tu jej kopia i przy dokładaniu stawek z cennika Dawida trzeba było
+ * pamiętać o dwóch miejscach — a klucz spoza tej listy panel po cichu
+ * odrzucał przy zapisie. Jedno źródło prawdy zamyka tę klasę pomyłek.
+ */
+const STAWKI = PARAMETRY.map(({ klucz, label, jednostka, domyslnie, krok, opis }) => ({
+  klucz,
+  label,
+  jednostka,
+  domyslnie,
+  ...(krok ? { krok } : {}),
+  ...(opis ? { opis } : {}),
+}));
 const KLUCZE_STAWEK = STAWKI.map((s) => s.klucz);
 
 const CIASTKO = 'k24h_panel';
@@ -850,6 +848,7 @@ label.stawka input{margin-top:.2rem}
 .stawki-siatka{display:grid;grid-template-columns:1fr;gap:.2rem}
 @media (min-width:620px){.stawki-siatka{grid-template-columns:1fr 1fr;gap:.2rem .9rem}}
 .zmieniona{color:var(--akcent)}
+.przelicznik{display:block;margin-top:.15rem}
 table.reakcje{width:100%;border-collapse:collapse;font-size:.88rem}
 table.reakcje th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--szary);
 font-weight:600;text-align:left;padding:.15rem .5rem .3rem 0}
@@ -1187,9 +1186,19 @@ async function rysujStawki(){
   var pola = STAWKI_OPIS.map(function(s){
     var v = (STAWKI_WART[s.klucz] !== undefined) ? STAWKI_WART[s.klucz] : s.domyslnie;
     var domyslna = Number(v) === Number(s.domyslnie);
+    /*
+     * Przeliczenie pod polem (16.09.2026). W polu stoi kwota BRUTTO PRZY 23%,
+     * a cennik Dawida jest podany netto i brutto przy 8% — bez tej podpowiedzi
+     * nie da sie porownac jednego z drugim inaczej niz kalkulatorem w reku.
+     */
+    var kwota = Number(v) || 0;
+    var przelicznik = /rzaz|margines|udzial/.test(s.klucz) ? '' :
+      '<span class="mini przelicznik">= ' + (kwota / 1.23).toFixed(2).replace('.', ',') + ' zl netto · '
+      + ((kwota / 1.23) * 1.08).toFixed(2).replace('.', ',') + ' zl brutto (8%)</span>';
     return '<label class="stawka">' + esc(s.label) +
       '<span class="mini"> \u2014 ' + esc(s.jednostka) + (s.opis ? ' \u00b7 ' + esc(s.opis) : '') + '</span>' +
       '<input type="number" step="' + (s.krok || 1) + '" min="0" data-stawka="' + s.klucz + '" value="' + v + '">' +
+      przelicznik +
       (domyslna ? '' : '<span class="mini zmieniona">zmieniona (domy\u015blnie ' + s.domyslnie + ')</span>') +
       '</label>';
   }).join('');
@@ -2223,6 +2232,17 @@ document.addEventListener('click', async function(e){
     }
     return;
   }
+});
+
+/* Przelicznik pod polem stawki ma nadazac za wpisywaniem, a nie za zapisem. */
+document.addEventListener('input', function(e){
+  var pole = e.target.closest ? e.target.closest('[data-stawka]') : null;
+  if(!pole) return;
+  var nota = pole.parentElement.querySelector('.przelicznik');
+  if(!nota) return;
+  var k = Number(pole.value) || 0;
+  nota.textContent = '= ' + (k / 1.23).toFixed(2).replace('.', ',') + ' zl netto · '
+    + ((k / 1.23) * 1.08).toFixed(2).replace('.', ',') + ' zl brutto (8%)';
 });
 
 document.addEventListener('change', function(e){

@@ -38,10 +38,17 @@ const KUCHNIA = [{ gl: 60, dl: 300 }];
 
 const licz = (odcinki, opcje) => wycen(FIRMA, { dekor: 'Testowy', grubosc: '20', odcinki, opcje });
 const poz = (w, wzor) => w.pozycje.find((p) => wzor.test(p.nazwa));
-// Stawki w konfiguracji są NETTO — silnik dolicza VAT wg wariantu.
-const CENA_PLYTY = 250; // netto, wycięcie pod płytę nakładaną
-const CENA_ZLEWU = 650; // netto, wycięcie + montaż zlewu podblatowego
-const CENA_POMIARU = 1000; // pomiar Prolinerem — tylko kuchnia
+/*
+ * Ceny bierzemy Z KONFIGURACJI, nie z literałów. Cennik Dawida bywa
+ * aktualizowany (16.09.2026 zmieniły się wszystkie trzy), a te testy
+ * pilnują REGUŁ: że kuchnia różni się od łazienki płytą grzewczą i pomiarem,
+ * że każda umywalka to osobne wycięcie i że nablatowy kosztuje połowę.
+ * Wpisane kwoty robiły z każdej zmiany cennika czerwony pakiet testów.
+ */
+const opcja = (id) => OPCJE.find((o) => o.id === id);
+const CENA_PLYTY = opcja('plyta').warianty.find((w) => w.id === 'nakladana').cena;
+const CENA_ZLEWU = opcja('zlew').warianty.find((w) => w.id === 'podblat').cena;
+const CENA_POMIARU = ROBOCIZNA.find((r) => r.id === 'pomiar').cena;
 const nettoPozycji = (w, p) => p.brutto / (1 + w.stawkaVat);
 // Stawki w konfiguracji są brutto przy 23% — patrz test-montaz.mjs.
 const nettoStawki = (bruttoDwadziesciaTrzy) => bruttoDwadziesciaTrzy / 1.23;
@@ -62,7 +69,7 @@ test('ta sama łazienka jako kuchnia jest droższa o płytę grzewczą i pomiar'
   const jakLazienka = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const jakKuchnia = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
   // Kuchnia różni się dwiema pozycjami: wycięciem pod płytę grzewczą
-  // i pomiarem Prolinerem (1000 zł brutto 23%).
+  // i pomiarem Prolinerem.
   const oczekiwana = nettoStawki(CENA_PLYTY) + nettoStawki(CENA_POMIARU);
   assert.ok(
     Math.abs(jakKuchnia.razemNetto - jakLazienka.razemNetto - oczekiwana) < 0.01,

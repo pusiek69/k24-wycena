@@ -17,7 +17,13 @@ import { wycen } from '../src/engine/wycena.js';
 import { opcjeZParametrow, opcjeZeSzczegolow } from '../src/app/parametry.js';
 import { ROBOCIZNA, OPCJE, VAT_MONTAZ } from '../src/firms/_domyslne.js';
 
-const STAWKA = 1000; // brutto przy 23%
+/*
+ * Stawkę bierzemy Z KONFIGURACJI, a nie z literału: cennik Dawida zmienia się
+ * (16.09.2026 pomiar poszedł z 1000 na 1230 zł brutto@23, czyli 1080 brutto),
+ * a te testy mają pilnować REGUŁ — że pomiar jest raz na zlecenie, tylko
+ * w kuchni i nie zależy od metrażu — a nie konkretnej kwoty.
+ */
+const STAWKA = ROBOCIZNA.find((r) => r.id === 'pomiar').cena; // brutto przy 23%
 const nettoStawki = (bruttoDwadziesciaTrzy) => bruttoDwadziesciaTrzy / 1.23;
 
 const FIRMA = {
@@ -50,7 +56,7 @@ test('kuchnia dostaje pozycję pomiaru', () => {
   assert.match(p.nazwa, /Pomiar cyfrowy Proliner/);
 });
 
-test('pomiar to 1000 zł brutto 23%, przeliczone stawką wariantu', () => {
+test('pomiar przeliczany ze stawki z konfiguracji na VAT wariantu', () => {
   const w = licz(KUCHNIA, { pomieszczenie: 'kuchnia', otwory: 1 });
   const oczekiwane = nettoStawki(STAWKA) * (1 + VAT_MONTAZ);
   assert.ok(Math.abs(pomiar(w).brutto - oczekiwane) < 0.01, `${pomiar(w).brutto} ≠ ${oczekiwane}`);
@@ -124,6 +130,6 @@ test('karta klienta nadal ma tylko dwie grupy kwot', () => {
 
 test('rozbicie firmowe mówi „raz na zlecenie", nie „1 m²"', () => {
   const p = pomiar(licz(KUCHNIA, { pomieszczenie: 'kuchnia', otwory: 1 }));
-  assert.match(p.detalFirmowy, /1000 zł raz na zlecenie/);
+  assert.match(p.detalFirmowy, new RegExp(`${STAWKA} zł raz na zlecenie`));
   assert.doesNotMatch(p.detalFirmowy, /m²/, 'pomiar nie jest liczony od metra');
 });
