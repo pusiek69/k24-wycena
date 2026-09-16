@@ -36,8 +36,10 @@ import { TEMAT_DO_KLIENTA, mailDoKlienta } from './mail-rozmowa.js';
 
 import {
   STATUSY,
+  TEMATY,
   W_LEJKU,
   RETENCJA_MIESIECY,
+  dodajKlientaRecznie,
   podsumowanie,
   lista,
   karta,
@@ -118,6 +120,9 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/dane') return await apiDane(request, env);
   if (sciezka === '/panel/api/karta') return await apiKarta(request, env);
   if (sciezka === '/panel/api/zmien' && request.method === 'POST') return await apiZmien(request, env);
+  // Klient z biura wpisywany ręcznie (zlecenie Dawida, 16.09.2026).
+  if (sciezka === '/panel/api/klient' && request.method === 'POST')
+    return await apiKlientNowy(request, env);
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
   if (sciezka === '/panel/api/stawki') return await apiStawki(request, env);
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
@@ -352,7 +357,54 @@ async function apiKarta(request, env) {
       'https://kam24h.pl/#powtorz=' +
       doBase64({ leadId: k.id, exp, podpis: sig, parametry: w.dane, imie: k.imie });
   }
+
+  /*
+   * ZRÓB WYCENĘ DLA KLIENTA Z BIURA (16.09.2026). Karta założona ręcznie
+   * nie ma czego „powtórzyć" — nie było pierwszej wyceny. Zamiast tego
+   * dostaje link otwierający PUSTY edytor właściciela podpisany na TĘ kartę,
+   * więc gotowa oferta wróci na nią, a nie na nowo założoną.
+   *
+   * Nagrobków kalkulator nie liczy, więc przy tym temacie linku nie ma —
+   * przycisk, który prowadzi do wyceny blatu, byłby myleniem Dawida.
+   */
+  if (!k.wyceny.length && k.temat !== 'nagrobek') {
+    const lazienka = k.temat === 'blat_lazienkowy';
+    k.zrobWycene =
+      'https://kam24h.pl/#powtorz=' +
+      doBase64({
+        leadId: k.id,
+        exp,
+        podpis: sig,
+        imie: k.imie,
+        parametry: {
+          firma: '',
+          dekor: '',
+          grubosc: '20',
+          odcinki: [{ gl: lazienka ? 55 : 60, dl: lazienka ? 160 : 300 }],
+          opcje: {
+            pomieszczenie: lazienka ? 'lazienka' : 'kuchnia',
+            zlew: 'podblat',
+            zlewy: 1,
+            plyta: lazienka ? 'brak' : 'nakladana',
+            otwory: lazienka ? 1 : 2,
+            dostawa: 'montaz',
+          },
+        },
+      });
+  }
   return json(k);
+}
+
+/**
+ * DODANIE KLIENTA Z BIURA. Cała walidacja i deduplikacja siedzą
+ * w `dodajKlientaRecznie` (worker/baza.js) — tu zostaje samo przyjęcie
+ * żądania i przetłumaczenie wyniku na odpowiedź panelu.
+ */
+async function apiKlientNowy(request, env) {
+  const d = await request.json().catch(() => null);
+  const wynik = await dodajKlientaRecznie(env, d);
+  if (!wynik.ok) return json({ error: wynik.blad }, 400);
+  return json({ ok: true, id: wynik.klientId, nowy: wynik.nowy, istnial: wynik.istnial });
 }
 
 async function apiZmien(request, env) {
@@ -758,6 +810,14 @@ letter-spacing:.05em;border-color:transparent}
 .znacznik.uwaga{background:rgba(194,64,44,.22);border-color:rgba(226,89,61,.5);color:#f0c9bd}
 .znacznik.nie-dzwonic{background:#5a2418;border-color:#8d3a26;color:#ffd9cf;font-weight:700}
 .znacznik.prosi-telefon{background:#2f4a24;border-color:#4e7a3c;color:#d7edc9;font-weight:700}
+/* Karta z biura, nie z kalkulatora - stonowany granat, zeby nie konkurowal
+   z PILNE ani z NIE DZWONIC. To informacja o pochodzeniu, nie alarm. */
+.znacznik.reczny{background:#26314a;border-color:#47597f;color:#cfdaf3;font-weight:600}
+.nowy-klient label{display:block;margin:.5rem 0}
+.nowy-klient input,.nowy-klient select,.nowy-klient textarea{width:100%;box-sizing:border-box}
+.nowy-klient .dwie{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.nowy-klient label.kratka{display:flex;align-items:center;gap:.5rem;font-size:.9rem;color:var(--tekst)}
+.nowy-klient label.kratka input{width:auto}
 .dzwon.dzwon-stop{opacity:.45;text-decoration:line-through}
 .plyta-mini{width:76px;height:56px;object-fit:cover;border-radius:4px;
 border:1px solid var(--linia);flex:0 0 auto;background:var(--pole)}
@@ -875,6 +935,12 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
 <a class="mini" href="/panel/wyloguj">Wyloguj</a></header>
 <main>
   <section id="podsumowanie"></section>
+  <section id="recznie">
+    <h2>Klient z biura</h2>
+    <p><button class="btn" type="button" id="reczny-pokaz">+ Dodaj klienta</button>
+    <span class="mini">gdy ktoś przyszedł osobiście — trafi do tej samej bazy co zgłoszenia z kalkulatora</span></p>
+    <div id="reczny-formularz"></div>
+  </section>
   <section id="dzis"></section>
   <section id="reakcje"></section>
   <section id="stawki"></section>
@@ -905,6 +971,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
 </main>
 <script>
 var STATUSY = [], dane = null, otwarta = null;
+var TEMATY = ${JSON.stringify(TEMATY)};
 
 function esc(t){ var d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; }
 function zl(n){ return (Math.round(Number(n)||0)).toLocaleString('pl-PL') + ' zł'; }
@@ -977,6 +1044,89 @@ function rysuj(){
   if(otwarta) pokazSzczegoly(otwarta, true);
 }
 
+/* ═══════════════════ KLIENT Z BIURA (zlecenie Dawida, 16.09.2026) ══════
+ *
+ * Formularz ma byc szybki: Dawid wypelnia go przy kliencie stojacym przy
+ * biurku. Obowiazkowe sa DWA pola - imie i telefon. Reszte mozna dopisac
+ * pozniej na karcie, tak samo jak przy zgloszeniu z kalkulatora.
+ */
+var recznyOtwarty = false;
+
+function formularzReczny(){
+  var opcje = TEMATY.map(function(t){
+    return '<option value="' + esc(t.id) + '">' + esc(t.nazwa) + '</option>';
+  }).join('');
+
+  document.getElementById('reczny-formularz').innerHTML = recznyOtwarty ?
+    '<div class="lejek nowy-klient">' +
+      '<div class="dwie">' +
+        '<label>Imię i nazwisko *<input id="rk-imie" autocomplete="off"></label>' +
+        '<label>Telefon *<input id="rk-telefon" type="tel" inputmode="tel" autocomplete="off" placeholder="np. 600 100 200"></label>' +
+      '</div>' +
+      '<div class="dwie">' +
+        '<label>Temat<select id="rk-temat"><option value="">— jeszcze nie wiadomo —</option>' + opcje + '</select></label>' +
+        '<label>Miejscowość<input id="rk-miejscowosc" autocomplete="off"></label>' +
+      '</div>' +
+      '<label>E-mail (opcjonalnie)<input id="rk-email" type="email" autocomplete="off"></label>' +
+      '<label>Notatka — co ustaliliście<textarea id="rk-notatka" rows="3" placeholder="np. przyszedł z wymiarami, chce spiek, oddzwonić po weekendzie"></textarea></label>' +
+      '<label class="kratka"><input id="rk-zgoda" type="checkbox"> Klient zgodził się na kontakt telefoniczny</label>' +
+      '<p class="mini">Niezaznaczone znaczy „nie pytaliśmy" — karta nie dostanie wtedy ani „PROSI O TELEFON", ani „NIE DZWOŃ".</p>' +
+      '<p><button class="btn" type="button" id="rk-zapisz">Zapisz klienta</button> ' +
+      '<button class="btn cichy" type="button" id="rk-anuluj">Anuluj</button> ' +
+      '<span class="mini" id="rk-info"></span></p>' +
+    '</div>' : '';
+
+  if(recznyOtwarty) document.getElementById('rk-imie').focus();
+  document.getElementById('reczny-pokaz').textContent = recznyOtwarty ? 'Zwin formularz' : '+ Dodaj klienta';
+}
+
+function polem(id){ var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+async function zapiszRecznego(){
+  var info = document.getElementById('rk-info');
+  var przycisk = document.getElementById('rk-zapisz');
+  info.textContent = 'Zapisuję…';
+  przycisk.disabled = true;
+
+  var odp = await (await fetch('/panel/api/klient', {
+    method: 'POST',
+    headers: {'content-type':'application/json'},
+    body: JSON.stringify({
+      imie: polem('rk-imie'),
+      telefon: polem('rk-telefon'),
+      email: polem('rk-email'),
+      miejscowosc: polem('rk-miejscowosc'),
+      temat: polem('rk-temat'),
+      notatka: polem('rk-notatka'),
+      telefonZgoda: document.getElementById('rk-zgoda').checked
+    })
+  })).json();
+
+  przycisk.disabled = false;
+  if(odp.error){ info.textContent = odp.error; return; }
+
+  /*
+   * Gdy numer albo mail juz byly w bazie, NIE zakladamy drugiej karty -
+   * dopisujemy sie do istniejacej. Dawid musi o tym wiedziec, bo inaczej
+   * zastanawialby sie, gdzie zniknal nowy wpis.
+   */
+  recznyOtwarty = false;
+  formularzReczny();
+  otwarta = Number(odp.id);
+  await wczytaj();
+  var boks = document.getElementById('sz-' + odp.id);
+  if(boks) boks.hidden = false;
+  var karta = document.querySelector('.karta[data-id="' + odp.id + '"]');
+  if(karta) karta.scrollIntoView({block:'center'});
+
+  // Komunikat zostaje na ekranie zamiast okienka alert(): Dawid ma obie
+  // ręce zajęte klientem, a okienko trzeba jeszcze zamknąć.
+  document.getElementById('reczny-formularz').innerHTML =
+    '<div class="lejek"><span class="mini">' + (odp.istnial
+      ? 'Ten klient już był w bazie — otworzyłem jego kartę niżej i dopisałem notatkę. Nic się nie zdublowało.'
+      : 'Dodane. Karta jest otwarta niżej.') + '</span></div>';
+}
+
 function kartaHtml(k, dzis){
   var flagi = (k.flagi||[]).map(function(f){ return '<span class="znacznik flaga">' + esc(opisFlagi(f)) + '</span>'; }).join('');
   if(k.feedback) flagi = znacznikFeedbacku(k) + flagi;
@@ -997,14 +1147,20 @@ function kartaHtml(k, dzis){
     flagi = '<span class="znacznik nie-dzwonic">NIE DZWONIC - woli mail</span>' + flagi;
   else if(k.telefonZgoda === 'tak')
     flagi = '<span class="znacznik prosi-telefon">PROSI O TELEFON</span>' + flagi;
+  // Skad wzieła sie karta. Idzie na KONIEC rzedu plakietek: to informacja
+  // o pochodzeniu, a nie sygnal operacyjny jak PILNE czy NIE DZWONIC.
+  if(k.reczny) flagi = flagi + '<span class="znacznik reczny">DODANY RĘCZNIE</span>';
   var goracy = (k.feedback === 'pasuje' || k.termin === 'pilne') && (k.status === 'nowy' || k.status === 'cieply');
   return '<article class="karta' + (dzis ? ' dzis' : '') + (goracy ? ' goracy' : '') + '" data-id="' + k.id + '">' +
     '<div class="gora"><div class="kto"><b>' + esc(k.imie || 'Klient') + ' · ' + esc(k.miejscowosc || '—') + '</b>' +
     '<span class="mini">' + esc(k.statusNazwa) + ' · ' + dzien(k.utworzono) +
     (k.wycen > 1 ? ' · ' + k.wycen + ' wyceny' : '') +
+    (k.tematNazwa ? ' · ' + esc(k.tematNazwa) : '') +
     (k.termin ? ' · termin: ' + esc(krotkiTermin(k.termin)) : '') +
     (k.oddzwonic ? ' · oddzwonić ' + esc(k.oddzwonic) : '') + '</span></div>' +
-    '<span class="kwota">' + zl(k.kwota) + '</span></div>' +
+    /* Karta bez wyceny pokazywalaby „0 zl", czyli kwote, ktorej nikt nie
+       podal — a to co innego niz wycena na zero zlotych. */
+    '<span class="kwota">' + (k.wycen ? zl(k.kwota) : '<span class="mini">bez wyceny</span>') + '</span></div>' +
     (flagi ? '<div style="margin-top:.4rem">' + flagi + '</div>' : '') +
     '<div class="akcje">' +
       /*
@@ -1016,7 +1172,7 @@ function kartaHtml(k, dzis){
         (k.telefonZgoda === 'nie' ? ' title="Klient prosil o kontakt mailem - nie dzwon bez potrzeby"' : '') +
         '>Zadzwoń</a>' +
       '<a href="sms:' + esc(tel(k.telefon)) + '">SMS</a>' +
-      '<a href="mailto:' + esc(k.email) + '">Mail</a>' +
+      (k.email ? '<a href="mailto:' + esc(k.email) + '">Mail</a>' : '') +
       '<button type="button" data-rozwin="' + k.id + '">Szczegóły</button>' +
     '</div><div class="szczegoly" id="sz-' + k.id + '" hidden></div></article>';
 }
@@ -1612,7 +1768,18 @@ async function pokazSzczegoly(id, cicho){
       (w.odbior ? ' · odbiór własny' : '') + plytaHtml(w) +
       podglad + aktualizuj + powtorz + obejrzenia +
       watekHtml(w) + '</li>';
-  }).reverse().join('') || '<li class="mini">Brak zapisanych wycen.</li>';
+  }).reverse().join('') || (k.reczny
+    /*
+     * Karta z biura nie ma czego „powtorzyc" — pierwszej wyceny nie bylo.
+     * Zamiast martwego przycisku dajemy link, ktory otwiera edytor wyceny
+     * PODPISANY NA TE KARTE, wiec gotowa oferta wroci tutaj, a nie na nowa.
+     */
+    ? '<li class="mini">Klient wpisany ręcznie w biurze — wyceny jeszcze nie ma.'
+      + (k.zrobWycene
+          ? ' <a href="' + esc(k.zrobWycene) + '" target="_blank" rel="noopener">Zrób wycenę dla niego ↗</a>'
+          : '')
+      + '</li>'
+    : '<li class="mini">Brak zapisanych wycen.</li>');
 
   var notatki = k.notatki.map(function(n){
     return '<li class="' + (n.autor === 'system' ? 'system' : '') + '"><span class="kiedy">' +
@@ -1628,6 +1795,7 @@ async function pokazSzczegoly(id, cicho){
     '<p><button class="btn" type="button" data-zapisz="' + id + '">Zapisz</button> ' +
     '<button class="btn cichy" type="button" data-kasuj="' + id + '">Skasuj kartę</button></p>' +
     '<p class="mini">Telefon: ' + esc(k.telefon || '—') + ' · ' + esc(k.email || '—') +
+    (k.tematNazwa ? ' · temat: ' + esc(k.tematNazwa) : '') +
     ' · źródło: ' + esc(zrodloOpis(k)) + '</p>' +
     '<h2>Wyceny</h2><ul class="log">' + wyceny + '</ul>' +
     '<h2>Notatki</h2><ul class="log">' + notatki + '</ul>';
@@ -1700,6 +1868,7 @@ async function odpisz(wycenaId){
 }
 
 function zrodloOpis(k){
+  if(k.zrodlo === 'biuro') return 'biuro / ręcznie (wpisany w panelu)';
   var t = k.zrodlo === 'ads' ? 'Google Ads' : k.zrodlo === 'organiczne' ? 'organiczne' : 'nieznane';
   return k.zrodloSzczegol ? t + ' (' + k.zrodloSzczegol + ')' : t;
 }
@@ -1740,6 +1909,9 @@ document.addEventListener('click', function(e){
       body: JSON.stringify({id: Number(kas.dataset.kasuj), skasuj: true})}).then(function(){ otwarta = null; wczytaj(); });
     return;
   }
+  if(e.target.id === 'reczny-pokaz'){ recznyOtwarty = !recznyOtwarty; formularzReczny(); return; }
+  if(e.target.id === 'rk-anuluj'){ recznyOtwarty = false; formularzReczny(); return; }
+  if(e.target.id === 'rk-zapisz'){ zapiszRecznego(); return; }
   if(e.target.id === 'stawki-pokaz'){
     var t = document.getElementById('stawki-tresc'); t.hidden = !t.hidden; return;
   }
@@ -1784,6 +1956,17 @@ document.addEventListener('click', function(e){
     sel.value = sel.value === chip.dataset.status ? '' : chip.dataset.status;
     wczytaj();
   }
+});
+
+/* Enter w polu tekstowym zapisuje klienta - formularz wypelnia sie przy
+   kliencie, wiec siegniecie po mysz przy kazdym polu jest strata czasu.
+   W notatce Enter zostaje Enterem (tam pisze sie kilka zdan). */
+document.getElementById('reczny-formularz').addEventListener('keydown', function(e){
+  if(e.key !== 'Enter') return;
+  var t = e.target.tagName;
+  if(t === 'TEXTAREA') return;
+  e.preventDefault();
+  zapiszRecznego();
 });
 
 ['f-status','f-termin','f-kwota','f-od','f-do'].forEach(function(id){

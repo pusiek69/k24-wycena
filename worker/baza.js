@@ -31,6 +31,24 @@ export const STATUSY = [
   { id: 'fake', nazwa: 'Fake' },
 ];
 
+/**
+ * TEMAT SPRAWY — wyłącznie dla kart zakładanych ręcznie w panelu
+ * (zlecenie Dawida, 16.09.2026). Przy zgłoszeniu z kalkulatora rodzaj
+ * roboty wynika z samej wyceny, więc tam tego pola nie ruszamy.
+ */
+export const TEMATY = [
+  { id: 'blat_kuchenny', nazwa: 'Blat kuchenny' },
+  { id: 'blat_lazienkowy', nazwa: 'Blat łazienkowy' },
+  { id: 'nagrobek', nazwa: 'Nagrobek' },
+  { id: 'inne', nazwa: 'Inne' },
+];
+
+const NAZWY_TEMATOW = Object.fromEntries(TEMATY.map((t) => [t.id, t.nazwa]));
+export const znanyTemat = (t) => TEMATY.some((x) => x.id === t);
+
+/** Źródło karty założonej w panelu — po nim panel poznaje „dodany ręcznie". */
+export const ZRODLO_RECZNE = 'biuro';
+
 /** Statusy, których kwoty sumują się do „ile wisi w lejku". */
 export const W_LEJKU = ['cieply', 'oferta'];
 
@@ -229,6 +247,128 @@ export async function zapiszLead(env, lead) {
   return { klientId, nowy };
 }
 
+/**
+ * ══════════════════════════════════════════════════════════════════════════
+ *  KLIENT DODANY RĘCZNIE W PANELU  (zlecenie Dawida, 16.09.2026)
+ *
+ *  „Chcę w kalkulatorze zbierać WSZYSTKICH klientów — czasem klient
+ *   przychodzi do biura i chcę móc go wpisać ręcznie w panelu."
+ *
+ *  Karta ląduje w tej samej tabeli co zgłoszenia z kalkulatora, więc lejek,
+ *  filtry, CSV, retencja i sekcja „Na dziś" widzą ją bez żadnej zmiany.
+ *  Różnica jest jedna: `zrodlo = 'biuro'` i brak wyceny.
+ *
+ *  DEDUPLIKACJA JEST TU WAŻNIEJSZA NIŻ PRZY LEADZIE. Klient, który
+ *  wcześniej liczył blat na stronie, a teraz przyszedł do biura, to ten sam
+ *  człowiek — gdyby powstała druga karta, Dawid dzwoniłby dwa razy i nie
+ *  widziałby, że wycena już jest. Dlatego szukamy po tym samym kluczu
+ *  telefonu i maila co `zapiszLead`, a przy trafieniu DOPISUJEMY się do
+ *  istniejącej karty i mówimy o tym wprost w odpowiedzi.
+ *
+ *  Zwraca { ok, klientId, nowy, istnial } albo { ok: false, blad }.
+ * ══════════════════════════════════════════════════════════════════════════
+ */
+export async function dodajKlientaRecznie(env, dane) {
+  const baza = env.BAZA;
+  if (!baza) return { ok: false, blad: 'Panel nie ma podpiętej bazy.' };
+
+  const d = dane && typeof dane === 'object' ? dane : {};
+  const imie = String(d.imie || '').trim().slice(0, 120);
+  const telefon = String(d.telefon || '').trim().slice(0, 40);
+  const email = String(d.email || '').trim().slice(0, 160);
+  const miejscowosc = String(d.miejscowosc || '').trim().slice(0, 80);
+  const notatka = String(d.notatka || '').trim().slice(0, 2000);
+  const temat = znanyTemat(d.temat) ? String(d.temat) : '';
+  /*
+   * Kratka „zgoda na telefon" w biurze: zaznaczona = klient się zgodził.
+   * NIEzaznaczoną zapisujemy jako PUSTE („nie pytaliśmy"), nigdy jako 'nie'.
+   * „Nie dzwonić" to wyraźna odmowa klienta i nie wolno jej domniemywać
+   * z tego, że Dawid nie kliknął kratki — panel pokazałby wtedy czerwone
+   * NIE DZWONIĆ komuś, kto o tym nie powiedział ani słowa.
+   */
+  const telefonZgoda = d.telefonZgoda === true || d.telefonZgoda === 'tak' ? 'tak' : '';
+
+  // Minimum obowiązkowe: imię i telefon. Reszta jest dobrowolna, bo formularz
+  // wypełnia się przy kliencie stojącym przy biurku.
+  if (!imie) return { ok: false, blad: 'Wpisz imię i nazwisko.' };
+  const tk = kluczTelefonu(telefon);
+  if (tk.length !== 9) return { ok: false, blad: 'Telefon musi mieć 9 cyfr.' };
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return { ok: false, blad: 'Adres e-mail wygląda na niepełny.' };
+
+  const ek = kluczEmaila(email);
+  const czas = teraz();
+  const istniejacy = await baza
+    .prepare(
+      `SELECT id, imie, telefon, email, miejscowosc, temat, wycen FROM klienci
+        WHERE telefon_klucz = ?1 OR (?2 <> '' AND email_klucz = ?2) LIMIT 1`
+    )
+    .bind(tk, ek)
+    .first();
+
+  if (istniejacy?.id) {
+    const zmiany = [
+      ['imię', istniejacy.imie, imie],
+      ['telefon', istniejacy.telefon, telefon],
+      ['mail', istniejacy.email, email],
+      ['miejscowość', istniejacy.miejscowosc, miejscowosc],
+    ]
+      .filter(([, stare, nowe]) => nowe && String(stare || '') !== nowe)
+      .map(([co, stare, nowe]) => `${co}: ${stare || '—'} → ${nowe}`);
+
+    await baza
+      .prepare(
+        `UPDATE klienci SET imie = COALESCE(NULLIF(?, ''), imie),
+                            telefon = COALESCE(NULLIF(?, ''), telefon),
+                            email = COALESCE(NULLIF(?, ''), email),
+                            miejscowosc = COALESCE(NULLIF(?, ''), miejscowosc),
+                            telefon_klucz = COALESCE(NULLIF(?, ''), telefon_klucz),
+                            email_klucz = COALESCE(NULLIF(?, ''), email_klucz),
+                            temat = COALESCE(NULLIF(?, ''), temat),
+                            -- Zgodę tylko DOPISUJEMY: pusta kratka nie ma prawa
+                            -- skasować „nie dzwonić" z formularza na stronie.
+                            telefon_zgoda = COALESCE(NULLIF(?, ''), telefon_zgoda),
+                            ruch = ?
+          WHERE id = ?`
+      )
+      .bind(imie, telefon, email, miejscowosc, tk, ek, temat, telefonZgoda, czas, istniejacy.id)
+      .run();
+
+    await dopiszNotatke(
+      baza,
+      istniejacy.id,
+      'system',
+      ['Klient z biura — karta już istniała, dopisano do niej.', ...zmiany].join(' ')
+    );
+    if (notatka) await dopiszNotatke(baza, istniejacy.id, 'dawid', notatka);
+
+    return { ok: true, klientId: istniejacy.id, nowy: false, istnial: true, wycen: istniejacy.wycen };
+  }
+
+  const wynik = await baza
+    .prepare(
+      `INSERT INTO klienci (imie, telefon, email, miejscowosc, telefon_klucz, email_klucz,
+                            status, zrodlo, zrodlo_szczegol, flagi, wycen,
+                            kwota_ostatnia, kwota_max, temat, telefon_zgoda, utworzono, ruch)
+       VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, 'dodany w panelu', '[]', 0, 0, 0, ?, ?, ?, ?)`
+    )
+    .bind(imie, telefon, email, miejscowosc, tk, ek, ZRODLO_RECZNE, temat, telefonZgoda, czas, czas)
+    .run();
+
+  const klientId = wynik.meta?.last_row_id ?? null;
+  if (!klientId) return { ok: false, blad: 'Nie udało się zapisać karty.' };
+
+  await dopiszNotatke(
+    baza,
+    klientId,
+    'system',
+    `Dodany ręcznie w panelu (biuro)${temat ? ` — ${NAZWY_TEMATOW[temat]}` : ''}`
+  );
+  if (notatka) await dopiszNotatke(baza, klientId, 'dawid', notatka);
+
+  return { ok: true, klientId, nowy: true, istnial: false, wycen: 0 };
+}
+
 const opisWyceny = (s, kwota) =>
   [s.firma, s.dekor, kwota ? `${kwota} zł` : ''].filter(Boolean).join(' · ') || 'zapytanie bez kwoty';
 
@@ -412,6 +552,11 @@ const kartaSkrocona = (k) => ({
   budzet: k.budzet || '',
   pora: k.pora || '',
   termin: k.termin || '',
+  // Temat sprawy — wypełniany tylko przy kartach zakładanych ręcznie.
+  temat: k.temat || '',
+  tematNazwa: NAZWY_TEMATOW[k.temat] || '',
+  // Karta z biura, nie z kalkulatora — panel maluje po tym plakietkę.
+  reczny: k.zrodlo === ZRODLO_RECZNE,
   // Puste znaczy „nie pytaliśmy" — panel odróżnia to od wyraźnego „nie".
   telefonZgoda: k.telefon_zgoda || '',
   wycen: k.wycen,
@@ -972,7 +1117,7 @@ export async function csv(env) {
   const wiersze = await env.BAZA.prepare(`SELECT * FROM klienci ORDER BY utworzono DESC`).all();
   const naglowki = [
     'id', 'utworzono', 'imie', 'telefon', 'email', 'miejscowosc', 'status',
-    'oddzwonic', 'zrodlo', 'flagi', 'wycen', 'kwota_ostatnia', 'kwota_max', 'ostatni_ruch',
+    'oddzwonic', 'zrodlo', 'temat', 'flagi', 'wycen', 'kwota_ostatnia', 'kwota_max', 'ostatni_ruch',
   ];
   const linie = [naglowki.join(';')];
   for (const k of wiersze.results || []) {
@@ -980,6 +1125,7 @@ export async function csv(env) {
       [
         k.id, k.utworzono, k.imie, k.telefon, k.email, k.miejscowosc,
         NAZWY_STATUSOW[k.status] || k.status, k.oddzwonic || '', k.zrodlo,
+        NAZWY_TEMATOW[k.temat] || '',
         bezpieczneFlagi(k.flagi).join(' '), k.wycen, k.kwota_ostatnia, k.kwota_max, k.ruch,
       ]
         .map(pole)

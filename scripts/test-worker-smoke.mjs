@@ -681,6 +681,118 @@ if (JEST) {
     });
   }
 
+  /* ═══════════ KLIENT Z BIURA (zlecenie Dawida, 16.09.2026) ═══════════
+   *
+   * Testy modułu (scripts/test-klient-reczny.mjs) sprawdzają regułę;
+   * ten sprawdza DROGĘ: czy trasa panelu istnieje, czy stoi za hasłem
+   * i czy wpisany klient naprawdę pokazuje się na liście w panelu.
+   */
+  test('dodanie klienta z biura wymaga zalogowanego panelu', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/klient', { imie: 'Obcy', telefon: '600100900' }, ''),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 401, 'trasa dodawania klienta stoi otworem');
+    const ile = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie: await ciastkoPanelu(env) },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+    assert.equal(ile.lista.length, 0, 'mimo 401 karta powstała');
+  });
+
+  test('klient z biura przechodzi całą drogę: formularz panelu → baza → lista', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+
+    const odp = await worker.fetch(
+      zapytaniePanel(
+        '/panel/api/klient',
+        {
+          imie: 'Marek z biura',
+          telefon: '600 100 300',
+          temat: 'blat_kuchenny',
+          miejscowosc: 'Tarnobrzeg',
+          notatka: 'Przyszedł z wymiarami.',
+          telefonZgoda: true,
+        },
+        cookie
+      ),
+      env,
+      ctx
+    );
+    const wynik = await odp.json();
+    assert.equal(odp.status, 200, `panel oddał ${odp.status}: ${JSON.stringify(wynik)}`);
+    assert.equal(wynik.nowy, true);
+
+    const dane = await (
+      await worker.fetch(
+        new Request('https://k24h.example/panel/api/dane', {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+    const k = dane.lista.find((x) => x.id === wynik.id);
+    assert.ok(k, 'karta nie dojechała na listę panelu');
+    assert.equal(k.reczny, true, 'brak rozróżnienia „dodany ręcznie"');
+    assert.equal(k.tematNazwa, 'Blat kuchenny');
+    assert.equal(k.telefonZgoda, 'tak');
+    assert.equal(k.wycen, 0);
+
+    // Karta bez wyceny nie ma czego „powtórzyć" — zamiast tego dostaje link
+    // do PUSTEGO edytora podpisany na tę kartę.
+    const pelna = await (
+      await worker.fetch(
+        new Request(`https://k24h.example/panel/api/karta?id=${wynik.id}`, {
+          headers: { origin: 'https://kam24h.pl', cookie },
+        }),
+        env,
+        ctx
+      )
+    ).json();
+    assert.deepEqual(pelna.wyceny, []);
+    assert.ok(pelna.zrobWycene, 'brak linku „zrób wycenę" dla klienta z biura');
+    assert.match(pelna.zrobWycene, /^https:\/\/kam24h\.pl\/#powtorz=/);
+  });
+
+  test('ten sam numer drugi raz nie zakłada drugiej karty', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const dane = { imie: 'Marek z biura', telefon: '600100300' };
+    const a = await (
+      await worker.fetch(zapytaniePanel('/panel/api/klient', dane, cookie), env, ctx)
+    ).json();
+    const b = await (
+      await worker.fetch(
+        zapytaniePanel('/panel/api/klient', { ...dane, notatka: 'Drugie wejście' }, cookie),
+        env,
+        ctx
+      )
+    ).json();
+
+    assert.equal(b.id, a.id, 'powstała druga karta tego samego człowieka');
+    assert.equal(b.istnial, true, 'panel nie wie, że dopisał się do istniejącej karty');
+  });
+
+  test('zły numer wraca z czytelnym błędem, nie z pustym 500', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/klient', { imie: 'Bez numeru', telefon: '12' }, await ciastkoPanelu(env)),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 400);
+    assert.match((await odp.json()).error, /9 cyfr/);
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

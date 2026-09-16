@@ -348,3 +348,26 @@ CREATE TABLE IF NOT EXISTS zakupy_aliasy (
   produkt   TEXT NOT NULL,
   zmieniono TEXT NOT NULL
 );
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  KLIENT DODANY RĘCZNIE W PANELU  (zlecenie Dawida, 16.09.2026)
+--
+--  „Chcę w kalkulatorze zbierać WSZYSTKICH klientów — czasem klient
+--   przychodzi do biura i chcę móc go wpisać ręcznie w panelu."
+--
+--  Taka karta ląduje w TEJ SAMEJ tabeli `klienci` co zgłoszenia
+--  z kalkulatora. Osobna tabela rozjechałaby bazę na dwie połowy i ani
+--  lejek, ani filtry, ani CSV, ani retencja nie pokazywałyby całości.
+--  Kartę z biura poznajemy po `zrodlo = 'biuro'` — panel maluje po tym
+--  plakietkę „dodany ręcznie" i nie proponuje przy niej „Powtórz wycenę",
+--  bo nie ma czego powtarzać.
+--
+--  `temat` to jedyna informacja, której nie było gdzie zapisać. Przy
+--  leadzie rodzaj roboty wynika z wyceny (pomieszczenie, materiał, kwota);
+--  klient z biura wyceny jeszcze nie ma, a Dawid musi wiedzieć, w jakiej
+--  sprawie ktoś przyszedł. Puste = lead albo karta sprzed tej zmiany.
+--
+--  ⚠ Ten ALTER, jak pozostałe, uruchamiamy na produkcji OSOBNO — przy
+--  całym pliku D1 przewróci się na „duplicate column" tych wcześniejszych.
+-- ═══════════════════════════════════════════════════════════════════════
+ALTER TABLE klienci ADD COLUMN temat TEXT NOT NULL DEFAULT '';
