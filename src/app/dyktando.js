@@ -43,6 +43,17 @@ export const MAKS_CM = 1200;
 /** Ile odcinków przyjmujemy z jednego dyktanda. */
 export const MAKS_ODCINKOW = 12;
 
+/**
+ * Głębokość przyjęta, gdy padł tylko jeden wymiar („blat trzysta").
+ *
+ * Standardowy blat kuchenny ma 60 cm i taką głębokość ma większość wycen
+ * w bazie — ale to i tak jest ZGADYWANIE, więc odcinek dostaje znacznik
+ * `domyslnaGlebokosc`, ekran mówi o tym wprost, a Dawid poprawia jednym
+ * kliknięciem. Milczące wstawienie liczby, której nikt nie powiedział,
+ * byłoby najgorszym wariantem: weszłoby do ceny niezauważone.
+ */
+export const GLEBOKOSC_DOMYSLNA = 60;
+
 /* ─────────────────────────────────────────────────────────── transkrypt */
 
 /**
@@ -56,6 +67,36 @@ export function czystyTranskrypt(tekst) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, MAKS_TRANSKRYPT);
+}
+
+/* ──────────────────────────────────── sklejanie rozpoznanych fragmentów */
+
+/**
+ * Fragmenty od rozpoznawania mowy → jeden transkrypt.
+ *
+ * ⚠ ZGŁOSZENIE DAWIDA Z 16.09.2026, godzinę po wdrożeniu:
+ *   „dubluje strasznie — źle zczytuje co mówię i POWTARZA CYFRY".
+ *
+ * Chrome POPRAWIA wcześniejsze fragmenty — zwłaszcza liczby, bo „sześćset
+ * sto" doprecyzowuje dopiero po usłyszeniu ciągu dalszego — i zgłasza ten
+ * sam, już zamknięty kawałek jeszcze raz. Kto dokleja „tylko nowe" wyniki
+ * od `resultIndex`, dostaje wtedy „600 100 600 100 200".
+ *
+ * Dlatego transkrypt składamy ZA KAŻDYM RAZEM OD ZERA z całej listy
+ * wyników — ta operacja niczego nie pamięta, więc nie ma czego policzyć
+ * dwa razy. Na wierzchu zostaje jeszcze odsiew sąsiadujących blizniąt:
+ * nikt nie dyktuje dwa razy pod rząd tej samej frazy, a rozpoznawanie
+ * potrafi ją powtórzyć przy przerwie w mówieniu.
+ */
+export function sklejSegmenty(segmenty) {
+  const czyste = (Array.isArray(segmenty) ? segmenty : [])
+    .map((t) => String(t ?? '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  const bezBlizniat = czyste.filter(
+    (t, i) => i === 0 || t.toLowerCase() !== czyste[i - 1].toLowerCase()
+  );
+  return bezBlizniat.join(' ');
 }
 
 /* ──────────────────────────────────────────────────────────────── telefon */
@@ -156,12 +197,30 @@ function naCentymetry(wartosc) {
 export function normalizujOdcinek(surowy) {
   const a = naCentymetry(surowy?.dlugosc_cm);
   const b = naCentymetry(surowy?.glebokosc_cm);
+  const etykieta = czystaEtykieta(surowy?.etykieta);
+  const podpis = etykieta ? { etykieta } : {};
+
+  /*
+   * JEDEN WYMIAR („blat trzysta", „parapet sto dwadzieścia”) — przy ladzie
+   * mówi się tak nagminnie, bo głębokość „oczywiście” jest standardowa.
+   * Podstawiamy 60 cm i ZNACZYMY to, zamiast wyrzucać cały odcinek:
+   * wymiar do sprawdzenia jest lepszy niż wymiar, który przepadł, ale
+   * tylko dopóki widać, że ktoś go zgadnął.
+   *
+   * Tu NIE stosujemy reguły „większy bok to długość": wypowiedziana liczba
+   * jest długością, a 60 głębokością — także wtedy, gdy padło mniej niż 60.
+   */
+  if ((a > 0) !== (b > 0)) {
+    const dl = a || b;
+    if (dl < MIN_CM || dl > MAKS_CM) return null;
+    return { gl: GLEBOKOSC_DOMYSLNA, dl, domyslnaGlebokosc: true, ...podpis };
+  }
+
   const dl = Math.max(a, b);
   const gl = Math.min(a, b);
   if (gl < MIN_CM || dl > MAKS_CM) return null;
 
-  const etykieta = czystaEtykieta(surowy?.etykieta);
-  return { gl, dl, ...(etykieta ? { etykieta } : {}) };
+  return { gl, dl, ...podpis };
 }
 
 /** Lista odcinków z dyktanda — bez tych, których nie dało się odczytać. */
@@ -236,6 +295,23 @@ export function scalDyktando(surowe) {
   // tylko ten sam komplet odcinków opisany słowami, dla panelu.
   dane.wymiary = wymiaryDoNotatki(dane.odcinki);
   return dane;
+}
+
+/** Ile odcinków dostało głębokość z domysłu, a nie z wypowiedzi. */
+export const zgadnieteGlebokosci = (odcinki) =>
+  (odcinki || []).filter((o) => o?.domyslnaGlebokosc).length;
+
+/**
+ * Zdanie doklejane do komunikatu, gdy cokolwiek zgadliśmy. Osobno, bo
+ * mówi o czymś innym niż reszta: nie „co wpisałem", tylko „czego
+ * nie powiedziałeś, a i tak się pojawiło".
+ */
+export function ostrzezenieOGlebokosci(odcinki) {
+  const ile = zgadnieteGlebokosci(odcinki);
+  if (!ile) return '';
+  return ile === 1
+    ? `Głębokość ${GLEBOKOSC_DOMYSLNA} cm przyjąłem z domysłu — sprawdź.`
+    : `Głębokość ${GLEBOKOSC_DOMYSLNA} cm przyjąłem z domysłu w ${ile} odcinkach — sprawdź.`;
 }
 
 /** Czy z dyktanda wyszło cokolwiek do wpisania. */

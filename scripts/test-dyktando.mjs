@@ -17,9 +17,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { odcinekDoZapisu } from '../src/app/etykiety-odcinkow.js';
 import {
+  GLEBOKOSC_DOMYSLNA,
   MAKS_TRANSKRYPT,
   czystyTranskrypt,
+  ostrzezenieOGlebokosci,
+  sklejSegmenty,
+  zgadnieteGlebokosci,
   normalizujEmail,
   normalizujOdcinek,
   normalizujOdcinki,
@@ -32,6 +37,65 @@ import {
 } from '../src/app/dyktando.js';
 
 const zrodlo = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+
+/* ════════════════════ DUBLOWANIE TRANSKRYPTU ═══════════════════ */
+
+/**
+ * ⚠ ZGŁOSZENIE DAWIDA Z 16.09.2026, godzinę po wdrożeniu:
+ *   „dubluje strasznie — źle zczytuje co mówię i POWTARZA CYFRY".
+ *
+ * Odtwarzamy tu to, co realnie robi Chrome: `results` jest listą NARASTAJĄCĄ
+ * i przy każdym zdarzeniu zawiera KOMPLET wyników sesji, a nie tylko nowe.
+ * Pierwsza wersja doklejała do bufora wszystko od `resultIndex` — i przy
+ * każdej poprawce wcześniejszego fragmentu liczyła go drugi raz.
+ */
+test('DUBLOWANIE: poprawiony fragment nie liczy się drugi raz', () => {
+  /*
+   * Klatka po klatce, dokładnie jak przy dyktowaniu numeru telefonu:
+   * Chrome zamyka „sześćset sto", potem DOPRECYZOWUJE tę samą frazę
+   * i dopiero dokłada resztę. Bufor narastający dałby tu
+   * „600 100 600 100 200" — czyli dokładnie to, co zgłosił Dawid.
+   */
+  const klatki = [
+    ['600 100'],
+    ['600 100 200'],
+    ['600 100 200', 'Tarnobrzeg'],
+  ];
+  const kolejne = klatki.map((k) => sklejSegmenty(k));
+  assert.equal(kolejne.at(-1), '600 100 200 Tarnobrzeg');
+  // Żadna klatka nie powtarza tej samej liczby dwa razy pod rząd.
+  for (const t of kolejne) assert.ok(!/(\b\d+\b)\s+\1\s+\1/.test(t), `zdublowane: ${t}`);
+});
+
+test('DUBLOWANIE: identyczna fraza pod rząd wypada, różne zostają', () => {
+  // Rozpoznawanie potrafi powtórzyć cały segment przy przerwie w mówieniu.
+  assert.equal(sklejSegmenty(['blat trzysta', 'blat trzysta', 'na sześćdziesiąt']),
+    'blat trzysta na sześćdziesiąt');
+  assert.equal(sklejSegmenty(['BLAT TRZYSTA', 'blat trzysta']), 'BLAT TRZYSTA');
+  // Dwa różne odcinki o podobnym brzmieniu MUSZĄ zostać oba.
+  assert.equal(sklejSegmenty(['blat trzysta', 'blat dwieście']), 'blat trzysta blat dwieście');
+  assert.equal(sklejSegmenty(['', '   ', 'wyspa']), 'wyspa');
+  assert.equal(sklejSegmenty(null), '');
+});
+
+test('DUBLOWANIE: obie kopie reguły — moduł i panel — liczą tak samo', () => {
+  /*
+   * Panel jest jednym wielkim napisem i nie ma jak zaimportować modułu,
+   * więc ma własną kopię tej funkcji. Ten test jest jedynym miejscem,
+   * które zauważy, że ktoś poprawił jedną, a drugą zostawił.
+   */
+  const panel = zrodlo('worker/panel.js');
+  assert.match(panel, /function sklejSegmenty\(segmenty\)\{/, 'panel nie ma sklejania segmentów');
+  assert.match(panel, /slyszane = sklejSegmenty\(finalne\);/, 'panel nadal dokleja do bufora');
+  assert.ok(
+    !/for\(var i = e\.resultIndex/.test(panel),
+    'panel wciąż czyta wyniki od resultIndex — to jest ta przyczyna dublowania'
+  );
+
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(ed, /slyszane = sklejSegmenty\(finalne\);/, 'edytor nadal dokleja do bufora');
+  assert.ok(!/i = e\.resultIndex/.test(ed), 'edytor wciąż czyta wyniki od resultIndex');
+});
 
 /* ═══════════════════════════════ telefon ════════════════════════════════ */
 
@@ -97,10 +161,17 @@ test('wymiar podany w metrach przelicza się, zamiast wypadać', () => {
 });
 
 test('przesłyszany wymiar odpada zamiast wejść do wyceny', () => {
+  /*
+   * UWAGA: „jeden bok" NIE jest już na tej liście — od 16.09.2026 dostaje
+   * głębokość 60 cm z domysłu i znacznik `domyslnaGlebokosc` (prośba Dawida,
+   * bo „blat trzysta" pada przy ladzie nagminnie). Patrz test „WYMIARY:
+   * jeden bok…". Tutaj zostaje to, czego nie da się uratować żadnym domysłem.
+   */
   for (const zly of [
-    { dlugosc_cm: 300, glebokosc_cm: 0 }, // brak drugiego boku
-    { dlugosc_cm: 300 }, // to samo, inaczej
     { dlugosc_cm: 9000, glebokosc_cm: 60 }, // blat na dziewięćdziesiąt metrów
+    { dlugosc_cm: 9000 }, // to samo, bez drugiego boku
+    { dlugosc_cm: 0, glebokosc_cm: 0 }, // nic nie padło
+    { dlugosc_cm: 'nie wiem', glebokosc_cm: 'ześćdziesiąt' }, // same słowa
     {},
   ])
     assert.equal(normalizujOdcinek(zly), null, `${JSON.stringify(zly)} przeszło`);
@@ -125,6 +196,88 @@ test('lista odcinków gubi tylko te nieczytelne', () => {
   assert.equal(lista.length, 2);
   assert.equal(lista[1].etykieta, 'Wyspa');
   assert.deepEqual(normalizujOdcinki(null), []);
+});
+
+/* ═══════════════ WYMIARY — RDZEŃ FUNKCJI (zlecenie Dawida) ══════════ */
+
+/**
+ * Dawid, 16.09.2026: „NAJWAŻNIEJSZA jest możliwość głosowego wprowadzania
+ * WYMIARÓW BLATÓW". Poniżej odpowiedzi modelu na realne dyktanda —
+ * sprawdzamy, co z nich wychodzi PO naszej stronie.
+ */
+test('WYMIARY: trzy elementy jednym tchem → trzy odcinki z etykietami', () => {
+  // „blat trzysta na sześćdziesiąt, wyspa dwieście dziesięć na dziewięćdziesiąt,
+  //  fartuch dwieście na sześćdziesiąt"
+  const lista = normalizujOdcinki([
+    { etykieta: '', dlugosc_cm: 300, glebokosc_cm: 60 },
+    { etykieta: 'Wyspa', dlugosc_cm: 210, glebokosc_cm: 90 },
+    { etykieta: 'Fartuch', dlugosc_cm: 200, glebokosc_cm: 60 },
+  ]);
+  assert.deepEqual(lista, [
+    { gl: 60, dl: 300 },
+    { gl: 90, dl: 210, etykieta: 'Wyspa' },
+    { gl: 60, dl: 200, etykieta: 'Fartuch' },
+  ]);
+  assert.equal(zgadnieteGlebokosci(lista), 0, 'nic nie powinno być zgadywane');
+});
+
+test('WYMIARY: metry i skróty — „trzy metry", „dwa dwadzieścia"', () => {
+  // „trzy metry na sześćdziesiąt" — model bywa niekonsekwentny i oddaje 3
+  assert.deepEqual(normalizujOdcinek({ dlugosc_cm: 3, glebokosc_cm: 60 }), { gl: 60, dl: 300 });
+  // „dwa dwadzieścia na sześćdziesiąt pięć" — tu model liczy sam
+  assert.deepEqual(normalizujOdcinek({ dlugosc_cm: 220, glebokosc_cm: 65 }), { gl: 65, dl: 220 });
+  // … a gdy odda „2.2", też ma wyjść 220
+  assert.deepEqual(normalizujOdcinek({ dlugosc_cm: 2.2, glebokosc_cm: 0.65 }), { gl: 65, dl: 220 });
+});
+
+test('WYMIARY: jeden bok → głębokość 60 z domysłu, ale OZNACZONA', () => {
+  /*
+   * „Blat trzysta" pada przy ladzie nagminnie. Odrzucenie takiego odcinka
+   * znaczyłoby, że dyktowanie nie działa; ciche wstawienie 60 znaczyłoby,
+   * że do ceny wchodzi liczba, której nikt nie powiedział. Stąd znacznik.
+   */
+  const o = normalizujOdcinek({ dlugosc_cm: 300, glebokosc_cm: 0, etykieta: '' });
+  assert.deepEqual(o, { gl: GLEBOKOSC_DOMYSLNA, dl: 300, domyslnaGlebokosc: true });
+  assert.match(ostrzezenieOGlebokosci([o]), /z domysłu/);
+  assert.equal(ostrzezenieOGlebokosci([{ gl: 60, dl: 300 }]), '', 'ostrzega bez powodu');
+
+  // Wypowiedziana liczba jest DŁUGOŚCIĄ także wtedy, gdy jest mniejsza niż 60 —
+  // reguła „większy bok to długość" nie ma tu czego porównywać.
+  assert.deepEqual(normalizujOdcinek({ dlugosc_cm: 40, glebokosc_cm: 0, etykieta: 'Parapet' }), {
+    gl: 60,
+    dl: 40,
+    domyslnaGlebokosc: true,
+    etykieta: 'Parapet',
+  });
+});
+
+test('WYMIARY: znacznik domysłu NIE wchodzi do zapisanej oferty', () => {
+  // `odcinekDoZapisu` bierze wyłącznie gl/dl/etykietę — patrz test niżej.
+  const o = normalizujOdcinek({ dlugosc_cm: 300, glebokosc_cm: 0 });
+  assert.deepEqual(Object.keys(odcinekDoZapisu(o)), ['gl', 'dl']);
+});
+
+test('EDYTOR: dyktowanie umie DOPISAĆ odcinki, nie tylko podmienić', () => {
+  /*
+   * Prośba Dawida z 16.09.2026: przy ladzie klient przypomina sobie parapet
+   * dopiero po wszystkim. Dwa osobne przyciski zamiast zgadywania z treści
+   * zdania — pomyłka w zgadywaniu byłaby cicha i nieregularna.
+   */
+  const ed = zrodlo('src/app/oferta-dawida.js');
+  assert.match(ed, /Dopisz głosem/, 'brak przycisku dopisywania');
+  assert.match(
+    ed,
+    /stan\.odcinki = dopisz \? \[\.\.\.stan\.odcinki\.filter\(\(o\) => o\.gl > 0 && o\.dl > 0\), \.\.\.zGlosu\] : zGlosu;/,
+    'dopisywanie nie składa listy z dotychczasowych i nowych'
+  );
+  // „Cofnij" obsługuje OBA tryby — zapas robi się przed podmianą listy.
+  assert.ok(
+    ed.indexOf('d.przed = stan.odcinki;') < ed.indexOf('stan.odcinki = dopisz ?'),
+    'zapas do „Cofnij" robiony po podmianie listy'
+  );
+  // Zgadniętą głębokość widać na wierszu i w komunikacie.
+  assert.match(ed, /o\.domyslnaGlebokosc \? ' zgadniety' : ''/);
+  assert.match(ed, /ostrzezenieOGlebokosci\(nowe\)/);
 });
 
 /* ══════════════════════════ notatka i wymiary ═══════════════════════════ */

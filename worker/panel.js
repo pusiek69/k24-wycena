@@ -1109,6 +1109,19 @@ function mikrofonHtml(){
     '</div><div class="slychac" id="dy-slychac"></div></div>';
 }
 
+/* Ta sama reguła co w src/app/dyktando.js#sklejSegmenty — panel jest
+   jednym wielkim napisem i nie ma jak zaimportować modułu. Pilnuje tego
+   test w scripts/test-dyktando.mjs, żeby obie kopie nie rozjechały się. */
+function sklejSegmenty(segmenty){
+  var czyste = (segmenty || [])
+    .map(function(t){ return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); })
+    .filter(Boolean);
+  var bez = czyste.filter(function(t, i){
+    return i === 0 || t.toLowerCase() !== czyste[i-1].toLowerCase();
+  });
+  return bez.join(' ');
+}
+
 function dyInfo(t){ var e = document.getElementById('dy-info'); if(e) e.textContent = t; }
 
 function dyPrzycisk(nagrywa){
@@ -1138,13 +1151,27 @@ function przelaczMikrofon(){
   r.continuous = true;      // Dawid mowi kilka zdan, nie jedno haslo
   r.interimResults = true;  // podglad na zywo — widac, ze mikrofon slucha
 
+  /*
+   * ⚠ BUG ZGŁOSZONY PRZEZ DAWIDA (16.09.2026): „dubluje strasznie — źle
+   * zczytuje co mówię i POWTARZA CYFRY".
+   *
+   * Pierwsza wersja doklejała do bufora wyniki od "e.resultIndex" — niby
+   * „tylko nowe". Chrome jednak POPRAWIA wcześniej zamknięte fragmenty
+   * (najczęściej liczby, bo „sześćset sto" doprecyzowuje dopiero po ciągu
+   * dalszym) i zgłasza je jeszcze raz — wtedy numer telefonu wychodził
+   * jako „600 100 600 100 200".
+   *
+   * Teraz transkrypt składamy ZA KAŻDYM RAZEM OD ZERA z całej listy
+   * wyników: bufor niczego nie pamięta, więc nie ma czego doliczyć dwa
+   * razy. Wstępne wyniki idą OSOBNO, jako sam podgląd — nigdy do bufora.
+   */
   r.onresult = function(e){
-    var pewne = '', wstepne = '';
-    for(var i = e.resultIndex; i < e.results.length; i++){
-      if(e.results[i].isFinal) pewne += e.results[i][0].transcript;
+    var finalne = [], wstepne = '';
+    for(var i = 0; i < e.results.length; i++){
+      if(e.results[i].isFinal) finalne.push(e.results[i][0].transcript);
       else wstepne += e.results[i][0].transcript;
     }
-    slyszane += pewne;
+    slyszane = sklejSegmenty(finalne);
     var box = document.getElementById('dy-slychac');
     if(box) box.innerHTML = esc(slyszane) +
       (wstepne ? '<span class="niepewne">' + esc(wstepne) + '</span>' : '');

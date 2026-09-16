@@ -28,6 +28,7 @@ import {
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { API_BASE, sprawdzMagazyn } from '../api.js';
+import { ostrzezenieOGlebokosci, sklejSegmenty } from './dyktando.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
@@ -529,10 +530,25 @@ function blokDyktanda(stan, paczka, odswiez) {
   const d = (stan.dyktando = stan.dyktando || { info: PODPOWIEDZ_MIKROFONU, przed: null });
   const info = h('span', { class: 'dy-info' }, d.info);
   const slychac = h('div', { class: 'dy-slychac' });
-  const przycisk = h('button', { class: 'dy-btn', type: 'button' }, '\u{1F3A4} Wpisz głosowo');
   const powiedz = (t) => ((d.info = t), (info.textContent = t));
 
-  async function rozpoznaj(tekst) {
+  /**
+   * Dwa przyciski, a nie jeden z domysłem.
+   *
+   * „Wpisz" podmienia komplet odcinków — tak dyktuje się blat od nowa.
+   * „Dopisz" doklada kolejne do tego, co już jest — o to Dawid poprosił
+   * wprost, bo przy ladzie klient przypomina sobie parapet dopiero po
+   * wszystkim. Zgadywanie, o które z dwóch chodzi, po brzmieniu zdania
+   * byłoby najgorsze z możliwych: myliłoby się cicho i raz na jakiś czas.
+   */
+  const przyciskWpisz = h('button', { class: 'dy-btn', type: 'button' }, '\u{1F3A4} Wpisz głosowo');
+  const przyciskDopisz = h(
+    'button',
+    { class: 'dy-btn cichy', type: 'button', title: 'Doda kolejne odcinki do tych, które już są' },
+    '\u{1F3A4}+ Dopisz głosem'
+  );
+
+  async function rozpoznaj(tekst, dopisz) {
     powiedz('Rozpoznaję…');
     let odp = null;
     try {
@@ -553,23 +569,31 @@ function blokDyktanda(stan, paczka, odswiez) {
     }
     if (odp?.error) return powiedz(odp.error);
 
-    const odcinki = odp?.dane?.odcinki || [];
-    if (!odcinki.length)
+    const nowe = odp?.dane?.odcinki || [];
+    if (!nowe.length)
       return powiedz('Nie usłyszałem wymiarów — powiedz np. „blat trzysta na sześćdziesiąt".');
 
     /*
-     * Podmieniamy KOMPLET odcinków, bo blat dyktuje się w całości —
-     * dopisywanie do listy dawałoby przy drugim podejściu podwójne blaty.
-     * Poprzednie wymiary zostają pod „Cofnij": przesłyszany mikrofon nie
-     * ma prawa bezpowrotnie skasować tego, co klient podał w kalkulatorze.
+     * Poprzedni komplet zostaje pod „Cofnij" — tak samo przy podmianie,
+     * jak przy dopisaniu. Przesłyszany mikrofon nie ma prawa bezpowrotnie
+     * ruszyć wymiarów, które klient podał w kalkulatorze.
      */
     d.przed = stan.odcinki;
-    stan.odcinki = odcinki.map((o) => ({ ...o, zGlosu: true }));
-    d.info = `Wpisałem: ${odcinki.map(opisOdcinkaZWymiarem).join(' + ')} cm. Sprawdź i popraw.`;
+    const zGlosu = nowe.map((o) => ({ ...o, zGlosu: true }));
+    // Przy dopisywaniu odsiewamy pusty odcinek-zalotnik (60×300 z nowej
+    // wyceny), żeby „dopisz" nie zostawiało w środku wiersza, którego
+    // nikt nie wpisał ani nie podyktował.
+    stan.odcinki = dopisz ? [...stan.odcinki.filter((o) => o.gl > 0 && o.dl > 0), ...zGlosu] : zGlosu;
+
+    const czasownik = dopisz ? 'Dopisałem' : 'Wpisałem';
+    const opis = nowe.map(opisOdcinkaZWymiarem).join(' + ');
+    const uwaga = ostrzezenieOGlebokosci(nowe);
+    d.info = `${czasownik}: ${opis} cm. Sprawdź i popraw.${uwaga ? ' ' + uwaga : ''}`;
     odswiez();
   }
 
-  przycisk.addEventListener('click', () => {
+  /** Jedno kliknięcie mikrofonu — obsługa jest ta sama dla obu przycisków. */
+  function sluchaj(przycisk, etykieta, dopisz) {
     if (sluchEdytora) return sluchEdytora.stop(); // drugie kliknięcie = koniec
 
     let slyszane = '';
@@ -579,12 +603,22 @@ function blokDyktanda(stan, paczka, odswiez) {
     r.continuous = true; // dyktuje się kilka odcinków naraz, nie jedno słowo
     r.interimResults = true; // podgląd na żywo — widać, że mikrofon słucha
 
+    /*
+     * ⚠ BUG ZGŁOSZONY PRZEZ DAWIDA (16.09.2026): „dubluje strasznie — źle
+     * zczytuje co mówię i POWTARZA CYFRY". Chrome poprawia zamknięte już
+     * fragmenty i zgłasza je drugi raz, więc doklejanie „tylko nowych"
+     * wyników od `resultIndex` powiela liczby. Składamy więc cały
+     * transkrypt od zera przy każdym zdarzeniu — patrz `sklejSegmenty`.
+     * Wyniki wstępne idą OSOBNO, jako sam podgląd, i nigdy do bufora.
+     */
     r.onresult = (e) => {
+      const finalne = [];
       let wstepne = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) slyszane += e.results[i][0].transcript;
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalne.push(e.results[i][0].transcript);
         else wstepne += e.results[i][0].transcript;
       }
+      slyszane = sklejSegmenty(finalne);
       slychac.replaceChildren(slyszane, h('span', { class: 'dy-niepewne' }, wstepne));
     };
     r.onerror = (e) => {
@@ -598,9 +632,9 @@ function blokDyktanda(stan, paczka, odswiez) {
     r.onend = () => {
       sluchEdytora = null;
       przycisk.classList.remove('nagrywa');
-      przycisk.textContent = '\u{1F3A4} Wpisz głosowo';
+      przycisk.textContent = etykieta;
       if (porzucone) return;
-      if (slyszane.trim()) rozpoznaj(slyszane);
+      if (slyszane.trim()) rozpoznaj(slyszane, dopisz);
       else powiedz('Nic nie usłyszałem — spróbuj jeszcze raz.');
     };
 
@@ -613,7 +647,14 @@ function blokDyktanda(stan, paczka, odswiez) {
     przycisk.classList.add('nagrywa');
     przycisk.textContent = '\u25A0 Zakończ i rozpoznaj';
     powiedz('Słucham… mów spokojnie, potem kliknij „Zakończ".');
-  });
+  }
+
+  przyciskWpisz.addEventListener('click', () =>
+    sluchaj(przyciskWpisz, '\u{1F3A4} Wpisz głosowo', false)
+  );
+  przyciskDopisz.addEventListener('click', () =>
+    sluchaj(przyciskDopisz, '\u{1F3A4}+ Dopisz głosem', true)
+  );
 
   return h(
     'div',
@@ -621,7 +662,9 @@ function blokDyktanda(stan, paczka, odswiez) {
     h(
       'div',
       { class: 'dy-pasek' },
-      przycisk,
+      przyciskWpisz,
+      // „Dopisz" pokazujemy dopiero, gdy jest do czego dopisywać.
+      stan.odcinki.some((o) => o.gl > 0 && o.dl > 0) ? przyciskDopisz : null,
       info,
       d.przed
         ? h(
@@ -884,14 +927,14 @@ function rysuj(box, stan, paczka) {
             'div',
             // Podswietlenie znika, gdy Dawid tknie wymiar recznie — ma mowic
             // „tego nie pisales ty", a nie zostawac na ekranie na zawsze.
-            { class: 'od-odcinek-blok' + (o.zGlosu ? ' zglosu' : '') },
+            { class: 'od-odcinek-blok' + (o.zGlosu ? ' zglosu' : '') + (o.domyslnaGlebokosc ? ' zgadniety' : '') },
             h(
               'div',
               { class: 'od-odcinek' },
               h('input', {
                 type: 'number', inputmode: 'numeric', value: o.gl || '',
                 'aria-label': 'głębokość', placeholder: 'głęb.',
-                onchange: (e) => ((o.gl = Number(e.target.value)), delete o.zGlosu, odswiez()),
+                onchange: (e) => ((o.gl = Number(e.target.value)), delete o.zGlosu, delete o.domyslnaGlebokosc, odswiez()),
               }),
               h('span', {}, '×'),
               h('input', {

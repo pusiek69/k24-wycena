@@ -110,8 +110,18 @@ const SCHEMAT = {
               'Nazwa elementu, jeśli klient go nazwał: „Wyspa", „Fartuch", „Parapet", ' +
               '„Blat 1". Zapisz z wielkiej litery. Puste, gdy element nie ma nazwy.',
           },
-          dlugosc_cm: { type: 'number', description: 'Dłuższy bok w CENTYMETRACH.' },
-          glebokosc_cm: { type: 'number', description: 'Krótszy bok w CENTYMETRACH.' },
+          dlugosc_cm: {
+            type: 'number',
+            description:
+              'Dłuższy bok w CENTYMETRACH. „Trzy metry" to 300, „dwa dwadzieścia" to 220, ' +
+              '„metr sześćdziesiąt" to 160.',
+          },
+          glebokosc_cm: {
+            type: 'number',
+            description:
+              'Krótszy bok w CENTYMETRACH. Wpisz 0, gdy przy tym elemencie padł TYLKO JEDEN ' +
+              'wymiar („blat trzysta") — nie dopisuj wtedy żadnej liczby od siebie.',
+          },
         },
       },
     },
@@ -132,11 +142,22 @@ const WYTYCZNE = [
   '• Nie zgaduj. Czego nie ma w wypowiedzi, to zostaje puste. Puste pole kamieniarz',
   '  dopisze sam — zmyślone musiałby najpierw zauważyć.',
   '• Liczebniki słowne zamieniaj na liczby: „trzysta sześćdziesiąt" to 360.',
-  '• Wymiary podawaj ZAWSZE w centymetrach. „Dwa metry dwadzieścia" to 220.',
-  '  „Blat trzysta na sześćdziesiąt" to jeden odcinek: dłuższy bok 300, krótszy 60.',
-  '• Każdy wymieniony element blatu to osobna pozycja w „odcinki", nawet gdy',
-  '  padły jednym tchem: „blat trzysta na sześćdziesiąt, wyspa dwieście',
-  '  na dziewięćdziesiąt" to dwa odcinki, drugi z etykietą „Wyspa".',
+  '',
+  'WYMIARY BLATÓW — to jest najważniejsza część twojej roboty:',
+  '• ZAWSZE w centymetrach. „Trzy metry" to 300. „Dwa metry dwadzieścia" to 220.',
+  '  „Metr sześćdziesiąt" to 160.',
+  '• Skrót „dwa dwadzieścia" przy wymiarze znaczy 220, „trzy pięćdziesiąt" — 350,',
+  '  „sześćdziesiąt pięć" — 65. Kamieniarz skraca setki, bo mówi o blatach.',
+  '• „Na" rozdziela boki: „trzysta na sześćdziesiąt" to 300 i 60.',
+  '• Każdy wymieniony element to OSOBNA pozycja w „odcinki", nawet gdy padły',
+  '  jednym tchem: „blat trzysta na sześćdziesiąt, wyspa dwieście dziesięć',
+  '  na dziewięćdziesiąt, fartuch dwieście na sześćdziesiąt" to TRZY odcinki,',
+  '  z etykietami „", „Wyspa" i „Fartuch".',
+  '• Słowo przed liczbami jest etykietą elementu: blat, wyspa, fartuch, parapet,',
+  '  lada, półka. Samo „blat" etykietą NIE jest — to zwykły odcinek, zostaw puste.',
+  '• Gdy przy elemencie padł tylko jeden wymiar („blat trzysta"), wpisz go',
+  '  w „dlugosc_cm", a w „glebokosc_cm" zostaw 0. Nie zgaduj głębokości —',
+  '  program ma na to własną regułę i oznacza ją na ekranie.',
   '• Gdy ten sam wymiar powtarza się kilka razy („dwa blaty po dwieście na sześćdziesiąt"),',
   '  wypisz tyle pozycji, ile sztuk.',
   '• Rozpoznawanie mowy się myli. Gdy coś brzmi jak przesłyszenie i nie da się tego',
