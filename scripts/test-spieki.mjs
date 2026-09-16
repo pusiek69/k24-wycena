@@ -277,7 +277,7 @@ test('suma kolekcji na stronie ofertowej zgadza się z deklarowaną liczbą wzor
   assert.equal(kolekcje.length, 5, `wypisano ${kolekcje.length} kolekcji zamiast pięciu`);
 
   const suma = kolekcje.reduce((a, b) => a + b, 0);
-  const deklarowana = Number(strona.match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  const deklarowana = Number(strona.match(/(\d+) wzor\w*\. Kalkulator wyceny/)[1]);
   assert.equal(
     suma,
     deklarowana,
@@ -290,7 +290,7 @@ test('liczba wzorów spieku zgadza się z cennikami — wszystkie pięć marek',
     (a, m) => a + ile(m),
     0
   );
-  const naStronie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  const naStronie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*\. Kalkulator wyceny/)[1]);
   assert.equal(naStronie, zCennika, 'strona ofertowa rozjechała się z cennikami');
 });
 
@@ -342,7 +342,7 @@ test('oba generatory liczą dekory TAK SAMO — z rejestru firm', () => {
   );
   // ...i obie strony podają tę samą sumę.
   const wPoradniku = Number(html.match(/(\d+) dekor\w* w pięciu kolekcjach/)[1]);
-  const wOfercie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*, wytrzyma/)[1]);
+  const wOfercie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*\. Kalkulator wyceny/)[1]);
   assert.equal(wPoradniku, wOfercie, 'poradnik i strona ofertowa podają różne liczby');
 });
 
