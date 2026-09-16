@@ -152,9 +152,11 @@ test('EDYTOR dolicza dodatki PRZED upustem', () => {
    */
   const ed = zrodlo('src/app/oferta-dawida.js');
   assert.match(ed, /const wlasnePoz = pozWlasne\.doOferty\(stan\.wlasnePozycje\)/);
+  // Od 16.09.2026 w tej samej linii siedzi też różnica z ręcznych cen usług —
+  // oba składniki mają wejść PRZED upustem, więc pilnujemy tylko tego.
   assert.match(
     ed,
-    /const przed = Math\.round\(w\.razemZaokr \|\| w\.razem\) \+ wlasneRazem;/,
+    /const przed = Math\.round\(w\.razemZaokr \|\| w\.razem\) \+ wlasneRazem(?: \+ \w+)?;/,
     'dodatki nie wchodzą do kwoty przed upustem'
   );
   // Kolejność w kodzie: suma dodatków musi powstać PRZED korektą.

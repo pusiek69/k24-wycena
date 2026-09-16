@@ -65,6 +65,7 @@ import {
   odcinekDoZapisu,
   opisOdcinkaZWymiarem,
 } from './etykiety-odcinkow.js';
+import * as cenyPoz from './ceny-pozycji.js';
 
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
@@ -124,6 +125,14 @@ export function uruchomOferteDawida(root, paczka) {
     korektaTyp: 'brak', // brak | procent | kwota | nadpisz
     korektaWartosc: 0,
     gratisy: new Set(), // nazwy wyzerowanych pozycji
+    /*
+     * RĘCZNE CENY USŁUG (zlecenie Dawida, 16.09.2026): „chcę mieć możliwość
+     * zmiany ceny w każdej usłudze". Mapa nazwa pozycji → kwota brutto.
+     * Nadpisanie działa WYŁĄCZNIE w tej wycenie — cennik zakładu i stawki
+     * z panelu zostają nietknięte. Wraca z parametrami, więc poprawka tej
+     * samej oferty nie gubi ustalonych cen.
+     */
+    ceny: cenyPoz.zParametrow(p.ceny),
     przekresl: false,
     // Osobisty dopisek do klienta — idzie do maila i na stronę oferty.
     wiadomosc: '',
@@ -298,7 +307,8 @@ function zamrozOferte(stan, w) {
         nazwa: p.nazwa,
         // Bez stawek jednostkowych — patrz bezCenJednostkowych() na górze pliku.
         detal: bezCenJednostkowych(p.detal),
-        brutto: stan.gratisy.has(p.nazwa) ? 0 : Math.round(p.brutto),
+        // Ręczna cena wygrywa z cennikową, a gratis wygrywa z obiema.
+        brutto: stan.gratisy.has(p.nazwa) ? 0 : cenyPoz.cenaPozycji(stan.ceny, p),
         gratis: stan.gratisy.has(p.nazwa),
       })),
     ...wCenie,
@@ -322,10 +332,19 @@ function zamrozOferte(stan, w) {
     .filter((x) => !stan.gratisy.has(x.nazwa))
     .reduce((suma, x) => suma + x.brutto, 0);
 
-  const przed = Math.round(w.razemZaokr || w.razem) + wlasneRazem;
+  /*
+   * Ręczne ceny wchodzą do PUNKTU WYJŚCIA, a nie do upustu. Gdyby siedziały
+   * po stronie upustu, obniżenie montażu wyglądałoby jak rabat: przekreślona
+   * kwota pokazywałaby cenę, której Dawid nigdy nie podał, a warianty
+   * dostałyby ten „upust" w procentach (patrz upustGlownej w warianty.js).
+   */
+  const roznicaCen = cenyPoz.roznicaRecznychCen(stan.ceny, w.pozycje, stan.gratisy);
+
+  const przed = Math.round(w.razemZaokr || w.razem) + wlasneRazem + roznicaCen;
   // Punktem wyjścia jest kwota z karty klienta (z jej zaokrągleniem),
   // pomniejszona o wyzerowane pozycje — a nie surowa suma pozycji, która
   // przez zaokrąglenie potrafi różnić się o złotówkę i udawać upust.
+  // Wyzerowane liczymy z ceny CENNIKOWEJ, bo tyle siedzi w `przed`.
   const wyzerowane = w.pozycje
     .filter((p) => !p.wCenie && stan.gratisy.has(p.nazwa))
     .reduce((suma, p) => suma + Math.round(p.brutto), 0);
@@ -422,6 +441,9 @@ function zamrozOferte(stan, w) {
             opcje: stan.opcje,
           }),
       wlasnePozycje: pozWlasne.doParametrow(stan.wlasnePozycje),
+      // Ręczne ceny usług — tylko gdy jakieś są, żeby stare oferty
+      // wyglądały w JSON-ie dokładnie jak dotąd.
+      ...(stan.ceny.size ? { ceny: cenyPoz.doParametrow(stan.ceny) } : {}),
     },
   };
 }
@@ -669,7 +691,7 @@ function rysuj(box, stan, paczka) {
       blokWlasnychPozycji(stan, odswiez),
 
       /* ── podgląd pozycji / błąd ── */
-      w.ok ? podgladPozycji(stan, oferta, odswiez) : h('div', { class: 'form-blad' }, w.blad || 'Nie udało się policzyć.'),
+      w.ok ? podgladPozycji(stan, oferta, odswiez, w) : h('div', { class: 'form-blad' }, w.blad || 'Nie udało się policzyć.'),
 
       /* ── pasek właściciela ── */
       w.ok ? pasekWlasciciela(stan, oferta, odswiez) : null,
@@ -827,19 +849,79 @@ function blokNaturalny(stan, paczka, box, odswiez) {
   return h('div', {}, ...wiersze);
 }
 
-function podgladPozycji(stan, oferta, odswiez) {
+/**
+ * RĘCZNA CENA USŁUGI (zlecenie Dawida, 16.09.2026).
+ *
+ * „Chcę mieć możliwość zmiany ceny w każdej usłudze." Pole pokazuje cenę
+ * z cennika, a Dawid może wpisać swoją — tylko w TEJ wycenie. Nadpisana
+ * cena jest wyraźnie oznaczona i da się do cennikowej wrócić jednym
+ * kliknięciem, żeby nikt nie musiał pamiętać, ile było.
+ *
+ * Wpisanie dokładnie ceny cennikowej kasuje nadpisanie — inaczej pozycja
+ * zostałaby na zawsze „ręczna", choć kwota jest ta sama, i przy zmianie
+ * stawek w panelu ta wycena po cichu trzymałaby stare pieniądze.
+ */
+function polaCeny(stan, pozycja, odswiez) {
+  const cennikowa = Math.round(pozycja.brutto);
+  const reczna = stan.ceny.has(pozycja.nazwa);
+  const wartosc = cenyPoz.cenaPozycji(stan.ceny, pozycja);
+
+  const wpis = h('input', {
+    type: 'number',
+    inputmode: 'numeric',
+    min: '0',
+    step: '1',
+    class: 'cena-poz' + (reczna ? ' cena-reczna' : ''),
+    value: String(wartosc),
+    'aria-label': `Cena pozycji ${pozycja.nazwa} (brutto)`,
+    title: reczna ? `Cena zmieniona ręcznie. W cenniku: ${zl(cennikowa)}` : 'Cena z cennika — można nadpisać',
+    onchange: (e) => {
+      cenyPoz.ustawCene(stan.ceny, pozycja, e.target.value);
+      odswiez();
+    },
+  });
+
+  return h(
+    'span',
+    { class: 'cena-blok' },
+    wpis,
+    h('span', { class: 'cena-zl' }, 'zł'),
+    reczna
+      ? h(
+          'button',
+          {
+            class: 'link-btn cena-wroc',
+            type: 'button',
+            title: `Wróć do ceny z cennika (${zl(cennikowa)})`,
+            onclick: () => (stan.ceny.delete(pozycja.nazwa), odswiez()),
+          },
+          '↺'
+        )
+      : null
+  );
+}
+
+function podgladPozycji(stan, oferta, odswiez, w) {
+  // Nadpisywać można pozycje SILNIKA, które coś kosztują. Własne pozycje
+  // Dawida mają swoją kwotę w bloku niżej, a te „w cenie" są z definicji za 0.
+  const zSilnika = new Map(
+    (w?.pozycje || []).filter((p) => !p.wCenie).map((p) => [p.nazwa, p])
+  );
+
   return h(
     'div',
     { class: 'oferta-pozycje' },
     ...oferta.pozycje.map((p) =>
       h(
         'div',
-        { class: 'oferta-poz' + (p.gratis ? ' gratis' : '') },
+        { class: 'oferta-poz' + (p.gratis ? ' gratis' : '') + (stan.ceny.has(p.nazwa) ? ' poz-reczna' : '') },
         h('span', {}, p.nazwa, p.detal ? h('small', {}, p.detal) : null),
         h(
           'span',
           { class: 'od-akcje-poz' },
-          h('b', {}, p.gratis ? 'GRATIS' : zl(p.brutto)),
+          p.gratis || !zSilnika.has(p.nazwa)
+            ? h('b', {}, p.gratis ? 'GRATIS' : zl(p.brutto))
+            : polaCeny(stan, zSilnika.get(p.nazwa), odswiez),
           // przełącznik „gratis" tylko dla pozycji, które coś kosztują
           p.brutto > 0 || stan.gratisy.has(p.nazwa)
             ? h(
@@ -858,6 +940,14 @@ function podgladPozycji(stan, oferta, odswiez) {
         )
       )
     ),
+    stan.ceny.size
+      ? h(
+          'p',
+          { class: 'form-nota cena-nota', style: 'margin:8px 0 0' },
+          `Ceny zmienione ręcznie: ${[...stan.ceny.keys()].join(', ')}. ` +
+            'Dotyczy wyłącznie tej wyceny — cennik i stawki w panelu zostają bez zmian.'
+        )
+      : null,
     ...(oferta.noty || []).map((nota) =>
       h('p', { class: 'form-nota', style: 'margin:8px 0 0' }, nota)
     ),
@@ -1629,6 +1719,13 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
    * Druga droga zostaje: nowa oferta z nowym linkiem.
    */
   const maWatek = !!paczka.watek;
+  /*
+   * KARTA BEZ ADRESU E-MAIL (zgłoszenie Dawida, 16.09.2026).
+   * Wycena ma się ZAPISAĆ tak samo jak zawsze — nie ma tylko dokąd wysłać
+   * maila. Zamiast blokować przycisk, zmieniamy jego treść: to ta sama
+   * operacja, tylko bez listu.
+   */
+  const brakMaila = !!dane.brakMaila || !dane.adres;
 
   const powiadomienie = h('input', {
     type: 'checkbox',
@@ -1638,13 +1735,20 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
     stan.powiadomOAktualizacji = powiadomienie.checked;
   });
 
-  const wyslij = h(
-    'button',
-    { class: 'btn', type: 'button' },
-    maWatek ? 'Zaktualizuj ofertę (ten sam link) →' : 'Wyślij do klienta →'
-  );
+  const napisGlowny = brakMaila
+    ? maWatek
+      ? 'Zapisz nową wersję w karcie →'
+      : 'Zapisz wycenę w karcie →'
+    : maWatek
+      ? 'Zaktualizuj ofertę (ten sam link) →'
+      : 'Wyślij do klienta →';
+  const wyslij = h('button', { class: 'btn', type: 'button' }, napisGlowny);
   const jakoNowa = maWatek
-    ? h('button', { class: 'btn cichy', type: 'button' }, 'Wyślij jako nową ofertę')
+    ? h(
+        'button',
+        { class: 'btn cichy', type: 'button' },
+        brakMaila ? 'Zapisz jako nową ofertę' : 'Wyślij jako nową ofertę'
+      )
     : null;
   const wroc = h('button', { class: 'btn cichy', type: 'button' }, '← Wróć do edycji');
 
@@ -1665,7 +1769,7 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
     } catch (e) {
       wyslij.disabled = false;
       wroc.disabled = false;
-      wyslij.textContent = 'Wyślij do klienta →';
+      wyslij.textContent = napisGlowny;
       wynik.textContent = opisBledu(e);
       wynik.hidden = false;
     }
@@ -1682,7 +1786,7 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
       } catch (e) {
         jakoNowa.disabled = false;
         wyslij.disabled = false;
-        jakoNowa.textContent = 'Wyślij jako nową ofertę';
+        jakoNowa.textContent = brakMaila ? 'Zapisz jako nową ofertę' : 'Wyślij jako nową ofertę';
         wynik.textContent = opisBledu(e);
         wynik.hidden = false;
       }
@@ -1706,11 +1810,18 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
       h('h3', { class: 'q-title' }, 'Sprawdź przed wysłaniem'),
       h(
         'p',
-        { class: 'q-hint' },
-        `Mail pójdzie na ${dane.adres || 'adres z karty'} — temat: „${dane.temat || ''}".`
+        { class: brakMaila ? 'q-hint bez-maila' : 'q-hint' },
+        brakMaila
+          ? 'Karta nie ma adresu e-mail — wycena zapisze się w karcie i dostanie link, ' +
+            'ale mail nie pójdzie. Adres można dopisać na karcie w panelu i wysłać później.'
+          : `Mail pójdzie na ${dane.adres} — temat: „${dane.temat || ''}".`
       ),
 
-      h('div', { class: 'q-kicker', style: 'margin-top:16px' }, '1 · Treść maila'),
+      h(
+        'div',
+        { class: 'q-kicker', style: 'margin-top:16px' },
+        brakMaila ? '1 · Treść maila (na razie tylko do wglądu)' : '1 · Treść maila'
+      ),
       ramka,
 
       h('div', { class: 'q-kicker', style: 'margin-top:18px' }, '2 · Strona wyceny online (spod linku w mailu)'),
@@ -1730,7 +1841,7 @@ function pokazPodglad(stan, oferta, paczka, box, dane) {
           'a odpiszesz z karty klienta w panelu.'
       ),
 
-      maWatek
+      maWatek && !brakMaila
         ? h(
             'label',
             { class: 'switch zgoda', style: 'margin-top:14px' },
@@ -1763,10 +1874,13 @@ function pokazWyslane(box, dane) {
         h(
           'span',
           {},
-          h('b', {}, 'Oferta wysłana. '),
+          h('b', {}, dane.brakMaila ? 'Wycena zapisana. ' : 'Oferta wysłana. '),
           dane.mail
             ? 'Mail z wyceną poszedł do klienta, a wersja zapisała się w karcie.'
-            : 'Wersja zapisała się w karcie, ale mail nie wyszedł — spróbuj ponownie z panelu.'
+            : dane.brakMaila
+              ? 'Wersja zapisała się w karcie. Maila nie wysłaliśmy — karta nie ma adresu e-mail. ' +
+                'Link niżej możesz wysłać SMS-em albo podać przez telefon.'
+              : 'Wersja zapisała się w karcie, ale mail nie wyszedł — spróbuj ponownie z panelu.'
         )
       ),
       h('p', { class: 'q-hint' }, 'Link do wyceny online (ten sam, który dostał klient):'),

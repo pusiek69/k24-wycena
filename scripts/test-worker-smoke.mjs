@@ -860,6 +860,100 @@ if (JEST) {
     assert.match((await odp.json()).error, /9 cyfr/);
   });
 
+  /* ════════ WYCENA BEZ ADRESU E-MAIL (zgłoszenie Dawida, 16.09.2026) ═══
+   *
+   * „Jak nie mam adresu email, to nie mogę zapisać wyceny."
+   * Do 16.09 brak adresu zatrzymywał cały endpoint /oferta/wyslij —
+   * razem z zapisem wersji do karty.
+   */
+  const OFERTA_TESTOWA = {
+    opis: 'Avant Quartz · Dijon · 20 mm · Blat 1: 60×300 cm',
+    pozycje: [
+      { nazwa: 'Materiał', brutto: 4000 },
+      { nazwa: 'Montaż', brutto: 900 },
+    ],
+    razem: 4900,
+    razemPrzed: 4900,
+    stawkaVat: 0.08,
+  };
+
+  async function kartaBezMaila(env, cookie, telefon) {
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/klient', { imie: 'Klient z biura', telefon }, cookie),
+      env,
+      ctx
+    );
+    return (await odp.json()).id;
+  }
+
+  async function paczkaWlasciciela(env, leadId) {
+    const exp = Date.now() + 3600000;
+    return { leadId, exp, podpis: await podpisz(env.PANEL_HASLO, `oferta|${leadId}|${exp}`) };
+  }
+
+  test('wycenę da się zapisać na karcie BEZ adresu e-mail', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const id = await kartaBezMaila(env, cookie, '600100700');
+
+    listy.length = 0;
+    const odp = await worker.fetch(
+      zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, id)), oferta: OFERTA_TESTOWA }),
+      env,
+      ctx
+    );
+    const dane = await odp.json();
+
+    assert.equal(odp.status, 200, `worker oddał ${odp.status}: ${JSON.stringify(dane)}`);
+    assert.equal(dane.ok, true, 'zapis odrzucony mimo braku maila');
+    assert.equal(dane.brakMaila, true, 'edytor nie dowie się, czemu nie było maila');
+    assert.equal(dane.mail, false);
+    assert.ok(dane.link, 'brak linku do wyceny — nie ma czego podać klientowi');
+    assert.equal(listy.length, 0, 'poszedł mail, choć nie ma adresu');
+
+    const w = await env.BAZA.prepare(
+      `SELECT wersja, kwota, opis FROM wyceny WHERE klient_id = ? ORDER BY id DESC LIMIT 1`
+    )
+      .bind(id)
+      .first();
+    assert.equal(w?.wersja, 'dawid', 'wersja Dawida nie zapisała się w karcie');
+    assert.equal(w.kwota, 4900);
+  });
+
+  test('karta Z adresem nadal dostaje maila', async () => {
+    // Zabezpieczenie przed „naprawą", która wyłączyłaby wysyłkę wszystkim.
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'zmailem@example.com' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = ?`)
+      .bind('zmailem@example.com')
+      .first();
+
+    listy.length = 0;
+    const dane = await (
+      await worker.fetch(
+        zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }),
+        env,
+        ctx
+      )
+    ).json();
+
+    assert.equal(dane.ok, true);
+    assert.equal(dane.brakMaila, false);
+    assert.equal(dane.mail, true, 'mail z ofertą przestał wychodzić');
+    assert.equal(listy.length, 1, `poszło ${listy.length} maili zamiast jednego`);
+    assert.match(listy[0].subject, /Wycena przygotowana/);
+  });
+
+  test('nieistniejąca karta nadal jest odrzucana', async () => {
+    const env = srodowisko();
+    const odp = await worker.fetch(
+      zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, 9999)), oferta: OFERTA_TESTOWA }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 404);
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

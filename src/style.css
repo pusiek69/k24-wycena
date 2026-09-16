@@ -823,6 +823,24 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .oferta-poz small { display: block; color: var(--dim); font-family: var(--sans); font-size: 11px; margin-top: 2px; }
 .oferta-poz b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .oferta-poz.gratis b { color: var(--ok); letter-spacing: .06em; }
+/* Ręczna cena usługi (16.09.2026): pole z ceną cennikową, które Dawid może
+   nadpisać na czas jednej wyceny. Nadpisana cena ma być widoczna na pierwszy
+   rzut oka — inaczej łatwo wysłać ofertę z ceną, o której się zapomniało. */
+.cena-blok { display: inline-flex; align-items: baseline; gap: 4px; }
+.cena-poz {
+  width: 92px; text-align: right; padding: 5px 7px; font-variant-numeric: tabular-nums;
+  background: var(--slab); border: 1px solid var(--line-hi); border-radius: var(--radius);
+  color: var(--cream); font-family: var(--sans); font-size: 14px;
+}
+.cena-poz:focus { outline: none; border-color: var(--vein); }
+.cena-poz.cena-reczna { border-color: var(--vein); color: var(--vein); font-weight: 700; }
+.cena-zl { font-family: var(--sans); font-size: 12px; color: var(--dim); }
+.cena-wroc { font-size: 15px; line-height: 1; }
+.oferta-poz.poz-reczna { box-shadow: inset 3px 0 0 var(--vein); padding-left: 9px; }
+.cena-nota { color: var(--vein); }
+/* Karta bez adresu e-mail: wycena i tak się zapisuje, ale Dawid ma to
+   zobaczyć ZANIM kliknie — inaczej szukałby maila, który nie wyszedł. */
+.q-hint.bez-maila { color: var(--vein); }
 .oferta-suma {
   display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
   padding: 14px 0 4px; font-size: 17px;

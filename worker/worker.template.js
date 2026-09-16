@@ -815,7 +815,19 @@ async function obsluzOfertaWyslij(request, env, cors) {
   const klient = await env.BAZA.prepare(`SELECT id, imie, email FROM klienci WHERE id = ?`)
     .bind(Number(d.leadId))
     .first();
-  if (!klient?.email) return json({ error: 'Karta bez adresu e-mail.' }, 404, cors);
+  if (!klient) return json({ error: 'Nie ma takiej karty.' }, 404, cors);
+
+  /*
+   * E-MAIL JEST OPCJONALNY (zgłoszenie Dawida, 16.09.2026):
+   * „jak nie mam adresu email, to nie mogę zapisać wyceny".
+   *
+   * Do 16.09 brak adresu zatrzymywał CAŁY endpoint — razem z zapisem wersji
+   * do karty. Klient z biura często maila nie zostawia, a wycena i tak musi
+   * gdzieś wylądować: bez niej Dawid nie ma czego pokazać przy następnej
+   * rozmowie ani czego zaktualizować. Zapis idzie zawsze, mail tylko wtedy,
+   * gdy jest gdzie go wysłać.
+   */
+  const maMail = !!String(klient.email || '').trim();
 
   /*
    * PODGLĄD PRZED WYSYłKĄ (decyzja Dawida, 21.08.2026).
@@ -832,6 +844,9 @@ async function obsluzOfertaWyslij(request, env, cors) {
         podglad: true,
         temat: TEMAT_OFERTY,
         adres: klient.email,
+        // Podgląd treści pokazujemy nawet bez adresu — Dawid czyta z niego
+        // klientowi przez telefon. Przycisk niżej zamienia się w „zapisz".
+        brakMaila: !maMail,
         // Link powstanie dopiero przy wysyłce — w podglądzie pokazujemy,
         // jak będzie wyglądał, żeby przycisk w mailu nie był pusty.
         html: mailOferty(klient.imie, o, 'https://kam24h.pl/oferta#(link-powstanie-przy-wysylce)'),
@@ -880,7 +895,7 @@ async function obsluzOfertaWyslij(request, env, cors) {
    * po prostu odświeża stronę — osobny mail przy każdej poprawce byłby
    * hałasem. Przy NOWEJ ofercie mail leci jak dotąd.
    */
-  const powiadom = aktualizacja ? d.powiadom === true : true;
+  const powiadom = (aktualizacja ? d.powiadom === true : true) && maMail;
   const wyslany = powiadom
     ? await resend(env, {
         from: nadawca(env),
@@ -891,7 +906,7 @@ async function obsluzOfertaWyslij(request, env, cors) {
       })
     : false;
 
-  return json({ ok: true, token: zapis.watek, link, mail: wyslany, aktualizacja }, 200, cors);
+  return json({ ok: true, token: zapis.watek, link, mail: wyslany, brakMaila: !maMail, aktualizacja }, 200, cors);
 }
 
 
