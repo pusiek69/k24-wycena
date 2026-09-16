@@ -476,6 +476,39 @@ test('PANEL: przycisk mikrofonu jest w formularzu i znika bez obsługi mowy', ()
   assert.match(panel, /function formularzReczny\(\)\{\r?\n  zatrzymajMikrofon\(\);/);
 });
 
+test('PANEL: klasy znakow w regexach maja podwojny ukosnik', () => {
+  /*
+   * ⚠ ZŁAPANE NA PRODUKCJI 16.09.2026, przy naprawie dublowania.
+   *
+   * Cały skrypt panelu jest wnętrzem literału szablonowego, więc JS zdejmuje
+   * jeden ukośnik, zanim kod w ogóle trafi do przeglądarki. Napisana wprost
+   * klasa „biały znak" zamieniła się w zwykłą literę „s" i reguła kasowała
+   * z transkryptu każde „s": „sześćset sto" wychodziło jako „ześć et  to".
+   *
+   * Nic tego nie zauważyło: plik jest składniowo poprawny, testy źródłowe
+   * widziały funkcję na miejscu, a błąd widać dopiero w przeglądarce,
+   * na polskim zdaniu. Stąd ten skan — na cały literał, nie na jedną funkcję.
+   */
+  const panel = zrodlo('worker/panel.js');
+  const wiersze = panel.split(/\r?\n/);
+  const start = wiersze.findIndex((w) => w.startsWith('const HTML_PANELU = '));
+  assert.ok(start > 0, 'nie znalazłem literału ze stroną panelu');
+
+  // Pojedynczy ukośnik przed literą klasy znaków. `\\u` i `\\n` są w porządku —
+  // te literał szablonowy rozumie i zamienia na to, o co nam chodzi.
+  const feralne = wiersze
+    .slice(start)
+    .map((w, i) => [start + i + 1, w])
+    .filter(([, w]) => /(^|[^\\])\\[sdwbSDWB]/.test(w));
+
+  assert.deepEqual(
+    feralne,
+    [],
+    'klasa znaków z jednym ukośnikiem — po złożeniu literału zostanie z niej ' +
+      'zwykła litera:\n' + feralne.map(([nr, w]) => `  panel.js:${nr}  ${w.trim()}`).join('\n')
+  );
+});
+
 test('PANEL: dyktando WYPEŁNIA pola, a nie zapisuje karty', () => {
   const panel = zrodlo('worker/panel.js');
   // Zapis ma zostać osobnym, świadomym kliknięciem — inaczej przesłyszany

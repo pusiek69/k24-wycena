@@ -1113,8 +1113,15 @@ function mikrofonHtml(){
    jednym wielkim napisem i nie ma jak zaimportować modułu. Pilnuje tego
    test w scripts/test-dyktando.mjs, żeby obie kopie nie rozjechały się. */
 function sklejSegmenty(segmenty){
+  /* UWAGA NA UKOŚNIKI. Ten skrypt siedzi w literale szablonowym, wiec JS
+     zdejmuje jeden ukosnik jeszcze zanim kod trafi do przegladarki.
+     Klasy znakow w wyrazeniach regularnych pisze sie tu PODWOJNYM
+     ukosnikiem. Pojedynczy zamienil klase "bialy znak" w zwykla litere
+     "s" i regula kasowala kazde "s": "szescset sto" wychodzilo jako
+     "zesc et  to" (zlapane na produkcji 16.09.2026). Pilnuje tego
+     test "PANEL: klasy znakow w regexach" w scripts/test-dyktando.mjs. */
   var czyste = (segmenty || [])
-    .map(function(t){ return String(t == null ? '' : t).replace(/\s+/g, ' ').trim(); })
+    .map(function(t){ return String(t == null ? '' : t).replace(/\\s+/g, ' ').trim(); })
     .filter(Boolean);
   var bez = czyste.filter(function(t, i){
     return i === 0 || t.toLowerCase() !== czyste[i-1].toLowerCase();
