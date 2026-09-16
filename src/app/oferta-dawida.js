@@ -619,13 +619,22 @@ function blokDyktanda(stan, paczka, odswiez) {
         else wstepne += e.results[i][0].transcript;
       }
       slyszane = sklejSegmenty(finalne);
+      /*
+       * ŚLAD SUROWYCH ZDARZEŃ. Dwa zgłoszenia o „powtarzaniu" z rzędu
+       * poszły na domysły, bo z opisu nie da się odtworzyć, co przysłał
+       * Chrome. Teraz ostatnie klatki zostają pod ręką w `window.__dyktandoSlad`
+       * — nic nie wysyłają i nic nie kosztują, a przy kolejnym „dalej dubluje"
+       * widać fakty zamiast teorii.
+       */
+      (window.__dyktandoSlad = window.__dyktandoSlad || []).push({ finalne, wstepne, zlozone: slyszane });
       slychac.replaceChildren(slyszane, h('span', { class: 'dy-niepewne' }, wstepne));
     };
     r.onerror = (e) => {
       porzucone = true; // żeby `onend` nie nadpisał tego komunikatu
       powiedz(
         e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'Przeglądarka nie dała dostępu do mikrofonu — kliknij kłódkę przy adresie i zezwól.'
+          ? 'Przeglądarka nie dała dostępu do mikrofonu. Kliknij kłódkę przy adresie i zezwól; ' +
+            'jeśli kłódka nic nie oferuje, odezwij się — to blokada po stronie serwera.'
           : `Mikrofon nie zadziałał (${e.error}) — wpisz ręcznie.`
       );
     };

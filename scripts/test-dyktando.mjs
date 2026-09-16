@@ -67,35 +67,111 @@ test('DUBLOWANIE: poprawiony fragment nie liczy się drugi raz', () => {
   for (const t of kolejne) assert.ok(!/(\b\d+\b)\s+\1\s+\1/.test(t), `zdublowane: ${t}`);
 });
 
-test('DUBLOWANIE: identyczna fraza pod rząd wypada, różne zostają', () => {
-  // Rozpoznawanie potrafi powtórzyć cały segment przy przerwie w mówieniu.
-  assert.equal(sklejSegmenty(['blat trzysta', 'blat trzysta', 'na sześćdziesiąt']),
-    'blat trzysta na sześćdziesiąt');
+test('DUBLOWANIE: powtórzony i doprecyzowany fragment — jeden, nie dwa', () => {
+  /*
+   * ⚠ DRUGIE ZGŁOSZENIE DAWIDA (16.09.2026): „transkrypt DALEJ POWTARZA".
+   *
+   * Pierwsza naprawa usunęła narastający bufor — i to był realny błąd — ale
+   * zostawiła drugą przyczynę, pokazaną potem wprost na produkcji:
+   *
+   *   sklejSegmenty(['sześćset sto', 'sześćset sto dwieście'])
+   *     → 'sześćset sto sześćset sto dwieście'
+   *
+   * Chrome z `continuous` zamyka wypowiedź na krótkiej pauzie, a następny
+   * wynik końcowy POWTARZA ją w całości i przedłuża. Przy dyktowaniu liczb
+   * pauzy są co chwilę, więc trafiało dokładnie w numery i wymiary.
+   */
+  assert.equal(sklejSegmenty(['sześćset sto', 'sześćset sto dwieście']), 'sześćset sto dwieście');
+  assert.equal(
+    sklejSegmenty(['sześćset', 'sześćset sto', 'sześćset sto dwieście']),
+    'sześćset sto dwieście',
+    'trzy kolejne doprecyzowania tej samej liczby'
+  );
+  assert.equal(
+    sklejSegmenty(['blat trzysta', 'blat trzysta na sześćdziesiąt']),
+    'blat trzysta na sześćdziesiąt'
+  );
+  // Krótsze powtórzenie po dłuższym też wypada — i nie skraca tego, co już jest.
+  assert.equal(
+    sklejSegmenty(['blat trzysta na sześćdziesiąt dwa', 'blat trzysta na sześćdziesiąt']),
+    'blat trzysta na sześćdziesiąt dwa'
+  );
+  assert.equal(sklejSegmenty(['Tarnobrzeg', 'Tarnobrzeg']), 'Tarnobrzeg');
   assert.equal(sklejSegmenty(['BLAT TRZYSTA', 'blat trzysta']), 'BLAT TRZYSTA');
-  // Dwa różne odcinki o podobnym brzmieniu MUSZĄ zostać oba.
-  assert.equal(sklejSegmenty(['blat trzysta', 'blat dwieście']), 'blat trzysta blat dwieście');
   assert.equal(sklejSegmenty(['', '   ', 'wyspa']), 'wyspa');
   assert.equal(sklejSegmenty(null), '');
 });
 
-test('DUBLOWANIE: obie kopie reguły — moduł i panel — liczą tak samo', () => {
+test('DUBLOWANIE: cięcie po samej zakładce ZJADAŁOBY wymiar — dlatego go nie ma', () => {
   /*
-   * Panel jest jednym wielkim napisem i nie ma jak zaimportować modułu,
-   * więc ma własną kopię tej funkcji. Ten test jest jedynym miejscem,
-   * które zauważy, że ktoś poprawił jedną, a drugą zostawił.
+   * Kusząca, szersza reguła brzmi: „utnij każdą wspólną zakładkę słów".
+   * Ten test pilnuje, żeby nikt jej nie wprowadził — bo wtedy dwa różne
+   * blaty o tej samej liczbie zlepiłyby się w jeden i JEDEN BY ZNIKNĄŁ.
+   * Zbędne słowo w transkrypcie jest nieszkodliwe (model je zignoruje);
+   * skasowany wymiar jest błędem w cenie.
    */
-  const panel = zrodlo('worker/panel.js');
-  assert.match(panel, /function sklejSegmenty\(segmenty\)\{/, 'panel nie ma sklejania segmentów');
-  assert.match(panel, /slyszane = sklejSegmenty\(finalne\);/, 'panel nadal dokleja do bufora');
-  assert.ok(
-    !/for\(var i = e\.resultIndex/.test(panel),
-    'panel wciąż czyta wyniki od resultIndex — to jest ta przyczyna dublowania'
+  assert.equal(
+    sklejSegmenty(['dwa blaty po dwieście', 'dwieście dwadzieścia parapet']),
+    'dwa blaty po dwieście dwieście dwadzieścia parapet'
   );
+  assert.equal(
+    sklejSegmenty(['blat trzysta na sześćdziesiąt', 'wyspa dwieście na dziewięćdziesiąt']),
+    'blat trzysta na sześćdziesiąt wyspa dwieście na dziewięćdziesiąt'
+  );
+});
+
+/**
+ * Kopia reguły z panelu — WYCIĄGNIĘTA I URUCHOMIONA, nie oglądana.
+ *
+ * Panel jest wnętrzem literału szablonowego, więc żyje w świecie, w którym
+ * JS zdejmuje jeden ukośnik, zanim kod trafi do przeglądarki. Testy
+ * „czy tekst funkcji jest na miejscu" tego nie widzą — i nie zobaczyły:
+ * reguła czyszcząca spacje kasowała z transkryptu każde „s", a złapał to
+ * dopiero Dawid na produkcji. Dlatego tutaj odtwarzamy składanie literału
+ * i wywołujemy funkcję NAPRAWDĘ, na tych samych danych co moduł.
+ */
+function sklejSegmentowZPanelu() {
+  const panel = zrodlo('worker/panel.js');
+  const start = panel.indexOf('function sklejSegmenty(segmenty){');
+  assert.ok(start > 0, 'panel nie ma sklejania segmentów');
+  const koniec = panel.indexOf('\n}\n', start);
+  assert.ok(koniec > start, 'nie widzę końca funkcji w panelu');
+  const fragment = panel.slice(start, koniec + 2);
+  assert.ok(!fragment.includes('`'), 'fragment ma odwrotny apostrof — nie złożę literału');
+  // Dokładnie to, co zobaczy przeglądarka po złożeniu literału szablonowego.
+  const kod = new Function('return `' + fragment + '`')();
+  return new Function(kod + '; return sklejSegmenty;')();
+}
+
+test('DUBLOWANIE: kopia z panelu liczy TAK SAMO jak moduł — uruchomiona, nie obejrzana', () => {
+  const zPanelu = sklejSegmentowZPanelu();
+
+  const przypadki = [
+    ['sześćset sto dwieście'],
+    ['sześćset sto', 'sześćset sto dwieście'],
+    ['sześćset', 'sześćset sto', 'sześćset sto dwieście'],
+    ['Tarnobrzeg', 'Tarnobrzeg'],
+    ['dwa blaty po dwieście', 'dwieście dwadzieścia parapet'],
+    ['blat trzysta na sześćdziesiąt', 'wyspa dwieście na dziewięćdziesiąt'],
+    ['', '  ', 'wyspa'],
+  ];
+  for (const we of przypadki)
+    assert.equal(zPanelu(we), sklejSegmenty(we), `panel i moduł różnią się na ${JSON.stringify(we)}`);
+
+  // I osobno to, co było realnym błędem: litery nie mają prawa znikać.
+  assert.equal(zPanelu(['sześćset sto dwieście']), 'sześćset sto dwieście', 'panel zjada litery');
+});
+
+test('DUBLOWANIE: żadna ze stron nie wróciła do narastającego bufora', () => {
+  const panel = zrodlo('worker/panel.js');
+  assert.match(panel, /slyszane = sklejSegmenty\(finalne\);/, 'panel znowu dokleja do bufora');
+  assert.ok(!/for\(var i = e\.resultIndex/.test(panel), 'panel znowu czyta wyniki od resultIndex');
 
   const ed = zrodlo('src/app/oferta-dawida.js');
-  assert.match(ed, /slyszane = sklejSegmenty\(finalne\);/, 'edytor nadal dokleja do bufora');
-  assert.ok(!/i = e\.resultIndex/.test(ed), 'edytor wciąż czyta wyniki od resultIndex');
+  assert.match(ed, /slyszane = sklejSegmenty\(finalne\);/, 'edytor znowu dokleja do bufora');
+  assert.ok(!/i = e\.resultIndex/.test(ed), 'edytor znowu czyta wyniki od resultIndex');
 });
+
 
 /* ═══════════════════════════════ telefon ════════════════════════════════ */
 
@@ -519,6 +595,27 @@ test('PANEL: dyktando WYPEŁNIA pola, a nie zapisuje karty', () => {
     'rozpoznanie głosu zapisuje klienta bez pytania'
   );
   assert.match(panel, /e\.classList\.add\('zglosu'\)/, 'brak podświetlenia pól z mikrofonu');
+});
+
+test('STRONA: polityka uprawnień wpuszcza mikrofon na własnej domenie', () => {
+  /*
+   * ⚠ DRUGIE ZGŁOSZENIE DAWIDA (16.09.2026): „mikrofon w edytorze blatów
+   * w ogóle NIE DZIAŁA".
+   *
+   * Przyczyna nie była w kodzie edytora, tylko w nagłówku serwowanym przez
+   * Netlify: `microphone=()` wyłącza mikrofon dla KAŻDEGO źródła, włącznie
+   * z naszą domeną. Przeglądarka odbijała rozpoznawanie błędem `not-allowed`
+   * jeszcze zanim pokazała pytanie o zgodę — a moje testy tego nie widziały,
+   * bo podstawiały atrapę rozpoznawania zamiast prawdziwego API.
+   *
+   * Kamera i lokalizacja mają zostać wyłączone na głucho — ich nie używamy.
+   */
+  const toml = zrodlo('netlify.toml');
+  const wiersz = toml.match(/Permissions-Policy = "([^"]+)"/);
+  assert.ok(wiersz, 'brak nagłówka Permissions-Policy');
+  assert.match(wiersz[1], /microphone=\(self\)/, 'mikrofon zablokowany także dla własnej domeny');
+  assert.match(wiersz[1], /camera=\(\)/, 'kamera nie ma prawa być dostępna');
+  assert.match(wiersz[1], /geolocation=\(\)/, 'lokalizacja nie ma prawa być dostępna');
 });
 
 test('EDYTOR: mikrofon stoi przy odcinkach i nie kasuje wymiarów bezpowrotnie', () => {

@@ -88,15 +88,58 @@ export function czystyTranskrypt(tekst) {
  * nikt nie dyktuje dwa razy pod rząd tej samej frazy, a rozpoznawanie
  * potrafi ją powtórzyć przy przerwie w mówieniu.
  */
+/** Segment na słowa — porównujemy wypowiedzi, nie znaki. */
+const slowa = (t) => t.toLowerCase().split(' ').filter(Boolean);
+
+/** Czy `b` zaczyna się od CAŁEGO `a` (słowo w słowo). */
+function zaczynaSieOd(b, a) {
+  const x = slowa(a);
+  const y = slowa(b);
+  if (!x.length || y.length < x.length) return false;
+  return x.every((w, k) => w === y[k]);
+}
+
+/**
+ * Fragmenty od rozpoznawania mowy → jeden transkrypt.
+ *
+ * Chrome z `continuous` zamyka wypowiedź na krótkiej pauzie, a następny
+ * wynik końcowy POWTARZA ją w całości i przedłuża:
+ *
+ *     „sześćset sto"  →  „sześćset sto dwieście"
+ *
+ * Złożone naiwnie daje „sześćset sto sześćset sto dwieście" — dokładnie to,
+ * co Dawid nazwał „powtarza cyfry" (16.09.2026, drugie zgłoszenie; pierwsze
+ * dotyczyło innej przyczyny — narastającego bufora).
+ *
+ * Reguła jest WĄSKA I DOSŁOWNA: nowy fragment zastępuje poprzedni tylko
+ * wtedy, gdy zaczyna się od CAŁEGO poprzedniego. Kusiło, żeby ciąć każdą
+ * wspólną zakładkę słów — ale wtedy „dwa blaty po dwieście" + „dwieście
+ * dwadzieścia parapet" zlepiłoby się w jeden wymiar i JEDEN BLAT BY ZNIKNĄł.
+ * Lepiej zostawić czasem zbędne słowo (model i tak je zignoruje) niż po cichu
+ * skasować podyktowany wymiar.
+ */
 export function sklejSegmenty(segmenty) {
   const czyste = (Array.isArray(segmenty) ? segmenty : [])
     .map((t) => String(t ?? '').replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 
-  const bezBlizniat = czyste.filter(
-    (t, i) => i === 0 || t.toLowerCase() !== czyste[i - 1].toLowerCase()
-  );
-  return bezBlizniat.join(' ');
+  const przyjete = [];
+  for (const segment of czyste) {
+    const ostatni = przyjete[przyjete.length - 1];
+    if (!ostatni) {
+      przyjete.push(segment);
+      continue;
+    }
+    // Krótsze powtórzenie tego samego (też: dokładnie to samo) — pomijamy.
+    if (zaczynaSieOd(ostatni, segment)) continue;
+    // Doprecyzowanie poprzedniego fragmentu — podmieniamy, nie doklejamy.
+    if (zaczynaSieOd(segment, ostatni)) {
+      przyjete[przyjete.length - 1] = segment;
+      continue;
+    }
+    przyjete.push(segment);
+  }
+  return przyjete.join(' ');
 }
 
 /* ──────────────────────────────────────────────────────────────── telefon */

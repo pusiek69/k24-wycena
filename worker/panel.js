@@ -1114,19 +1114,29 @@ function mikrofonHtml(){
    test w scripts/test-dyktando.mjs, żeby obie kopie nie rozjechały się. */
 function sklejSegmenty(segmenty){
   /* UWAGA NA UKOŚNIKI. Ten skrypt siedzi w literale szablonowym, wiec JS
-     zdejmuje jeden ukosnik jeszcze zanim kod trafi do przegladarki.
-     Klasy znakow w wyrazeniach regularnych pisze sie tu PODWOJNYM
-     ukosnikiem. Pojedynczy zamienil klase "bialy znak" w zwykla litere
-     "s" i regula kasowala kazde "s": "szescset sto" wychodzilo jako
-     "zesc et  to" (zlapane na produkcji 16.09.2026). Pilnuje tego
-     test "PANEL: klasy znakow w regexach" w scripts/test-dyktando.mjs. */
+     zdejmuje jeden ukosnik zanim kod trafi do przegladarki. Klasy znakow
+     w wyrazeniach regularnych pisze sie tu PODWOJNYM ukosnikiem; pojedynczy
+     zamienil kiedys klase "bialy znak" w zwykla litere "s" i regula
+     kasowala kazde "s" (zlapane na produkcji 16.09.2026). Pilnuje tego
+     test "PANEL: klasy znakow w regexach". */
   var czyste = (segmenty || [])
     .map(function(t){ return String(t == null ? '' : t).replace(/\\s+/g, ' ').trim(); })
     .filter(Boolean);
-  var bez = czyste.filter(function(t, i){
-    return i === 0 || t.toLowerCase() !== czyste[i-1].toLowerCase();
+  function slowa(t){ return t.toLowerCase().split(' ').filter(Boolean); }
+  function zaczynaSieOd(b, a){
+    var x = slowa(a), y = slowa(b);
+    if(!x.length || y.length < x.length) return false;
+    return x.every(function(w, k){ return w === y[k]; });
+  }
+  var przyjete = [];
+  czyste.forEach(function(segment){
+    var ostatni = przyjete[przyjete.length - 1];
+    if(!ostatni){ przyjete.push(segment); return; }
+    if(zaczynaSieOd(ostatni, segment)) return;                    // powtorka
+    if(zaczynaSieOd(segment, ostatni)){ przyjete[przyjete.length-1] = segment; return; }
+    przyjete.push(segment);
   });
-  return bez.join(' ');
+  return przyjete.join(' ');
 }
 
 function dyInfo(t){ var e = document.getElementById('dy-info'); if(e) e.textContent = t; }
@@ -1179,6 +1189,10 @@ function przelaczMikrofon(){
       else wstepne += e.results[i][0].transcript;
     }
     slyszane = sklejSegmenty(finalne);
+    /* Slad surowych zdarzen - zeby kolejne zgloszenie o powtarzaniu przyszlo
+       z faktami, a nie z domyslem. Nic nie wysyla, siedzi w pamieci karty. */
+    (window.__dyktandoSlad = window.__dyktandoSlad || []).push(
+      { finalne: finalne, wstepne: wstepne, zlozone: slyszane });
     var box = document.getElementById('dy-slychac');
     if(box) box.innerHTML = esc(slyszane) +
       (wstepne ? '<span class="niepewne">' + esc(wstepne) + '</span>' : '');

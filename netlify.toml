@@ -388,7 +388,15 @@
     X-Frame-Options = "SAMEORIGIN"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=(), interest-cohort=()"
+    # microphone=(self), a nie microphone=() — POWOD (16.09.2026):
+    # mikrofon w edytorze wyceny właściciela nie działał W OGÓLE, bo ta
+    # polityka wyłączała go dla każdego źródła — włącznie z naszą domeną.
+    # Przeglądarka odbijała rozpoznawanie mowy błędem `not-allowed` jeszcze
+    # ZANIM pokazała pytanie o zgodę, więc kłódka przy adresie nic nie dawała.
+    # `self` nie włącza niczego samo z siebie: klient i tak musi kliknąć
+    # „Zezwól", a w kalkulatorze klienta nie ma czego pytać o mikrofon.
+    # Kamera i lokalizacja zostają wyłączone na głucho.
+    Permissions-Policy = "geolocation=(), microphone=(self), camera=(), interest-cohort=()"
     # CSP wpuszcza tylko to, czego naprawdę używamy: własne pliki + tagi
     # Google i Meta. Gdyby ktoś podmienił kod strony, przeglądarka zablokuje
     # wysyłkę danych w nieznane miejsce.
