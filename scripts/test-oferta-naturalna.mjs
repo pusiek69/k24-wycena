@@ -41,11 +41,15 @@ test('liczy się jak naturalny: całe płyty, obróbka wg stawki z panelu', () =
   // Całe płyty z obrzeżem — bez połówek.
   assert.ok(!w.pak.polowka, 'kamień naturalny bez połówek');
 
-  // Od 21.08.2026 naturalny płaci tę samą obróbkę co reszta (200 zł/m²),
-  // a osobny dodatek 300 zł/m² zniknął — obie stawki są w panelu.
+  /*
+   * Od 21.08.2026 naturalny płaci tę samą obróbkę co reszta, a osobny dodatek
+   * 300 zł/m² zniknął. Od 16.09.2026 obróbka to podstawa + stawka od metra
+   * (polecenie Dawida) — kwot nie przepisujemy tutaj, bo cennik bywa
+   * aktualizowany; pilnujemy KSZTAŁTU: naturalny liczy się jak reszta.
+   */
   const obrobka = w.pozycje.find((p) => p.nazwa.includes('Docięcie, polerowanie'));
   assert.ok(obrobka, 'pozycja obróbki musi być na liście');
-  assert.match(obrobka.detalFirmowy || '', /200 zł/);
+  assert.match(obrobka.detalFirmowy || '', /^baza .* \+ .* m² × /, 'naturalny liczy obróbkę inaczej');
   assert.equal(
     w.pozycje.find((p) => p.nazwa.includes('Obróbka kamienia naturalnego')),
     undefined,

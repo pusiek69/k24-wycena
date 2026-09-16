@@ -216,7 +216,11 @@ export function wycen(firma, w, dataISO) {
 
     // Pozycja może mieć część stałą (dojazd, wniesienie, przygotowanie) —
     // naliczaną RAZ na całą wycenę, niezależnie od liczby elementów.
-    const baza = r.baza ? kwotaBrutto(r.baza, firma, vat, vatZrodla) : 0;
+    // `bazaTylkoKuchnia` — część stała odpada przy łazience, a stawka od metra
+    // zostaje (docięcie i polerowanie robi się tak samo, tylko bez
+    // przygotowania pod łączony blat kuchenny).
+    const bezBazy = r.bazaTylkoKuchnia && lazienka;
+    const baza = r.baza && !bezBazy ? kwotaBrutto(r.baza, firma, vat, vatZrodla) : 0;
     const kwota = baza + kwotaBrutto(r.cena, firma, vat, vatZrodla) * ilosc;
     // Pozycje `wCenie` przepuszczamy mimo zerowej kwoty — to świadczenia,
     // za które nie liczymy osobno, ale klient ma je widzieć na liście.

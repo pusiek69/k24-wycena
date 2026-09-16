@@ -68,9 +68,16 @@ test('kuchnia dostaje wycięcie pod płytę', () => {
 test('ta sama łazienka jako kuchnia jest droższa o płytę grzewczą i pomiar', () => {
   const jakLazienka = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'lazienka', otwory: 1 }));
   const jakKuchnia = licz(LAZIENKA, opcjeZParametrow({ pomieszczenie: 'kuchnia', otwory: 1 }));
-  // Kuchnia różni się dwiema pozycjami: wycięciem pod płytę grzewczą
-  // i pomiarem Prolinerem.
-  const oczekiwana = nettoStawki(CENA_PLYTY) + nettoStawki(CENA_POMIARU);
+  /*
+   * Kuchnia różni się TRZEMA pozycjami: wycięciem pod płytę grzewczą,
+   * pomiarem Prolinerem, a od 16.09.2026 także podstawą obróbki
+   * (1 500 zł netto, doliczaną tylko do blatu kuchennego — polecenie Dawida).
+   * Podstawę liczymy z różnicy obu pozycji obróbki, żeby nie przepisywać
+   * kwoty z cennika do testu.
+   */
+  const obrobka = (w) => w.pozycje.find((p) => /Docięcie, polerowanie/.test(p.nazwa))?.brutto || 0;
+  const podstawaObrobki = obrobka(jakKuchnia) - obrobka(jakLazienka);
+  const oczekiwana = nettoStawki(CENA_PLYTY) + nettoStawki(CENA_POMIARU) + podstawaObrobki / 1.08;
   assert.ok(
     Math.abs(jakKuchnia.razemNetto - jakLazienka.razemNetto - oczekiwana) < 0.01,
     `różnica ${jakKuchnia.razemNetto - jakLazienka.razemNetto}`

@@ -40,24 +40,29 @@ const pozycja = (w, fraza) => w.pozycje.find((p) => p.nazwa.includes(fraza));
 // Stawki są brutto przy 23%, a wycena z montażem idzie po 8%.
 const naStawke = (brutto) => (brutto / 1.23) * 1.08;
 
-/* ─────────────────────────────────── obróbka 200 zł/m² */
+/* ──────────────── obróbka: podstawa + stawka od m² ───────── */
 
-test('obróbka blatu kosztuje domyślnie 200 zł/m² powierzchni blatu', () => {
+test('obróbka blatu to domyślnie podstawa 1 500 zł + 150 zł/m² (netto)', () => {
+  /*
+   * Polecenie Dawida z 16.09.2026. Kwoty w konfiguracji są brutto przy 23%,
+   * więc sprawdzamy je po zejściu na netto — tak, jak podał je Dawid.
+   */
   const firma = nowaFirma();
   zastosujUstawienia([firma], {});
 
-  const w = licz(firma);
-  const obrobka = pozycja(w, 'Docięcie, polerowanie');
+  const obrobka = pozycja(licz(firma), 'Docięcie, polerowanie');
   assert.ok(obrobka, 'pozycja obróbki musi być na liście');
   assert.equal(obrobka.wCenie, false, 'to już nie jest świadczenie „w cenie"');
-  // 1,8 m² × 200 zł brutto@23 → po stawce 8%.
-  assert.ok(Math.abs(obrobka.brutto - naStawke(200) * 1.8) < 0.01, `${obrobka.brutto}`);
+  assert.equal(Math.round(obrobka.brutto / 1.08), 1500 + Math.round(150 * 1.8));
   assert.equal(obrobka.detal, '1,8 m²');
+  assert.match(obrobka.detalFirmowy, /^baza /, 'rozbicie firmowe nie pokazuje podstawy');
 });
 
-test('zerowa stawka wraca do trybu „w cenie" — pozycja zostaje, kwoty nie ma', () => {
+test('zerowe OBIE kwoty wracają do trybu „w cenie" — pozycja zostaje, kwoty nie ma', () => {
+  // Sama zerowa stawka od metra nie wystarczy: podstawa nadal by wchodziła,
+  // a pozycja pokazywałaby „w cenie" obok kwoty 1 500 zł.
   const firma = nowaFirma();
-  zastosujUstawienia([firma], { obrobkaZaM2: 0 });
+  zastosujUstawienia([firma], { obrobkaZaM2: 0, obrobkaBaza: 0 });
 
   const obrobka = pozycja(licz(firma), 'Docięcie, polerowanie');
   assert.ok(obrobka);

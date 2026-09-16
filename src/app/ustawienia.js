@@ -19,16 +19,36 @@
  *     w pricing/zrodla, poza repozytorium.
  */
 
-import { zCennika } from '../firms/_domyslne.js';
+import { ROBOCIZNA, zCennika } from '../firms/_domyslne.js';
+
+/*
+ * Wartości domyślne obróbki bierzemy WPROST z konfiguracji cennika, zamiast
+ * przepisywać liczby. Do 16.09.2026 stały tu osobno i rozjechały się cicho:
+ * `_domyslne.js` mówiło „w cenie, zero zł", panel domyślnie 200 zł/m² —
+ * i to panel wygrywał, więc produkcja liczyła co innego niż repozytorium,
+ * a test pilnował nieużywanej wersji.
+ */
+const OBROBKA = ROBOCIZNA.find((r) => r.id === 'obrobka') || {};
+const OBROBKA_BAZA = OBROBKA.baza ?? 0;
+const OBROBKA_ZA_M2 = OBROBKA.cena ?? 0;
 
 /** Parametry, które Dawid widzi w panelu. Kolejność = kolejność w formularzu. */
 export const PARAMETRY = [
   {
+    klucz: 'obrobkaBaza',
+    label: 'Obróbka — podstawa (przygotowanie, sklejenie)',
+    jednostka: 'zł raz na wycenę',
+    domyslnie: OBROBKA_BAZA,
+    opis:
+      'Doliczana RAZ na wycenę blatu kuchennego, obok stawki od metra. ' +
+      'Przy blacie łazienkowym nie wchodzi. 0 = bez podstawy.',
+  },
+  {
     klucz: 'obrobkaZaM2',
     label: 'Obróbka blatu (docięcie, polerowanie, klejenie)',
     jednostka: 'zł/m² blatu',
-    domyslnie: 200,
-    opis: 'Naliczana przy każdym blacie od powierzchni elementów. 0 = w cenie, bez naliczenia.',
+    domyslnie: OBROBKA_ZA_M2,
+    opis: 'Naliczana przy każdym blacie od powierzchni elementów. 0 razem z podstawą = w cenie.',
   },
   {
     klucz: 'obrobkaNaturalnaZaM2',
@@ -178,11 +198,15 @@ export function zastosujUstawienia(firmy, ustawienia) {
       if (r.id === 'obrobka') {
         return {
           ...r,
-          // Zerowa stawka wraca do trybu „w cenie": pozycja zostaje na liście
-          // świadczeń, ale bez kwoty (tak działało do 21.08.2026).
+          baza: u.obrobkaBaza,
+          bazaTylkoKuchnia: true,
           cena: u.obrobkaZaM2,
           per: 'm2blatu',
-          wCenie: u.obrobkaZaM2 <= 0,
+          // Dopiero OBIE kwoty na zero wracają do trybu „w cenie": pozycja
+          // zostaje na liście świadczeń, ale bez kwoty. Sama zerowa stawka
+          // od metra nie wystarczy, bo podstawa nadal by wchodziła — i wycena
+          // pokazywałaby „w cenie" obok kwoty 1 500 zł.
+          wCenie: u.obrobkaZaM2 <= 0 && u.obrobkaBaza <= 0,
         };
       }
       if (r.id === 'pomiar') return { ...r, cena: u.pomiar };

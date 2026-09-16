@@ -90,10 +90,17 @@ test('łazienka nie dostaje pozycji pomiaru', () => {
 test('ta sama łazienka wyceniona jak kuchnia jest droższa dokładnie o pomiar', () => {
   const jakLazienka = licz(LAZIENKA, { pomieszczenie: 'lazienka', otwory: 1 });
   const jakKuchnia = licz(LAZIENKA, { pomieszczenie: 'kuchnia', otwory: 1 });
-  // Kuchnia ma jeszcze wycięcie pod płytę grzewczą — odejmujemy je,
-  // żeby zostało samo porównanie pomiaru.
+  /*
+   * Kuchnia różni się od łazienki trzema rzeczami i wszystkie trzeba odjąć,
+   * żeby zostało samo porównanie pomiaru: wycięciem pod płytę grzewczą,
+   * a od 16.09.2026 także PODSTAWĄ OBRÓBKI (1 500 zł netto, `bazaTylkoKuchnia`
+   * — polecenie Dawida). Podstawę bierzemy z różnicy obu pozycji obróbki,
+   * a nie z literału, żeby test nie trzymał kwoty z cennika.
+   */
   const plytaGrzewcza = jakKuchnia.pozycje.find((p) => /płyt[ęy] nakładan/i.test(p.nazwa)).brutto;
-  const roznica = jakKuchnia.razem - jakLazienka.razem - plytaGrzewcza;
+  const obrobka = (w) => w.pozycje.find((p) => /Docięcie, polerowanie/.test(p.nazwa))?.brutto || 0;
+  const podstawaObrobki = obrobka(jakKuchnia) - obrobka(jakLazienka);
+  const roznica = jakKuchnia.razem - jakLazienka.razem - plytaGrzewcza - podstawaObrobki;
   assert.ok(Math.abs(roznica - pomiar(jakKuchnia).brutto) < 0.01, `różnica ${roznica}`);
 });
 

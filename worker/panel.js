@@ -660,6 +660,15 @@ const odpowiedzHtml = (html, status = 200) =>
       'referrer-policy': 'no-referrer',
       'cache-control': 'no-store',
       /*
+       * Mikrofon JAWNIE dopuszczony dla wlasnej domeny (16.09.2026).
+       * Bez naglowka i tak dziala, ale na kam24h.pl analogiczna polityka
+       * z pustymi nawiasami wylaczala dyktowanie w edytorze CALKOWICIE,
+       * a przegladarka mowila tylko "brak dostepu". Wpis jest tu po to,
+       * zeby przy nastepnym zaostrzaniu naglowkow bylo widac, ze panel
+       * mikrofonu POTRZEBUJE. Kamera i lokalizacja zostaja wylaczone.
+       */
+      'permissions-policy': 'microphone=(self), camera=(), geolocation=()',
+      /*
        * ⚠ `img-src` MUSI tu być — bez niego obowiązuje `default-src 'none'`
        * i przeglądarka blokuje KAŻDY obrazek w panelu.
        *
@@ -1198,11 +1207,30 @@ function przelaczMikrofon(){
       (wstepne ? '<span class="niepewne">' + esc(wstepne) + '</span>' : '');
   };
 
+  /* Trzy rozne przyczyny oddaja ten sam blad "not-allowed", a rady sa
+     sprzeczne. Wysylanie kogos do klodki, ktora nic nie oferuje, to czas
+     stracony przy kliencie (zgloszenie Dawida, 16.09.2026). */
   r.onerror = function(e){
     porzucone = true;   // zeby onend nie nadpisal tego komunikatu
-    dyInfo(e.error === 'not-allowed' || e.error === 'service-not-allowed'
-      ? 'Przeglądarka nie dała dostępu do mikrofonu — kliknij kłódkę przy adresie i zezwól.'
-      : 'Mikrofon nie zadziałał (' + e.error + ') — wpisz ręcznie.');
+    if(e.error !== 'not-allowed' && e.error !== 'service-not-allowed'){
+      dyInfo('Mikrofon nie zadziałał (' + e.error + ') — wpisz ręcznie.');
+      return;
+    }
+    var polityka = document.permissionsPolicy || document.featurePolicy;
+    if(polityka && !polityka.allowsFeature('microphone')){
+      dyInfo(window.self !== window.top
+        ? 'Ta strona jest w ramce, która nie wpuszcza mikrofonu — otwórz panel w osobnej karcie.'
+        : 'Mikrofon blokuje ustawienie serwera. Kłódka przy adresie tu nie pomoże — daj znać, to poprawię.');
+      return;
+    }
+    dyInfo('Sprawdzam, dlaczego…');
+    (navigator.permissions ? navigator.permissions.query({name:'microphone'}) : Promise.reject())
+      .then(function(p){
+        if(p.state === 'denied') dyInfo('Chrome ma zapamiętaną blokadę mikrofonu dla tej strony. Kliknij kłódkę przy adresie → Mikrofon → Zezwalaj, i odśwież stronę.');
+        else if(p.state === 'prompt') dyInfo('Przeglądarka pyta o zgodę — kliknij „Zezwól" w okienku u góry i spróbuj jeszcze raz.');
+        else dyInfo('Mikrofon nie odpowiada. Sprawdź, czy nie używa go inny program i czy jest włączony w ustawieniach Windowsa.');
+      })
+      .catch(function(){ dyInfo('Mikrofon nie odpowiada. Sprawdź, czy nie używa go inny program.'); });
   };
 
   r.onend = function(){

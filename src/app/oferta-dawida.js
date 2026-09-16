@@ -505,6 +505,41 @@ function etykietaOdcinkaWiersz(o, i, odswiez) {
 const PODPOWIEDZ_MIKROFONU =
   'Kliknij i podyktuj wymiary, np. „blat trzysta na sześćdziesiąt, wyspa dwieście na dziewięćdziesiąt".';
 
+/**
+ * DLACZEGO MIKROFON NIE RUSZYŁ — trzy różne przyczyny, trzy różne rady.
+ *
+ * ⚠ Dawid, 16.09.2026: „pokazuje że mam zablokowany mikrofon, a nie mam".
+ * I miał rację. Przeglądarka na każdą z tych sytuacji oddaje ten sam błąd
+ * `not-allowed`, a rady są sprzeczne:
+ *
+ *   1. POLITYKA UPRAWNIEŃ strony (nagłówek serwera albo ramka bez `allow`)
+ *      — kłódka przy adresie NIE MA czego zaproponować, bo przeglądarka
+ *      nawet nie pyta. To musimy naprawić my, nie Dawid.
+ *   2. ZAPAMIĘTANA BLOKADA dla tej strony w Chrome — tu właśnie kłódka
+ *      pomaga, ale trzeba jeszcze odświeżyć stronę.
+ *   3. MIKROFON WYŁĄCZONY W SYSTEMIE albo zajęty przez inny program.
+ *
+ * Wysyłanie kogoś do kłódki, która nic nie oferuje, to godzina stracona
+ * przy kliencie — dokładnie to się stało.
+ */
+async function powodBrakuMikrofonu() {
+  const polityka = document.permissionsPolicy || document.featurePolicy;
+  if (polityka && !polityka.allowsFeature('microphone')) {
+    return window.self !== window.top
+      ? 'Ta strona jest otwarta w ramce, która nie wpuszcza mikrofonu — otwórz wycenę w osobnej karcie.'
+      : 'Mikrofon blokuje ustawienie serwera strony, nie Twoja przeglądarka. Kłódka przy adresie tu nie pomoże — daj znać, to poprawię.';
+  }
+  const stan = await navigator.permissions
+    ?.query({ name: 'microphone' })
+    .then((r) => r.state)
+    .catch(() => null);
+  if (stan === 'denied')
+    return 'Chrome ma zapamiętaną blokadę mikrofonu dla tej strony. Kliknij kłódkę przy adresie → Mikrofon → Zezwalaj, i odśwież stronę.';
+  if (stan === 'prompt')
+    return 'Przeglądarka pyta o zgodę na mikrofon — kliknij „Zezwól" w okienku u góry i spróbuj jeszcze raz.';
+  return 'Mikrofon nie odpowiada. Sprawdź, czy nie używa go inny program i czy jest włączony w ustawieniach Windowsa.';
+}
+
 /** Jedno rozpoznawanie na ekran — trzymane poza stanem, bo to urządzenie. */
 let sluchEdytora = null;
 
@@ -629,14 +664,11 @@ function blokDyktanda(stan, paczka, odswiez) {
       (window.__dyktandoSlad = window.__dyktandoSlad || []).push({ finalne, wstepne, zlozone: slyszane });
       slychac.replaceChildren(slyszane, h('span', { class: 'dy-niepewne' }, wstepne));
     };
-    r.onerror = (e) => {
+    r.onerror = async (e) => {
       porzucone = true; // żeby `onend` nie nadpisał tego komunikatu
-      powiedz(
-        e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'Przeglądarka nie dała dostępu do mikrofonu. Kliknij kłódkę przy adresie i zezwól; ' +
-            'jeśli kłódka nic nie oferuje, odezwij się — to blokada po stronie serwera.'
-          : `Mikrofon nie zadziałał (${e.error}) — wpisz ręcznie.`
-      );
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+        powiedz(await powodBrakuMikrofonu());
+      else powiedz(`Mikrofon nie zadziałał (${e.error}) — wpisz ręcznie.`);
     };
     r.onend = () => {
       sluchEdytora = null;

@@ -58,24 +58,35 @@ export const zCennika = (netto) => Math.round(netto * 1.23 * 100) / 100;
 
 export const ROBOCIZNA = [
   /*
-   * DOCIĘCIE, POLEROWANIE I KLEJENIE — W CENIE, BEZ OSOBNEGO NALICZENIA.
+   * DOCIĘCIE, POLEROWANIE I KLEJENIE — baza + stawka od m² blatu.
    *
-   * Do 17.08.2026 była to pozycja 350 zł za metr bieżący i największa
-   * pojedyncza kwota w wielu wycenach (przy kuchni w U — 2 520 zł).
-   * Dawid zdecydował, że nie doliczamy jej osobno.
+   * Historia tej pozycji, bo jest kręta i łatwo się na niej pomylić:
+   *   • do 17.08.2026 — 350 zł za metr bieżący, największa pojedyncza
+   *     kwota w wielu wycenach (przy kuchni w U — 2 520 zł),
+   *   • 17.08.2026 — Dawid zdjął naliczanie: pozycja została na liście
+   *     jako świadczenie „w cenie", z kwotą zero,
+   *   • od 21.08.2026 — stawkę przejął panel (`obrobkaZaM2`, domyślnie
+   *     200 zł/m²) i PRODUKCJA liczyła ją znowu, choć ta konfiguracja
+   *     nadal mówiła „zero",
+   *   • 16.09.2026 — polecenie Dawida: „1500 zł podstawa + 150 zł za m²".
    *
-   * Pozycja ZOSTAJE w wycenie z kwotą zero, bo klient ma widzieć na liście
-   * „w tej cenie", że dostaje docięcie, polerowanie i klejenie. Znika sama
-   * opłata, nie świadczenie. `wCenie` mówi silnikowi, żeby przepuścił
-   * pozycję mimo zerowej kwoty, a mailowi firmowemu — żeby jej nie
-   * pokazywał w rozbiciu naliczeń.
+   * Wartości w konfiguracji są BRUTTO PRZY 23% (patrz `zCennika`), więc
+   * `zCennika(1500)` to 1 500 zł NETTO — dokładnie ta kwota, którą podał
+   * Dawid. Przy kuchni z montażem (VAT 8%) klient zobaczy 1 620 zł.
+   *
+   * `bazaTylkoKuchnia`: stałe 1 500 zł doliczamy tylko do blatów kuchennych
+   * — tak brzmiało polecenie („za m² blatu kuchennego"), a przy blacie
+   * łazienkowym 0,6 m² podstawa byłaby większa niż cała reszta wyceny.
+   * Sama stawka od metra zostaje wszędzie: łazienkowy blat też się tnie
+   * i poleruje.
    */
   {
     id: 'obrobka',
     label: 'Docięcie, polerowanie krawędzi, klejenie',
-    cena: 0,
-    per: 'mb',
-    wCenie: true,
+    baza: zCennika(1500),
+    bazaTylkoKuchnia: true,
+    cena: zCennika(150),
+    per: 'm2blatu',
   },
   /*
    * POMIAR CYFROWY PROLINEREM — 1000 zł, raz na zlecenie, TYLKO KUCHNIA.
