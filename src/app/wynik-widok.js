@@ -15,6 +15,7 @@ import {
 } from '../engine/alternatywy.js';
 import { zdarzenie } from '../analytics/zdarzenia.js';
 import { NOTA_ODBIOR } from '../firms/_domyslne.js';
+import { opisOdcinkaZWymiarem } from './etykiety-odcinkow.js';
 
 const TEL = '796 991 128';
 
@@ -582,7 +583,11 @@ function ostrzezenia(w) {
 export function opisOdcinkow(w) {
   const o = (w.odcinki || []).filter((x) => x.dl > 0 && x.gl > 0);
   if (!o.length) return 'blat';
-  return o.map((x) => `${Math.round(x.gl)}×${Math.round(x.dl)} cm`).join(' + ');
+  /*
+   * Z podpisami: „Wyspa: 90×200 + Fartuch: 6×240 cm". Wymiary zostają
+   * na swoim miejscu — podpis mówi, KTÓRY to blat, a nie ile mierzy.
+   */
+  return o.map((x) => opisOdcinkaZWymiarem(x)).join(' + ') + ' cm';
 }
 
 function liczbaCm(n) {

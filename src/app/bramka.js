@@ -7,6 +7,7 @@ import { panelFeedbacku } from './feedback.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { TERMINY } from './termin.js';
 import { KANALY, potwierdzenie } from './kontakt-telefon.js';
+import { odcinekDoZapisu } from './etykiety-odcinkow.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -421,7 +422,9 @@ export function szczegolyWyceny(w) {
     rodzaj: rodzajMaterialu(w.firma),
     dekor: w.dekor || '',
     grubosc: w.grubosc || '',
-    odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),
+    // Etykiety odcinków jadą razem z wymiarami — mail do Dawida podpisuje
+    // nimi rozkrój zamiast pisać „odcinek 2".
+    odcinki: (w.odcinki || []).map(odcinekDoZapisu),
     plyta: { w: plyta.w, h: plyta.h },
     plytyPelne: w.pak?.plytyPelne ?? 0,
     polowka: !!w.pak?.polowka,
@@ -443,7 +446,9 @@ export function szczegolyWyceny(w) {
       firma: w.firma?.slug || '',
       dekor: w.dekor || '',
       grubosc: w.grubosc || '',
-      odcinki: (w.odcinki || []).map((o) => ({ gl: o.gl, dl: o.dl })),
+      // Z etykietami — dzięki temu „Powtórz wycenę" wraca z podpisami,
+      // a nie z gołymi wymiarami.
+      odcinki: (w.odcinki || []).map(odcinekDoZapisu),
       opcje: w.opcje || {},
       // Kamień naturalny: kod i dane wskazanej płyty — bez nich „Powtórz
       // wycenę" nie miałoby z czego odtworzyć ceny (cennika tu nie ma).

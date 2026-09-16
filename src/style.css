@@ -218,6 +218,35 @@ main { padding: 26px 0 40px; }
   grid-column: 1 / -1; font-family: var(--sans); font-size: 11px; letter-spacing: .14em;
   text-transform: uppercase; color: var(--vein);
 }
+/* Nazwa odcinka („Wyspa", „Fartuch") — zlecenie Dawida z 16.09.2026.
+   Pole stoi nad wymiarami i zajmuje cały wiersz siatki; chipy pod nim
+   wpisują gotowy tekst jednym kliknięciem. */
+.etykieta-blok { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 7px; }
+.etykieta-etykieta {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--dim);
+}
+.etykieta-wpis {
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--cream); font-family: var(--sans); font-size: 16px; padding: 10px 12px; width: 100%;
+}
+.etykieta-wpis:focus { outline: none; border-color: var(--vein); }
+.etykieta-chipy { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-etykieta {
+  background: transparent; border: 1px dashed var(--line-hi); border-radius: 999px;
+  color: var(--muted); font-family: var(--sans); font-size: 12px; letter-spacing: .02em;
+  padding: 5px 11px; cursor: pointer; transition: border-color .15s, color .15s;
+}
+.chip-etykieta:hover { border-style: solid; border-color: var(--vein); color: var(--vein); }
+/* Nazwa odcinka w pomocniku rozmowy — wiersz jest wąski, więc pole
+   i chipy schodzą pod wymiary i zajmują całą szerokość. */
+.pom-nazwa-blok { flex: 1 0 100%; display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+.pom-nazwa {
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--cream); font-family: var(--sans); font-size: 14px; padding: 7px 10px; width: 100%;
+}
+.pom-nazwa:focus { outline: none; border-color: var(--vein); }
+
 .pole { display: flex; flex-direction: column; gap: 6px; }
 .pole label { font-family: var(--sans); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
 .pole input, .pole select {
@@ -812,6 +841,10 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 }
 .od-odcinek { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
 .od-odcinek input { max-width: 120px; }
+.od-odcinek-blok { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.od-odcinek-blok:last-of-type { border-bottom: 0; }
+.od-etykieta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.od-etykieta input { max-width: 200px; }
 .od-akcje-poz { display: flex; gap: 10px; align-items: baseline; white-space: nowrap; }
 .od-pasek { margin-top: 18px; padding: 14px 16px; border: 1px dashed var(--line-hi);
   border-radius: var(--radius); background: rgba(201, 168, 106, .05); }

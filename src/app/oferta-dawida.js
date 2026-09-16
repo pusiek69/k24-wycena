@@ -58,6 +58,13 @@ import {
   zamrozWariant,
   roznica,
 } from './warianty.js';
+import {
+  MAKS_ETYKIETA,
+  PODPOWIEDZI_ETYKIET,
+  czystaEtykieta,
+  odcinekDoZapisu,
+  opisOdcinkaZWymiarem,
+} from './etykiety-odcinkow.js';
 
 
 /** Wartość opcji „Kamień naturalny" w wyborze kolekcji. */
@@ -92,7 +99,13 @@ export function uruchomOferteDawida(root, paczka) {
     firma: naturalny ? NATURALNY : p.firma || FIRMY[0]?.slug,
     dekor: p.dekor || '',
     grubosc: String(p.grubosc || ''),
-    odcinki: (p.odcinki || []).map((o) => ({ gl: Number(o.gl), dl: Number(o.dl) })),
+    // Etykieta wraca razem z wymiarami — po „Powtórz wycenę" Dawid widzi
+    // te same podpisy, które klient wpisał w kalkulatorze.
+    odcinki: (p.odcinki || []).map((o) => ({
+      gl: Number(o.gl),
+      dl: Number(o.dl),
+      etykieta: czystaEtykieta(o.etykieta),
+    })),
     opcje: { ...(p.opcje || {}) },
     // kamień naturalny (tryb właściciela)
     nat: {
@@ -391,7 +404,7 @@ function zamrozOferte(stan, w) {
             firma: 'interstone',
             dekor: w.dekor,
             grubosc: w.grubosc,
-            odcinki: stan.odcinki,
+            odcinki: stan.odcinki.map(odcinekDoZapisu),
             opcje: stan.opcje,
             kodPlyty: w.kodPlyty || stan.nat.kod || null,
             nazwa: stan.nat.nazwa,
@@ -405,7 +418,7 @@ function zamrozOferte(stan, w) {
             firma: stan.firma,
             dekor: stan.dekor,
             grubosc: stan.grubosc,
-            odcinki: stan.odcinki,
+            odcinki: stan.odcinki.map(odcinekDoZapisu),
             opcje: stan.opcje,
           }),
       wlasnePozycje: pozWlasne.doParametrow(stan.wlasnePozycje),
@@ -413,7 +426,41 @@ function zamrozOferte(stan, w) {
   };
 }
 
-const opisOdcinkow = (odcinki) => odcinki.map((o) => `${o.gl}×${o.dl}`).join(' + ') + ' cm';
+/**
+ * NAZWA ODCINKA w edytorze właściciela (zlecenie Dawida, 16.09.2026).
+ *
+ * Tu Dawid „dodaje odcinki", więc to jest miejsce, o którym mówił wprost.
+ * Pole idzie POD wymiarami, bo wiersz z wymiarami jest tu główny i wąski.
+ * Zapis na `onchange` (nie `oninput`) — edytor przerysowuje się po każdej
+ * zmianie, więc zapis przy każdej literze wyrzucałby ognisko z pola.
+ */
+function etykietaOdcinkaWiersz(o, i, odswiez) {
+  return h(
+    'div',
+    { class: 'od-etykieta' },
+    h('input', {
+      type: 'text',
+      value: o.etykieta || '',
+      maxlength: String(MAKS_ETYKIETA),
+      placeholder: 'np. Wyspa, fartuch…',
+      'aria-label': `Nazwa odcinka ${i + 1} (opcjonalnie)`,
+      onchange: (e) => ((o.etykieta = czystaEtykieta(e.target.value)), odswiez()),
+    }),
+    ...PODPOWIEDZI_ETYKIET.map((t) =>
+      h(
+        'button',
+        {
+          class: 'chip-etykieta',
+          type: 'button',
+          onclick: () => ((o.etykieta = t), odswiez()),
+        },
+        t
+      )
+    )
+  );
+}
+
+const opisOdcinkow = (odcinki) => odcinki.map(opisOdcinkaZWymiarem).join(' + ') + ' cm';
 
 /**
  * Zdjęcie rozrysu do oferty.
@@ -593,21 +640,26 @@ function rysuj(box, stan, paczka) {
         ...stan.odcinki.map((o, i) =>
           h(
             'div',
-            { class: 'od-odcinek' },
-            h('input', {
-              type: 'number', inputmode: 'numeric', value: o.gl || '',
-              'aria-label': 'głębokość', placeholder: 'głęb.',
-              onchange: (e) => ((o.gl = Number(e.target.value)), odswiez()),
-            }),
-            h('span', {}, '×'),
-            h('input', {
-              type: 'number', inputmode: 'numeric', value: o.dl || '',
-              'aria-label': 'długość', placeholder: 'dług.',
-              onchange: (e) => ((o.dl = Number(e.target.value)), odswiez()),
-            }),
-            stan.odcinki.length > 1
-              ? h('button', { class: 'link-btn', type: 'button', onclick: () => (stan.odcinki.splice(i, 1), odswiez()) }, '✕')
-              : null
+            { class: 'od-odcinek-blok' },
+            h(
+              'div',
+              { class: 'od-odcinek' },
+              h('input', {
+                type: 'number', inputmode: 'numeric', value: o.gl || '',
+                'aria-label': 'głębokość', placeholder: 'głęb.',
+                onchange: (e) => ((o.gl = Number(e.target.value)), odswiez()),
+              }),
+              h('span', {}, '×'),
+              h('input', {
+                type: 'number', inputmode: 'numeric', value: o.dl || '',
+                'aria-label': 'długość', placeholder: 'dług.',
+                onchange: (e) => ((o.dl = Number(e.target.value)), odswiez()),
+              }),
+              stan.odcinki.length > 1
+                ? h('button', { class: 'link-btn', type: 'button', onclick: () => (stan.odcinki.splice(i, 1), odswiez()) }, '✕')
+                : null
+            ),
+            etykietaOdcinkaWiersz(o, i, odswiez)
           )
         ),
         h('button', { class: 'link-btn', type: 'button', onclick: () => (stan.odcinki.push({ gl: 60, dl: 100 }), odswiez()) }, '+ kolejny odcinek')

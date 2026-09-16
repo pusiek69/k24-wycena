@@ -15,6 +15,7 @@ import { filtryWyprzedazy, przywrocFokus } from './wyprzedaz-filtry.js';
 import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
+import { MAKS_ETYKIETA, PODPOWIEDZI_ETYKIET, czystaEtykieta } from './etykiety-odcinkow.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
@@ -402,7 +403,7 @@ export function pomocnikDekor(slug, wyslij) {
 
 /** 4. Wymiary — tyle odcinków, ile trzeba; głębokość podpowiedziana. */
 export function pomocnikWymiary(wyslij) {
-  const odcinki = [{ gl: 60, dl: '' }];
+  const odcinki = [{ gl: 60, dl: '', etykieta: '' }];
   const lista = h('div', { class: 'pom-odcinki' });
 
   const rysuj = () => {
@@ -416,6 +417,7 @@ export function pomocnikWymiary(wyslij) {
           h('span', { class: 'pom-x' }, '×'),
           polePom('długość', o.dl, (v) => (o.dl = v), true),
           h('span', { class: 'pom-cm' }, 'cm'),
+          poleNazwy(o, i),
           odcinki.length > 1
             ? h(
                 'button',
@@ -439,7 +441,7 @@ export function pomocnikWymiary(wyslij) {
           class: 'pom-dodaj',
           type: 'button',
           onclick: () => {
-            odcinki.push({ gl: odcinki[odcinki.length - 1]?.gl || 60, dl: '' });
+            odcinki.push({ gl: odcinki[odcinki.length - 1]?.gl || 60, dl: '', etykieta: '' });
             rysuj();
           },
         },
@@ -451,10 +453,20 @@ export function pomocnikWymiary(wyslij) {
 
   const gotowe = () => {
     const wazne = odcinki
-      .map((o) => ({ gl: Number(o.gl) || 60, dl: Number(o.dl) || 0 }))
+      .map((o) => ({ gl: Number(o.gl) || 60, dl: Number(o.dl) || 0, etykieta: czystaEtykieta(o.etykieta) }))
       .filter((o) => o.dl > 0);
     if (!wazne.length) return;
-    wyslij('wymiary', 'Wymiary blatu: ' + wazne.map((o) => `${o.gl}×${o.dl} cm`).join(', ') + '.');
+    /*
+     * Podpisy jadą w treści wiadomości do konsultanta („Wyspa 90×200 cm"),
+     * bo to on buduje parametry wyceny. Gdy klient niczego nie nazwał,
+     * zdanie wygląda dokładnie jak dotąd.
+     */
+    wyslij(
+      'wymiary',
+      'Wymiary blatu: ' +
+        wazne.map((o) => `${o.etykieta ? `${o.etykieta} ` : ''}${o.gl}×${o.dl} cm`).join(', ') +
+        '.'
+    );
   };
 
   return ramka(
@@ -895,6 +907,46 @@ function liczbaPL(n) {
 
 function ramka(tytul, ...tresc) {
   return h('div', { class: 'pomocnik' }, h('div', { class: 'pom-tytul' }, tytul), tresc);
+}
+
+/**
+ * Nazwa odcinka w rozmowie (zlecenie Dawida, 16.09.2026). Pole jest
+ * opcjonalne i wąskie — stoi w tym samym wierszu co wymiary, bo pomocnik
+ * ma zostać jednoekranowy. Chipy wpisują gotowy tekst jednym kliknięciem.
+ */
+function poleNazwy(o, i) {
+  const wpis = h('input', {
+    type: 'text',
+    class: 'pom-nazwa',
+    maxlength: String(MAKS_ETYKIETA),
+    value: o.etykieta || '',
+    placeholder: 'np. Wyspa, fartuch…',
+    'aria-label': `Nazwa odcinka ${i + 1} (opcjonalnie)`,
+    oninput: (e) => (o.etykieta = e.target.value),
+  });
+  return h(
+    'div',
+    { class: 'pom-nazwa-blok' },
+    wpis,
+    h(
+      'div',
+      { class: 'etykieta-chipy' },
+      ...PODPOWIEDZI_ETYKIET.map((t) =>
+        h(
+          'button',
+          {
+            class: 'chip-etykieta',
+            type: 'button',
+            onclick: () => {
+              o.etykieta = t;
+              wpis.value = t;
+            },
+          },
+          t
+        )
+      )
+    )
+  );
 }
 
 function polePom(etykieta, wartosc, ustaw, autofokus) {

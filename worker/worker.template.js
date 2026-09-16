@@ -40,6 +40,7 @@ import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
 import { dzwonic, etykietaKanalu, odmowiono, znanyKanal } from '../src/app/kontakt-telefon.js';
+import { etykietaOdcinka, podpisOdcinka } from '../src/app/etykiety-odcinkow.js';
 import { resend, nadawca, doDawida } from './poczta.js';
 import {
   zapiszLead,
@@ -1096,6 +1097,16 @@ function skrocTranskrypcje(tekst, maks = 1800) {
   return out.join('\n');
 }
 
+/**
+ * Wymiar odcinka z ewentualnym podpisem: „Wyspa: 90×200 cm".
+ * `bezpiecznik` escape'uje podpis w wersji HTML — wpisuje go człowiek.
+ */
+const opisOdcinkaMail = (o, bezpiecznik = (x) => x) => {
+  const wymiar = `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`;
+  const e = etykietaOdcinka(o);
+  return e ? `${bezpiecznik(e)}: ${wymiar}` : wymiar;
+};
+
 /** Które kawałki na której płycie — to, czego brakowało w starym mailu. */
 function opisUkladu(s) {
   if (!s?.uklad?.length) return [];
@@ -1104,7 +1115,13 @@ function opisUkladu(s) {
       const el = pas.elementy
         .map((e) => {
           const zrodlo = s.odcinki?.[e.odcinek];
-          const nazwa = zrodlo ? `odcinek ${lb(zrodlo.gl, 0)}×${lb(zrodlo.dl, 0)}` : `odcinek ${e.odcinek + 1}`;
+          /*
+           * Podpis odcinka (zlecenie Dawida, 16.09.2026): gdy klient albo
+           * Dawid nazwał element („Wyspa"), rozkrój w mailu mówi jego nazwą.
+           * Bez nazwy zostaje dotychczasowe „odcinek 60×300".
+           */
+          const domyslna = zrodlo ? `odcinek ${lb(zrodlo.gl, 0)}×${lb(zrodlo.dl, 0)}` : `odcinek ${e.odcinek + 1}`;
+          const nazwa = podpisOdcinka(zrodlo, domyslna);
           return `${lb(e.dl)} cm — ${nazwa}${e.ciety ? ' (kawałek, tu wypada łączenie)' : ''}`;
         })
         .join(' + ');
@@ -1284,7 +1301,7 @@ function mailDoFirmy(klient, s, extra) {
     }
     <div style="font-size:20px;margin:4px 0 2px">${esc(s.firma)}${s.dekor ? ' · ' + esc(s.dekor) : ''}</div>
     <div style="color:#6b6459;font-size:14px">
-      ${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')}
+      ${(s.odcinki || []).map((o) => opisOdcinkaMail(o, esc)).join(' + ')}
       · ${lb(s.mb)} m.b.${s.grubosc ? ' · ' + esc(s.grubosc) + ' mm' : ''}
     </div>
     <div style="margin-top:12px;padding:12px 14px;background:#f7f4ee;border-left:3px solid #c9a86a;border-radius:4px">
@@ -1377,7 +1394,7 @@ function leadTekstem(klient, s, extra) {
 
   if (s) {
     l.push('', `WYCENA: ${s.firma}${s.dekor ? ' · ' + s.dekor : ''}`);
-    l.push(`${(s.odcinki || []).map((o) => `${lb(o.gl, 0)}×${lb(o.dl, 0)} cm`).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
+    l.push(`${(s.odcinki || []).map((o) => opisOdcinkaMail(o)).join(' + ')} · ${lb(s.mb)} m.b.${s.grubosc ? ` · ${s.grubosc} mm` : ''}`);
     if (s.odbiorWlasny) l.push('*** ODBIÓR WŁASNY — BEZ MONTAŻU (brak pomiaru i wyjazdu) ***');
     l.push(`RAZEM: ${widelki(s)} brutto (wyliczenie ${zl(s.razem)})`);
     {

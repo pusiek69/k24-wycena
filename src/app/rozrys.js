@@ -17,6 +17,7 @@
 import { h, liczba } from './dom.js';
 import { rozrysuj, DOMYSLNY_RZAZ_MM, DOMYSLNY_MARGINES_MM } from '../engine/nesting.js';
 import { svgPlyty, tytulPlyty, mm, naM2 } from './rozrys-svg.js';
+import { podpisOdcinka, etykietaOdcinka } from './etykiety-odcinkow.js';
 
 /**
  * @param {object} kontekst
@@ -97,7 +98,15 @@ export function widokRozrysu(kontekst, onZmiana) {
  * `zapewnijRozrys` w app/oferta-dawida.js.
  */
 export function podpisWyceny(odcinki) {
-  return JSON.stringify((odcinki || []).map((o) => [Number(o.gl) || 0, Number(o.dl) || 0]));
+  /*
+   * Etykieta jest częścią podpisu, choć nie zmienia ani jednego wymiaru:
+   * to po tym podpisie `zapewnijRozrys` poznaje, że rozrys jest nieaktualny.
+   * Bez niej zmiana „Blat 2" → „Wyspa" nie przerysowałaby napisu na płycie
+   * i Dawid wysłałby klientowi rysunek ze starym podpisem.
+   */
+  return JSON.stringify(
+    (odcinki || []).map((o) => [Number(o.gl) || 0, Number(o.dl) || 0, etykietaOdcinka(o)])
+  );
 }
 
 /* ───────────────────────────────────────────────────── statystyki */
@@ -333,7 +342,9 @@ export function elementyZOdcinkow(odcinki) {
     .filter((o) => Number(o.dl) > 0 && Number(o.gl) > 0)
     .map((o, i) => ({
       id: `blat-${i + 1}`,
-      nazwa: `Blat ${i + 1}`,
+      // Podpis Dawida („Wyspa") wygrywa z numerem — to on trafia na rysunek
+      // rozkroju i do tabeli elementów. Bez podpisu zostaje „Blat N".
+      nazwa: podpisOdcinka(o, `Blat ${i + 1}`),
       szer: Math.round(Number(o.dl) * 10),
       gl: Math.round(Number(o.gl) * 10),
       ilosc: 1,

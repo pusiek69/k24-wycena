@@ -1765,7 +1765,7 @@ async function pokazSzczegoly(id, cicho){
       '<span class="kiedy">' + esc(naglowek) + ' · ' + godzina(w.utworzono) + '</span><br>' +
       esc([w.firma, w.dekor, w.grubosc ? w.grubosc + ' mm' : ''].filter(Boolean).join(' · ')) +
       ' — <b>' + zl(w.kwota) + '</b>' + (w.m2 ? ' · ' + String(w.m2).replace('.', ',') + ' m²' : '') +
-      (w.odbior ? ' · odbiór własny' : '') + plytaHtml(w) +
+      (w.odbior ? ' · odbiór własny' : '') + odcinkiHtml(w) + plytaHtml(w) +
       podglad + aktualizuj + powtorz + obejrzenia +
       watekHtml(w) + '</li>';
   }).reverse().join('') || (k.reczny
@@ -1799,6 +1799,26 @@ async function pokazSzczegoly(id, cicho){
     ' · źródło: ' + esc(zrodloOpis(k)) + '</p>' +
     '<h2>Wyceny</h2><ul class="log">' + wyceny + '</ul>' +
     '<h2>Notatki</h2><ul class="log">' + notatki + '</ul>';
+}
+
+/**
+ * PODPISANE ODCINKI (zlecenie Dawida, 16.09.2026).
+ *
+ * Pokazujemy wiersz tylko wtedy, gdy ktoś te elementy NAZWAŁ — przy gołych
+ * wymiarach karta wyglądałaby jak dotąd, a wymiary i tak stoją wyżej.
+ * Dzięki temu przy telefonie widać od razu, że „ta wyspa" to ten blat.
+ */
+function odcinkiHtml(w){
+  var d = w.dane || {};
+  var odc = d.odcinki || (d.parametry && d.parametry.odcinki) || [];
+  var nazwane = odc.filter(function(o){ return o && String(o.etykieta || '').trim(); });
+  if(!nazwane.length) return '';
+  var opis = odc.map(function(o){
+    var e = String(o.etykieta || '').trim();
+    var wym = Math.round(Number(o.gl) || 0) + '×' + Math.round(Number(o.dl) || 0);
+    return e ? e + ': ' + wym : wym;
+  }).join(' · ');
+  return '<br><span class="mini">Elementy: ' + esc(opis) + ' cm</span>';
 }
 
 /**

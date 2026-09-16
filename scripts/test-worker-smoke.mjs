@@ -279,6 +279,73 @@ if (JEST) {
     assert.match(doFirmy.text, /Kontakt: KLIENT PROSI O TELEFON/);
   });
 
+  /* ═════════ ETYKIETY ODCINKÓW (zlecenie Dawida, 16.09.2026) ═════════
+   *
+   * „Chciałbym móc podpisać dany element, np. Wyspa, Fartuch czy Blat 1."
+   * Podpis ma dojechać do maila — to tam Dawid czyta rozkrój przy telefonie.
+   */
+  const LEAD_Z_ETYKIETAMI = {
+    ...LEAD,
+    email: 'etykiety@example.com',
+    szczegoly: {
+      ...LEAD.szczegoly,
+      odcinki: [
+        { gl: 60, dl: 300, etykieta: 'Blat 1' },
+        { gl: 90, dl: 200, etykieta: 'Wyspa' },
+      ],
+      plytyPelne: 1,
+      plyta: { w: 320, h: 160 },
+      mb: 5,
+      uklad: [
+        {
+          wysokoscUzyta: 150,
+          wysokoscPlyty: 160,
+          pasy: [
+            { zajete: 300, dostepne: 320, elementy: [{ dl: 300, gl: 60, odcinek: 0, ciety: false }] },
+            { zajete: 200, dostepne: 320, elementy: [{ dl: 200, gl: 90, odcinek: 1, ciety: false }] },
+          ],
+        },
+      ],
+    },
+  };
+
+  test('MAIL do Dawida podpisuje odcinki nazwami, które wpisał klient', async () => {
+    listy.length = 0;
+    await worker.fetch(zapytanie('/lead', LEAD_Z_ETYKIETAMI), srodowisko(), ctx);
+    const doFirmy = listy[0];
+
+    // Wiersz wymiarów: podpis przed wymiarem, wymiar zostaje.
+    assert.match(doFirmy.html, /Blat 1: 60×300 cm/, 'brak podpisu przy wymiarach (HTML)');
+    assert.match(doFirmy.html, /Wyspa: 90×200 cm/);
+    assert.match(doFirmy.text, /Wyspa: 90×200 cm/, 'brak podpisu przy wymiarach (tekst)');
+
+    // Rozkrój: zamiast „odcinek 90×200" ma stać „Wyspa".
+    assert.match(doFirmy.html, /200 cm — Wyspa/, `rozkrój bez nazwy: ${doFirmy.html.slice(0, 40)}`);
+    assert.match(doFirmy.text, /200 cm — Wyspa/);
+    assert.doesNotMatch(doFirmy.html, /odcinek 90×200/, 'została stara nazwa odcinka');
+  });
+
+  test('bez etykiet mail wygląda dokładnie jak dotąd', async () => {
+    /*
+     * Zabezpieczenie przed cichą zmianą formatu u wszystkich klientów,
+     * którzy niczego nie podpisali — a to zdecydowana większość.
+     */
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', {
+        ...LEAD,
+        email: 'bez-etykiet@example.com',
+        szczegoly: { ...LEAD_Z_ETYKIETAMI.szczegoly, odcinki: [{ gl: 60, dl: 300 }, { gl: 90, dl: 200 }] },
+      }),
+      srodowisko(),
+      ctx
+    );
+    const doFirmy = listy[0];
+    assert.match(doFirmy.html, /60×300 cm \+ 90×200 cm/, 'zmienił się format wymiarów bez etykiet');
+    assert.match(doFirmy.html, /200 cm — odcinek 90×200/, 'zniknął dotychczasowy opis rozkroju');
+    assert.doesNotMatch(doFirmy.html, /etykieta/i);
+  });
+
   test('KLIENT NA JUŻ wyróżnia się w mailu do Dawida', async () => {
     listy.length = 0;
     await worker.fetch(

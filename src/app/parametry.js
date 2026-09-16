@@ -1,3 +1,4 @@
+import { czystaEtykieta } from './etykiety-odcinkow.js';
 /**
  * PARAMETRY WYCENY — tłumaczenie tego, co powiedział klient (albo konsultant),
  * na wejście kalkulatora.
@@ -55,13 +56,21 @@ const MATERIALY = {
   'natura-wyprzedaż': 'wyprzedaz',
 };
 
-/** Odcinki z parametrów konsultanta: {d: głębokość, w: długość} w cm. */
+/**
+ * Odcinki z parametrów konsultanta: {d: głębokość, w: długość} w cm,
+ * opcjonalnie `nazwa` — podpis elementu („Wyspa"), gdy klient go użył
+ * (zlecenie Dawida, 16.09.2026). Pusty podpis nie wchodzi do wyceny.
+ */
 export function odcinkiZParametrow(params) {
   return (Array.isArray(params?.odcinki) ? params.odcinki : [])
-    .map((o) => ({
-      dl: Number(o?.w ?? o?.dl) || 0,
-      gl: Number(o?.d ?? o?.gl) || 60, // domyślna głębokość blatu to 60 cm
-    }))
+    .map((o) => {
+      const etykieta = czystaEtykieta(o?.nazwa ?? o?.etykieta);
+      return {
+        dl: Number(o?.w ?? o?.dl) || 0,
+        gl: Number(o?.d ?? o?.gl) || 60, // domyślna głębokość blatu to 60 cm
+        ...(etykieta ? { etykieta } : {}),
+      };
+    })
     .filter((o) => o.dl > 0);
 }
 

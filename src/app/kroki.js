@@ -18,6 +18,7 @@ import {
 } from './wyprzedaz.js';
 import { zaladowane } from './wyprzedaz-dane.js';
 import { kartaPlyty } from './wyprzedaz-karta.js';
+import { MAKS_ETYKIETA, PODPOWIEDZI_ETYKIET } from './etykiety-odcinkow.js';
 
 const TEL = '796 991 128';
 const TEL_HREF = 'tel:+48796991128';
@@ -291,6 +292,59 @@ function krokWyprzedaz(stan, a) {
   );
 }
 
+/**
+ * NAZWA ODCINKA (zlecenie Dawida, 16.09.2026): „chciałbym móc podpisać dany
+ * element, np. Wyspa, Fartuch czy Blat 1".
+ *
+ * Pole jest opcjonalne i stoi NAD wymiarami, bo najpierw wiadomo, co się
+ * mierzy, a potem ile to ma. Chipy wpisują gotowy tekst jednym kliknięciem —
+ * przy trzech odcinkach klikanie jest szybsze niż pisanie, a własny tekst
+ * i tak można wpisać.
+ *
+ * Wartość ustawiamy PROSTO na polu (`wpis.value`), zamiast przerysowywać
+ * listę: przerysowanie zabrałoby ognisko w środku pisania.
+ */
+function poleEtykiety(o, i, odswiez) {
+  const wpis = h('input', {
+    type: 'text',
+    class: 'etykieta-wpis',
+    maxlength: String(MAKS_ETYKIETA),
+    value: o.etykieta || '',
+    placeholder: 'np. Wyspa, fartuch…',
+    'aria-label': `Nazwa odcinka ${i + 1} (opcjonalnie)`,
+    oninput: (e) => {
+      o.etykieta = e.target.value;
+      odswiez();
+    },
+  });
+
+  return h(
+    'div',
+    { class: 'etykieta-blok' },
+    h('label', { class: 'etykieta-etykieta' }, 'Nazwa elementu (opcjonalnie)'),
+    wpis,
+    h(
+      'div',
+      { class: 'etykieta-chipy' },
+      ...PODPOWIEDZI_ETYKIET.map((t) =>
+        h(
+          'button',
+          {
+            class: 'chip-etykieta',
+            type: 'button',
+            onclick: () => {
+              o.etykieta = t;
+              wpis.value = t;
+              odswiez();
+            },
+          },
+          t
+        )
+      )
+    )
+  );
+}
+
 /* ============================ 3. WYMIARY ============================ */
 
 export function krokWymiary(stan, a) {
@@ -317,6 +371,7 @@ export function krokWymiary(stan, a) {
           'div',
           { class: 'odcinek' },
           h('div', { class: 'nr' }, `Odcinek ${i + 1}`),
+          poleEtykiety(o, i, odswiez),
           pole('Długość', {
             type: 'number',
             inputmode: 'numeric',
