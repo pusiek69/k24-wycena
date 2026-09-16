@@ -702,7 +702,13 @@ function rysuj(box, stan, paczka) {
       ),
 
       /* ── dodatki i usługi z cennika (16.09.2026) ── */
-      blokDodatkow(stan, firma, odswiez),
+      /*
+       * Firmę bierzemy z WYNIKU silnika (`w.firma`), a nie z `stan.firma`:
+       * przy kamieniu naturalnym, płycie własnej i wyprzedaży to dopiero
+       * silnik składa konfigurację, z której wychodzą ceny dodatków.
+       * Gdy wycena się nie liczy, sięgamy po wpis z cennika.
+       */
+      blokDodatkow(stan, (w.ok && w.firma) || firmaWgSlug(stan.firma), odswiez),
 
       /* ── kamień naturalny: płyta z magazynu albo cena ręczna ── */
       naturalny ? blokNaturalny(stan, paczka, box, odswiez) : null,
