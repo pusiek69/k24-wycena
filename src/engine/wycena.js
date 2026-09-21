@@ -161,7 +161,16 @@ export function wycen(firma, w, dataISO) {
   // płyt odpadem jest ścinka, za którą klient i tak płaci, a doliczanie
   // procentów do geometrii zawyżało liczbę płyt (patrz engine/pakowanie.js).
   // Zapas na rzaz i obrzeże liczy pakowanie w centymetrach.
-  const plyta = promo?.plyta || plytaDekoru || firma.plyta;
+  /*
+   * RĘCZNY FORMAT PŁYTY (zlecenie Dawida, 21.09.2026) bije wszystko inne.
+   *
+   * „Avant Mulen ma płytę 320 × 160, ale chcę móc wpisać 100 × 100" — czyli
+   * resztkę albo płytę w innym formacie, która realnie leży na hali. Skoro
+   * Dawid podaje wymiar konkretnego kawałka, to on jest prawdą, a nie format
+   * katalogowy. Wpisuje się go WYŁĄCZNIE w edytorze właściciela; kalkulator
+   * klienta nigdy nie podaje tego pola, więc tam nic się nie zmienia.
+   */
+  const plyta = w.plytaReczna || promo?.plyta || plytaDekoru || firma.plyta;
   const pak = upakuj(w.odcinki || [], plyta);
   if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
   ostrzezenia.push(...pak.ostrzezenia);

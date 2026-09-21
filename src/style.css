@@ -837,6 +837,15 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .cena-zl { font-family: var(--sans); font-size: 12px; color: var(--dim); }
 .cena-wroc { font-size: 15px; line-height: 1; }
 .oferta-poz.poz-reczna { box-shadow: inset 3px 0 0 var(--vein); padding-left: 9px; }
+/* RĘCZNY WYMIAR PŁYTY (21.09.2026) — to samo złote oznaczenie co przy
+   ręcznych cenach, bo znaczy dokładnie to samo: „tę liczbę wpisał Dawid". */
+.plyta-blok { margin-top: 16px; }
+.plyta-wiersz { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.plyta-pole { width: 92px; padding: 10px 12px; background: var(--slab);
+  border: 1px solid var(--line-hi); border-radius: var(--radius); color: var(--cream);
+  font-family: var(--sans); font-size: 15px; }
+.plyta-pole.plyta-reczna { border-color: var(--vein); color: var(--vein); font-weight: 700; }
+.plyta-nota { font-family: var(--sans); font-size: 12px; color: var(--dim); }
 .cena-nota { color: var(--vein); }
 /* Karta bez adresu e-mail: wycena i tak się zapisuje, ale Dawid ma to
    zobaczyć ZANIM kliknie — inaczej szukałby maila, który nie wyszedł. */

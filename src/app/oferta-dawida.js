@@ -29,6 +29,7 @@ import {
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { API_BASE, sprawdzMagazyn } from '../api.js';
 import { ostrzezenieOGlebokosci, sklejSegmenty } from './dyktando.js';
+import * as plytaR from './plyta-reczna.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
@@ -109,6 +110,12 @@ export function uruchomOferteDawida(root, paczka) {
       etykieta: czystaEtykieta(o.etykieta),
     })),
     opcje: { ...(p.opcje || {}) },
+    /*
+     * RĘCZNY WYMIAR PŁYTY (zlecenie Dawida, 21.09.2026). `null` znaczy
+     * „format z cennika" — i tylko wtedy silnik bierze format kampanii
+     * albo pozycji cennika, dokładnie jak dotąd.
+     */
+    plytaReczna: plytaR.zParametrow(p.plytaReczna),
     // kamień naturalny (tryb właściciela)
     nat: {
       kod: String(p.kodPlyty || ''),
@@ -276,6 +283,7 @@ function policz(stan) {
       grubosc: String(plyta.gruboscMm),
       odcinki,
       opcje: stan.opcje,
+      plytaReczna: plytaR.formatDoWyceny(stan.plytaReczna, null),
     });
     if (w.ok) {
       const uwaga = ostrzezenieOWyprzedazy(w, plyty);
@@ -286,7 +294,14 @@ function policz(stan) {
 
   const firma = firmaWgSlug(stan.firma);
   if (!firma) return { ok: false, blad: 'Nieznana firma.' };
-  return wycen(firma, { dekor: stan.dekor, grubosc: stan.grubosc, odcinki, opcje: stan.opcje });
+  return wycen(firma, {
+    dekor: stan.dekor,
+    grubosc: stan.grubosc,
+    odcinki,
+    opcje: stan.opcje,
+    // `null` gdy Dawid nic nie zmienił — silnik bierze wtedy swój format.
+    plytaReczna: plytaR.formatDoWyceny(stan.plytaReczna, null),
+  });
 }
 
 /**
@@ -447,6 +462,9 @@ function zamrozOferte(stan, w) {
             opcje: stan.opcje,
           }),
       wlasnePozycje: pozWlasne.doParametrow(stan.wlasnePozycje),
+      // Ręczny format płyty — tylko gdy jest, żeby stare oferty wyglądały
+      // w JSON-ie dokładnie jak dotąd.
+      ...(stan.plytaReczna ? { plytaReczna: plytaR.doParametrow(stan.plytaReczna) } : {}),
       // Ręczne ceny usług — tylko gdy jakieś są, żeby stare oferty
       // wyglądały w JSON-ie dokładnie jak dotąd.
       ...(stan.ceny.size ? { ceny: cenyPoz.doParametrow(stan.ceny) } : {}),
@@ -485,6 +503,87 @@ function etykietaOdcinkaWiersz(o, i, odswiez) {
         t
       )
     )
+  );
+}
+
+/**
+ * RĘCZNY WYMIAR PŁYTY (zlecenie Dawida, 21.09.2026).
+ *
+ * „Avant Mulen ma płytę 320 × 160, ale chcę móc wpisać też np. 100 × 100
+ *  (resztka albo inny format) — i żeby algorytm rozkroju liczył się z tego."
+ *
+ * Pole stoi przy odcinkach, bo razem z nimi decyduje o rozkroju i o tym,
+ * ile płyt trzeba kupić. Prefill to format, z którego silnik NAPRAWDĘ liczył
+ * (`w.plyta`), a nie domyślny format firmy — przy promocji Technistone
+ * i przy Atlas Plan to są różne liczby.
+ *
+ * Kontrolki nie ma przy kamieniu naturalnym ani przy płycie własnej:
+ * tam wymiar płyty ma już własne pola i dwa miejsca na tę samą liczbę
+ * kończyłyby się pytaniem, które z nich obowiązuje.
+ */
+function blokPlyty(stan, w, odswiez) {
+  const domyslny = plytaR.wymiarDomyslny(w?.plyta);
+  if (!domyslny.w || !domyslny.h) return null;
+
+  const reczny = !!stan.plytaReczna;
+  const wartosc = stan.plytaReczna || domyslny;
+  const blad = plytaR.bladWymiaru(stan.plytaReczna);
+
+  /* Jedno pole: zapisujemy dopiero, gdy OBA boki dadzą sensowny format. */
+  const pole = (klucz, etykieta) =>
+    h('input', {
+      type: 'number',
+      inputmode: 'decimal',
+      min: '0',
+      step: '0.5',
+      class: 'plyta-pole' + (reczny ? ' plyta-reczna' : ''),
+      value: String(wartosc[klucz] ?? ''),
+      'aria-label': `${etykieta} płyty w cm`,
+      title: reczny
+        ? `Wymiar wpisany ręcznie. W cenniku: ${plytaR.opisFormatu(domyslny)}`
+        : 'Wymiar z cennika — można nadpisać',
+      onchange: (e) => {
+        const nowy = { ...(stan.plytaReczna || domyslny), [klucz]: e.target.value };
+        // Puste pole albo powrót do formatu cennikowego = koniec nadpisania.
+        stan.plytaReczna =
+          String(e.target.value).trim() === '' || plytaR.takiJakDomyslny(nowy, domyslny)
+            ? null
+            : nowy;
+        odswiez();
+      },
+    });
+
+  return h(
+    'div',
+    { class: 'plyta-blok' },
+    h('div', { class: 'q-kicker' }, 'Płyta, z której liczymy rozkrój (cm)'),
+    h(
+      'div',
+      { class: 'plyta-wiersz' },
+      pole('w', 'Szerokość'),
+      h('span', {}, '×'),
+      pole('h', 'Wysokość'),
+      reczny
+        ? h(
+            'button',
+            {
+              class: 'link-btn cena-wroc',
+              type: 'button',
+              title: `Wróć do wymiaru z cennika (${plytaR.opisFormatu(domyslny)})`,
+              onclick: () => ((stan.plytaReczna = null), odswiez()),
+            },
+            '↺'
+          )
+        : null,
+      h(
+        'span',
+        { class: 'plyta-nota' + (reczny ? ' cena-nota' : '') },
+        reczny
+          ? `wymiar ręczny — w cenniku ${plytaR.opisFormatu(domyslny)}, bez połówki płyty`
+          : 'wymiar z cennika'
+      )
+    ),
+    blad ? h('div', { class: 'form-blad' }, blad) : null
   );
 }
 
@@ -958,6 +1057,9 @@ function rysuj(box, stan, paczka) {
       plytaWlasna ? blokPlytyWlasnej(stan, odswiez) : null,
 
       /* ── odcinki ── */
+      // Format płyty tylko tam, gdzie nie ma własnych pól wymiaru.
+      naturalny || plytaWlasna ? null : blokPlyty(stan, w, odswiez),
+
       h('div', { class: 'q-kicker', style: 'margin-top:16px' }, 'Odcinki blatu (głębokość × długość, cm)'),
       blokDyktanda(stan, paczka, odswiez),
       h(
