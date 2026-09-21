@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { MIASTA, NOWE } from './lib/miasta.mjs';
 import { pytaniaMiasta, sekcjaHtml, schemaFaq } from './lib/faq-miasta.mjs';
 import { grafMiasta } from './lib/schema-miasta.mjs';
-import { blokCen, blokRealizacji, blokZasiegu, blokSasiadow } from './lib/bloki-miast.mjs';
+import { blokCen, blokRealizacji, blokWyboru, blokZasiegu, blokSasiadow } from './lib/bloki-miast.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tylkoSprawdz = process.argv.includes('--sprawdz');
@@ -156,8 +156,8 @@ function nowaStrona(m) {
      * jest od 27.08.2026 GENEROWANY (lib/schema-miasta.mjs) i wchodzi na
      * stronę dopiero w kroku 2, więc wzorzec go już nie niesie.
      */
-    [`<h1>Blaty kuchenne<br><em>${WZ.nazwa}.</em></h1>`,
-     `<h1>Blaty kuchenne<br><em>${m.nazwa}.</em></h1>`],
+    [`<h1>Blaty kuchenne kamienne<br><em>${WZ.nazwa}.</em></h1>`,
+     `<h1>Blaty kuchenne kamienne<br><em>${m.nazwa}.</em></h1>`],
     // Okruszek: sam <span> z nazwą, bez linku — to bieżąca strona.
     [`<span>${WZ.nazwa}</span>\n    </nav>`, `<span>${m.nazwa}</span>\n    </nav>`],
     [`<h2>${WZ.nazwa} i okoliczne miejscowości</h2>`, `<h2>${m.nazwa} i okoliczne miejscowości</h2>`],
@@ -212,6 +212,23 @@ for (const m of NOWE) {
  * pola — reszta zostaje przy wzorcu, żeby nie przepisywać czternastu stron
  * bez powodu.
  */
+/**
+ * H1 ZE SŁOWEM „KAMIENNE" (propozycja SEO z 20–21.09.2026).
+ *
+ * Nagłówek mówił „Blaty kuchenne — Mielec", a klienci szukają „blaty
+ * kuchenne KAMIENNE + miasto" (na tej frazie w Tarnobrzegu siedzimy na 6.
+ * pozycji, w Mielcu nie ma nas wcale). Idzie na wszystkie miasta, bo luka
+ * jest wszędzie ta sama, a jeden wzorzec to jedno miejsce do poprawienia.
+ *
+ * Podmiana jest idempotentna — druga kolejka nie ma już czego zmienić.
+ */
+function wstawH1(t, m) {
+  return t.replace(
+    `<h1>Blaty kuchenne<br><em>${m.nazwa}.</em></h1>`,
+    `<h1>Blaty kuchenne kamienne<br><em>${m.nazwa}.</em></h1>`
+  );
+}
+
 function wstawTytulIOpis(t, m) {
   if (m.tytul) {
     t = t.replace(/<title>[\s\S]*?<\/title>/, `<title>${m.tytul}</title>`);
@@ -278,6 +295,9 @@ function wstawOkolice(t, m) {
   }
 
   const sekcje = [
+    // Wybór materiału idzie NAD cennik: najpierw „który kamień", potem
+    // „ile kosztuje" — tak samo, jak pyta o to klient przy telefonie.
+    blokWyboru(m, pamiec.liczby),
     blokCen(m, KWOTY, pamiec.liczby),
     blokRealizacji(m, REALIZACJE, MIASTA.indexOf(m)),
     blokZasiegu(m),
@@ -322,6 +342,7 @@ MIASTA.forEach((m, i) => {
   const re = new RegExp(`${ZNACZNIK_OD.trim()}[\\s\\S]*?${ZNACZNIK_DO.trim()}`);
   t = re.test(t) ? t.replace(re, blok.trim()) : t.replace(/(\s*)<\/main>/, `\n${blok}\n$1</main>`);
 
+  t = wstawH1(t, m);
   t = wstawTytulIOpis(t, m);
   t = wstawOkolice(t, m);
 

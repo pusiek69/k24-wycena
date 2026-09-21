@@ -39,6 +39,53 @@ export const wyliczenie = (lista) =>
 /* ─────────────────────────────────────────────────────────── ceny */
 
 /**
+ * KTÓRY MATERIAŁ — tekst WŁASNY MIASTA, nie szablon.
+ *
+ * Propozycja dziennego zadania SEO z 20–21.09.2026, dla Mielca: strona
+ * ma 1 361 słów i dziewięć nagłówków, ale żaden nie łączy słowa
+ * „kamienne" z nazwą miasta, a w GSC Mielec drugi tydzieŃ z rzędu ma
+ * zero wyświetleń. To jest też jedyny blok, który NIE jest kopią
+ * pozostałych czternastu stron — więc pisany jest per miasto i na razie
+ * ma go tylko Mielec.
+ *
+ * Liczby wzorów bierzemy z `liczby` (to samo źródło co tabela cen niżej),
+ * żeby po zmianie cennika nie został tu literal sprzed pół roku.
+ * Kwot tu NIE MA świadomie — są w tabeli bezpośrednio pod spodem.
+ */
+const WYBOR_MATERIALU = {
+  mielec: (m, liczby) => `      <section class="miasto-wybor" aria-labelledby="wybor-${m.slug}">
+        <h2 id="wybor-${m.slug}">Blaty kamienne ${m.nazwa} — granit, konglomerat czy spiek?</h2>
+        <p>
+          Trzy materiały, trzy różne sytuacje. <strong>Konglomerat kwarcowy</strong>
+          wybiera najwięcej klientów z mieleckich bloków (Lotników, Smoczka, Borek)
+          — to zwykle wymiana starego blatu bez ruszania szafek: konglomerat dobrze
+          znosi standardowe głębokości 60 cm, ma ${liczby.konglomeratWzory} jednolitych
+          wzorów i nie wymaga impregnacji.
+        </p>
+        <p>
+          <strong>Spiek kwarcowy</strong> bierzemy do domów pod ${m.doMiasta} z wyspą
+          lub długą linią szafek — płyta jest większa, więc blat 300 cm wychodzi
+          bez łączenia, a powierzchnia nie boi się gorącego garnka ani noża. Spiek ma
+          też najwięcej wzorów (${liczby.spiekWzory}), w tym imitacje marmuru, które
+          w konglomeracie wypadają gorzej.
+        </p>
+        <p>
+          <strong>Granit</strong> to wybór, gdy blat ma być z prawdziwego kamienia
+          i najmniej wrażliwy na wysoką temperaturę; wyceniamy go z konkretnej płyty,
+          bo każda sztuka jest inna — dlatego nie podajemy tu ceny „od". Jeśli nie
+          wiecie, który wybrać, kalkulator poniżej liczy konglomerat i spiek dla
+          Państwa wymiarów, a granit wycenimy po wyborze płyty.
+        </p>
+      </section>`,
+};
+
+/** Blok wyboru materiału dla miasta, które ma własny tekst. */
+export function blokWyboru(m, liczby) {
+  const tresc = WYBOR_MATERIALU[m.slug];
+  return tresc ? tresc(m, liczby) : '';
+}
+
+/**
  * TABELA CEN — pierwsza rzecz, której klient szuka na stronie miasta.
  *
  * Liczby biorą się z `lib/ceny-tresc.json`, czyli z tego samego miejsca
