@@ -93,6 +93,15 @@ test('PRZYKŁAD DAWIDA: 100 × 100 zmienia liczbę płyt i cenę materiału', ()
   assert.ok(zCennika.ok && zResztki.ok);
   assert.equal(zCennika.plyta.w, 320, 'bez nadpisania liczymy z formatu cennikowego');
   assert.equal(zResztki.plyta.w, 100, 'z nadpisaniem liczymy z wymiaru od Dawida');
+  /*
+   * Format cennikowy MUSI zostać osobno. Bez niego edytor podpisywał pole
+   * „w cenniku 100 × 100" (czyli wymiarem, który Dawid właśnie wpisał),
+   * a wpisanie z powrotem 320 × 160 nie kasowało nadpisania — złapane
+   * na produkcji 21.09.2026, zaraz po wdrożeniu.
+   */
+  assert.equal(zResztki.plytaCennikowa.w, 320, 'format z cennika przepadł');
+  assert.equal(zResztki.plytaCennikowa.h, 160);
+  assert.equal(zCennika.plytaCennikowa.w, 320, 'bez nadpisania to ten sam format');
 
   // Blat 60 × 300 mieści się na jednej płycie 320 × 160, a na kawałkach
   // 100 × 100 trzeba go pociąć i dokupić kolejne sztuki.
@@ -160,14 +169,17 @@ test('wymiar wraca z parametrów oferty, a brak nadpisania nie zostawia pola', (
 
 test('SILNIK: ręczny format bije kampanię i pozycję cennika', () => {
   const e = zrodlo('src/engine/wycena.js');
-  assert.match(e, /const plyta = w\.plytaReczna \|\| promo\?\.plyta \|\| plytaDekoru \|\| firma\.plyta;/);
+  assert.match(e, /const plytaCennikowa = promo\?\.plyta \|\| plytaDekoru \|\| firma\.plyta;/);
+  assert.match(e, /const plyta = w\.plytaReczna \|\| plytaCennikowa;/);
+  // Format cennikowy wraca w wyniku — edytor podpisuje nim pole.
+  assert.match(e, /^    plytaCennikowa,$/m);
 });
 
 test('EDYTOR: pole jest w widoku, prefill z formatu UŻYTEGO w wycenie', () => {
   const ed = zrodlo('src/app/oferta-dawida.js');
   assert.match(ed, /blokPlyty\(stan, w, odswiez\)/, 'blok nie jest wpięty w widok');
   // Prefill z `w.plyta`, czyli z formatu, którym silnik NAPRAWDĘ liczył.
-  assert.match(ed, /plytaR\.wymiarDomyslny\(w\?\.plyta\)/);
+  assert.match(ed, /plytaR\.wymiarDomyslny\(w\?\.plytaCennikowa \|\| w\?\.plyta\)/);
   assert.match(ed, /plyta-reczna/, 'brak złotego oznaczenia wymiaru ręcznego');
   assert.match(ed, /Wróć do wymiaru z cennika/, 'brak powrotu do wymiaru cennikowego');
   // Format leci do obu ścieżek katalogowych: kolekcje i wyprzedaż.

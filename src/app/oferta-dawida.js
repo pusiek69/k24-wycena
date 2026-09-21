@@ -522,7 +522,8 @@ function etykietaOdcinkaWiersz(o, i, odswiez) {
  * kończyłyby się pytaniem, które z nich obowiązuje.
  */
 function blokPlyty(stan, w, odswiez) {
-  const domyslny = plytaR.wymiarDomyslny(w?.plyta);
+  // Format Z CENNIKA, nie ten użyty — po nadpisaniu to dwie różne rzeczy.
+  const domyslny = plytaR.wymiarDomyslny(w?.plytaCennikowa || w?.plyta);
   if (!domyslny.w || !domyslny.h) return null;
 
   const reczny = !!stan.plytaReczna;

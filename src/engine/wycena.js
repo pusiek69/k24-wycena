@@ -170,7 +170,8 @@ export function wycen(firma, w, dataISO) {
    * katalogowy. Wpisuje się go WYŁĄCZNIE w edytorze właściciela; kalkulator
    * klienta nigdy nie podaje tego pola, więc tam nic się nie zmienia.
    */
-  const plyta = w.plytaReczna || promo?.plyta || plytaDekoru || firma.plyta;
+  const plytaCennikowa = promo?.plyta || plytaDekoru || firma.plyta;
+  const plyta = w.plytaReczna || plytaCennikowa;
   const pak = upakuj(w.odcinki || [], plyta);
   if (!pak.m2Blatu) return { ok: false, blad: 'Podaj wymiary blatu.' };
   ostrzezenia.push(...pak.ostrzezenia);
@@ -371,6 +372,13 @@ export function wycen(firma, w, dataISO) {
      * Znalezione 30.08.2026 przy przeglądzie produkcji.
      */
     plyta,
+    /*
+     * Format, który obowiązywałby BEZ ręcznego nadpisania. Edytor pokazuje
+     * z niego podpis „w cenniku…" i po nim poznaje powrót do wymiaru
+     * katalogowego — porównywanie z `plyta` nie ma sensu, bo po nadpisaniu
+     * jest tam już wymiar wpisany ręcznie.
+     */
+    plytaCennikowa,
     m2Platne,
     wgMetrazu,
     pozycje,
