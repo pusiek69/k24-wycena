@@ -472,3 +472,49 @@ test('KAŻDA strona miasta niesie wszystkie cztery bloki', () => {
     assert.equal((t.match(/<!-- BLOKI:MIASTO/g) || []).length, 1, `${m.slug}: zdublowany blok`);
   }
 });
+
+/* ════════ linkowanie ze STRONY GŁÓWNEJ (propozycja SEO, 22–23.09.2026) ════ */
+
+test('STRONA GŁÓWNA linkuje do stron miast, a Mielec idzie pierwszy', () => {
+  /*
+   * „/" to najmocniejsza strona serwisu i do 23.09.2026 linkowała tylko
+   * do Tarnobrzega — reszta miast wisiała w zdaniu o dojazdach jako goły
+   * tekst. Mielec (priorytet Dawida, w GSC drugi tydzień z zerem wyświetleń)
+   * dostaje pełną frazę „blaty kuchenne Mielec", bo to jest to zapytanie,
+   * na które ma się pokazywać.
+   */
+  const glowna = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const zdanie = glowna.match(/Dojeżdżamy na bezpłatny pomiar[\s\S]*?<\/p>/);
+  assert.ok(zdanie, 'zdanie o dojazdach zniknęło ze strony głównej');
+
+  assert.match(zdanie[0], /<a href="\/blaty-kuchenne-mielec">blaty kuchenne Mielec<\/a>/);
+  for (const slug of ['sandomierz', 'stalowa-wola', 'nisko', 'nowa-deba', 'rzeszow'])
+    assert.match(zdanie[0], new RegExp(`href="/blaty-kuchenne-${slug}"`), `brak linku: ${slug}`);
+
+  // Mielec przed pozostałymi — to była cała rzecz w tej zmianie.
+  assert.ok(
+    zdanie[0].indexOf('blaty-kuchenne-mielec') < zdanie[0].indexOf('blaty-kuchenne-sandomierz'),
+    'Mielec nie stoi na początku listy'
+  );
+
+  // Stopka: obok Tarnobrzega.
+  assert.match(glowna, /<a href="\/blaty-kuchenne-mielec">Blaty kuchenne Mielec<\/a>/);
+});
+
+test('STRONA GŁÓWNA nie linkuje miast, które nie mają swojej strony', () => {
+  /*
+   * Kolbuszowa i Połaniec są w zdaniu o dojazdach, ale stron nie mają.
+   * Link do nieistniejącej strony to 404 na najmocniejszej stronie serwisu —
+   * i dokładnie ten rodzaj błędu, którego nie widać przy pisaniu.
+   */
+  const glowna = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  for (const slug of ['kolbuszowa', 'polaniec'])
+    assert.ok(!glowna.includes(`/blaty-kuchenne-${slug}`), `link do nieistniejącej strony: ${slug}`);
+
+  // A każdy link do miasta, który JEST, musi mieć swój plik.
+  for (const m of glowna.matchAll(/href="\/blaty-kuchenne-([a-z-]+)"/g))
+    assert.ok(
+      fs.existsSync(new URL(`../blaty-kuchenne-${m[1]}.html`, import.meta.url)),
+      `strona główna linkuje do nieistniejącej strony: ${m[1]}`
+    );
+});
