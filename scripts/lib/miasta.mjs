@@ -147,10 +147,15 @@ export const MIASTA = [
     km: 50, nowa: true, daleko: false,
     czas: 'niecała godzina drogi',
     krotki: 'Blisko, w zasięgu bezpłatnego pomiaru razem z całą okolicą.',
-    tytul: 'Blaty kuchenne Staszów — blat z kamienia na wymiar',
+    // Tytuł i opis pod „blaty kuchenne kamienne staszów" i „blaty granitowe
+    // staszów" — wzór z Tarnobrzega (14.09.2026), gdzie ten sam zabieg dał
+    // pozycję 6,5 → 3,1 i pierwsze kliknięcia. Staszów siedzi na 5,0, w SERP
+    // trzeci za Ignikomem, czyli najbliżej pierwszego miejsca ze wszystkich
+    // miast (propozycja dziennego zadania SEO, 24.09.2026).
+    tytul: 'Blaty kuchenne kamienne Staszów — granit, spiek, kwarc',
     opis:
-      'Blaty kuchenne Staszów — blat kamienny na wymiar: konglomerat, spiek i granit. ' +
-      '50 km od zakładu w Tarnobrzegu, bezpłatny pomiar Prolinerem, montaż w cenie.',
+      'Blaty kuchenne kamienne Staszów — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      '50 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
     okolice: ['Połaniec', 'Osiek', 'Rytwiany', 'Bogoria', 'Szydłów', 'Łubnice'],
   },
   {
