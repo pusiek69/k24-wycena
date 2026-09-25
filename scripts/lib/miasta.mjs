@@ -31,11 +31,23 @@ export const MIASTA = [
   },
   {
     slug: 'sandomierz', nazwa: 'Sandomierz', wMiescie: 'Sandomierzu', doMiasta: 'Sandomierza',
-    km: 25, nowa: false, daleko: false,
-    tytul: 'Blaty kuchenne Sandomierz — blat z kamienia na wymiar',
+    /*
+     * ODLEGŁOŚĆ SPRAWDZONA W MAPACH (25.09.2026), bo strona podawać potrafiła
+     * dwie różne: opis i FAQ mówiły „25 km", a nagłówek „około 15 km,
+     * mniej więcej kwadrans". Żadna nie była prawdziwa.
+     *
+     * Szpitalna 8, Tarnobrzeg → Sandomierz: **16,5 km / 24 min** trasą DW723
+     * (wariant przez aleję Warszawską: 16,7 km, ten sam czas). Zaokrąglamy
+     * W GÓRĘ do 17 km — przy dojazdach lepiej obiecać więcej niż mniej.
+     * `czas` podajemy jawnie, bo domyślne przeliczenie generatora (1 km = 1 min)
+     * dałoby 17 minut, a realnie jedzie się dobre 24.
+     */
+    km: 17, nowa: false, daleko: false,
+    czas: 'jakieś 25 minut drogi',
+    tytul: 'Blaty kuchenne kamienne Sandomierz — granit, spiek, kwarc',
     opis:
-      'Blaty kuchenne Sandomierz — blat z konglomeratu, spieku lub granitu na wymiar. ' +
-      '25 km od naszego zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
+      'Blaty kuchenne kamienne Sandomierz — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      'Ok. 17 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż.',
     okolice: ['Dwikozy', 'Zawichost', 'Koprzywnica', 'Klimontów', 'Obrazów', 'Samborzec'],
     dzielnice: ['Stare Miasto', 'Nadbrzezie', 'Mokoszyn', 'Gołębice', 'Krakówka', 'Kamień Plebański'],
   },
