@@ -56,6 +56,8 @@ function firma(miasta) {
     email: 'kamieniarstwo24h@gmail.com',
     image: 'https://kam24h.pl/og-k24h.png',
     logo: 'https://kam24h.pl/logo-k24h.png',
+    // Profile firmy poza stroną — spina wizytówki z domeną (sygnał NAP dla Google).
+    sameAs: ['https://www.facebook.com/61576115005087'],
     priceRange: '$$',
     currenciesAccepted: 'PLN',
     openingHoursSpecification: [
@@ -122,6 +124,15 @@ export function grafMiasta(m, miasta, kwoty, opis) {
     '@context': 'https://schema.org',
     '@graph': [
       firma(miasta),
+      // Węzeł osoby — do tej pory founder/employee wskazywały @id bez definicji.
+      {
+        '@type': 'Person',
+        '@id': DAWID_ID,
+        name: 'Dawid Ząbek',
+        jobTitle: 'Właściciel',
+        telephone: '+48796991128',
+        worksFor: { '@id': FIRMA_ID },
+      },
       {
         '@type': 'WebPage',
         '@id': `${url}#strona`,
