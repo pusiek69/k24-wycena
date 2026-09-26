@@ -69,20 +69,33 @@ export const MIASTA = [
    */
   {
     slug: 'mielec', nazwa: 'Mielec', wMiescie: 'Mielcu', doMiasta: 'Mielca',
-    km: 45, nowa: false, daleko: false,
+    /*
+     * ODLEGŁOŚĆ SPRAWDZONA W MAPACH (26.09.2026): Szpitalna 8, Tarnobrzeg
+     * → Mielec to **40,1 km / 40 min** trasą DW985 (wariant przez Wisłostradę
+     * i DW871: 40,3 km, ten sam czas). Strona mówiła „45 km" i „pięćdziesiąt
+     * minut" — zawyżone, a przy Mielcu bliskość jest argumentem sprzedażowym,
+     * więc akurat tu nie ma powodu zaokrąglać na swój niekorzyść.
+     *
+     * Ta sama pomyłka co przy Sandomierzu (25.09) — warto sprawdzić pozostałe
+     * miasta przy najbliższej okazji, zamiast ufać liczbom z pamięci.
+     *
+     * `czas` zostaje niepodany: generator liczy 1 km = 1 min, więc przy 40 km
+     * wychodzi „około 40 minut" — i to się zgadza z Mapami.
+     */
+    km: 40, nowa: false, daleko: false,
     // Sąsiedzi ustaleni ręcznie (13.09.2026, Dawid): automat dobierał miasta
     // ~45 km od TARNOBRZEGA (Opatów, Staszów, Nisko, Sandomierz), czyli
     // 60–90 km od samego Mielca. Odległości poniżej liczone OD MIELCA.
     sasiedzi: [
       { slug: 'nowa-deba', km: 25 },
       { slug: 'debica', km: 30 },
-      { slug: 'tarnobrzeg', km: 45 },
+      { slug: 'tarnobrzeg', km: 40 },
       { slug: 'stalowa-wola', km: 55 },
     ],
-    tytul: 'Blaty kuchenne Mielec — blat kamienny, konglomerat, granit',
+    tytul: 'Blaty kuchenne kamienne Mielec — granit, spiek, kwarc',
     opis:
-      'Blaty kuchenne Mielec — blat kamienny na wymiar: konglomerat, spiek i granit. ' +
-      '45 km od zakładu w Tarnobrzegu, bezpłatny pomiar, montaż w cenie blatu.',
+      'Blaty kuchenne kamienne Mielec — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      '40 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
     okolice: [
       'Przecław', 'Radomyśl Wielki', 'Tuszów Narodowy', 'Padew Narodowa',
       'Czermin', 'Borowa', 'Wadowice Górne', 'Gawłuszowice',
