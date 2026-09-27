@@ -13,6 +13,29 @@
  * WPROST — obiecywanie darmowego dojazdu 130 km w jedną stronę byłoby
  * obietnicą, której nie chcemy składać.
  */
+/*
+ * ═══════════════════════════════════════════════════════════════════════
+ *  KILOMETRAŻE SPRAWDZONE W MAPACH GOOGLE (27.09.2026)
+ *
+ *  Trzy miasta z rzędu (Sandomierz 25.09, Mielec 26.09, Rzeszów 27.09)
+ *  miały `km` wzięte z pamięci i każde było błędne — więc przejechaliśmy
+ *  Mapami WSZYSTKIE piętnaście, trasa autem ze Szpitalnej 8 do centrum
+ *  miasta. Pomiar (km / czas najszybszej trasy):
+ *
+ *    Sandomierz 16,5 / 24 min      Nowa Dęba   18,6 / 19 min
+ *    Stalowa Wola 29,6 / 30 min    Nisko        37,5 / 40 min
+ *    Mielec     40,1 / 40 min      Staszów      46,0 / 39 min
+ *    Opatów     46,6 / 48 min      Ostrowiec Św. 64,6 / 1 h 04
+ *    Rzeszów    72,1 / 1 h 11      Dębica       72,2 / 1 h 05
+ *    Starachowice 92,5 / 1 h 32    Kielce      102   / 1 h 31
+ *    Lublin    157   / 1 h 42      Kraków      190   / 2 h 16
+ *
+ *  Zasada zaokrąglania: do pełnych pięciu kilometrów, ale NIGDY w dół
+ *  o więcej niż 2 km — obiecany dojazd ma być nie krótszy niż prawdziwy.
+ *  `czas` podajemy jawnie wszędzie tam, gdzie domyślne przeliczenie
+ *  generatora (1 km = 1 min) rozmija się z Mapami o więcej niż kwadrans.
+ * ═══════════════════════════════════════════════════════════════════════
+ */
 export const MIASTA = [
   // ── istniejące strony (kolejność jak w stopce) ──────────────────────
   {
@@ -53,7 +76,7 @@ export const MIASTA = [
   },
   {
     slug: 'stalowa-wola', nazwa: 'Stalowa Wola', wMiescie: 'Stalowej Woli', doMiasta: 'Stalowej Woli',
-    km: 20, nowa: false, daleko: false,
+    km: 30, nowa: false, daleko: false, // Mapy: 29,6 km / 30 min (DW871). Było 20.
     // Link zwrotny do Mielca (13.09.2026) — Stalowa Wola to jedna z dwóch
     // najmocniejszych stron miast, a automat Mielca tu nie dobierał.
     dodatkowiSasiedzi: ['mielec'],
@@ -127,22 +150,27 @@ export const MIASTA = [
   },
   {
     slug: 'rzeszow', nazwa: 'Rzeszów', wMiescie: 'Rzeszowie', doMiasta: 'Rzeszowa',
-    km: 80, nowa: false, daleko: false,
-    tytul: 'Blaty kuchenne Rzeszów — blat z kamienia na wymiar',
+    // Mapy: 72,1 km / 1 h 11 (DK9); do Rynku 74,3 km / 1 h 16. Było 80 km.
+    km: 75, nowa: false, daleko: false,
+    czas: 'godzina z kwadransem',
+    tytul: 'Blaty kuchenne kamienne Rzeszów — granit, spiek, kwarc',
     opis:
-      'Blaty kuchenne Rzeszów — blat kamienny na wymiar: konglomerat kwarcowy, spiek ' +
-      'i granit. Dojeżdżamy z Tarnobrzega, pomiar bezpłatny, montaż w cenie.',
+      'Blaty kuchenne kamienne Rzeszów — granitowe, ze spieku i konglomeratu na wymiar. ' +
+      'Wycena online w 2 minuty, bezpłatny pomiar i montaż w cenie.',
     okolice: ['Głogów Małopolski', 'Boguchwała', 'Tyczyn', 'Trzebownisko', 'Krasne', 'Świlcza'],
     dzielnice: [
       'Śródmieście', 'Baranówka', 'Nowe Miasto', 'Staroniwa', 'Zalesie',
       'Drabinianka', 'Przybyszówka', 'Budziwój', 'Słocina',
     ],
   },
-  { slug: 'kielce', nazwa: 'Kielce', wMiescie: 'Kielcach', doMiasta: 'Kielc', km: 110, nowa: false, daleko: true },
-  { slug: 'nisko', nazwa: 'Nisko', wMiescie: 'Nisku', doMiasta: 'Niska', km: 30, nowa: false, daleko: false },
+  { slug: 'kielce', nazwa: 'Kielce', wMiescie: 'Kielcach', doMiasta: 'Kielc', km: 105, nowa: false, daleko: true,
+    czas: 'półtorej godziny drogi' }, // Mapy: 102 km / 1 h 31 (DW764). Było 110.
+  // Mapy: 37,5 km / 40 min (DW871). Było 30.
+  { slug: 'nisko', nazwa: 'Nisko', wMiescie: 'Nisku', doMiasta: 'Niska', km: 40, nowa: false, daleko: false },
   { slug: 'nowa-deba', nazwa: 'Nowa Dęba', wMiescie: 'Nowej Dębie', doMiasta: 'Nowej Dęby', km: 20, nowa: false, daleko: false },
   {
     slug: 'debica', nazwa: 'Dębica', wMiescie: 'Dębicy', doMiasta: 'Dębicy', km: 75, nowa: false, daleko: false,
+    czas: 'nieco ponad godzina drogi', // Mapy: 72,2 km / 1 h 05 (DW985)
     // Pod „blaty kuchenne kamienne dębica" (poz. 9,6, 0 klik.) — zmiana z 15.09.2026.
     tytul: 'Blaty kuchenne kamienne Dębica — granit, spiek, konglomerat',
     opis:
@@ -155,7 +183,7 @@ export const MIASTA = [
   {
     slug: 'ostrowiec-swietokrzyski', nazwa: 'Ostrowiec Świętokrzyski',
     wMiescie: 'Ostrowcu Świętokrzyskim', doMiasta: 'Ostrowca Świętokrzyskiego',
-    km: 70, nowa: true, daleko: false,
+    km: 65, nowa: true, daleko: false, // Mapy: 64,6 km / 1 h 04. Było 70.
     czas: 'około godziny drogi',
     krotki: 'Miasto z dużą liczbą domów jednorodzinnych i blokowych kuchni do wymiany.',
   },
@@ -186,8 +214,8 @@ export const MIASTA = [
   {
     slug: 'lublin', nazwa: 'Lublin',
     wMiescie: 'Lublinie', doMiasta: 'Lublina',
-    km: 130, nowa: true, daleko: true,
-    czas: 'około dwóch godzin drogi',
+    km: 160, nowa: true, daleko: true, // Mapy: 157 km / 1 h 42 (S19). Było 130.
+    czas: 'niecałe dwie godziny drogi',
     krotki: 'Dalej niż nasz standardowy promień — warunki dojazdu ustalamy indywidualnie.',
     // Pod „blaty kuchenne kamienne lublin" (11,4 / 12 wyśw.) i „blaty lublin" — zmiana z 15.09.2026.
     tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
@@ -206,8 +234,8 @@ export const MIASTA = [
   {
     slug: 'krakow', nazwa: 'Kraków',
     wMiescie: 'Krakowie', doMiasta: 'Krakowa',
-    km: 170, nowa: true, daleko: true,
-    czas: 'około dwóch i pół godziny drogi',
+    km: 190, nowa: true, daleko: true, // Mapy: 190 km / 2 h 16 (A4). Było 170.
+    czas: 'niecałe dwie i pół godziny drogi',
     krotki:
       'Kraków i okolice — Wieliczka, Skawina, Niepołomice, Zabierzów, Krzeszowice, Zielonki. ' +
       'Dalej niż nasz standardowy promień, ale dojeżdżamy — warunki ustalamy przy zamówieniu.',
