@@ -605,3 +605,16 @@ test('META DESCRIPTION miasta podaje ten sam kilometraż co dane miasta', () => 
       assert.equal(Number(l[1]), m.km, `${m.slug}: opis mówi ${l[1]} km, dane ${m.km} km`);
   }
 });
+
+test('GENERATOR nie sklada zdan z "pod" + dopelniacz miasta', () => {
+  /*
+   * Szablon bloku o materiałach mówił „do domów pod ${m.doMiasta}", czyli
+   * „pod Mielca" — przyimek „pod" chce narzędnika, a dane miasta mają tylko
+   * dopełniacz i miejscownik. Poprawiona ręcznie w HTML wróciła przy pierwszym
+   * `npm run miasta`, bo tekst pochodzi z generatora.
+   */
+  for (const m of MIASTA) {
+    const t = fs.readFileSync(new URL(`../blaty-kuchenne-${m.slug}.html`, import.meta.url), 'utf8');
+    assert.ok(!t.includes(`pod ${m.doMiasta}`), `${m.slug}: „pod ${m.doMiasta}" zamiast narzędnika`);
+  }
+});

@@ -63,7 +63,7 @@ const WYBOR_MATERIALU = {
           wzorów i nie wymaga impregnacji.
         </p>
         <p>
-          <strong>Spiek kwarcowy</strong> bierzemy do domów pod ${m.doMiasta} z wyspą
+          <strong>Spiek kwarcowy</strong> bierzemy do domów w okolicach ${m.doMiasta} z wyspą
           lub długą linią szafek — płyta jest większa, więc blat 300 cm wychodzi
           bez łączenia, a powierzchnia nie boi się gorącego garnka ani noża. Spiek ma
           też najwięcej wzorów (${liczby.spiekWzory}), w tym imitacje marmuru, które
