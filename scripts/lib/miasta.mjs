@@ -10,7 +10,7 @@
  *
  * `daleko: true` znaczy, że miasto leży poza promieniem bezpłatnego
  * pomiaru (~100 km od Tarnobrzega). Wtedy strona i FAQ mówią o tym
- * WPROST — obiecywanie darmowego dojazdu 130 km w jedną stronę byłoby
+ * WPROST — obiecywanie darmowego dojazdu 160 km w jedną stronę byłoby
  * obietnicą, której nie chcemy składać.
  */
 /*
@@ -221,7 +221,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
     opis:
       'Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Ok. 130 km od Tarnobrzega, pomiar i montaż, dojazd ustalany indywidualnie.',
+      'Ok. 160 km od Tarnobrzega, pomiar i montaż, dojazd ustalany indywidualnie.',
   },
 
   // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────

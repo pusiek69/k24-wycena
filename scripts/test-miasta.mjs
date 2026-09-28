@@ -518,3 +518,90 @@ test('STRONA GŁÓWNA nie linkuje miast, które nie mają swojej strony', () => 
       `strona główna linkuje do nieistniejącej strony: ${m[1]}`
     );
 });
+
+/* ════════ spójność CZASÓW DOJAZDU w treści (28.09.2026) ════════════════ */
+
+/*
+ * Nagłówek strony Mielca mówił „40 km, czterdzieści minut", a akapit dwa
+ * ekrany niżej — „Godzina drogi w jedną stronę"; Sandomierz witał leadem
+ * „Kwadrans drogi", żeby zaraz potem podać „17 km, jakieś 25 minut".
+ * Oba zdania przeżyły korektę kilometraży, bo liczby siedzą w nich słownie
+ * i żaden skan po cyfrach ich nie widział. Stąd ten test: czasy z JEDNEJ
+ * strony mają się mieścić w wąskim widełku, bo opisują tę samą trasę.
+ */
+const CZASY_SLOWNIE = [
+  ['niecałe dwie i pół godziny', 145],
+  ['niecałe dwie godziny', 105],
+  ['dwie godziny', 120],
+  ['półtorej godziny', 90],
+  ['godzina z kwadransem', 75],
+  ['godzinę i kwadrans', 75],
+  ['nieco ponad godzin', 65],
+  ['niecała godzina', 55],
+  ['blisko godziny', 55],
+  ['godzin', 60],
+  ['pięćdziesiąt minut', 50],
+  ['czterdzieści minut', 40],
+  ['pół godziny', 30],
+  ['trzydzieści minut', 30],
+  ['dwadzieścia pięć minut', 25],
+  ['25 minut', 25],
+  ['dwadzieścia minut', 20],
+  ['kwadrans', 15],
+];
+
+// Zwroty, w których „minuty" i „godziny" nie są czasem dojazdu.
+const NIE_DOJAZD = [
+  /w dwie minuty/g, /w 2 minuty/g, /dwie minuty/g, /kilka minut/g,
+  /kilkanaście minut/g, /kilka godzin/g, /konkretną godzinę/g,
+  /konkretny dzień i godzinę/g, /z czasem/g, /najkrótszy czas/g,
+];
+
+function czasyZeStrony(html) {
+  // male litery, bo zdania zaczynaja sie wielka: „Godzina drogi...”, „Kwadrans drogi...”
+  let t = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+  for (const wzor of NIE_DOJAZD) t = t.replace(wzor, ' ');
+  const znalezione = [];
+  for (const [fraza, minuty] of CZASY_SLOWNIE) {
+    let od = 0;
+    for (;;) {
+      const i = t.indexOf(fraza, od);
+      if (i < 0) break;
+      znalezione.push({ fraza, minuty });
+      // wycinamy trafienie, żeby „godzin" nie łapało się w „półtorej godziny"
+      t = t.slice(0, i) + ' '.repeat(fraza.length) + t.slice(i + fraza.length);
+      od = i + fraza.length;
+    }
+  }
+  return znalezione;
+}
+
+test('CZASY DOJAZDU na jednej stronie miasta nie przeczą sobie nawzajem', () => {
+  for (const m of MIASTA) {
+    if (m.slug === 'tarnobrzeg') continue; // zakład na miejscu, brak dojazdu
+    const t = fs.readFileSync(new URL(`../blaty-kuchenne-${m.slug}.html`, import.meta.url), 'utf8');
+    const czasy = czasyZeStrony(t);
+    assert.ok(czasy.length > 0, `${m.slug}: strona nie mówi nic o czasie dojazdu`);
+    const min = Math.min(...czasy.map((c) => c.minuty));
+    const max = Math.max(...czasy.map((c) => c.minuty));
+    assert.ok(
+      max - min <= 8,
+      `${m.slug}: rozjazd czasów dojazdu (${min}–${max} min): ` +
+        czasy.map((c) => `„${c.fraza}"`).join(', ')
+    );
+  }
+});
+
+test('META DESCRIPTION miasta podaje ten sam kilometraż co dane miasta', () => {
+  /*
+   * Lublin po korekcie z 27.09 miał w danych 160 km, a w opisie dla Google
+   * nadal „Ok. 130 km" — opis jest osobnym stringiem i nikt go nie przelicza.
+   */
+  for (const m of MIASTA) {
+    const t = fs.readFileSync(new URL(`../blaty-kuchenne-${m.slug}.html`, import.meta.url), 'utf8');
+    const opis = t.match(/<meta name="description" content="([^"]+)"/);
+    assert.ok(opis, `${m.slug}: brak meta description`);
+    for (const l of opis[1].matchAll(/(\d+)\s*km/g))
+      assert.equal(Number(l[1]), m.km, `${m.slug}: opis mówi ${l[1]} km, dane ${m.km} km`);
+  }
+});
