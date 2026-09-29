@@ -48,7 +48,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Tarnobrzeg — granit, spiek, kwarc',
     opis:
       'Blaty kuchenne kamienne Tarnobrzeg — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Zakład przy ul. Szpitalnej 8, płyty do obejrzenia na hali, pomiar bezpłatny.',
+      'Zakład przy ul. Szpitalnej 8, wycena online w 2 minuty, bezpłatny pomiar.',
     okolice: ['Baranów Sandomierski', 'Gorzyce', 'Grębów', 'Zaleszany', 'Radomyśl nad Sanem'],
     dzielnice: ['Dzików', 'Mokrzyszów', 'Wielowieś', 'Miechocin', 'Sobów', 'Zakrzów', 'Serbinów', 'Sielec', 'Nagnajów'],
   },
@@ -70,7 +70,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Sandomierz — granit, spiek, kwarc',
     opis:
       'Blaty kuchenne kamienne Sandomierz — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Ok. 17 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż.',
+      'Ok. 17 km od Tarnobrzega, wycena online w 2 minuty, bezpłatny pomiar.',
     okolice: ['Dwikozy', 'Zawichost', 'Koprzywnica', 'Klimontów', 'Obrazów', 'Samborzec'],
     dzielnice: ['Stare Miasto', 'Nadbrzezie', 'Mokoszyn', 'Gołębice', 'Krakówka', 'Kamień Plebański'],
   },
@@ -118,7 +118,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Mielec — granit, spiek, kwarc',
     opis:
       'Blaty kuchenne kamienne Mielec — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      '40 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
+      '40 km od Tarnobrzega, wycena online w 2 minuty, pomiar i montaż w cenie.',
     okolice: [
       'Przecław', 'Radomyśl Wielki', 'Tuszów Narodowy', 'Padew Narodowa',
       'Czermin', 'Borowa', 'Wadowice Górne', 'Gawłuszowice',
@@ -171,11 +171,19 @@ export const MIASTA = [
   {
     slug: 'debica', nazwa: 'Dębica', wMiescie: 'Dębicy', doMiasta: 'Dębicy', km: 75, nowa: false, daleko: false,
     czas: 'nieco ponad godzina drogi', // Mapy: 72,2 km / 1 h 05 (DW985)
+    // Automat dobiera sąsiadów po km OD TARNOBRZEGA, więc Dębica (75 km)
+    // dostawała Ostrowiec i Starachowice — miasta za Wisłą, 100+ km od samej
+    // Dębicy. Mielec leży ~30 km od Dębicy (symetrycznie: wpis Mielca ma
+    // `debica, km: 30`, ustalone ręcznie 13.09), a to nasza strona nr 1 —
+    // dopinamy link zwrotny (29.09.2026). Pełna ręczna lista `sasiedzi`
+    // wymagałaby kilometraży OD DĘBICY sprawdzonych w Mapach (Rzeszów,
+    // Nowa Dęba) — nie zgadujemy ich z pamięci, lekcja z 25–27.09.
+    dodatkowiSasiedzi: ['mielec'],
     // Pod „blaty kuchenne kamienne dębica" (poz. 9,6, 0 klik.) — zmiana z 15.09.2026.
     tytul: 'Blaty kuchenne kamienne Dębica — granit, spiek, konglomerat',
     opis:
       'Blaty kuchenne kamienne Dębica — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Ok. 75 km od zakładu w Tarnobrzegu, pomiar Prolinerem i montaż jednym wyjazdem.',
+      'Ok. 75 km od Tarnobrzega, wycena online w 2 minuty, pomiar Prolinerem.',
   },
   { slug: 'opatow', nazwa: 'Opatów', wMiescie: 'Opatowie', doMiasta: 'Opatowa', km: 50, nowa: false, daleko: false },
 
@@ -208,7 +216,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Staszów — granit, spiek, kwarc',
     opis:
       'Blaty kuchenne kamienne Staszów — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      '50 km od zakładu w Tarnobrzegu, bezpłatny pomiar i montaż w cenie.',
+      '50 km od Tarnobrzega, wycena online w 2 minuty, pomiar i montaż w cenie.',
     okolice: ['Połaniec', 'Osiek', 'Rytwiany', 'Bogoria', 'Szydłów', 'Łubnice'],
   },
   {
@@ -221,7 +229,7 @@ export const MIASTA = [
     tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
     opis:
       'Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Ok. 160 km od Tarnobrzega, pomiar i montaż, dojazd ustalany indywidualnie.',
+      'Wycena online w 2 minuty, pomiar i montaż, dojazd ustalany indywidualnie.',
   },
 
   // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────
