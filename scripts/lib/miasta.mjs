@@ -171,14 +171,18 @@ export const MIASTA = [
   {
     slug: 'debica', nazwa: 'Dębica', wMiescie: 'Dębicy', doMiasta: 'Dębicy', km: 75, nowa: false, daleko: false,
     czas: 'nieco ponad godzina drogi', // Mapy: 72,2 km / 1 h 05 (DW985)
-    // Automat dobiera sąsiadów po km OD TARNOBRZEGA, więc Dębica (75 km)
-    // dostawała Ostrowiec i Starachowice — miasta za Wisłą, 100+ km od samej
-    // Dębicy. Mielec leży ~30 km od Dębicy (symetrycznie: wpis Mielca ma
-    // `debica, km: 30`, ustalone ręcznie 13.09), a to nasza strona nr 1 —
-    // dopinamy link zwrotny (29.09.2026). Pełna ręczna lista `sasiedzi`
-    // wymagałaby kilometraży OD DĘBICY sprawdzonych w Mapach (Rzeszów,
-    // Nowa Dęba) — nie zgadujemy ich z pamięci, lekcja z 25–27.09.
-    dodatkowiSasiedzi: ['mielec'],
+    // Sąsiedzi ustaleni ręcznie (30.09.2026). Automat dobierał ich po km
+    // OD TARNOBRZEGA, więc Dębica (75 km) dostawała Ostrowiec i Starachowice
+    // — miasta za Wisłą, 100+ km od samej Dębicy. Odległości poniżej liczone
+    // OD DĘBICY i sprawdzone w Mapach 30.09.2026:
+    //   Mielec 32,0 km / 40 min · Rzeszów 55,7 km / 39 min (A4)
+    //   Nowa Dęba 59,9 km / 1 h 04 · Tarnobrzeg 73,0 km / 1 h 16 (DW985)
+    sasiedzi: [
+      { slug: 'mielec', km: 30 },
+      { slug: 'rzeszow', km: 55 },
+      { slug: 'tarnobrzeg', km: 75 },
+      { slug: 'nowa-deba', km: 60 },
+    ],
     // Pod „blaty kuchenne kamienne dębica" (poz. 9,6, 0 klik.) — zmiana z 15.09.2026.
     tytul: 'Blaty kuchenne kamienne Dębica — granit, spiek, konglomerat',
     opis:
