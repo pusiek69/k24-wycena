@@ -365,3 +365,23 @@ test('liczebniki są poprawnie odmienione', () => {
     );
   }
 });
+
+test('sekcja cenowa poradnika odsyła do cennika dokładną frazą', () => {
+  /*
+   * GSC 21–27.09.2026: fraza „ile kosztuje blat ze spieku kwarcowego” dzieli
+   * się na dwie nasze strony — /blaty-ze-spieku (poz. 11,1) i ten poradnik
+   * (poz. 12,4). Obie mają ten sam H2, więc Google nie wie, która odpowiada
+   * na pytanie o cenę. Link z sekcji cenowej poradnika, z frazą w kotwicy,
+   * wskazuje cennik jako stronę główną tej frazy (30.09.2026).
+   */
+  const html = czytaj(PORADNIK);
+  const od = html.indexOf('id="ile-kosztuje"');
+  const doKolejnego = html.indexOf('<h2', od + 10);
+  assert.ok(od > 0 && doKolejnego > od, 'brak sekcji „Ile kosztuje” w poradniku');
+  const sekcja = html.slice(od, doKolejnego);
+  const link = sekcja.replace(/\s+/g, ' ').match(
+    /<a href="\/blaty-ze-spieku">([^<]+)<\/a>/
+  );
+  assert.ok(link, 'sekcja cenowa poradnika nie linkuje do /blaty-ze-spieku');
+  assert.equal(link[1], 'cenniku blatów ze spieku kwarcowego', 'zmieniła się kotwica linku');
+});
