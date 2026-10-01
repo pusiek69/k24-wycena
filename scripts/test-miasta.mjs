@@ -618,3 +618,21 @@ test('GENERATOR nie sklada zdan z "pod" + dopelniacz miasta', () => {
     assert.ok(!t.includes(`pod ${m.doMiasta}`), `${m.slug}: „pod ${m.doMiasta}" zamiast narzędnika`);
   }
 });
+
+test('TYTUŁ STRONY GŁÓWNEJ niesie markę, miasto i mieści się w wyniku Google', () => {
+  /*
+   * GSC 22–28.09.2026: zapytania z „kamieniarstwo” — 34 wyświetlenia w 28 dni,
+   * zero kliknięć, Google kieruje je na stronę główną (poz. 18,7). Tytuł „/”
+   * brzmiał wtedy „Wycena blatu kuchennego online — Tarnobrzeg” — bez nazwy
+   * firmy i bez słowa, którego ci ludzie szukają (1.10.2026).
+   *
+   * Limit 60 znaków jest ten sam co dla stron miast i poradników: dłuższy
+   * tytuł Google obcina, a obcięłby właśnie końcówkę — czyli „Tarnobrzeg”.
+   */
+  const glowna = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const tytul = glowna.match(/<title>([^<]+)<\/title>/)[1];
+  assert.ok(tytul.length <= 60, `tytuł „/” ma ${tytul.length} znaków: ${tytul}`);
+  assert.match(tytul, /Kamieniarstwo 24h/, 'tytuł „/” zgubił nazwę firmy');
+  assert.match(tytul, /Tarnobrzeg/, 'tytuł „/” zgubił miasto');
+  assert.match(tytul, /blatu|blaty/i, 'tytuł „/” zgubił to, co sprzedajemy');
+});
