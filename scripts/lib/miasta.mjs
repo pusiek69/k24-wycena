@@ -67,6 +67,11 @@ export const MIASTA = [
      */
     km: 17, nowa: false, daleko: false,
     czas: 'jakieś 25 minut drogi',
+    // Link do Staszowa (3.10.2026) — miasto priorytetowe (nr 4), a automat
+    // dobierał Sandomierzowi tylko Nową Dębę, Stalową Wolę, Tarnobrzeg
+    // i Mielec. Etykieta w stylu automatu: km od zakładu w Tarnobrzegu
+    // (50 km, zweryfikowane w Mapach wcześniej — patrz wpis Staszowa).
+    dodatkowiSasiedzi: ['staszow'],
     tytul: 'Blaty kuchenne kamienne Sandomierz — granit, spiek, kwarc',
     opis:
       'Blaty kuchenne kamienne Sandomierz — granitowe, ze spieku i konglomeratu na wymiar. ' +

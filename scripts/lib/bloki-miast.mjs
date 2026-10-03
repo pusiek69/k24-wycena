@@ -32,6 +32,11 @@
 /** 5500 → „5 500" */
 const zl = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
+// Odmiana po liczbie — liczby wzorów zmieniają się same z cennikiem
+// (po wygaśnięciu kampanii 30.09 spadły 230→223 i 504→502), więc forma
+// słowa musi iść za liczbą: „223 wzory", nie „223 wzorów".
+import { odmiana, zOdmiana } from './odmiana.mjs';
+
 /** ['A','B','C'] → „A, B i C" */
 export const wyliczenie = (lista) =>
   lista.length < 2 ? lista.join('') : `${lista.slice(0, -1).join(', ')} i ${lista.at(-1)}`;
@@ -59,8 +64,9 @@ const WYBOR_MATERIALU = {
           Trzy materiały, trzy różne sytuacje. <strong>Konglomerat kwarcowy</strong>
           wybiera najwięcej klientów z mieleckich bloków (Lotników, Smoczka, Borek)
           — to zwykle wymiana starego blatu bez ruszania szafek: konglomerat dobrze
-          znosi standardowe głębokości 60 cm, ma ${liczby.konglomeratWzory} jednolitych
-          wzorów i nie wymaga impregnacji.
+          znosi standardowe głębokości 60 cm, ma ${liczby.konglomeratWzory}
+          ${odmiana(liczby.konglomeratWzory, ['jednolity wzór', 'jednolite wzory', 'jednolitych wzorów'])}
+          i nie wymaga impregnacji.
         </p>
         <p>
           <strong>Spiek kwarcowy</strong> bierzemy do domów w okolicach ${m.doMiasta} z wyspą
@@ -114,12 +120,12 @@ export function blokCen(m, kwoty, liczby) {
             </thead>
             <tbody>
               <tr>
-                <th scope="row">Konglomerat kwarcowy<br><span class="drobne">${liczby.konglomeratWzory} wzorów</span></th>
+                <th scope="row">Konglomerat kwarcowy<br><span class="drobne">${zOdmiana(liczby.konglomeratWzory, 'wzor')}</span></th>
                 <td>od ${zl(kwoty.konglomeratM2Od)} zł/m²</td>
                 <td><strong>od ${zl(kwoty.konglomeratProste)} zł</strong></td>
               </tr>
               <tr>
-                <th scope="row">Spiek kwarcowy<br><span class="drobne">${liczby.spiekWzory} wzorów</span></th>
+                <th scope="row">Spiek kwarcowy<br><span class="drobne">${zOdmiana(liczby.spiekWzory, 'wzor')}</span></th>
                 <td>od ${zl(kwoty.spiekM2Od)} zł/m²</td>
                 <td><strong>od ${zl(kwoty.spiekProste)} zł</strong></td>
               </tr>
