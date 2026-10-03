@@ -103,9 +103,11 @@ WZORY.spieki = ['keralini', 'marazzi', 'atlas-plan', 'laminam', 'florim-stone']
 const TYTUL = 'Blaty z konglomeratu kwarcowego — ceny, wady i zalety';
 
 // Do 160 znaków — dłuższy Google i tak utnie w wynikach.
+// „wycena online w 2 minuty" — sprawdzone CTA (skok 6,5→3,1 w Tarnobrzegu);
+// dołożone 03.10.2026, bo strona miała poz. 7,3 przy 120 wyśw. i ZERO kliknięć.
 const OPIS =
   `Blat z konglomeratu od ${zl(KWOTY.konglomeratProste)} zł (60 × 300 cm). Rozbicie ceny, ` +
-  'uczciwe wady, porównanie ze spiekiem i granitem. Poradnik kamieniarza.';
+  'uczciwe wady, porównanie ze spiekiem i granitem. Poradnik kamieniarza, wycena online w 2 minuty.';
 
 /* ───────────────────────────────────────────────────────────── budowanie */
 
