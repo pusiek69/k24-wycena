@@ -176,15 +176,34 @@ test('na realnych cennikach plakietka nie kłamie', async () => {
 });
 
 test('lista promocji obejmuje WSZYSTKIE aktywne kampanie, nie jedną', () => {
-  // Dawid wymienił z pamięci tylko „Sezon Letnich Okazji". Aktywnych jest
-  // więcej i pominięcie ich wyglądałoby na zgubione pozycje.
+  /*
+   * Dawid wymienił z pamięci tylko „Sezon Letnich Okazji". Aktywnych jest
+   * więcej i pominięcie ich wyglądałoby na zgubione pozycje.
+   *
+   * Oczekiwaną liczbę marek liczymy z cenników, zamiast wpisywać „co najmniej
+   * trzy": 30.09.2026 skończyły się CZTERY kampanie naraz (Sezon Letnich
+   * Okazji u Interstone oraz sierpień–wrzesień u Caesarstone, Avant Quartz
+   * i Keralini) i stała liczba zrobiła z tego czerwony test zamiast informacji.
+   */
   return import('./lib/silnik.mjs')
     .then((m) => m.wczytajSilnik())
     .then(({ FIRMY }) => {
+      const dzis = new Date().toISOString().slice(0, 10);
+      const marki = FIRMY.filter(
+        (f) =>
+          f.slug !== 'interstone' &&
+          (f.promocje || []).some((k) => dzis >= k.od && dzis <= k.do)
+      );
+      assert.ok(marki.length >= 2, `w cennikach tylko ${marki.length} marek z kampanią`);
+
       const lista = dekoryWPromocji(FIRMY.filter((f) => f.slug !== 'interstone'), '20');
       const kampanie = new Set(lista.map((p) => p.kampania));
       assert.ok(kampanie.size >= 2, `tylko jedna kampania na liście: ${[...kampanie]}`);
-      assert.ok(new Set(lista.map((p) => p.firma)).size >= 3, 'promocje z co najmniej trzech marek');
+      assert.deepEqual(
+        [...new Set(lista.map((p) => p.firma))].sort(),
+        marki.map((f) => f.slug).sort(),
+        'lista gubi markę, która ma dziś aktywną kampanię'
+      );
     });
 });
 

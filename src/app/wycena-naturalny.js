@@ -221,7 +221,7 @@ export const NOTA_PROMOCJI_NATURALNEJ =
   'lub do wyczerpania zapasów; dostępność płyty potwierdzimy u opiekuna ' +
   'handlowego przed rezerwacją.';
 
-export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
+export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }, dzien) {
   const firma = firmaZWariantu(wariant);
   if (!firma) return { ok: false, blad: 'Brak danych płyty.' };
 
@@ -246,7 +246,8 @@ export function wycenZMagazynu(wariant, { odcinki, opcje = {}, grubosc }) {
    * cena magazynowa (ceny promocyjne są netto, magazynowe brutto przy 23%).
    * Reszta wyceny — obróbka naturalnego, całe płyty, montaż — bez zmian.
    */
-  const promo = znajdzPromocjeNaturalna(wariant);
+  // `dzien` podają testy; w aplikacji zostaje puste i liczy się dzień dzisiejszy.
+  const promo = znajdzPromocjeNaturalna(wariant, dzien);
   const magazynNettoM2 = wariant.cenaBruttoM2 / 1.23;
   const zPromocja = promo && promo.cenaNettoM2 < magazynNettoM2 - 0.005;
 

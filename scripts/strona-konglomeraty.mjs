@@ -32,6 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tresc, schema, zl } from './lib/tresc-konglomeraty.mjs';
 import { wczytajSilnik } from './lib/silnik.mjs';
+import { zOdmiana } from './lib/odmiana.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tylkoSprawdz = process.argv.includes('--sprawdz');
@@ -185,8 +186,9 @@ function przecelujKolekcje() {
   const przed = t;
 
   const NOWY_TYTUL = 'Blaty kwarcowe — kolekcje i wzory konglomeratu';
+  // Odmiana z liczby: przy 230 jest „wzorów", ale przy 223 już „wzory".
   const NOWY_OPIS =
-    `${WZORY.razem} wzorów konglomeratu w pięciu kolekcjach: Technistone, Avant Quartz, ` +
+    `${zOdmiana(WZORY.razem, 'wzor')} konglomeratu w pięciu kolekcjach: Technistone, Avant Quartz, ` +
     'InterQ, Pacific, Caesarstone. Katalogi wzorów i wycena online.';
 
   t = t.replace(/<title>[^<]*<\/title>/, `<title>${NOWY_TYTUL}</title>`);
@@ -196,6 +198,32 @@ function przecelujKolekcje() {
     /(<meta property="og:title" content=")[^"]*(")/,
     '$1Blaty kwarcowe — kolekcje i wzory$2'
   );
+
+  /*
+   * Liczby wzorów w środku strony: lista marek, lead i dane strukturalne.
+   * Zmieniają się same, bez commita — 30.09.2026 wygasły cztery kampanie
+   * dostawców i dekory wyłącznie promocyjne zniknęły z cennika
+   * (`dekoryZKampaniami`), przez co strona z dnia na dzień zaczęła
+   * obiecywać 230 wzorów zamiast 223.
+   */
+  const MARKI = {
+    Technistone: WZORY.technistone,
+    'Avant Quartz': WZORY.avant,
+    InterQ: WZORY.interq,
+    Pacific: WZORY.pacific,
+    Caesarstone: WZORY.caesarstone,
+  };
+  for (const [marka, n] of Object.entries(MARKI)) {
+    t = t.replace(
+      new RegExp(`(<strong>${marka}</strong> — )\\d+ dekor[a-ząćęłńóśźż]*`, 'g'),
+      `$1${zOdmiana(n, 'dekor')}`
+    );
+  }
+  t = t.replace(
+    /\d+ dekor[a-ząćęłńóśźż]* konglomeratu w pięciu kolekcjach/g,
+    `${zOdmiana(WZORY.razem, 'dekor')} konglomeratu w pięciu kolekcjach`
+  );
+  t = t.replace(/\d+ wzor[a-ząćęłńóśźż]* — Avant Quartz/g, `${zOdmiana(WZORY.razem, 'wzor')} — Avant Quartz`);
 
   // Link do poradnika — jeśli jeszcze go nie ma.
   if (!t.includes('/blaty-z-konglomeratu-kwarcowego-poradnik')) {

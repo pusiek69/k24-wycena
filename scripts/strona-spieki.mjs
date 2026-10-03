@@ -26,6 +26,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tresc, schema, zl } from './lib/tresc-spieki.mjs';
 import { wczytajSilnik } from './lib/silnik.mjs';
+import { zOdmiana } from './lib/odmiana.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tylkoSprawdz = process.argv.includes('--sprawdz');
@@ -182,6 +183,50 @@ function przelinkuj() {
   return zmienione;
 }
 
+/*
+ * LICZBY WZORÓW NA STRONIE OFERTOWEJ `/blaty-ze-spieku`
+ *
+ * Poradnik liczy dekory z rejestru firm przy każdym przebiegu, ale strona
+ * ofertowa miała je wpisane na sztywno — i 30.09.2026, gdy wygasły cztery
+ * kampanie dostawców naraz, została z „504 wzory" i „Laminam — 110 dekorów",
+ * choć w kalkulatorze było już 502 i 108. Dekory wyłącznie promocyjne znikają
+ * z cennika razem z kampanią (`dekoryZKampaniami`), więc te liczby zmieniają
+ * się same z siebie, bez żadnego commita — muszą być liczone, nie przepisane.
+ */
+const OFERTA = path.join(ROOT, 'blaty-ze-spieku.html');
+const MARKI_NA_OFERCIE = {
+  'Atlas Plan': WZORY.atlas,
+  Marazzi: WZORY.marazzi,
+  Laminam: WZORY.laminam,
+  'Florim Stone': WZORY.florim,
+  Keralini: WZORY.keralini,
+};
+
+function odswiezLiczbyNaOfercie() {
+  if (!fs.existsSync(OFERTA)) return 0;
+  const surowy = fs.readFileSync(OFERTA);
+  const crlf = surowy.includes('\r\n');
+  const przed = surowy.toString('utf8').replace(/\r\n/g, '\n');
+  let t = przed;
+
+  for (const [marka, n] of Object.entries(MARKI_NA_OFERCIE)) {
+    t = t.replace(
+      // W szablonie `...` pojedyncze \d stałoby się zwykłym „d” — stąd \\d.
+      new RegExp(`(<strong>${marka}</strong> — )\\d+ dekor[a-ząćęłńóśźż]*`, 'g'),
+      `$1${zOdmiana(n, 'dekor')}`
+    );
+  }
+  // Suma — w opisie dla Google, w danych strukturalnych i w zdaniu nad listą.
+  t = t.replace(/\d+ wzor[a-ząćęłńóśźż]*\. Kalkulator wyceny/g, `${zOdmiana(WZORY.razem, 'wzor')}. Kalkulator wyceny`);
+  t = t.replace(/\d+ dekor[a-ząćęłńóśźż]* w pięciu kolekcjach/g, `${zOdmiana(WZORY.razem, 'dekor')} w pięciu kolekcjach`);
+
+  if (t === przed) return 0;
+  if (!tylkoSprawdz)
+    fs.writeFileSync(OFERTA, crlf ? t.replace(/\n/g, '\r\n') : t, 'utf8');
+  console.log(`  ${tylkoSprawdz ? '≠' : '✓'} blaty-ze-spieku.html → liczby wzorów z cenników`);
+  return 1;
+}
+
 /* ───────────────────────────────────────────────────────────── przebieg */
 
 const nowa = zbuduj();
@@ -197,7 +242,7 @@ if (trzebaPisac && !tylkoSprawdz) {
   console.log('  ≠ blaty-ze-spieku-kwarcowego-poradnik.html — nieaktualny');
 }
 
-const linkow = przelinkuj();
+const linkow = przelinkuj() + odswiezLiczbyNaOfercie();
 
 if (!trzebaPisac && !linkow) {
   console.log('\n✓ Poradnik aktualny — nic do zmiany.');

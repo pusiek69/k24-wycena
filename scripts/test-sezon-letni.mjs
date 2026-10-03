@@ -100,7 +100,10 @@ test('naturalny: Patagonia wyceniona per BLOK — bez zgodnego bloku brak promoc
 });
 
 test('naturalny: promocja podmienia cenę materiału i dokleja dopisek', () => {
-  const w = wycenZMagazynu(PLYTA(), { odcinki: KUCHNIA, opcje: OPCJE });
+  // Dzień podajemy JAWNIE. Do 30.09.2026 test brał datę dzisiejszą i przechodził
+  // sam z siebie; 1.10 kampania wygasła i ten sam test zaczął padać, choć
+  // mechanizm działa poprawnie. Sprawdzamy mechanizm, nie kalendarz.
+  const w = wycenZMagazynu(PLYTA(), { odcinki: KUCHNIA, opcje: OPCJE }, W_SEZONIE);
   assert.equal(w.ok, true, w.blad);
   // 715 netto zamiast 1400/1,23 = 1138 netto z magazynu.
   assert.ok(Math.abs(nettoM2(w) - 715) < 0.5, `netto/m2 = ${nettoM2(w)}`);
@@ -113,20 +116,27 @@ test('naturalny: promocja podmienia cenę materiału i dokleja dopisek', () => {
 
 test('naturalny: gdy magazyn jest TAŃSZY niż promocja, zostaje magazyn', () => {
   // Silk promo 715 netto; płyta za 800 brutto = 650 netto — taniej.
-  const w = wycenZMagazynu(PLYTA({ cenaBruttoM2: 800 }), { odcinki: KUCHNIA, opcje: OPCJE });
+  const w = wycenZMagazynu(PLYTA({ cenaBruttoM2: 800 }), { odcinki: KUCHNIA, opcje: OPCJE }, W_SEZONIE);
   assert.equal(w.ok, true, w.blad);
   assert.ok(Math.abs(nettoM2(w) - 800 / 1.23) < 0.5, `netto/m2 = ${nettoM2(w)}`);
   assert.ok(w.promo == null, 'bez plakietki, skoro liczymy z magazynu');
 });
 
 test('naturalny: po 30.09 wycena wraca do ceny magazynowej', () => {
-  const dzis = new Date().toISOString().slice(0, 10);
-  const w = wycenZMagazynu(PLYTA(), { odcinki: KUCHNIA, opcje: OPCJE });
-  // Test uruchamiany w trakcie sezonu korzysta z promocji; sam mechanizm
-  // powrotu sprawdza znajdzPromocjeNaturalna(PO_SEZONIE) wyżej — tu tylko
-  // pilnujemy, że dzisiejsza data w ogóle przechodzi przez tę ścieżkę.
+  // Kampania skończyła się 30.09.2026 i nikt jej nie przedłużył — od 1.10
+  // liczymy z magazynu: 1400 brutto/m² to 1138 netto, bez plakietki
+  // i bez dopisku o wyczerpaniu zapasów.
+  const w = wycenZMagazynu(PLYTA(), { odcinki: KUCHNIA, opcje: OPCJE }, PO_SEZONIE);
   assert.equal(w.ok, true, w.blad);
-  assert.ok(dzis <= '2026-09-30' ? !!w.promo : !w.promo);
+  assert.equal(w.promo, null, 'po sezonie plakietka promocji nie ma prawa zostać');
+  assert.ok(Math.abs(nettoM2(w) - 1400 / 1.23) < 0.5, `netto/m2 = ${nettoM2(w)}`);
+  assert.ok(!w.ostrzezenia.some((o) => /wyczerpania zapasów/.test(o)));
+
+  // Bez podanego dnia liczy się DZIŚ — i też ma być po cenie magazynowej,
+  // dopóki Dawid nie zdecyduje o nowej kampanii.
+  const dzisiaj = wycenZMagazynu(PLYTA(), { odcinki: KUCHNIA, opcje: OPCJE });
+  const wciazTrwa = new Date().toISOString().slice(0, 10) <= '2026-09-30';
+  assert.equal(!!dzisiaj.promo, wciazTrwa);
 });
 
 /* ─────────────────────────────────── tajemnica: zakup nie wycieka */

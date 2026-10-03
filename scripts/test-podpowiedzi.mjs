@@ -236,9 +236,17 @@ test('na realnym katalogu podpowiedzi są tańsze i w kolorze', async () => {
   const opcje = { pomieszczenie: 'kuchnia', otwory: 1 };
   const kwota = (w) => Math.round(w.razemZaokr || w.razem);
 
+  /*
+   * Punktem wyjścia jest DROGI dekor z białą żyłą z cennika podstawowego.
+   * Do 30.09.2026 test szukał tu „Calacattą”, ale ta była dekorem wyłącznie
+   * promocyjnym (`dekoryZKampaniami` dopisuje takie na czas kampanii)
+   * — 1.10 kampania wygasła, dekor zniknął i test padł, choć podpowiedzi
+   * działają bez zarzutu. Kotwica musi stać w cenniku stałym.
+   */
   const glowna = FIRMY.find((f) => f.slug === 'caesarstone');
-  const dekor = Object.keys(glowna.dekory).find((d) => /calacatta/i.test(d));
-  assert.ok(dekor, 'brak dekoru Calacatta w Caesarstone');
+  const dekor = 'Frosty Carrina';
+  assert.ok(glowna.dekory[dekor], `${dekor} wypadł z cennika stałego Caesarstone`);
+  assert.equal(kolorDekoru(dekor, 'caesarstone'), 'biel-zyla', 'kotwica ma być białą żyłą');
   const w = wycen(glowna, { dekor, grubosc: '20', odcinki, opcje });
   assert.equal(w.ok, true, w.blad);
 

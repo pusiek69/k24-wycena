@@ -110,7 +110,9 @@ export function tresc(k, w) {
       Najkrócej: <strong>gotowy blat 60 × 300 cm zaczyna się u nas od ${zl(k.spiekProste)} zł brutto</strong>,
       a kuchnia w literę L od <strong>${zl(k.spiekL)} zł brutto</strong>. Sam materiał to
       <strong>${zl(k.spiekM2Od)}–${zl(k.spiekM2Do)} zł/m² brutto</strong> — rozrzut bierze się
-      z kolekcji i grubości płyty.
+      z kolekcji i grubości płyty. Ceny wszystkich wzorów za m² i gotowego blatu
+      znajdziesz w <a href="/blaty-ze-spieku">cenniku blatów ze spieku
+      kwarcowego</a>.
     </p>
     <p>
       Większość artykułów w internecie kończy się w tym miejscu na jednym zakresie „od–do".
