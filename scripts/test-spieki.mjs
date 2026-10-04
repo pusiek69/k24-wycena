@@ -158,7 +158,14 @@ test('tytuł i opis mieszczą się w tym, co Google pokazuje', () => {
 test('frazy z Search Console są w tytule, H1 i nagłówkach', () => {
   // Dokładne frazy, które robią wyświetlenia bez kliknięć.
   const tytul = html.match(/<title>([^<]*)<\/title>/)[1].toLowerCase();
-  assert.match(tytul, /blaty ze spieku kwarcowego/);
+  /*
+   * Od 4.10.2026 tytuł poradnika celuje w „spiek kwarcowy wady/zalety",
+   * a frazę „blaty ze spieku kwarcowego" zostawia stronie oferty — obie
+   * nasze strony stały na niej obok siebie i żadna nie zbierała kliknięć
+   * (poradnik: 97 wyświetleń, poz. 27,6, zero wejść). To korekta testu
+   * do nowej decyzji, nie obejście błędu.
+   */
+  assert.match(tytul, /spiek kwarcowy/);
 
   const h1 = html.match(/<h1>([\s\S]*?)<\/h1>/)[1].replace(/<[^>]*>/g, ' ').toLowerCase();
   assert.match(h1, /spieku\s+kwarcowego/);

@@ -80,12 +80,24 @@ WZORY.razem = Object.values(WZORY).reduce((a, b) => a + b, 0);
 
 /* ────────────────────────────────────────────────────────── head i teksty */
 
-const TYTUL = 'Blaty ze spieku kwarcowego — poradnik, ceny i wady';
+/*
+ * DE-KANIBALIZACJA „blaty ze spieku kwarcowego" (K1 z planu 3.10.2026).
+ *
+ * Fraza robiła 97 wyświetleń i zero kliknięć z pozycji 27,6, bo walczyły
+ * o nią dwie nasze strony: oferta /blaty-ze-spieku (914 wyświetleń,
+ * 7 kliknięć) i ten poradnik. Frazę główną przejmuje oferta — poradnik
+ * schodzi na to, czego naprawdę dotyczy: „spiek kwarcowy wady/zalety".
+ * H1 zostaje bez zmian, bo dalej odpowiada na pytanie o ceny.
+ *
+ * Falsyfikacja (ok. 25.10): jeśli fraza główna spadnie poniżej poz. 30
+ * i oferta NIE urosnąła — wraca stary tytuł, jednym revertem.
+ */
+const TYTUL = 'Spiek kwarcowy na blat kuchenny — wady, zalety, ceny';
 
 // Do 160 znakow — dluzszy Google i tak utnie w wynikach.
 const OPIS =
-  `Blat ze spieku kwarcowego od ${zl(KWOTY.spiekProste)} zł (60 × 300 cm). Rozbicie ceny, ` +
-  'uczciwe wady, porównanie z granitem i konglomeratem. Poradnik kamieniarza.';
+  `Spiek kwarcowy na blat: uczciwe wady i zalety, rozbicie ceny od ${zl(KWOTY.spiekProste)} zł (60 × 300 cm), ` +
+  'porównanie z granitem i konglomeratem.';
 
 /* ───────────────────────────────────────────────────────────── budowanie */
 
@@ -98,7 +110,7 @@ function zbuduj() {
     ['blaty-lazienkowe', 'blaty-ze-spieku-kwarcowego-poradnik'],
     [
       '<meta property="og:title" content="Blaty łazienkowe z kamienia — co się sprawdza" />',
-      '<meta property="og:title" content="Blaty ze spieku kwarcowego — poradnik i ceny" />',
+      '<meta property="og:title" content="Spiek kwarcowy na blat — poradnik kamieniarza" />',
     ],
     [
       '<h1>Blaty<br><em>łazienkowe.</em></h1>',
