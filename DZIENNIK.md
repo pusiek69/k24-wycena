@@ -5,6 +5,35 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-04 — K1 z ACTION-PLAN: de-kanibalizacja „blaty ze spieku kwarcowego"
+
+**Problem (GSC, przed zmianą):** fraza „blaty ze spieku kwarcowego" — **97 wyświetleń, 0 kliknięć, śr. poz. 27,6**. Stały na niej DWIE nasze strony: oferta `/blaty-ze-spieku` (914 wyśw., 7 klik.) i poradnik `/blaty-ze-spieku-kwarcowego-poradnik`. Żadna nie zbierała wejść na tej frazie.
+
+**Decyzja (K1):** frazę główną przejmuje **oferta** — jej tytuł już ją niesie („Blaty ze spieku kwarcowego — cena za m², ile kosztuje blat"). Poradnik schodzi na to, czego naprawdę dotyczy.
+
+**Zmiany (commit 9d30cd3 + sitemapa afc1f12, wdrożone i sprawdzone na żywo):**
+- tytuł poradnika: „Blaty ze spieku kwarcowego — poradnik, ceny i wady" → **„Spiek kwarcowy na blat kuchenny — wady, zalety, ceny"** (52 zn.)
+- `og:title` → „Spiek kwarcowy na blat — poradnik kamieniarza"
+- opis → „Spiek kwarcowy na blat: uczciwe wady i zalety, rozbicie ceny od 8 500 zł (60 × 300 cm), porównanie z granitem i konglomeratem." (126 zn.)
+- `test-spieki.mjs`: asercja tytułu `/blaty ze spieku kwarcowego/` → `/spiek kwarcowy/` — przybijała poprzednią strategię, nie błąd. Limit 60 znaków i ≤160 dla opisu nadal pilnowany.
+- H1 i treść bez zmian (poradnik dalej odpowiada na pytanie o cenę, tylko nie licytuje się z własną ofertą).
+
+Źródła prawdy: tytuł i opis siedzą w `scripts/strona-spieki.mjs` — ręczna zmiana w HTML wróciłaby przy pierwszym `npm run spieki`.
+
+**Bramka:** 930/930 testów, checklista §8, build i bundle czyste. Sitemapa: 1 data. Jeden push. Wcześniejsze commity (`a0c0a6d`, `babf68a`) były już na `origin` — nic nie zalegało.
+
+**Zgłoszone do indeksowania w GSC (4.10):** `/blaty-ze-spieku-kwarcowego-poradnik` i `/blaty-ze-spieku` — oba potwierdzone („Przesłano prośbę o zindeksowanie").
+
+**Zauważone przy okazji (rekomendacje GSC):** poradnik spieków **+249% wyświetleń**, `/blaty-kuchenne-tarnobrzeg` nadal **−64%** (drugi odczyt z rzędu — do diagnozy fraza po frazie, pozycja K-next).
+
+**Falsyfikacja (ok. 25.10):** jeśli „blaty ze spieku kwarcowego" spadnie poniżej poz. 30 i oferta NIE urośnie — wracamy do starego tytułu jednym revertem.
+
+**Do obserwacji (porównać ok. 18–25.10):**
+- „blaty ze spieku kwarcowego": poz. 27,6 / 97 wyśw. / 0 klik. — czy pozycja idzie w górę po stronie oferty
+- poradnik: czy zaczyna łapać frazy „spiek kwarcowy wady/zalety"
+
+---
+
 ## 2026-10-03 — sesja SEO: przegląd GSC, CTA w opisach, indeksowanie
 
 **Stan GSC (28 dni, 2–29.09):** 72 kliknięcia · 3 780 wyświetleń · CTR 1,9% · śr. pozycja 18,6 · 243 frazy · 38 stron zindeksowanych (3 nie).
