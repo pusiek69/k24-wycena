@@ -402,6 +402,15 @@
     # wysyłkę danych w nieznane miejsce.
     Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.interstone.pl https://www.googletagmanager.com https://pagead2.googlesyndication.com https://www.google-analytics.com https://www.google.com https://www.google.pl https://googleads.g.doubleclick.net https://www.facebook.com; connect-src 'self' https://*.workers.dev https://www.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://www.google.pl https://connect.facebook.net https://www.facebook.com; frame-src https://td.doubleclick.net https://www.googletagmanager.com; font-src 'self' data:; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self'"
 
+# /llms.txt — wizytówka strony dla modelów językowych (5.10.2026).
+# Netlify rozpoznałoby .txt samo, ale bez `charset=utf-8` polskie znaki
+# potrafią dojść do czytnika jako krzaki — a plik jest w całości po polsku.
+[[headers]]
+  for = "/llms.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=3600"
+
 [[headers]]
   for = "/assets/*"
   [headers.values]

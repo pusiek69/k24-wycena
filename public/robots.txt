@@ -6,4 +6,52 @@ Allow: /
 Disallow: /dziekujemy
 Disallow: /dziekujemy.html
 
+# CRAWLERY AI (5.10.2026). Reguła „User-agent: *" i tak ich nie blokuje,
+# ale wymieniamy je z nazwy świadomie: zablokowany GPTBot to brak firmy
+# w ChatGPT Search, a to dziś realne źródło zapytań o blaty. Gdyby kiedyś
+# miały zostać zablokowane, to musi być decyzja, a nie przypadek.
+#
+# ⚠ Własna grupa ZASTĘPUJE reguły z „*" dla danego bota, nie dokłada się
+# do nich — dlatego każda powtarza wyłączenie strony podziękowania.
+
+User-agent: GPTBot
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /dziekujemy
+Disallow: /dziekujemy.html
+
 Sitemap: https://kam24h.pl/sitemap.xml

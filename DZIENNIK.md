@@ -5,6 +5,28 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-05 — /llms.txt: wizytówka strony dla modeli językowych (GEO)
+
+**K1 z 4.10 sprawdzone:** tytuł poradnika spieków „Spiek kwarcowy na blat kuchenny — wady, zalety, ceny" jest na produkcji, commity `9d30cd3`, `afc1f12`, `4077c29` na `origin`, drzewo czyste. Nic nie zalegało.
+
+**NOWE — `/llms.txt`** (wg specyfikacji ze skilla `geo-seo`; plik ma go dziś <5% stron):
+
+- 60 linii (limit 50–150), nagłówek `# Kamieniarstwo 24h (Aaron sp. z o.o.)`, opis 181 znaków (limit 200), **24 wpisy** (limit 10–30) w sekcjach: Wycena i kalkulator · Oferta · Poradniki i baza wiedzy · Obszar działania · O firmie · Key Facts · Contact.
+- Opisy konkretne, bez marketingu („pojedyncze płyty z magazynu w niższej cenie, z podanym wymiarem i numerem bloku"), 8–35 słów.
+- **Bez kwot** — świadomie. Ceny „od…" chodzą za cennikami dostawców (30.09 wygasły cztery kampanie i próg spieku skoczył o 1 200 zł), a tego pliku nikt nie przelicza. Zamiast liczb: odesłanie do kalkulatora.
+- Dane firmowe wzięte ze stopki serwisu, nie z pamięci: Aaron sp. z o.o., NIP 8672241748, ul. Szpitalna 8. **KRS pominięty — nie ma go nigdzie w repo, a nie zgaduję numerów rejestrowych.**
+- ⚠ **Rozjazd do wyjaśnienia z Dawidem:** zlecenie mówiło „rok zał. 2016", a cała strona (index, /o-mnie, stopki) mówi **„od 2014 roku"**. W pliku jest 2014 — zgodnie ze stroną. Jeśli 2016 to data rejestracji spółki, warto dopisać oba fakty osobno.
+
+**robots.txt:** osiem crawlerów AI wymienionych z nazwy z `Allow: /` — GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, PerplexityBot, Google-Extended, Applebot-Extended. Pułapka, w którą łatwo wejść: **własna grupa ZASTĘPUJE reguły z „*", nie dokłada się do nich** — bez powtórzenia `Disallow: /dziekujemy` w każdej grupie strona podziękowania (cel konwersji Google Ads/Meta) zrobiłaby się nagle crawlowalna dla AI. Każda grupa ją powtarza.
+
+**Netlify:** własny nagłówek dla `/llms.txt` — `text/plain; charset=utf-8` (bez `charset` polskie znaki potrafią dojść jako krzaki) plus `Cache-Control: public, max-age=3600`.
+
+**Nowy test `scripts/test-llms.mjs` (7 asercji):** struktura i długość pliku, format wpisów, **każdy URL ma swój plik w repo** (martwy link w llms.txt jest gorszy niż jego brak — model zacytuje 404), brak kwot, adres tylko Szpitalna 8 (żadnej Bemy), `Allow` dla crawlerów AI razem z wyłączeniem `/dziekujemy`, nagłówek w netlify.toml.
+
+**Bramka:** 937/937 testów (było 930), checklista §8, build i bundle czyste. Jeden push.
+
+**Do obserwacji:** czy ChatGPT/Perplexity zaczną cytować kam24h.pl przy pytaniach o blaty w Tarnobrzegu i okolicy; plik przejrzeć przy następnej większej zmianie treści (kwartalnie), szczególnie listę miast i poradników.
+
 ## 2026-10-04 — K1 z ACTION-PLAN: de-kanibalizacja „blaty ze spieku kwarcowego"
 
 **Problem (GSC, przed zmianą):** fraza „blaty ze spieku kwarcowego" — **97 wyświetleń, 0 kliknięć, śr. poz. 27,6**. Stały na niej DWIE nasze strony: oferta `/blaty-ze-spieku` (914 wyśw., 7 klik.) i poradnik `/blaty-ze-spieku-kwarcowego-poradnik`. Żadna nie zbierała wejść na tej frazie.
