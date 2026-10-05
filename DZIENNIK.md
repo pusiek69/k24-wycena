@@ -25,6 +25,25 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 **Bramka:** 937/937 testów (było 930), checklista §8, build i bundle czyste. Jeden push.
 
+### K3 (ten sam dzień, osobny push) — strona główna niesie frazę „wycena blatu online"
+
+Sekcja na „/" nazywała się „Jak to działa" — nagłówek, który nie mówi Google'owi
+nic o tym, co ta strona robi. Teraz:
+
+- H2: „Jak to działa" → **„Jak działa wycena blatu online"**
+- pierwszy krok: „…Kilka pytań, bez formularzy **— wycena online w 2 minuty.**"
+
+Zmieniony wyłącznie tekst w `index.html`; `#kreator` i skrypty kalkulatora
+nietknięte. Test w `test-miasta.mjs` pilnuje obu rzeczy naraz (nagłówek
+i fraza w pierwszym kroku) — 938/938 zielone.
+
+**Zgłoszone do indeksowania (5.10):** `/` oraz `/blaty-ze-spieku-kwarcowego-poradnik`.
+Ten drugi był już zgłaszany 4.10 razem z `/blaty-ze-spieku`; zgłoszony ponownie,
+bo tytuł z K1 wszedł na produkcję tego samego dnia i drugie zgłoszenie nic nie psuje.
+
+**Dwa pushe tego dnia** (llms.txt osobno, K3 osobno) — llms.txt poszło, zanim
+dotarło zlecenie K3.
+
 **Do obserwacji:** czy ChatGPT/Perplexity zaczną cytować kam24h.pl przy pytaniach o blaty w Tarnobrzegu i okolicy; plik przejrzeć przy następnej większej zmianie treści (kwartalnie), szczególnie listę miast i poradników.
 
 ## 2026-10-04 — K1 z ACTION-PLAN: de-kanibalizacja „blaty ze spieku kwarcowego"

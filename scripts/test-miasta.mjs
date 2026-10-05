@@ -636,3 +636,22 @@ test('TYTUŁ STRONY GŁÓWNEJ niesie markę, miasto i mieści się w wyniku Goog
   assert.match(tytul, /Tarnobrzeg/, 'tytuł „/” zgubił miasto');
   assert.match(tytul, /blatu|blaty/i, 'tytuł „/” zgubił to, co sprzedajemy');
 });
+
+test('STRONA GŁÓWNA niesie frazę „wycena blatu online" w sekcji „Jak to działa"', () => {
+  /*
+   * K3 z planu 3.10.2026: fraza „wycena blatu online" nie występowała na „/"
+   * w żadnym nagłówku — sekcja nazywała się „Jak to działa", czyli nie mówiła
+   * Google'owi nic o tym, co ta strona robi (5.10.2026). Zmieniony jest
+   * WYŁĄCZNIE tekst — kreator i skrypty kalkulatora zostają nietknięte.
+   */
+  const glowna = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(glowna, /<h2>Jak działa wycena blatu online<\/h2>/);
+
+  const sekcja = glowna.slice(glowna.indexOf('Jak działa wycena blatu online'));
+  const pierwszyKrok = sekcja.slice(0, sekcja.indexOf('</li>'));
+  assert.match(
+    pierwszyKrok.replace(/\s+/g, ' '),
+    /wycena online w 2 minuty/,
+    'pierwszy krok zgubił frazę „wycena online w 2 minuty"'
+  );
+});
