@@ -45,6 +45,8 @@ Największy rozjazd był przy robociźnie: 3 500 → 6 000 zł, czyli efekt decy
 
 **Zgłoszone do indeksowania (6.10):** `/blaty-z-konglomeratu-kwarcowego-poradnik` (akapit-odpowiedź), `/baza-wiedzy/kwarcyt-czy-granit` i `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety` (poprawione progi cenowe). Adresu pod 301 nie zgłaszamy — nie ma czego indeksować.
 
+**Z GSC przy zgłaszaniu:** `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety` **nie było w indeksie w ogóle** — „Adres URL jest Google nieznany", mimo że strona jest w sitemapie i linkują do niej inne strony bazy wiedzy. Teraz zgłoszona; jeśli za dwa tygodnie dalej będzie poza indeksem, to temat na osobną pozycję w kolejce (sprawdzić canonical i linkowanie wewnętrzne).
+
 **Do obserwacji (ok. 20.10):** `/baza-wiedzy/cena-blatu-z-konglomeratu` — poz. 11,8 i 82 wyświetlenia przy 0 kliknięć; czy akapit-odpowiedź wyciągnie stronę na 1. stronę wyników.
 
 ## 2026-10-05 — /llms.txt: wizytówka strony dla modeli językowych (GEO)
