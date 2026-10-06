@@ -202,3 +202,57 @@ test('opisy meta mieszczą się w tym, co Google pokazuje', () => {
     assert.ok(opis.length <= 175, `${p}: opis ma ${opis.length} znaków — Google utnie`);
   }
 });
+
+/* ──────────────────── artykuł o cenie: akapit-odpowiedź (K4, 6.10.2026) */
+
+const CENA = 'baza-wiedzy/cena-blatu-z-konglomeratu.html';
+
+test('artykuł o cenie otwiera się bezpośrednią odpowiedzią z kwotą z cennika', () => {
+  /*
+   * Strona stała na pozycji 11,8 przy 82 wyświetleniach — tuż pod progiem
+   * pierwszej strony i bez bloku, który Google mógłby wyciąć jako odpowiedź.
+   * Akapit pod H1 podaje kwotę wprost, w pierwszym zdaniu.
+   *
+   * Kwota MUSI iść z `ceny-tresc.json`, bo to jedyne miejsce, które nadąża
+   * za cennikiem — do 6.10.2026 ten artykuł obiecywał „od 4 400 zł", kiedy
+   * kalkulator liczył już 7 650: `ceny-tresc.mjs` czytał wyłącznie katalog
+   * główny i nigdy tu nie zaglądał.
+   */
+  const t = zrodlo(CENA);
+  const pod = t.slice(t.indexOf('</nav>'), t.indexOf('<h2>Widełki na start</h2>'));
+
+  const zl = (v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  assert.ok(
+    pod.includes(`od ${zl(KWOTY.konglomeratProste)} zł`),
+    `akapit-odpowiedź nie podaje aktualnego progu ${zl(KWOTY.konglomeratProste)} zł`
+  );
+  assert.ok(
+    pod.includes(`${zl(KWOTY.konglomeratM2Od)}–${zl(KWOTY.konglomeratM2Do)} zł/m²`),
+    'akapit-odpowiedź nie podaje aktualnego zakresu zł/m²'
+  );
+
+  // Link do cennika dokładnie tą kotwicą — po to ten akapit powstał.
+  assert.match(pod, /<a href="\/blaty-z-konglomeratu">wzory konglomeratu<\/a>/);
+
+  // 40–60 słów: krócej nie niesie odpowiedzi, dłużej nie wejdzie do snippetu.
+  const slowa = pod
+    .slice(pod.indexOf('<p>'), pod.indexOf('</p>'))
+    .replace(/<[^>]+>/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean).length;
+  assert.ok(slowa >= 40 && slowa <= 60, `akapit ma ${slowa} słów, ma mieć 40–60`);
+});
+
+test('artykuł o cenie nie zostaje przy kwotach sprzed zmiany cennika', () => {
+  // Te trzy strony bazy wiedzy podają progi, a do 6.10.2026 nie zaglądał
+  // do nich ani `ceny-tresc.mjs`, ani checklista.
+  const historia = JSON.parse(zrodlo('scripts/lib/ceny-tresc.json')).historia || [];
+  for (const plik of [CENA, 'baza-wiedzy/kwarcyt-czy-granit.html', 'baza-wiedzy/spiek-kwarcowy-wady-i-zalety.html']) {
+    const t = zrodlo(plik);
+    const stare = historia.filter((v) => {
+      const zOdstepem = String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return t.includes(`od ${zOdstepem} zł`) || t.includes(`od ${v} zł`);
+    });
+    assert.deepEqual(stare, [], `${plik}: wycofane kwoty w formie progu: ${stare.join(', ')}`);
+  }
+});

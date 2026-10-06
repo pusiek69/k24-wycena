@@ -5,6 +5,44 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-06 — K4: akapit-odpowiedź o cenie + trzy strony bazy wiedzy z cenami sprzed wygaśnięcia kampanii
+
+**Kontrola wczorajszego:** K3 („Jak działa wycena blatu online" + „wycena online w 2 minuty" w kroku 1) i `/llms.txt` (200, `text/plain; charset=utf-8`) są na produkcji, `origin` równy, drzewo czyste. Nic do nadrobienia.
+
+**K4 (zlecone):** pod H1 na `/baza-wiedzy/cena-blatu-z-konglomeratu` wszedł akapit-odpowiedź, 58 słów, pierwsze zdanie z kwotą:
+
+> **Blat z konglomeratu kwarcowego 60 × 300 cm kosztuje u nas od 7 650 zł brutto** — razem z obróbką i montażem. Sam materiał to 505–2 451 zł/m² brutto i to on decyduje o kwocie: robocizna jest taka sama dla każdego dekoru. Dokładną cenę dla konkretnych wymiarów policzy kalkulator, a [wzory konglomeratu](/blaty-z-konglomeratu) można obejrzeć w cenniku.
+
+Liczby z `lib/ceny-tresc.json`, kotwica dokładnie jak w planie. Strona stała na poz. 11,8 przy 82 wyświetleniach.
+
+### ⚠ Znalezione przy okazji: baza wiedzy nigdy nie była objęta synchronizacją cen
+
+`ceny-tresc.mjs` i checklista §8.17 czytały **wyłącznie katalog główny** (`readdirSync(ROOT)`), więc `baza-wiedzy/` nie była aktualizowana od miesięcy. Dopisanie akapitu „od 7 650 zł" nad tabelą mówiącą „od 4 400 zł" byłoby publikacją sprzeczności, więc strony doprowadzone do zgodności z silnikiem (liczby policzone na 223 dekorach konglomeratu, blat 60 × 300 z obróbką, wycięciami i montażem):
+
+| Miejsce | Było | Jest |
+|---|---|---|
+| widełki: budżetowo | od 4 400 zł | **od 7 650 zł** (minimum z cennika) |
+| widełki: środek stawki | 6 000 – 7 000 zł | **9 400 – 11 450 zł** (kwartyle) |
+| widełki: premium | 10 000 zł i więcej | **11 500 zł i więcej** (maks. 16 800) |
+| przykład kuchni w L: materiał | 5 800 zł | **6 100 zł** |
+| przykład: produkcja i montaż | 3 500 zł | **6 000 zł** |
+| przykład: razem | 9 300 zł | **12 100 zł** |
+| opis dla Google (4 miejsca) | od 4 400 zł | **od 7 650 zł** |
+| `/baza-wiedzy/kwarcyt-czy-granit` | od 4 400 zł | **od 7 650 zł** |
+| `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety` | od 4 500 zł, gres od 6 700 zł | **od 8 500 zł**, bez osobnego progu dla gresu (najtańszy spiek to dziś gres Keralini — 8 500 zł) |
+
+Największy rozjazd był przy robociźnie: 3 500 → 6 000 zł, czyli efekt decyzji cenowej z 17.09 (1 500 zł podstawy + 150 zł/m²) plus montaż. Cennika źródłowego nikt nie dotykał — to te same liczby, które kalkulator liczy od 1.10.
+
+**Naprawione u źródła, nie na stronach:** `ceny-tresc.mjs` i checklista §8.17 obejmują teraz także `baza-wiedzy/*.html`. Przy okazji wyszło, że kontrola kwot wycofanych łapała je zwykłym `includes` — „16 800 zł" zawiera „6 800 zł", a składniki przykładowej wyceny nie są progami. Teraz szuka wyłącznie formy progowej „od X zł"; sprawdzone w obie strony (wstrzyknięte „od 4 400 zł" → czerwone, usunięte → zielone).
+
+**Dwa nowe testy** w `test-konglomeraty.mjs`: akapit-odpowiedź ma mieć 40–60 słów, aktualny próg i zakres zł/m² z `ceny-tresc.json` oraz kotwicę „wzory konglomeratu"; żadna z trzech stron bazy wiedzy nie może podawać progu z listy kwot wycofanych.
+
+**Bramka:** 940/940 testów (było 938), checklista §8 cała zielona, build, bundle i przegląd produkcji czyste. Jeden push.
+
+**Zgłoszone do indeksowania (6.10):** `/baza-wiedzy/cena-blatu-z-konglomeratu`, `/baza-wiedzy/kwarcyt-czy-granit`, `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety`.
+
+**Do obserwacji (ok. 20.10):** `/baza-wiedzy/cena-blatu-z-konglomeratu` — poz. 11,8 i 82 wyświetlenia przy 0 kliknięć; czy akapit-odpowiedź wyciągnie stronę na 1. stronę wyników.
+
 ## 2026-10-05 — /llms.txt: wizytówka strony dla modeli językowych (GEO)
 
 **K1 z 4.10 sprawdzone:** tytuł poradnika spieków „Spiek kwarcowy na blat kuchenny — wady, zalety, ceny" jest na produkcji, commity `9d30cd3`, `afc1f12`, `4077c29` na `origin`, drzewo czyste. Nic nie zalegało.

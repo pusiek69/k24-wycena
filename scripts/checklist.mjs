@@ -236,10 +236,14 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
     ['spiek 60×300', p.spiek.proste],
     ['spiek L', p.spiek.wL],
   ];
-  const strony = fs
-    .readdirSync(ROOT)
-    .filter((f) => f.endsWith('.html') && f !== 'podglad.html')
-    .map((f) => czytaj(f));
+  // Razem z `baza-wiedzy/` (6.10.2026) — tam też stoją progi „od… zł",
+  // a do tego dnia nikt ich nie sprawdzał ani nie odświeżał.
+  const wKatalogu = (k) =>
+    fs
+      .readdirSync(k)
+      .filter((f) => f.endsWith('.html') && f !== 'podglad.html')
+      .map((f) => czytaj(path.relative(ROOT, path.join(k, f)).split(path.sep).join('/')));
+  const strony = [...wKatalogu(ROOT), ...wKatalogu(path.join(ROOT, 'baza-wiedzy'))];
   const cala = strony.join('\n');
 
   // Każdy próg musi być gdzieś w treści; żadna wersja pamiętana jako
@@ -253,11 +257,19 @@ ok(16, 'link „Zobacz dekory" prowadzi do jednej marki', wielomarkowe.length ==
     spiekL: p.spiek.wL,
   }).filter(([k, v]) => stan.kwoty[k] !== v);
 
-  // Kwoty wycofane nie mogą wrócić do treści — to łapie ręczną edycję strony,
-  // której samo porównanie pamięci z silnikiem by nie zauważyło.
-  const wrocily = (stan.historia || []).filter((v) =>
-    zapisy(v).some((z) => cala.includes(`${z} zł`) || cala.includes(`${z}&nbsp;zł`))
-  );
+  /*
+   * Kwoty wycofane nie mogą wrócić do treści — to łapie ręczną edycję strony,
+   * której samo porównanie pamięci z silnikiem by nie zauważyło.
+   *
+   * Szukamy WYŁĄCZNIE formy progowej „od 4 400 zł". Zwykłe `includes`
+   * łapało też kwoty w środku zdań i — gorzej — w środku innych liczb:
+   * „16 800 zł" zawiera „6 800 zł". Po dołożeniu `baza-wiedzy/`
+   * (6.10.2026) takich zdań przybyło, bo artykuły podają też kwoty,
+   * które progami nie są — składniki przykładowej wyceny.
+   */
+  const jakProg = (z) =>
+    new RegExp(`od\\s+${z.replace(/\\s/g, '\\s')}(?:\\s|&nbsp;)z\u0142`).test(cala);
+  const wrocily = (stan.historia || []).filter((v) => zapisy(v).some(jakProg));
 
   const problemy = [
     ...brakuje.map(([n]) => `brak progu: ${n}`),
