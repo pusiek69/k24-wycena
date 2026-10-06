@@ -205,9 +205,13 @@ test('opisy meta mieszczą się w tym, co Google pokazuje', () => {
 
 /* ──────────────────── artykuł o cenie: akapit-odpowiedź (K4, 6.10.2026) */
 
-const CENA = 'baza-wiedzy/cena-blatu-z-konglomeratu.html';
-
-test('artykuł o cenie otwiera się bezpośrednią odpowiedzią z kwotą z cennika', () => {
+/*
+ * ⚠ `baza-wiedzy/cena-blatu-z-konglomeratu` NIE jest stroną — od 01.09.2026
+ * idzie 301 na ten poradnik i jest wyłączona z buildu. Plan SEO wskazywał
+ * tamten adres (GSC pokazuje go dalej, bo stary URL siedzi w indeksie),
+ * ale akapit-odpowiedź ma sens wyłącznie tam, gdzie klient naprawdę trafia.
+ */
+test('poradnik otwiera się bezpośrednią odpowiedzią z kwotą z cennika', () => {
   /*
    * Strona stała na pozycji 11,8 przy 82 wyświetleniach — tuż pod progiem
    * pierwszej strony i bez bloku, który Google mógłby wyciąć jako odpowiedź.
@@ -218,8 +222,9 @@ test('artykuł o cenie otwiera się bezpośrednią odpowiedzią z kwotą z cenni
    * kalkulator liczył już 7 650: `ceny-tresc.mjs` czytał wyłącznie katalog
    * główny i nigdy tu nie zaglądał.
    */
-  const t = zrodlo(CENA);
-  const pod = t.slice(t.indexOf('</nav>'), t.indexOf('<h2>Widełki na start</h2>'));
+  const t = zrodlo(PORADNIK);
+  // Pierwszy akapit po okruszkach — ten, który czyta i cytuje wyszukiwarka.
+  const pod = t.slice(t.indexOf('</nav>'), t.indexOf('</p>', t.indexOf('</nav>')) + 4);
 
   const zl = (v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   assert.ok(
@@ -236,7 +241,7 @@ test('artykuł o cenie otwiera się bezpośrednią odpowiedzią z kwotą z cenni
 
   // 40–60 słów: krócej nie niesie odpowiedzi, dłużej nie wejdzie do snippetu.
   const slowa = pod
-    .slice(pod.indexOf('<p>'), pod.indexOf('</p>'))
+    .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .split(/\s+/)
     .filter(Boolean).length;
@@ -247,7 +252,12 @@ test('artykuł o cenie nie zostaje przy kwotach sprzed zmiany cennika', () => {
   // Te trzy strony bazy wiedzy podają progi, a do 6.10.2026 nie zaglądał
   // do nich ani `ceny-tresc.mjs`, ani checklista.
   const historia = JSON.parse(zrodlo('scripts/lib/ceny-tresc.json')).historia || [];
-  for (const plik of [CENA, 'baza-wiedzy/kwarcyt-czy-granit.html', 'baza-wiedzy/spiek-kwarcowy-wady-i-zalety.html']) {
+  const STRONY_BAZY = [
+    'baza-wiedzy/cena-blatu-z-konglomeratu.html', // pod 301, ale trzymamy w zgodzie
+    'baza-wiedzy/kwarcyt-czy-granit.html',
+    'baza-wiedzy/spiek-kwarcowy-wady-i-zalety.html',
+  ];
+  for (const plik of STRONY_BAZY) {
     const t = zrodlo(plik);
     const stare = historia.filter((v) => {
       const zOdstepem = String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');

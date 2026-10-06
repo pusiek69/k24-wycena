@@ -9,11 +9,15 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 **Kontrola wczorajszego:** K3 („Jak działa wycena blatu online" + „wycena online w 2 minuty" w kroku 1) i `/llms.txt` (200, `text/plain; charset=utf-8`) są na produkcji, `origin` równy, drzewo czyste. Nic do nadrobienia.
 
-**K4 (zlecone):** pod H1 na `/baza-wiedzy/cena-blatu-z-konglomeratu` wszedł akapit-odpowiedź, 58 słów, pierwsze zdanie z kwotą:
+**K4 — UWAGA, plan wskazywał nieistniejącą stronę.** `/baza-wiedzy/cena-blatu-z-konglomeratu` od **01.09.2026 idzie 301** na poradnik filarowy i jest wyłączona z buildu (likwidacja kanibalizacji). GSC pokazuje ten adres dalej, bo stary URL siedzi w indeksie — stąd „poz. 11,8, 82 wyświetlenia" w planie. Akapit wszedł więc tam, gdzie klient naprawdę trafia: na `/blaty-z-konglomeratu-kwarcowego-poradnik`, i to **przez generator** (`lib/tresc-konglomeraty.mjs`), bo ręczna zmiana w HTML wróciłaby przy pierwszym `npm run konglomeraty`.
+
+Poradnik otwierał się uwagą, że konkurencja nie podaje kwot — prawdziwie, ale to nie jest odpowiedź na pytanie z wyszukiwarki. Teraz pierwszy akapit po okruszkach brzmi:
 
 > **Blat z konglomeratu kwarcowego 60 × 300 cm kosztuje u nas od 7 650 zł brutto** — razem z obróbką i montażem. Sam materiał to 505–2 451 zł/m² brutto i to on decyduje o kwocie: robocizna jest taka sama dla każdego dekoru. Dokładną cenę dla konkretnych wymiarów policzy kalkulator, a [wzory konglomeratu](/blaty-z-konglomeratu) można obejrzeć w cenniku.
 
-Liczby z `lib/ceny-tresc.json`, kotwica dokładnie jak w planie. Strona stała na poz. 11,8 przy 82 wyświetleniach.
+> **Blat z konglomeratu kwarcowego 60 × 300 cm kosztuje u nas od 7 650 zł brutto** — razem z obróbką, wycięciami i montażem. Sam materiał to 505–2 451 zł/m² brutto i to on decyduje o kwocie: robocizna jest taka sama dla każdego dekoru. Kuchnia w L zaczyna się od 8 650 zł, a [wzory konglomeratu](/blaty-z-konglomeratu) można obejrzeć w cenniku.
+
+Wszystkie kwoty z `ceny-tresc.json`, kotwica dokładnie jak w planie. Ten sam akapit (w wersji bez kuchni w L) został też w pliku strony pod 301 — nieserwowanym, ale trzymanym w zgodzie z cennikiem.
 
 ### ⚠ Znalezione przy okazji: baza wiedzy nigdy nie była objęta synchronizacją cen
 
@@ -39,7 +43,7 @@ Największy rozjazd był przy robociźnie: 3 500 → 6 000 zł, czyli efekt decy
 
 **Bramka:** 940/940 testów (było 938), checklista §8 cała zielona, build, bundle i przegląd produkcji czyste. Jeden push.
 
-**Zgłoszone do indeksowania (6.10):** `/baza-wiedzy/cena-blatu-z-konglomeratu`, `/baza-wiedzy/kwarcyt-czy-granit`, `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety`.
+**Zgłoszone do indeksowania (6.10):** `/blaty-z-konglomeratu-kwarcowego-poradnik` (akapit-odpowiedź), `/baza-wiedzy/kwarcyt-czy-granit` i `/baza-wiedzy/spiek-kwarcowy-wady-i-zalety` (poprawione progi cenowe). Adresu pod 301 nie zgłaszamy — nie ma czego indeksować.
 
 **Do obserwacji (ok. 20.10):** `/baza-wiedzy/cena-blatu-z-konglomeratu` — poz. 11,8 i 82 wyświetlenia przy 0 kliknięć; czy akapit-odpowiedź wyciągnie stronę na 1. stronę wyników.
 

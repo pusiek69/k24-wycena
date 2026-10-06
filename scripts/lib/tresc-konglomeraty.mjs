@@ -131,6 +131,22 @@ export function tresc(k, w) {
       <a href="/">Strona główna</a> <span aria-hidden="true">›</span> <span>Poradnik: blaty z konglomeratu kwarcowego</span>
     </nav>
 
+    <!--
+      AKAPIT-ODPOWIEDŹ (K4, 6.10.2026). Pierwsze zdanie musi nieść kwotę
+      i stać samodzielnie — to z niego Google składa wyróżniony fragment,
+      a modele językowe cytują pasaż, który odpowiada od razu. Wcześniej
+      strona otwierała się uwagą o tym, że konkurencja nie podaje kwot —
+      prawdziwie, ale to nie jest odpowiedź na pytanie z wyszukiwarki.
+    -->
+    <p>
+      <strong>Blat z konglomeratu kwarcowego 60 × 300 cm kosztuje u nas
+      od ${zl(k.konglomeratProste)} zł brutto</strong> — razem z obróbką, wycięciami
+      i montażem. Sam materiał to ${zl(k.konglomeratM2Od)}–${zl(k.konglomeratM2Do)} zł/m²
+      brutto i to on decyduje o kwocie: robocizna jest taka sama dla każdego dekoru.
+      Kuchnia w L zaczyna się od ${zl(k.konglomeratL)} zł, a
+      <a href="/blaty-z-konglomeratu">wzory konglomeratu</a> można obejrzeć w cenniku.
+    </p>
+
     <p>
       O konglomeracie kwarcowym napisano w internecie bardzo dużo i bardzo niewiele
       konkretów. Sprawdziliśmy artykuły, które Google pokazuje najwyżej na hasło
