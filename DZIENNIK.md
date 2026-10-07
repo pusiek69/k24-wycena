@@ -5,6 +5,32 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-07 — kontrola + K5: opis Lublina z konkretem dojazdowym
+
+**Kontrola (wszystko na produkcji, nic do nadrabiania):**
+- K3 — „Jak działa wycena blatu online" + „wycena online w 2 minuty" w pierwszym kroku ✔
+- `/llms.txt` — 200, `text/plain; charset=utf-8` ✔
+- **K4 był zrobiony wczoraj**, tyle że nie tam, gdzie wskazywał plan: `/baza-wiedzy/cena-blatu-z-konglomeratu` idzie 301 od 01.09 i jest wyłączona z buildu, więc akapit-odpowiedź stoi na `/blaty-z-konglomeratu-kwarcowego-poradnik` — sprawdzone dziś na żywo ✔
+
+**K5 (dzisiejsza pozycja z kolejki):** Lublin ma 194 wyświetlenia i pozycję 12,6 przy **CTR 1,5%** — rośnie sam, mimo braku priorytetu. W opisie nie było żadnego konkretu o dojeździe, a przy mieście spoza promienia bezpłatnego pomiaru to pierwsze pytanie klienta.
+
+**Dystans sprawdzony w Mapach dziś (nie przepisany):** Szpitalna 8 → Lublin **158 km / 1 h 50** trasą S19; warianty 154 km / 1 h 51 (DW871 + S19) i 142 km / 1 h 53 (DK74 + S19). Dane miasta mówią 160 km — zgodne z zasadą „obiecany dojazd nie krótszy niż prawdziwy".
+
+| | |
+|---|---|
+| było | Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. Wycena online w 2 minuty, pomiar i montaż, dojazd ustalany indywidualnie. |
+| jest | **Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat. 160 km z Tarnobrzega, niecałe dwie godziny drogi. Wycena online w 2 minuty, dojazd indywidualnie.** (158 znaków) |
+
+„Dojazd indywidualnie" zostaje świadomie — Lublin leży poza promieniem bezpłatnego pomiaru i opis nie może sugerować inaczej.
+
+**Złapane przez własny test:** pierwsza wersja opisu mówiła „niecałe 2 godziny" (cyfrą), a strona w treści — „niecałe dwie godziny drogi". Test spójności czasów dojazdu z 28.09 czyta opis razem z treścią i zobaczył rozjazd 60 vs 105 minut, bo cyfrowej formy nie zna. Opis przepisany słownie; wersja cyfrowa nie wróci niezauważona.
+
+**Bramka:** 940/940 testów, checklista §8, build i bundle czyste. Jeden push.
+
+**Zgłoszone do indeksowania (7.10):** `/blaty-kuchenne-lublin`.
+
+**Do obserwacji (ok. 21.10):** Lublin — CTR 1,5% przy poz. 12,6 i 194 wyświetleniach; czy konkret dojazdowy w opisie podniesie klikalność.
+
 ## 2026-10-06 — K4: akapit-odpowiedź o cenie + trzy strony bazy wiedzy z cenami sprzed wygaśnięcia kampanii
 
 **Kontrola wczorajszego:** K3 („Jak działa wycena blatu online" + „wycena online w 2 minuty" w kroku 1) i `/llms.txt` (200, `text/plain; charset=utf-8`) są na produkcji, `origin` równy, drzewo czyste. Nic do nadrobienia.

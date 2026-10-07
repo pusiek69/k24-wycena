@@ -235,10 +235,22 @@ export const MIASTA = [
     czas: 'niecałe dwie godziny drogi',
     krotki: 'Dalej niż nasz standardowy promień — warunki dojazdu ustalamy indywidualnie.',
     // Pod „blaty kuchenne kamienne lublin" (11,4 / 12 wyśw.) i „blaty lublin" — zmiana z 15.09.2026.
+    /*
+     * K5 (7.10.2026): Lublin rośnie sam — 194 wyświetlenia, pozycja 12,6,
+     * ale CTR 1,5%. W opisie nie było żadnego konkretu o dojezdzie, a przy
+     * mieście spoza promienia to pierwsze pytanie klienta. Dystans
+     * sprawdzony w Mapach 7.10: **158 km / 1 h 50** trasą S19 (warianty
+     * 154 km / 1 h 51 i 142 km / 1 h 53) — zaokrąglamy w górę do 160 km,
+     * zgodnie z zasadą „obiecany dojazd nie krótszy niż prawdziwy".
+     * „Dojazd indywidualnie" zostaje: Lublin jest poza promieniem
+     * bezpłatnego pomiaru i opis nie może sugerować inaczej.
+     */
     tytul: 'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat',
     opis:
-      'Blaty kuchenne kamienne Lublin — granitowe, ze spieku i konglomeratu na wymiar. ' +
-      'Wycena online w 2 minuty, pomiar i montaż, dojazd ustalany indywidualnie.',
+      // Czas słownie, nie „2 godziny" — strona mówi „niecałe dwie godziny drogi",
+      // a test spójności czasów czyta opis razem z treścią.
+      'Blaty kuchenne kamienne Lublin — granit, spiek, konglomerat. ' +
+      '160 km z Tarnobrzega, niecałe dwie godziny drogi. Wycena online w 2 minuty, dojazd indywidualnie.',
   },
 
   // ── Kraków i okolice (zlecenie Dawida, 27.08.2026) ───────────────────
