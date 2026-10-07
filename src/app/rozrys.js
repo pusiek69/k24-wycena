@@ -11,13 +11,29 @@
  * i zaokrągla do pełnych płyt — rozrys weryfikuje tę heurystykę realnym
  * układem i mówi wprost, gdy się rozjeżdżają.
  *
- * MVP celowo bez przeciągania elementów myszą i bez podkładania tekstury
- * płyty — to następny krok, gdy rozrys sprawdzi się w codziennej robocie.
+ * TRYB RĘCZNY (7.10.2026): automat układa dobrze, ale nie wie o przebarwieniu
+ * w tym rogu płyty ani o tym, że resztka ma zostać w jednym kawałku na parapet.
+ * „Edytuj ręcznie" pozwala przesunąć elementy myszą albo palcem; reguły
+ * (rzaz, margines, usłojenie) pilnuje `app/rozkroj-reczny.js`, a silnik
+ * liczenia płyt zostaje nietknięty — od niego zaczyna się każdy układ
+ * i do niego wraca przycisk „Wróć do automatu".
  */
 import { h, liczba } from './dom.js';
 import { rozrysuj, DOMYSLNY_RZAZ_MM, DOMYSLNY_MARGINES_MM } from '../engine/nesting.js';
 import { svgPlyty, tytulPlyty, mm, naM2 } from './rozrys-svg.js';
 import { podpisOdcinka, etykietaOdcinka } from './etykiety-odcinkow.js';
+import {
+  zUkladu,
+  doUkladu,
+  przesun,
+  obroc,
+  przenies,
+  dodajPlyte,
+  usunPlyte,
+  sprawdz,
+  czyMoznaZapisac,
+  roznicaPlyt,
+} from './rozkroj-reczny.js';
 
 /**
  * @param {object} kontekst
@@ -45,7 +61,17 @@ export function widokRozrysu(kontekst, onZmiana) {
    */
   let k = { ...kontekst };
 
+  /*
+   * `reczny === null` znaczy „liczy automat". Każda operacja ręczna oddaje
+   * NOWY model (patrz app/rozkroj-reczny.js), więc powrót do automatu to
+   * zwykłe `reczny = null` — nie ma czego cofać.
+   */
+  let reczny = kontekst.reczny || null;
+  let wybrany = null;
+  let komunikat = null;
+
   const gora = h('div', { class: 'rozrys-gora' });
+  const pasek = h('div', { class: 'rozrys-pasek' });
   const wiersze = h('div', { class: 'rozrys-elementy' });
   const dol = h('div', { class: 'rozrys-dol' });
 
@@ -56,20 +82,175 @@ export function widokRozrysu(kontekst, onZmiana) {
     rysujWyniki();
   };
 
-  function rysujWyniki() {
-    const wynik = rozrysuj(k.elementy, k.plyta, {
+  function automat() {
+    return rozrysuj(k.elementy, k.plyta, {
       rotacja: k.rotacja, rzaz: k.rzaz, margines: k.margines,
       polowkaDozwolona: k.polowkaDozwolona === true,
     });
+  }
+
+  function rysujWyniki() {
+    const problemy = reczny ? sprawdz(reczny, { rzaz: k.rzaz, margines: k.margines }) : [];
+    const wynik = reczny ? doUkladu(reczny, k.plyta) : automat();
+
+    // Oferta bierze układ stąd — razem z problemami, bo rozjechanego
+    // rysunku do klienta nie wysyłamy (patrz zamrozRozrys).
+    onZmiana({ reczny, problemyRozkroju: problemy });
+
     gora.replaceChildren(
-      naglowek(wynik, k.plyta, k.opisMaterialu),
-      ostrzezenia(wynik, k.plytZWyceny, k.polowkaZWyceny)
+      naglowek(wynik, k.plyta, k.opisMaterialu, !!reczny),
+      ostrzezenia(wynik, k.plytZWyceny, k.polowkaZWyceny),
+      ...(reczny ? [blokProblemow(problemy, reczny, k.plytZWyceny)] : [])
     );
+    pasek.replaceChildren(...narzedzia());
+
+    const zle = new Set(problemy.map((x) => x.id));
     dol.replaceChildren(
-      ...wynik.plyty.map((p) =>
-        h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, k.opisMaterialu), svgPlyty(p))
-      ),
+      ...wynik.plyty.map((p) => {
+        const rysunek = svgPlyty(reczny ? { ...p, edycja: true, zle, wybrany } : p);
+        if (reczny) podepnijEdycje(rysunek);
+        return h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, k.opisMaterialu), rysunek);
+      }),
       tabelaElementow(k.elementy, wynik)
+    );
+  }
+
+  /* ──────────────────────── tryb ręczny: narzędzia */
+
+  const przycisk = (etykieta, onclick) =>
+    h('button', { type: 'button', class: 'btn-maly', onclick }, etykieta);
+
+  function narzedzia() {
+    if (!reczny) {
+      return [
+        przycisk('✎ Edytuj ręcznie', () => {
+          reczny = zUkladu(automat());
+          wybrany = null;
+          komunikat = 'Przeciągnij element na płycie — myszą albo palcem.';
+          rysujWyniki();
+        }),
+      ];
+    }
+
+    const naWybranym = (zmiana) => () => {
+      if (!wybrany) {
+        komunikat = 'Najpierw dotknij elementu na rysunku.';
+        rysujWyniki();
+        return;
+      }
+      zmiana();
+      rysujWyniki();
+    };
+
+    return [
+      h('span', { class: 'rozrys-badge' }, 'układ ręczny'),
+      przycisk('↺ Wróć do automatu', () => {
+        reczny = null;
+        wybrany = null;
+        komunikat = 'Układ policzony od nowa.';
+        rysujWyniki();
+      }),
+      przycisk('↻ Obróć 90°', naWybranym(() => {
+        const wynik = obroc(reczny, wybrany, { rotacja: k.rotacja !== false });
+        reczny = wynik.model;
+        komunikat = wynik.blad || null;
+      })),
+      przycisk('→ Na następną płytę', naWybranym(() => {
+        const teraz = reczny.plyty.find((p) => p.elementy.some((e) => e.id === wybrany));
+        const docelowa = (teraz.nr % reczny.plyty.length) + 1;
+        reczny = przenies(reczny, wybrany, docelowa);
+        komunikat = 'Element na płycie ' + docelowa + '.';
+      })),
+      przycisk('+ Płyta', () => {
+        reczny = dodajPlyte(reczny);
+        komunikat = null;
+        rysujWyniki();
+      }),
+      przycisk('− Pusta płyta', () => {
+        const pusta = [...reczny.plyty].reverse().find((p) => !p.elementy.length);
+        const wynik = pusta
+          ? usunPlyte(reczny, pusta.nr)
+          : { model: reczny, blad: 'Nie ma pustej płyty do zdjęcia.' };
+        reczny = wynik.model;
+        komunikat = wynik.blad || null;
+        rysujWyniki();
+      }),
+    ];
+  }
+
+  /**
+   * Przeciąganie elementu po płycie.
+   *
+   * Pointer Events, bo to JEDNA obsługa dla myszy i dotyku — Dawid ogląda
+   * rozrys równie często na telefonie w warsztacie, co na komputerze.
+   * W trakcie ciągnięcia ruszamy samą grafiką (`transform`), a model
+   * zmieniamy dopiero przy puścięciu: przerysowanie w połowie gestu
+   * zabrałoby węzeł, który trzyma pointer capture.
+   */
+  function podepnijEdycje(ramka) {
+    const svg = ramka.querySelector ? ramka.querySelector('svg') : null;
+    if (!svg) return;
+    let ciagniety = null;
+
+    svg.addEventListener('pointerdown', (e) => {
+      const grupa = e.target.closest ? e.target.closest('[data-el-id]') : null;
+      if (!grupa) return;
+      const id = grupa.getAttribute('data-el-id');
+      const el = reczny.plyty.flatMap((p) => p.elementy).find((x) => String(x.id) === id);
+      if (!el) return;
+
+      const pole = svg.getBoundingClientRect();
+      const skala = pole.width > 0 ? (svg.viewBox?.baseVal?.width || pole.width) / pole.width : 1;
+      ciagniety = { id, el, grupa, startX: e.clientX, startY: e.clientY, skala, dx: 0, dy: 0 };
+      wybrany = id;
+      try {
+        svg.setPointerCapture(e.pointerId);
+      } catch {
+        /* starsza przeglądarka — przeciąganie działa dalej, tylko bez przechwycenia */
+      }
+      e.preventDefault();
+    });
+
+    svg.addEventListener('pointermove', (e) => {
+      if (!ciagniety) return;
+      ciagniety.dx = (e.clientX - ciagniety.startX) * ciagniety.skala;
+      ciagniety.dy = (e.clientY - ciagniety.startY) * ciagniety.skala;
+      ciagniety.grupa.setAttribute(
+        'transform',
+        'translate(' + ciagniety.dx + ' ' + ciagniety.dy + ')'
+      );
+    });
+
+    const koniec = () => {
+      if (!ciagniety) return;
+      const { id, el, dx, dy } = ciagniety;
+      ciagniety = null;
+      reczny = przesun(reczny, id, { x: przyciagnij(el.x + dx), y: przyciagnij(el.y + dy) });
+      komunikat = null;
+      rysujWyniki();
+    };
+    svg.addEventListener('pointerup', koniec);
+    svg.addEventListener('pointercancel', koniec);
+  }
+
+  /** Lista problemów, stan zapisu i różnica względem wyceny. */
+  function blokProblemow(problemy, model, plytZWyceny) {
+    const roznica = roznicaPlyt(model, plytZWyceny);
+    return h(
+      'div',
+      { class: 'rozrys-uwagi' },
+      komunikat ? h('div', { class: 'mini' }, komunikat) : null,
+      ...problemy.map((x) => h('div', { class: 'form-blad' }, x.komunikat)),
+      czyMoznaZapisac(problemy)
+        ? h('div', { class: 'mini' }, 'Układ ręczny trafi do oferty w tej postaci.')
+        : h('div', { class: 'form-blad' }, 'Zapis zablokowany — popraw układ, zanim wyślesz ofertę.'),
+      roznica
+        ? h(
+            'div',
+            { class: 'info' },
+            roznica.komunikat + ' Cena nie zmieniła się sama — decyzja należy do Ciebie.'
+          )
+        : null
     );
   }
 
@@ -84,6 +265,7 @@ export function widokRozrysu(kontekst, onZmiana) {
     'div',
     { class: 'rozrys' },
     gora,
+    pasek,
     ustawieniaCiecia(k, zmiana),
     h('div', { class: 'q-kicker' }, 'Elementy do rozrysu (mm)'),
     wiersze,
@@ -111,12 +293,21 @@ export function podpisWyceny(odcinki) {
 
 /* ───────────────────────────────────────────────────── statystyki */
 
-function naglowek(wynik, plyta, opisMaterialu) {
+/** Przyciąganie do pełnego centymetra — ręka nie trafia w milimetr. */
+const przyciagnij = (n) => Math.round(n / 10) * 10;
+
+function naglowek(wynik, plyta, opisMaterialu, reczny = false) {
   const s = wynik.statystyki;
   return h(
     'div',
     { class: 'rozrys-naglowek' },
-    h('div', { class: 'q-kicker' }, 'Rozrys płyt' + (opisMaterialu ? ` · ${opisMaterialu}` : '')),
+    h(
+      'div',
+      { class: 'q-kicker' },
+      'Rozrys płyt' +
+        (opisMaterialu ? ` · ${opisMaterialu}` : '') +
+        (reczny ? ' · układ ręczny' : '')
+    ),
     h(
       'div',
       { class: 'rozrys-staty' },

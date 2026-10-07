@@ -904,6 +904,22 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .rozrys-stat { font-family: var(--sans); font-size: 12px; color: var(--vein); }
 .rozrys-stat b { display: block; font-size: 17px; color: var(--cream); font-variant-numeric: tabular-nums; }
 .rozrys-uwagi { margin: 12px 0; }
+
+/* Tryb ręczny rozkroju (7.10.2026) — pasek narzędzi nad rysunkami. */
+.rozrys-pasek { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 2px; }
+.rozrys-badge {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  padding: 4px 9px; border-radius: 999px; color: var(--ink);
+  background: var(--vein); font-weight: 700;
+}
+.btn-maly {
+  padding: 7px 12px; background: var(--slab); border: 1px solid var(--line-hi);
+  border-radius: var(--radius); color: var(--cream);
+  font-family: var(--sans); font-size: 13px; cursor: pointer;
+}
+.btn-maly:hover { border-color: var(--vein); color: var(--vein); }
+/* W trybie edycji palec ma przesuwać element, nie przewijać strony. */
+.rozrys-svg-edycja { touch-action: none; }
 .rozrys-opcje { margin-top: 14px; }
 .rozrys-uslojenie { grid-column: 1 / -1; }
 .rozrys-elementy { margin-top: 14px; }

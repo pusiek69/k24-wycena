@@ -50,6 +50,7 @@ import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
 import { widokRozrysu, elementyZOdcinkow, podpisWyceny } from './rozrys.js';
 import { rozrysuj } from '../engine/nesting.js';
+import { doUkladu } from './rozkroj-reczny.js';
 import { DOMYSLNE } from './ustawienia.js';
 import {
   MAKS_WARIANTOW,
@@ -895,6 +896,25 @@ function zamrozRozrys(stan, w) {
     zapewnijRozrys(stan);
     const ustawienia = stan.rozrys;
     const plyta = plytaDoRozrysu(stan, w);
+
+    /*
+     * RĘCZNY UKŁAD IDZIE DO OFERTY TAKI, JAKI JEST (7.10.2026).
+     *
+     * Gdy Dawid poukładał elementy sam, przeliczenie automatem skasowałoby
+     * całą jego robotę w chwili wysyłki — klient dostałby rysunek, którego
+     * Dawid nigdy nie widział. Układ z błędami (kolizje, element poza płytą)
+     * do oferty NIE wchodzi: wtedy wraca automat, bo lepszy policzony
+     * rysunek niż rozjechany. `zapewnijRozrys` kasuje ręczny układ przy
+     * każdej zmianie wymiarów w wycenie, więc nie ma jak się zestarzeć.
+     */
+    if (ustawienia.reczny?.plyty?.length && !ustawienia.problemyRozkroju?.length) {
+      const r = doUkladu(ustawienia.reczny, plyta);
+      return {
+        plyty: r.plyty,
+        statystyki: r.statystyki,
+        opisMaterialu: [w.firma?.nazwa, w.dekor].filter(Boolean).join(' · '),
+      };
+    }
     const wynik = rozrysuj(ustawienia.elementy, plyta, {
       rzaz: ustawienia.rzaz,
       margines: ustawienia.margines,

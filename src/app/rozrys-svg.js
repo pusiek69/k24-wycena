@@ -29,15 +29,21 @@ export const naM2 = (mm2) => mm2 / 1e6;
 export function svgPlyty(p) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', `${-RAMKA} ${-RAMKA} ${p.szer + 2 * RAMKA} ${p.wys + 2 * RAMKA}`);
-  svg.setAttribute('class', 'rozrys-svg');
+  svg.setAttribute('class', p.edycja ? 'rozrys-svg rozrys-svg-edycja' : 'rozrys-svg');
+  if (p.edycja) {
+    svg.setAttribute('data-nr', String(p.nr));
+    // Bez tego przeciągnięcie palcem po płycie przewija stronę zamiast
+    // przesuwać element — na telefonie edycja byłaby nie do użycia.
+    svg.style.touchAction = 'none';
+  }
   svg.setAttribute('role', 'img');
   svg.setAttribute('aria-label', `Płyta ${p.nr}: rozłożenie elementów blatu`);
 
-  const el = (nazwa, atrybuty, tekst) => {
+  const el = (nazwa, atrybuty, tekst, rodzic = svg) => {
     const w = document.createElementNS('http://www.w3.org/2000/svg', nazwa);
     for (const [k, v] of Object.entries(atrybuty)) w.setAttribute(k, String(v));
     if (tekst != null) w.textContent = tekst;
-    svg.appendChild(w);
+    rodzic.appendChild(w);
     return w;
   };
 
@@ -60,23 +66,46 @@ export function svgPlyty(p) {
     `${mm(p.wys)} mm`
   );
 
+  /*
+   * TRYB RĘCZNY (7.10.2026) dokłada do rysunku wyłącznie uchwyty: `data-el-id`
+   * do złapania elementu i czerwień tam, gdzie jest problem. Bez `p.edycja`
+   * — czyli zawsze u klienta — wychodzi dokładnie ten sam SVG co wcześniej.
+   */
+  const zle = p.zle instanceof Set ? p.zle : new Set(p.zle || []);
+
   (p.elementy || []).forEach((e, i) => {
     const kolor = KOLORY[i % KOLORY.length];
-    el('rect', {
+    const problem = p.edycja && zle.has(e.id);
+    // W trybie ręcznym prostokąt i oba podpisy idą w jednej grupie,
+    // żeby przeciągany element ruszał się w całości, a nie sam kontur.
+    const grupa = p.edycja ? el('g', { 'data-el-id': String(e.id), cursor: 'grab' }) : svg;
+    const prostokat = el('rect', {
       x: e.x, y: e.y, width: e.szer, height: e.gl,
-      fill: kolor, 'fill-opacity': 0.2, stroke: kolor, 'stroke-width': 9, rx: 6,
-    });
+      fill: problem ? '#c0392b' : kolor,
+      'fill-opacity': problem ? 0.3 : 0.2,
+      stroke: problem ? '#a5281b' : kolor,
+      'stroke-width': problem ? 16 : 9,
+      rx: 6,
+    }, null, grupa);
+    if (p.edycja) {
+      if (p.wybrany === e.id) {
+        prostokat.setAttribute('stroke-dasharray', '40 24');
+        prostokat.setAttribute('stroke-width', '18');
+      }
+    }
     const srodekX = e.x + e.szer / 2;
     const srodekY = e.y + e.gl / 2;
     el(
       'text',
       { x: srodekX, y: srodekY - 12, 'text-anchor': 'middle', 'font-size': 95, 'font-weight': 'bold', fill: '#2b2823' },
-      e.nazwa
+      e.nazwa,
+      grupa
     );
     el(
       'text',
       { x: srodekX, y: srodekY + 78, 'text-anchor': 'middle', 'font-size': 80, fill: '#4a463d' },
-      `${mm(e.szer)} × ${mm(e.gl)}`
+      `${mm(e.szer)} × ${mm(e.gl)}`,
+      grupa
     );
   });
 
