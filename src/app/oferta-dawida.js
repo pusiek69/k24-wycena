@@ -902,12 +902,13 @@ function zamrozRozrys(stan, w) {
      *
      * Gdy Dawid poukładał elementy sam, przeliczenie automatem skasowałoby
      * całą jego robotę w chwili wysyłki — klient dostałby rysunek, którego
-     * Dawid nigdy nie widział. Układ z błędami (kolizje, element poza płytą)
-     * do oferty NIE wchodzi: wtedy wraca automat, bo lepszy policzony
-     * rysunek niż rozjechany. `zapewnijRozrys` kasuje ręczny układ przy
+     * Dawid nigdy nie widział. Układ idzie do oferty TAKI, JAKI JEST —
+     * także wtedy, gdy reguły zgłaszają kolizję (korekta Dawida, 7.10.2026:
+     * żadnych blokad). Czerwień w edytorze jest informacją dla właściciela,
+     * a nie wetem na rysunek. `zapewnijRozrys` kasuje ręczny układ przy
      * każdej zmianie wymiarów w wycenie, więc nie ma jak się zestarzeć.
      */
-    if (ustawienia.reczny?.plyty?.length && !ustawienia.problemyRozkroju?.length) {
+    if (ustawienia.reczny?.plyty?.length) {
       const r = doUkladu(ustawienia.reczny, plyta);
       return {
         plyty: r.plyty,

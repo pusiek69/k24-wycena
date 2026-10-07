@@ -74,3 +74,27 @@ dokładnie to, co Dawid ułożył; jego widok nie zmienia się ani o linijkę.
 3. Kalkulator klienta bez śladu edycji — pilnuje test skanujący źródła.
 4. Zapis zablokowany przy kolizjach.
 5. Ręczny układ trafia do oferty zamiast przeliczonego.
+
+---
+
+## Korekta Dawida (7.10.2026, wieczorem): żadnych blokad + magnes
+
+**Żadnych blokad.** Właściciel wie, co robi:
+
+* obrót 90° działa ZAWSZE — przy usłojeniu `obroc()` oddaje `uwaga`
+  (nieblokującą), nie `blad`;
+* układ z kolizją albo elementem poza płytą też trafia do oferty — czerwień
+  na rysunku zostaje jako informacja. `czyMoznaZapisac()` usunięte: funkcja,
+  która mówiła „nie wolno", nie ma tu już czego pilnować.
+
+**Magnes (`magnes()`), próg 8 mm.** Złap → przeciągnij → samo się dosunie.
+Cztery rodzaje „równo": krawędź płyty (z marginesem, bez rzazu — przy brzegu
+nie ma sąsiada), tuż za sąsiadem i tuż przed nim (dokładnie o grubość cięcia),
+oraz krawędź w jednej linii z sąsiadem. Liczy się JUŻ W TRAKCIE ciągnięcia,
+a złapana linia podkreśla się delikatną złotą kreską na rysunku.
+
+**Mniej przycisków.** „− Pusta płyta" wypada — puste arkusze znikają same
+(`uporzadkuj()`), poza ostatnim, który zostaje jako miejsce odkładcze.
+„Obróć" i „Na następną płytę" pokazują się dopiero, gdy jakiś element jest
+złapany. W trybie ręcznym na stałe widoczne są tylko: badge, „Wróć do
+automatu" i „+ Płyta".

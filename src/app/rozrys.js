@@ -29,10 +29,10 @@ import {
   obroc,
   przenies,
   dodajPlyte,
-  usunPlyte,
   sprawdz,
-  czyMoznaZapisac,
   roznicaPlyt,
+  magnes,
+  uporzadkuj,
 } from './rozkroj-reczny.js';
 
 /**
@@ -132,12 +132,9 @@ export function widokRozrysu(kontekst, onZmiana) {
       ];
     }
 
+    // Przyciski działające na elemencie pokazujemy DOPIERO, gdy jakiś jest
+    // złapany — pusty pasek narzędzi to pasek, którego nie trzeba czytać.
     const naWybranym = (zmiana) => () => {
-      if (!wybrany) {
-        komunikat = 'Najpierw dotknij elementu na rysunku.';
-        rysujWyniki();
-        return;
-      }
       zmiana();
       rysujWyniki();
     };
@@ -150,29 +147,23 @@ export function widokRozrysu(kontekst, onZmiana) {
         komunikat = 'Układ policzony od nowa.';
         rysujWyniki();
       }),
-      przycisk('↻ Obróć 90°', naWybranym(() => {
+      ...(wybrany ? [przycisk('↻ Obróć 90°', naWybranym(() => {
         const wynik = obroc(reczny, wybrany, { rotacja: k.rotacja !== false });
         reczny = wynik.model;
-        komunikat = wynik.blad || null;
-      })),
-      przycisk('→ Na następną płytę', naWybranym(() => {
-        const teraz = reczny.plyty.find((p) => p.elementy.some((e) => e.id === wybrany));
-        const docelowa = (teraz.nr % reczny.plyty.length) + 1;
-        reczny = przenies(reczny, wybrany, docelowa);
-        komunikat = 'Element na płycie ' + docelowa + '.';
-      })),
+        // Usłojenie to uwaga, nie odmowa — obrót wykonał się tak czy owak.
+        komunikat = wynik.uwaga || null;
+      }))] : []),
+      ...(wybrany && reczny.plyty.length > 1
+        ? [przycisk('→ Na następną płytę', naWybranym(() => {
+            const teraz = reczny.plyty.find((p) => p.elementy.some((e) => e.id === wybrany));
+            const docelowa = (teraz.nr % reczny.plyty.length) + 1;
+            reczny = uporzadkuj(przenies(reczny, wybrany, docelowa));
+            komunikat = 'Element na płycie ' + docelowa + '.';
+          }))]
+        : []),
       przycisk('+ Płyta', () => {
         reczny = dodajPlyte(reczny);
         komunikat = null;
-        rysujWyniki();
-      }),
-      przycisk('− Pusta płyta', () => {
-        const pusta = [...reczny.plyty].reverse().find((p) => !p.elementy.length);
-        const wynik = pusta
-          ? usunPlyte(reczny, pusta.nr)
-          : { model: reczny, blad: 'Nie ma pustej płyty do zdjęcia.' };
-        reczny = wynik.model;
-        komunikat = wynik.blad || null;
         rysujWyniki();
       }),
     ];
@@ -213,19 +204,29 @@ export function widokRozrysu(kontekst, onZmiana) {
 
     svg.addEventListener('pointermove', (e) => {
       if (!ciagniety) return;
-      ciagniety.dx = (e.clientX - ciagniety.startX) * ciagniety.skala;
-      ciagniety.dy = (e.clientY - ciagniety.startY) * ciagniety.skala;
+      const surowyX = ciagniety.el.x + (e.clientX - ciagniety.startX) * ciagniety.skala;
+      const surowyY = ciagniety.el.y + (e.clientY - ciagniety.startY) * ciagniety.skala;
+
+      // MAGNES liczy się JUŻ W TRAKCIE ciągnięcia — element widocznie
+      // klika na miejsce, zamiast skakac dopiero po puszczeniu.
+      const cel = magnes(reczny, ciagniety.id, { x: surowyX, y: surowyY }, {
+        rzaz: k.rzaz,
+        margines: k.margines,
+      });
+      ciagniety.cel = cel;
       ciagniety.grupa.setAttribute(
         'transform',
-        'translate(' + ciagniety.dx + ' ' + ciagniety.dy + ')'
+        'translate(' + (cel.x - ciagniety.el.x) + ' ' + (cel.y - ciagniety.el.y) + ')'
       );
+      pokazLinie(svg, cel.linie);
     });
 
     const koniec = () => {
       if (!ciagniety) return;
-      const { id, el, dx, dy } = ciagniety;
+      const { id, el, cel } = ciagniety;
       ciagniety = null;
-      reczny = przesun(reczny, id, { x: przyciagnij(el.x + dx), y: przyciagnij(el.y + dy) });
+      schowajLinie(svg);
+      reczny = uporzadkuj(przesun(reczny, id, { x: cel?.x ?? el.x, y: cel?.y ?? el.y }));
       komunikat = null;
       rysujWyniki();
     };
@@ -241,9 +242,9 @@ export function widokRozrysu(kontekst, onZmiana) {
       { class: 'rozrys-uwagi' },
       komunikat ? h('div', { class: 'mini' }, komunikat) : null,
       ...problemy.map((x) => h('div', { class: 'form-blad' }, x.komunikat)),
-      czyMoznaZapisac(problemy)
-        ? h('div', { class: 'mini' }, 'Układ ręczny trafi do oferty w tej postaci.')
-        : h('div', { class: 'form-blad' }, 'Zapis zablokowany — popraw układ, zanim wyślesz ofertę.'),
+      // Czerwień jest INFORMACJĄ, nie blokadą (korekta Dawida, 7.10.2026):
+      // właściciel wie, co robi, a układ trafia do oferty taki, jaki jest.
+      h('div', { class: 'mini' }, 'Układ ręczny trafi do oferty w tej postaci.'),
       roznica
         ? h(
             'div',
@@ -293,8 +294,31 @@ export function podpisWyceny(odcinki) {
 
 /* ───────────────────────────────────────────────────── statystyki */
 
-/** Przyciąganie do pełnego centymetra — ręka nie trafia w milimetr. */
-const przyciagnij = (n) => Math.round(n / 10) * 10;
+/**
+ * Linie przyciągania — delikatna informacja, do czego element się równa.
+ * Rysujemy je wprost w SVG płyty i kasujemy po puścięciu elementu.
+ */
+function pokazLinie(svg, linie) {
+  schowajLinie(svg);
+  for (const l of linie || []) {
+    const w = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const szer = svg.viewBox?.baseVal?.width || 0;
+    const wys = svg.viewBox?.baseVal?.height || 0;
+    const wsp =
+      l.os === 'x'
+        ? { x1: l.wartosc, y1: -wys, x2: l.wartosc, y2: wys * 2 }
+        : { x1: -szer, y1: l.wartosc, x2: szer * 2, y2: l.wartosc };
+    for (const [atrybut, wartosc] of Object.entries(wsp)) w.setAttribute(atrybut, String(wartosc));
+    w.setAttribute('stroke', '#c9a86a');
+    w.setAttribute('stroke-width', '6');
+    w.setAttribute('stroke-dasharray', '26 20');
+    w.setAttribute('data-magnes', '1');
+    svg.appendChild(w);
+  }
+}
+
+const schowajLinie = (svg) =>
+  svg.querySelectorAll('[data-magnes]').forEach((w) => w.remove());
 
 function naglowek(wynik, plyta, opisMaterialu, reczny = false) {
   const s = wynik.statystyki;

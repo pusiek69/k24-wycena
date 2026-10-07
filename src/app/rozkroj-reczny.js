@@ -72,20 +72,23 @@ export function przesun(model, id, { x, y }) {
 }
 
 /**
- * Obrót o 90°.
+ * Obrót o 90° — ZAWSZE dozwolony.
  *
- * Przy kamieniu z wyraźnym rysunkiem (`rotacja: false`) obrót jest zakazany:
- * żyła pobiegłaby w poprzek blatu. Odmawiamy głośno, zamiast cicho obracać —
- * to samo rozstrzygnięcie, co w silniku.
+ * Automat przy kamieniu z rysunkiem elementu nie obraca i to jest dobra
+ * reguła. Ale tu rękę trzyma Dawid, który stoi przy płycie i czasem wie
+ * lepiej: pasek pod okno, resztka z tego samego bloku, element, którego
+ * usłojenia i tak nie będzie widać. Dostaje uwagę, nie odmowę
+ * (korekta Dawida, 7.10.2026: „żadnych blokad").
  */
 export function obroc(model, id, { rotacja } = {}) {
+  const po = zElementem(model, id, (el) => ({ ...el, szer: el.gl, gl: el.szer }));
   if (rotacja === false) {
     return {
-      model,
-      blad: 'Ten kamień ma usłojenie — obrót o 90° puszcza rysunek w poprzek blatu.',
+      model: po,
+      uwaga: 'Ten kamień ma usłojenie — po obrocie rysunek biegnie w poprzek blatu.',
     };
   }
-  return { model: zElementem(model, id, (el) => ({ ...el, szer: el.gl, gl: el.szer })) };
+  return { model: po };
 }
 
 /** Przeniesienie elementu na płytę o numerze `nrPlyty` (1-based). */
@@ -183,11 +186,6 @@ export function sprawdz(model, { rzaz = 0, margines = 0 } = {}) {
   return problemy;
 }
 
-/** Czy wolno zapisać ten układ. Każdy problem blokuje — także wystający element. */
-export function czyMoznaZapisac(problemy) {
-  return (problemy || []).length === 0;
-}
-
 /**
  * Różnica między liczbą płyt w ręcznym układzie a tą z wyceny.
  *
@@ -215,6 +213,76 @@ export function roznicaPlyt(model, plytZWyceny) {
 }
 
 
+/** Od ilu milimetr\u00f3w element \u201e\u0142apie" kraw\u0119d\u017a albo s\u0105siada. */
+export const PROG_MAGNESU_MM = 8;
+
+/**
+ * MAGNES \u2014 \u201ez\u0142ap, przeci\u0105gnij, samo si\u0119 r\u00f3wniutko dosunie" (Dawid, 7.10.2026).
+ *
+ * R\u0119czne dosuwanie na oko ko\u0144czy\u0142o si\u0119 albo kolizj\u0105 o milimetr, albo dziur\u0105
+ * na siedem. Magnes zna cztery rodzaje \u201er\u00f3wno":
+ *
+ *   \u2022 kraw\u0119d\u017a p\u0142yty (z marginesem, je\u015bli jest) \u2014 bez rzazu, bo przy brzegu
+ *     nie ma s\u0105siada, od kt\u00f3rego trzeba si\u0119 odsuwa\u0107,
+ *   \u2022 TU\u0141 ZA s\u0105siadem \u2014 dok\u0142adnie o grubo\u015b\u0107 ci\u0119cia dalej, tak jak p\u00f3jdzie pi\u0142a,
+ *   \u2022 TU\u0141 PRZED s\u0105siadem \u2014 to samo z drugiej strony,
+ *   \u2022 w jednej linii z s\u0105siadem \u2014 kraw\u0119d\u017a do kraw\u0119dzi, \u017ceby rz\u0105d by\u0142 r\u00f3wny.
+ *
+ * @returns {{x:number, y:number, linie:Array<{os:'x'|'y', wartosc:number}>}}
+ */
+export function magnes(model, id, { x, y }, { rzaz = 0, margines = 0, prog = PROG_MAGNESU_MM } = {}) {
+  const plyta = (model?.plyty || []).find((p) => p.elementy.some((e) => e.id === id));
+  const el = plyta?.elementy.find((e) => e.id === id);
+  if (!el) return { x: Math.round(x), y: Math.round(y), linie: [] };
+
+  const sasiedzi = plyta.elementy.filter((e) => e.id !== id);
+
+  const kandydaciX = [margines, plyta.szer - margines - el.szer];
+  const kandydaciY = [margines, plyta.wys - margines - el.gl];
+  for (const s of sasiedzi) {
+    kandydaciX.push(s.x + s.szer + rzaz, s.x - el.szer - rzaz, s.x, s.x + s.szer - el.szer);
+    kandydaciY.push(s.y + s.gl + rzaz, s.y - el.gl - rzaz, s.y, s.y + s.gl - el.gl);
+  }
+
+  const wX = najblizszy(x, kandydaciX, prog);
+  const wY = najblizszy(y, kandydaciY, prog);
+
+  const linie = [];
+  if (wX != null) linie.push({ os: 'x', wartosc: wX });
+  if (wY != null) linie.push({ os: 'y', wartosc: wY });
+
+  return { x: Math.round(wX ?? x), y: Math.round(wY ?? y), linie };
+}
+
+/**
+ * Sprz\u0105tanie pustych p\u0142yt \u2014 zamiast przycisku \u201ezdejmij p\u0142yt\u0119".
+ *
+ * Interfejs ma by\u0107 prosty (Dawid, 7.10.2026), wi\u0119c pusty arkusz znika sam.
+ * OSTATNI zostaje zawsze: to jedyne miejsce, na kt\u00f3re da si\u0119 przeci\u0105gn\u0105\u0107
+ * element z zat\u0142oczonej p\u0142yty.
+ */
+export function uporzadkuj(model) {
+  const plyty = (model?.plyty || []).filter(
+    (p, i, lista) => p.elementy.length > 0 || i === lista.length - 1
+  );
+  return { ...model, plyty: plyty.map((p, i) => ({ ...p, nr: i + 1 })) };
+}
+
+/* \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 pomocnicze */
+
+/** Najbli\u017cszy kandydat w zasi\u0119gu progu albo `null`, gdy \u017caden nie \u0142apie. */
+function najblizszy(wartosc, kandydaci, prog) {
+  let best = null;
+  let bestOdleglosc = prog;
+  for (const k of kandydaci) {
+    const d = Math.abs(k - wartosc);
+    if (d <= bestOdleglosc) {
+      bestOdleglosc = d;
+      best = k;
+    }
+  }
+  return best;
+}
 /* ─────────────────────────────────────────────────────────── pomocnicze */
 
 const wszystkie = (model) => (model?.plyty || []).flatMap((p) => p.elementy);

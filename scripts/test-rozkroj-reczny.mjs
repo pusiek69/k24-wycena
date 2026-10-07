@@ -20,8 +20,10 @@ import {
   dodajPlyte,
   usunPlyte,
   sprawdz,
-  czyMoznaZapisac,
   roznicaPlyt,
+  magnes,
+  uporzadkuj,
+  PROG_MAGNESU_MM,
 } from '../src/app/rozkroj-reczny.js';
 
 const PLYTA = { szer: 3200, wys: 1600 };
@@ -125,19 +127,29 @@ test('sprawdz wykrywa element wystający poza płytę i poza margines', () => {
   );
 });
 
-test('obroc zamienia boki, a przy uślojeniu odmawia', () => {
+test('obroc zamienia boki ZAWSZE — przy usłojeniu tylko ostrzega', () => {
+  /*
+   * Korekta Dawida (7.10.2026, wieczór): żadnych blokad. Przy kamieniu
+   * z rysunkiem obrót zwykle jest błędem — ale to Dawid stoi przy płycie
+   * i czasem wie lepiej niż reguła (pasek pod okno, resztka z bloku,
+   * element, którego usłojenie i tak nie będzie widoczne). Dostaje więc
+   * uwagę, nie odmowę.
+   */
   const model = zUkladu(automat());
   const el = model.plyty[0].elementy[0];
 
-  const { model: poObrocie, blad } = obroc(model, el.id, { rotacja: true });
-  const obrocony = poObrocie.plyty.flatMap((p) => p.elementy).find((e) => e.id === el.id);
-  assert.equal(blad, undefined);
+  const wolny = obroc(model, el.id, { rotacja: true });
+  const obrocony = wolny.model.plyty.flatMap((p) => p.elementy).find((e) => e.id === el.id);
+  assert.equal(wolny.uwaga, undefined, 'bez usłojenia nie ma o czym ostrzegać');
   assert.equal(obrocony.szer, el.gl);
   assert.equal(obrocony.gl, el.szer);
 
-  const zablokowany = obroc(model, el.id, { rotacja: false });
-  assert.match(zablokowany.blad || '', /usłojeni/i, 'blokada usłojenia ma powiedzieć, dlaczego');
-  assert.equal(JSON.stringify(zablokowany.model), JSON.stringify(model), 'przy odmowie układ bez zmian');
+  const zUslojeniem = obroc(model, el.id, { rotacja: false });
+  const mimoWszystko = zUslojeniem.model.plyty.flatMap((p) => p.elementy).find((e) => e.id === el.id);
+  assert.equal(mimoWszystko.szer, el.gl, 'obrót ma się wykonać także przy usłojeniu');
+  assert.equal(mimoWszystko.gl, el.szer);
+  assert.match(zUslojeniem.uwaga || '', /usłojeni/i, 'ma zostać uwaga, dlaczego to ryzykowne');
+  assert.equal(zUslojeniem.blad, undefined, 'żadnych blokad — to ma być uwaga, nie odmowa');
 });
 
 test('przenies przekłada element na inną płytę z zachowaniem wymiarów', () => {
@@ -180,15 +192,29 @@ test('usunPlyte zdejmuje pustą, a zajętej broni — i numeruje od nowa', () =>
   assert.equal(zajeta.model.plyty.length, zPusta.plyty.length);
 });
 
-test('zapis jest zablokowany, dopóki w układzie są problemy', () => {
+test('sprawdz MELDUJE problemy, ale niczego nie blokuje', () => {
   /*
-   * Żądanie Dawida wprost: „zapis zablokowany dopóki kolizje". Element
-   * wystający poza płytę blokuje tak samo — na płycie, której nie ma,
-   * też nie da się ciąć.
+   * Korekta Dawida (7.10.2026, wieczór): czerwień zostaje jako informacja,
+   * zapis ma działać zawsze. Moduł orzeka o układzie i tyle — żadnej
+   * funkcji, która mówi „nie wolno".
    */
-  assert.equal(czyMoznaZapisac([]), true);
-  assert.equal(czyMoznaZapisac([{ typ: 'kolizja' }]), false);
-  assert.equal(czyMoznaZapisac([{ typ: 'poza-plyta' }]), false);
+  const kolidujacy = {
+    plyty: [
+      {
+        nr: 1,
+        szer: 3200,
+        wys: 1600,
+        elementy: [
+          { id: 'a', nazwa: 'A', x: 0, y: 0, szer: 1000, gl: 600 },
+          { id: 'b', nazwa: 'B', x: 500, y: 0, szer: 1000, gl: 600 },
+        ],
+      },
+    ],
+  };
+  const problemy = sprawdz(kolidujacy, { rzaz: 3, margines: 0 });
+  assert.equal(problemy.length, 1);
+  assert.equal(problemy[0].typ, 'kolizja');
+  assert.ok(!problemy[0].blokuje, 'problem nie ma prawa niczego blokować');
 });
 
 test('roznicaPlyt mówi, o ile ręczny układ rozjeżdża się z wyceną', () => {
@@ -223,7 +249,7 @@ test('widok rozrysu ma tryb ręczny: przełącznik, badge i powrót do automatu'
   assert.match(t, /Obróć 90°/);
   assert.match(t, /Na następną płytę/);
   assert.match(t, /\+ Płyta/);
-  assert.match(t, /Zapis zablokowany/, 'brak informacji o zablokowanym zapisie');
+  assert.ok(!/Zapis zablokowany/.test(t), 'żadnych blokad — korekta Dawida z 7.10.2026');
 });
 
 test('przeciąganie działa myszą i palcem — jedna obsługa Pointer Events', () => {
@@ -266,9 +292,104 @@ test('kalkulator klienta nie wie o edycji układu', () => {
   assert.match(svg, /p\.edycja \? el\('g'/, 'grupy do przeciągania muszą być tylko w trybie ręcznym');
 });
 
-test('oferta zamraża układ RĘCZNY, ale tylko bez błędów', () => {
+test('oferta zamraża układ RĘCZNY taki, jaki jest', () => {
+  /*
+   * Korekta Dawida: układ ma trafiać do oferty także wtedy, gdy reguły
+   * zgłaszają kolizję — właściciel wie, co robi, a rysunek ma pokazywać
+   * to, co naprawdą ułożył.
+   */
   const t = zrodlo('src/app/oferta-dawida.js');
   assert.match(t, /ustawienia\.reczny\?\.plyty\?\.length/, 'oferta nie bierze układu ręcznego');
-  assert.match(t, /!ustawienia\.problemyRozkroju\?\.length/, 'rozjechany układ nie może iść do klienta');
   assert.match(t, /doUkladu\(ustawienia\.reczny, plyta\)/);
+  assert.ok(
+    !/problemyRozkroju\?\.length/.test(t),
+    'układ z uwagami też ma iść do oferty — bez warunku'
+  );
+});
+
+/* ════════════════════════════════════════════════════ magnes */
+
+const PLYTA_1 = (elementy) => ({
+  plyty: [{ nr: 1, szer: 3200, wys: 1600, margines: 0, elementy }],
+});
+
+test('magnes dosuwa element do krawędzi płyty', () => {
+  /*
+   * „Złap → przeciągnij → samo się równiutko dosunie" (Dawid, 7.10.2026).
+   * Przy krawędzi płyty rzazu NIE MA — element może dojść do zera.
+   */
+  const model = PLYTA_1([{ id: 'a', nazwa: 'A', x: 0, y: 0, szer: 1000, gl: 600 }]);
+
+  const przy = magnes(model, 'a', { x: 6, y: 4 }, { rzaz: 3, margines: 0 });
+  assert.equal(przy.x, 0, 'lewa krawędź ma przyciągnąć');
+  assert.equal(przy.y, 0, 'górna krawędź ma przyciągnąć');
+  assert.ok(przy.linie.some((l) => l.os === 'x' && l.wartosc === 0), 'brak linii przyciągania');
+
+  const daleko = magnes(model, 'a', { x: 400, y: 300 }, { rzaz: 3, margines: 0 });
+  assert.equal(daleko.x, 400, 'poza zasięgiem magnes nie rusza elementu');
+  assert.deepEqual(daleko.linie, []);
+});
+
+test('magnes dosuwa do prawej krawędzi i do marginesu', () => {
+  const model = PLYTA_1([{ id: 'a', nazwa: 'A', x: 0, y: 0, szer: 1000, gl: 600 }]);
+
+  const doPrawej = magnes(model, 'a', { x: 2195, y: 995 }, { rzaz: 3, margines: 0 });
+  assert.equal(doPrawej.x, 2200, 'prawa krawędź: 3200 − 1000');
+  assert.equal(doPrawej.y, 1000, 'dół: 1600 − 600');
+
+  const zMarginesem = magnes(model, 'a', { x: 16, y: 16 }, { rzaz: 3, margines: 20 });
+  assert.equal(zMarginesem.x, 20, 'przy marginesie element równa się do jego linii');
+  assert.equal(zMarginesem.y, 20);
+});
+
+test('magnes dostawia element do sąsiada Z ODSTĘPEM NA RZAZ', () => {
+  /*
+   * To jest sedno: ręczne dosuwanie „na oko" kończyło się albo kolizją
+   * o 1 mm, albo dziurą na 7 mm. Magnes stawia element dokładnie o grubość
+   * cięcia dalej — tak, jak później pójdzie piła.
+   */
+  const model = PLYTA_1([
+    { id: 'a', nazwa: 'A', x: 0, y: 0, szer: 1000, gl: 600 },
+    { id: 'b', nazwa: 'B', x: 2000, y: 800, szer: 800, gl: 500 },
+  ]);
+
+  const dostawiony = magnes(model, 'b', { x: 1006, y: 4 }, { rzaz: 3, margines: 0 });
+  assert.equal(dostawiony.x, 1003, 'B ma stać o rzaz za A (1000 + 3)');
+  assert.equal(dostawiony.y, 0, 'i wyrównać się do górnej krawędzi');
+  assert.deepEqual(sprawdz({ ...model, plyty: [{ ...model.plyty[0], elementy: [
+    model.plyty[0].elementy[0],
+    { ...model.plyty[0].elementy[1], x: dostawiony.x, y: dostawiony.y },
+  ] }] }, { rzaz: 3, margines: 0 }), [], 'po dosunięciu układ ma być czysty');
+});
+
+test('magnes wyrównuje krawędź do krawędzi sąsiada', () => {
+  const model = PLYTA_1([
+    { id: 'a', nazwa: 'A', x: 500, y: 0, szer: 1000, gl: 600 },
+    { id: 'b', nazwa: 'B', x: 2000, y: 900, szer: 800, gl: 500 },
+  ]);
+  const wyrownany = magnes(model, 'b', { x: 504, y: 900 }, { rzaz: 3, margines: 0 });
+  assert.equal(wyrownany.x, 500, 'lewe krawędzie w jednej linii');
+});
+
+test('próg magnesu mieści się w obiecanych 5–10 mm', () => {
+  assert.ok(PROG_MAGNESU_MM >= 5 && PROG_MAGNESU_MM <= 10, `próg to ${PROG_MAGNESU_MM} mm`);
+});
+
+test('uporzadkuj kasuje puste płyty, ale zostawia ostatnią jako miejsce odkładcze', () => {
+  /*
+   * Mniej przycisków: zamiast „− Pusta płyta" puste arkusze znikają same.
+   * Ostatni zostaje, żeby było GDZIE przeciągnąć element z zatłoczonej płyty.
+   */
+  const model = {
+    plyty: [
+      { nr: 1, szer: 3200, wys: 1600, elementy: [] },
+      { nr: 2, szer: 3200, wys: 1600, elementy: [{ id: 'a', nazwa: 'A', x: 0, y: 0, szer: 10, gl: 10 }] },
+      { nr: 3, szer: 3200, wys: 1600, elementy: [] },
+    ],
+  };
+  const po = uporzadkuj(model);
+  assert.equal(po.plyty.length, 2, 'pusta ze środka znika, końcowa zostaje');
+  assert.deepEqual(po.plyty.map((p) => p.nr), [1, 2]);
+  assert.equal(po.plyty[0].elementy.length, 1);
+  assert.deepEqual(po.plyty[1].elementy, []);
 });
