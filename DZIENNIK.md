@@ -5,6 +5,39 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-09 (wieczorem) — nowa promocja Architype X–XII 2026 w kalkulatorze
+
+Dawid wgrał ulotkę „PROMOCJE październik–grudzień 2026" i aktualny cennik Architype 2026.
+
+**Relacja ustalona z obu PDF-ów:** promocja dotyczy **trzech kolekcji Architype, które już są w kalkulatorze** — Avant Quartz, Caesarstone, Keralini. Architype to nie nowy dostawca, tylko ten sam, z którego od sierpnia idą te trzy marki; reguła marży istnieje (`mnoznikRecznie: 1.3` w `pricing/zrodla/*.zasady.json`, decyzja Dawida z 25.08). Porównanie nowego cennika z naszym katalogiem: na 28 pozycjach, które udało się odczytać jednoznacznie, **zero rozbieżności** — cennik 2026 to ten sam dokument, z którego katalog powstał.
+
+**Wdrożone:** kampania **01.10.2026 – 30.12.2026** („lub do wyczerpania zapasów"), **46 pozycji**: Avant Quartz 26 (20 i 30 mm), Caesarstone 9, Keralini 11. Ceny klienckie = cena po rabacie × 1,30. Mechanika bez zmian: wygrywa tańsza z dwóch cen, dekory wyłącznie promocyjne znikają z katalogu razem z kampanią, plakietka i dopisek o potwierdzeniu dostępności jak w sezonie letnim.
+
+**Progi „od" po włączeniu promocji** (pokazane w treści stron po `npm run ceny:tresc`):
+
+| | było | jest |
+|---|---|---|
+| konglomerat 60 × 300 | 7 650 zł | **7 050 zł** |
+| spiek 60 × 300 | 8 500 zł | **7 150 zł** |
+| spiek w L | 9 600 zł | **8 900 zł** |
+| spiek zł/m² od | 671 zł | **556 zł** |
+| konglomerat w L | 8 650 zł | bez zmian |
+
+Liczby wzorów urosły o dekory wyłącznie promocyjne: konglomerat 223 → **232**, spiek 502 → **506** (Keralini 49 → 53, Avant 61 → 63, Caesarstone 24 → 31).
+
+**Pułapki, w które wpadliśmy po drodze** (i które teraz pilnują testy):
+* `pdftotext -layout` rozjeżdża kolumny tej ulotki — nazwy trafiają do innych wierszy niż liczby. Czytane `-table` i skontrolowane krzyżowo z naszym katalogiem: **19 z 23** pozycji Avant ma cenę cennikową identyczną z tym, co mamy, co potwierdza przypisanie wierszy.
+* Generator strony ofertowej spieków miał kotwicę na zdaniu „Kalkulator wyceny online", które zmieniło się 29.09 na „Wycena online w 2 minuty" — podmiana liczby wzorów przestała działać po cichu. Kotwica przeniesiona na kwotę przed liczbą.
+* Trzy testy spieków używały `\w*` do dopasowania „wzorów" — `\w` nie obejmuje polskich liter, więc przy 502 („wzory") działały, a przy 506 („wzorów") przestały. Poprawione na klasę z polskimi znakami.
+
+**Do potwierdzenia przez Dawida (NIE zgadywałem):**
+1. **Mnożnik 1,30 czy 1,45?** Kampania letnia liczyła ceny promocyjne × **1,45** (decyzja z 11.08), a polecenie z dzisiaj mówi × **1,30**. Wdrożone 1,30 — jeśli to pomyłka, zmiana to jedna liczba w pliku źródłowym i `npm run cennik`.
+2. **Dwa wiersze „przy zakupie 5 płyt"** (Dijon 310, White Quartz 300) — **pominięte**, bo kalkulator nie gwarantuje zakupu pięciu płyt. Czy wchodzą?
+3. **Zlewy Proline** (600 / 820 / 900 zł netto) — pominięte, tak jak w sierpniu.
+4. **Caesarstone:** 6 pozycji z ulotki (Jet Black, Fresh Concrete, Sleek Concrete, Empira Black, Empira White, Calacatta Nuvo) **nie ma w naszym katalogu stałym** — wchodzą jako dekory wyłącznie promocyjne. Dodatkowo ulotka podaje dla Ravena cenę cennikową 996 zł, a my mamy 934 zł — to może być inny format/seria.
+5. **Avant:** „Botticiono Burges" i „Calacatta Modane" też są tylko w promocji; „Statuario Lille" (nasze 1 022 vs ulotka 1 068) i „Mulen" (1 106 vs 1 068) mają inną cenę cennikową niż u nas.
+6. **Data końca:** ulotka mówi **30.12.2026**, nie 31.12 — wpisane 30.12.
+
 ## 2026-10-09 — nadrabianie kolejki: inwentura + K7 i K8
 
 ### Inwentura (co naprawdę stoi na produkcji)

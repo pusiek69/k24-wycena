@@ -41,6 +41,22 @@
         "White Attica MAT||20": 647,
         "Noble Grey||20": 574
       }
+    },
+    {
+      "nazwa": "Promocja październik–grudzień 2026",
+      "od": "2026-10-01",
+      "do": "2026-12-30",
+      "ceny": {
+        "Jet Black||20": 715,
+        "Fresh Concrete||20": 715,
+        "Sleek Concrete||20": 715,
+        "Raven||20": 715,
+        "Empira Black||20": 1040,
+        "Calacatta Nuvo||20": 1040,
+        "White Attica||20": 772,
+        "White Attica mat||20": 772,
+        "Empira White||20": 1040
+      }
     }
   ]
 }

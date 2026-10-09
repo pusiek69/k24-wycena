@@ -284,7 +284,7 @@ test('suma kolekcji na stronie ofertowej zgadza się z deklarowaną liczbą wzor
   assert.equal(kolekcje.length, 5, `wypisano ${kolekcje.length} kolekcji zamiast pięciu`);
 
   const suma = kolekcje.reduce((a, b) => a + b, 0);
-  const deklarowana = Number(strona.match(/(\d+) wzor\w*\. Wycena online/)[1]);
+  const deklarowana = Number(strona.match(/(\d+) wzor[a-ząćęłńóśźż]*\. Wycena online/)[1]);
   assert.equal(
     suma,
     deklarowana,
@@ -297,7 +297,7 @@ test('liczba wzorów spieku zgadza się z cennikami — wszystkie pięć marek',
     (a, m) => a + ile(m),
     0
   );
-  const naStronie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*\. Wycena online/)[1]);
+  const naStronie = Number(czytaj(OFERTA).match(/(\d+) wzor[a-ząćęłńóśźż]*\. Wycena online/)[1]);
   assert.equal(naStronie, zCennika, 'strona ofertowa rozjechała się z cennikami');
 });
 
@@ -348,8 +348,8 @@ test('oba generatory liczą dekory TAK SAMO — z rejestru firm', () => {
     'generator poradnika znów liczy z pliku cennika zamiast z rejestru firm'
   );
   // ...i obie strony podają tę samą sumę.
-  const wPoradniku = Number(html.match(/(\d+) dekor\w* w pięciu kolekcjach/)[1]);
-  const wOfercie = Number(czytaj(OFERTA).match(/(\d+) wzor\w*\. Wycena online/)[1]);
+  const wPoradniku = Number(html.match(/(\d+) dekor[a-ząćęłńóśźż]* w pięciu kolekcjach/)[1]);
+  const wOfercie = Number(czytaj(OFERTA).match(/(\d+) wzor[a-ząćęłńóśźż]*\. Wycena online/)[1]);
   assert.equal(wPoradniku, wOfercie, 'poradnik i strona ofertowa podają różne liczby');
 });
 
@@ -357,7 +357,7 @@ test('liczebniki są poprawnie odmienione', () => {
   // „143 dekorów" to błąd — po 143 idzie „dekory". Odmianę robi wspólny
   // moduł `lib/odmiana.mjs`, ten sam, którego używa ceny-tresc.mjs.
   for (const plik of [PORADNIK, OFERTA]) {
-    const zle = [...czytaj(plik).matchAll(/\b(\d+) (dekor\w*|wzor\w*)/g)].filter(([, n, slowo]) => {
+    const zle = [...czytaj(plik).matchAll(/\b(\d+) (dekor[a-ząćęłńóśźż]*|wzor[a-ząćęłńóśźż]*)/g)].filter(([, n, slowo]) => {
       const l = Number(n);
       const ost = l % 10;
       const dwie = l % 100;

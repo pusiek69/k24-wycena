@@ -45,6 +45,24 @@
         "Grey Soap||12": 311,
         "Basaltina Grigia||12": 311
       }
+    },
+    {
+      "nazwa": "Promocja październik–grudzień 2026",
+      "od": "2026-10-01",
+      "do": "2026-12-30",
+      "ceny": {
+        "Absolute Black Structured||12": 515,
+        "Absolute White Structured||12": 515,
+        "Absolute Grey Structured||12": 515,
+        "Grey Soap||12": 515,
+        "Nero Marquina||12": 515,
+        "Pietra Grigia||12": 515,
+        "Portoro||12": 515,
+        "Saturnia||12": 515,
+        "Statuario Leonardo||12": 515,
+        "Travertino Stone Beige Structured||12": 515,
+        "Travertino White||12": 515
+      }
     }
   ]
 }

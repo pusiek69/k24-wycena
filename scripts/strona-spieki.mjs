@@ -229,7 +229,13 @@ function odswiezLiczbyNaOfercie() {
     );
   }
   // Suma — w opisie dla Google, w danych strukturalnych i w zdaniu nad listą.
-  t = t.replace(/\d+ wzor[a-ząćęłńóśźż]*\. Kalkulator wyceny/g, `${zOdmiana(WZORY.razem, 'wzor')}. Kalkulator wyceny`);
+  // Liczba wzorów w opisie dla Google. Kotwicą jest kwota PRZED nią, nie zdanie
+  // PO niej: CTA w opisie zmieniało się już dwa razy („Kalkulator wyceny online",
+  // „Wycena online w 2 minuty") i za każdym razem zabierało ze sobą tę podmianę.
+  t = t.replace(
+    new RegExp('(z\\u0142\\. )\\d+ wzor[a-ząćęłńóśźż]*\\.', 'g'),
+    `$1${zOdmiana(WZORY.razem, 'wzor')}.`
+  );
   t = t.replace(/\d+ dekor[a-ząćęłńóśźż]* w pięciu kolekcjach/g, `${zOdmiana(WZORY.razem, 'dekor')} w pięciu kolekcjach`);
 
   if (t === przed) return 0;

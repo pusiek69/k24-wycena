@@ -102,6 +102,39 @@
         "Calacatta Arras||30": 579,
         "Mulen||30": 606
       }
+    },
+    {
+      "nazwa": "Promocja październik–grudzień 2026",
+      "od": "2026-10-01",
+      "do": "2026-12-30",
+      "ceny": {
+        "Dijon||20": 507,
+        "Blanche||20": 585,
+        "Lumiere||20": 495,
+        "Botticiono Burges||20": 649,
+        "Nimes Marfil||20": 649,
+        "Loiret||20": 649,
+        "Calacatta Chenonceau||20": 956,
+        "Calacatta Versailles||20": 833,
+        "Statuario Lille||20": 532,
+        "Aquitaine Blanca||20": 833,
+        "Calacatta Dauphine||20": 833,
+        "Calacatta Bearn||20": 833,
+        "Calacatta Arras||20": 833,
+        "Calacatta Concorde||20": 833,
+        "Calacatta Modane||20": 532,
+        "Mulen||20": 840,
+        "Chamonix||20": 956,
+        "Bretagne||20": 702,
+        "Bourbonnais||20": 649,
+        "Corsica||20": 649,
+        "Royal Beige||20": 833,
+        "Gris Fonce||20": 649,
+        "Dijon||30": 506,
+        "Blanche||30": 584,
+        "Calacatta Dauphine||30": 754,
+        "Calacatta Arras||30": 754
+      }
     }
   ]
 }

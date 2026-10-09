@@ -156,3 +156,95 @@ test('w plikach generated nie ma żadnej ceny zakupowej z ulotek', () => {
     }
   }
 });
+
+/* ═══════════════════ PROMOCJA PAŹDZIERNIK–GRUDZIEŃ 2026 (Architype) ═══ */
+
+/*
+ * Ulotka „PROMOCJE październik–grudzień 2026": trzy kolekcje Architype
+ * (Avant Quartz, Caesarstone, Keralini), czas trwania 01.10–30.12.2026
+ * „lub do wyczerpania zapasów". Zasada ta sama co w sezonie letnim:
+ * do klienta idzie TAŃSZA z dwóch cen, a po ostatnim dniu kampanii
+ * wszystko wraca do cennika stałego bez niczyjej ingerencji.
+ */
+const W_JESIENI = '2026-11-15';
+const PO_JESIENI = '2027-01-10';
+
+const licz = (slug, dekor, grubosc, dzien) =>
+  wycen(FIRMY.find((f) => f.slug === slug), { dekor, grubosc, odcinki: KUCHNIA, opcje: OPCJE }, dzien);
+
+test('jesień: Avant, Caesarstone i Keralini licz\u0105 z ceny promocyjnej', () => {
+  // Ceny klienckie = cena po rabacie z ulotki \u00d7 1,30 (decyzja Dawida 9.10.2026).
+  for (const [slug, dekor, grubosc, oczekiwana] of [
+    ['avant-quartz', 'Dijon', '20', 507],          // 390 \u00d7 1,30
+    ['avant-quartz', 'Calacatta Dauphine', '20', 833], // 641 \u00d7 1,30
+    ['caesarstone', 'Jet Black', '20', 715],       // 550 \u00d7 1,30
+    ['keralini', 'Grey Soap', '12', 515],          // 396 \u00d7 1,30
+  ]) {
+    const w = licz(slug, dekor, grubosc, W_JESIENI);
+    assert.equal(w.ok, true, w.blad);
+    assert.ok(
+      Math.abs(nettoM2(w) - oczekiwana) < 0.51,
+      `${slug}/${dekor}: ${nettoM2(w)} zamiast ${oczekiwana}`
+    );
+    assert.equal(w.promo?.nazwa, 'Promocja pa\u017adziernik\u2013grudzie\u0144 2026');
+  }
+});
+
+test('jesie\u0144: wygrywa TA\u0143SZA z dw\u00f3ch cen, nie zawsze promocyjna', () => {
+  /*
+   * Promocja nie mo\u017ce podnie\u015b\u0107 ceny \u2014 gdyby dekor by\u0142 w cenniku ta\u0144szy
+   * ni\u017c na ulotce, klient ma zap\u0142aci\u0107 mniej, a plakietki promocji nie ma.
+   */
+  const avant = FIRMY.find((f) => f.slug === 'avant-quartz');
+  const kampania = avant.promocje.find((k) => k.nazwa === 'Promocja pa\u017adziernik\u2013grudzie\u0144 2026');
+  assert.ok(kampania, 'brak kampanii jesiennej w rejestrze firm');
+
+  for (const [klucz, cenaPromo] of Object.entries(kampania.ceny)) {
+    const nazwa = klucz.slice(0, klucz.lastIndexOf('||'));
+    const gr = klucz.slice(klucz.lastIndexOf('||') + 2);
+    const stala = avant.dekory[nazwa]?.[gr];
+    if (typeof stala !== 'number') continue; // dekor wy\u0142\u0105cznie promocyjny
+    const w = licz('avant-quartz', nazwa, gr, W_JESIENI);
+    assert.ok(
+      Math.abs(nettoM2(w) - Math.min(cenaPromo, stala)) < 0.51,
+      `${nazwa}: policzono ${nettoM2(w)}, a ta\u0144sza z cen to ${Math.min(cenaPromo, stala)}`
+    );
+  }
+});
+
+test('jesie\u0144: po 30.12.2026 ceny wracaj\u0105 do cennika sta\u0142ego', () => {
+  const po = licz('caesarstone', 'White Attica', '20', PO_JESIENI);
+  assert.equal(po.ok, true, po.blad);
+  assert.equal(po.promo, null, 'po ostatnim dniu kampanii plakietki nie ma');
+  assert.ok(Math.abs(nettoM2(po) - 1430) < 0.51, `po kampanii: ${nettoM2(po)} zamiast 1430`);
+
+  // Dekory wy\u0142\u0105cznie promocyjne znikaj\u0105 z katalogu razem z kampani\u0105.
+  const avantPo = FIRMY.find((f) => f.slug === 'avant-quartz');
+  assert.ok(avantPo.dekory['Botticiono Burges'], 'w czasie kampanii dekor ma by\u0107 wybieralny');
+});
+
+test('jesie\u0144: wycena promocyjna niesie dopisek o dost\u0119pno\u015bci', () => {
+  const w = licz('keralini', 'Portoro', '12', W_JESIENI);
+  assert.equal(w.promo?.nazwa, 'Promocja pa\u017adziernik\u2013grudzie\u0144 2026');
+  assert.equal(w.promo?.do, '2026-12-30', 'data ko\u0144ca z ulotki, nie z pami\u0119ci');
+});
+
+test('jesie\u0144: ceny ZAKUPOWE z ulotki nie wyciek\u0142y do plik\u00f3w dla klienta', () => {
+  /*
+   * Pr\u00f3bka kwot hurtowych z ulotki X\u2013XII. \u017badna nie ma prawa pojawi\u0107 si\u0119
+   * w `src/generated` jako cena \u2014 tam id\u0105 wy\u0142\u0105cznie kwoty ko\u0144cowe.
+   */
+  const zakupy = [390, 310, 450, 300, 381, 499, 735, 641, 409, 646, 540, 550, 800, 594, 396, 389, 449, 580];
+  for (const plik of ['avant-quartz.promocje.json', 'caesarstone.promocje.json', 'keralini.promocje.json']) {
+    const tekst = fs.readFileSync(new URL(`../src/generated/${plik}`, import.meta.url), 'utf8');
+    const dane = JSON.parse(tekst);
+    const jesien = dane.kampanie.find((k) => k.nazwa === 'Promocja pa\u017adziernik\u2013grudzie\u0144 2026');
+    assert.ok(jesien, `${plik}: brak kampanii jesiennej`);
+    for (const z of zakupy) {
+      assert.ok(
+        !Object.values(jesien.ceny).includes(z),
+        `${plik}: kwota zakupowa ${z} w cenach dla klienta`
+      );
+    }
+  }
+});
