@@ -1,4 +1,5 @@
 import { h, uprosc } from './dom.js';
+import { postep } from './kroki-postep.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import {
@@ -82,7 +83,7 @@ export function pomocnikPomieszczenie(wyslij) {
   ];
 
   return ramka(
-    'Blat do kuchni czy do łazienki?',
+    { tytul: 'Blat do kuchni czy do łazienki?', krok: 'pomieszczenie' },
     h(
       'div',
       { class: 'pom-karty' },
@@ -115,7 +116,7 @@ export function pomocnikRodzaj(wyslij) {
   const dostepne = RODZAJE.filter((r) => FIRMY.some((f) => rodzajMaterialu(f) === r.id));
 
   return ramka(
-    'Jaki rodzaj kamienia?',
+    { tytul: 'Jaki rodzaj kamienia?', krok: 'rodzaj' },
     h(
       'div',
       { class: 'pom-karty' },
@@ -198,7 +199,10 @@ export function pomocnikMaterial(wyslij, rodzaj) {
     : null;
 
   return ramka(
-    opisRodzaju ? `Kolekcje — ${opisRodzaju.nazwa.toLowerCase()}` : 'Wybierz materiał',
+    {
+      tytul: opisRodzaju ? `Kolekcje — ${opisRodzaju.nazwa.toLowerCase()}` : 'Wybierz materiał',
+      krok: 'material',
+    },
     h(
       'div',
       { class: 'pom-karty' },
@@ -370,7 +374,7 @@ export function pomocnikDekor(slug, wyslij) {
   rysuj();
 
   return ramka(
-    `Wybierz dekor — ${firma.nazwa}`,
+    { tytul: `Wybierz dekor — ${firma.nazwa}`, krok: 'dekor' },
     h(
       'div',
       { class: 'pom-narzedzia' },
@@ -470,7 +474,7 @@ export function pomocnikWymiary(wyslij) {
   };
 
   return ramka(
-    'Podaj wymiary blatu',
+    { tytul: 'Podaj wymiary blatu', krok: 'wymiary' },
     h('p', { class: 'pom-podpowiedz' }, 'Głębokość zwykle 60 cm — wystarczy wpisać długość.'),
     lista,
     h('button', { class: 'btn', type: 'button', onclick: gotowe }, 'Gotowe →')
@@ -579,7 +583,7 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
         'Proszę o wycenę blatu kuchennego.';
 
   return ramka(
-    'Kilka szczegółów i liczymy',
+    { tytul: 'Kilka szczegółów i liczymy', krok: 'szczegoly' },
     ...(lazienka
       ? [
           grupa('Umywalka', 'zlew', ['podwieszana', 'nablatowa']),
@@ -912,8 +916,30 @@ function liczbaPL(n) {
   return (Math.round(Number(n) * 10) / 10).toLocaleString('pl-PL');
 }
 
-function ramka(tytul, ...tresc) {
-  return h('div', { class: 'pomocnik' }, h('div', { class: 'pom-tytul' }, tytul), tresc);
+/**
+ * Rama pomocnika. Pierwszy argument może być obiektem
+ * `{ tytul, krok }` — wtedy nad tytułem staje licznik „KROK X Z 5”
+ * i cienki pasek postępu. Sam tekst znaczy „pomocnik spoza ścieżki
+ * klikanej” i nie dostaje licznika (patrz app/kroki-postep.js).
+ */
+function ramka(tytulLubOpis, ...tresc) {
+  const { tytul, krok } =
+    typeof tytulLubOpis === 'string' ? { tytul: tytulLubOpis, krok: null } : tytulLubOpis;
+  const p = postep(krok);
+  return h(
+    'div',
+    { class: 'pomocnik' },
+    p
+      ? h(
+          'div',
+          { class: 'pom-krok' },
+          h('span', {}, p.etykieta),
+          h('span', { class: 'pom-pasek' }, h('i', { style: `width:${p.udzial}%` }))
+        )
+      : null,
+    h('div', { class: 'pom-tytul' }, tytul),
+    tresc
+  );
 }
 
 /**

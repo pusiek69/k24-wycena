@@ -622,6 +622,22 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   align-self: stretch; background: var(--stone); border: 1px solid var(--line-hi);
   border-radius: var(--radius); padding: 16px 18px 18px; animation: fade .25s ease both;
 }
+/* Licznik kroków ścieżki klikanej (przegląd designu 9.10.2026). Cienki,
+   żeby nie konkurował z pytaniem — ma mówić „zostały dwa”, nie krzyczeć. */
+.pom-krok {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: .09em;
+  color: var(--vein);
+}
+.pom-pasek {
+  flex: 1; height: 2px; border-radius: 2px;
+  background: rgba(201, 168, 106, .18); overflow: hidden;
+}
+.pom-pasek i { display: block; height: 100%; background: var(--vein); }
+@media (prefers-reduced-motion: no-preference) {
+  .pom-pasek i { transition: width .25s ease; }
+}
+
 .pom-tytul {
   font-family: var(--sans); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
   color: var(--vein); margin-bottom: 12px;
