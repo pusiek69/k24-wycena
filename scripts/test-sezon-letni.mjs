@@ -173,12 +173,14 @@ const licz = (slug, dekor, grubosc, dzien) =>
   wycen(FIRMY.find((f) => f.slug === slug), { dekor, grubosc, odcinki: KUCHNIA, opcje: OPCJE }, dzien);
 
 test('jesień: Avant, Caesarstone i Keralini licz\u0105 z ceny promocyjnej', () => {
-  // Ceny klienckie = cena po rabacie z ulotki \u00d7 1,30 (decyzja Dawida 9.10.2026).
+  // Ceny klienckie = cena po rabacie z ulotki × 1,45 — TA SAMA reguła, co
+  // w kampanii letniej Architype (Dawid, 9.10.2026). Mnożnik 1,30 dotyczy
+  // cennika BAZOWEGO tych marek i nie miesza się z promocyjnym.
   for (const [slug, dekor, grubosc, oczekiwana] of [
-    ['avant-quartz', 'Dijon', '20', 507],          // 390 \u00d7 1,30
-    ['avant-quartz', 'Calacatta Dauphine', '20', 833], // 641 \u00d7 1,30
-    ['caesarstone', 'Jet Black', '20', 715],       // 550 \u00d7 1,30
-    ['keralini', 'Grey Soap', '12', 515],          // 396 \u00d7 1,30
+    ['avant-quartz', 'Dijon', '20', 566],              // 390 × 1,45
+    ['avant-quartz', 'Calacatta Dauphine', '20', 929], // 641 × 1,45
+    ['caesarstone', 'Jet Black', '20', 798],           // 550 × 1,45
+    ['keralini', 'Grey Soap', '12', 574],              // 396 × 1,45
   ]) {
     const w = licz(slug, dekor, grubosc, W_JESIENI);
     assert.equal(w.ok, true, w.blad);

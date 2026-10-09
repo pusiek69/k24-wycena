@@ -17,10 +17,10 @@ Dawid wgrał ulotkę „PROMOCJE październik–grudzień 2026" i aktualny cenni
 
 | | było | jest |
 |---|---|---|
-| konglomerat 60 × 300 | 7 650 zł | **7 050 zł** |
-| spiek 60 × 300 | 8 500 zł | **7 150 zł** |
-| spiek w L | 9 600 zł | **8 900 zł** |
-| spiek zł/m² od | 671 zł | **556 zł** |
+| konglomerat 60 × 300 | 7 650 zł | **7 250 zł** |
+| spiek 60 × 300 | 8 500 zł | **7 300 zł** |
+| spiek w L | 9 600 zł | **9 250 zł** |
+| spiek zł/m² od | 671 zł | **620 zł** |
 | konglomerat w L | 8 650 zł | bez zmian |
 
 Liczby wzorów urosły o dekory wyłącznie promocyjne: konglomerat 223 → **232**, spiek 502 → **506** (Keralini 49 → 53, Avant 61 → 63, Caesarstone 24 → 31).
@@ -30,8 +30,10 @@ Liczby wzorów urosły o dekory wyłącznie promocyjne: konglomerat 223 → **23
 * Generator strony ofertowej spieków miał kotwicę na zdaniu „Kalkulator wyceny online", które zmieniło się 29.09 na „Wycena online w 2 minuty" — podmiana liczby wzorów przestała działać po cichu. Kotwica przeniesiona na kwotę przed liczbą.
 * Trzy testy spieków używały `\w*` do dopasowania „wzorów" — `\w` nie obejmuje polskich liter, więc przy 502 („wzory") działały, a przy 506 („wzorów") przestały. Poprawione na klasę z polskimi znakami.
 
+**KOREKTA tego samego dnia (wyjaśnienie Dawida):** mnożnik promocyjny to **1,45**, ta sama reguła co w kampanii letniej — 1,30 dotyczy cennika BAZOWEGO tych marek. Przeliczone, progi poniżej już po korekcie. Przegląd cennika 2026: na wszystkim, co dało się odczytać jednoznacznie (44 ceny Avant + 20 Caesarstone + próbka Keralini), cennik **zgadza się z naszym katalogiem co do złotówki** — jedyny kandydat na realną zmianę to **Mulen** (u nas 1 106, cennik 1 059, ulotka 1 068) i **Chablis**, którego u nas nie ma.
+
 **Do potwierdzenia przez Dawida (NIE zgadywałem):**
-1. **Mnożnik 1,30 czy 1,45?** Kampania letnia liczyła ceny promocyjne × **1,45** (decyzja z 11.08), a polecenie z dzisiaj mówi × **1,30**. Wdrożone 1,30 — jeśli to pomyłka, zmiana to jedna liczba w pliku źródłowym i `npm run cennik`.
+1. ~~Mnożnik~~ — wyjaśnione: 1,45. Kampania letnia liczyła ceny promocyjne × **1,45** (decyzja z 11.08), a polecenie z dzisiaj mówi × **1,30**. Wdrożone 1,30 — jeśli to pomyłka, zmiana to jedna liczba w pliku źródłowym i `npm run cennik`.
 2. **Dwa wiersze „przy zakupie 5 płyt"** (Dijon 310, White Quartz 300) — **pominięte**, bo kalkulator nie gwarantuje zakupu pięciu płyt. Czy wchodzą?
 3. **Zlewy Proline** (600 / 820 / 900 zł netto) — pominięte, tak jak w sierpniu.
 4. **Caesarstone:** 6 pozycji z ulotki (Jet Black, Fresh Concrete, Sleek Concrete, Empira Black, Empira White, Calacatta Nuvo) **nie ma w naszym katalogu stałym** — wchodzą jako dekory wyłącznie promocyjne. Dodatkowo ulotka podaje dla Ravena cenę cennikową 996 zł, a my mamy 934 zł — to może być inny format/seria.
