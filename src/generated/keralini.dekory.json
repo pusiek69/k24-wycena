@@ -2,167 +2,165 @@
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/keralini.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "keralini",
   "_wygenerowano": "2026-10-09",
-  "_dekorow": 49,
+  "_dekorow": 48,
   "dekory": {
-    "Absolute": {
+    "Absolute Naturale": {
       "12": 1030
     },
-    "Absolute Black": {
+    "Absolute Black Structured": {
       "12": 1030
     },
-    "Absolute Grey": {
+    "Absolute Grey Structured": {
       "12": 1030
     },
-    "Absolute White": {
+    "Absolute White Structured": {
       "12": 1030
     },
-    "Arabescato Viola": {
+    "Arabescato Viola Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Ballet": {
+    "Ballet Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Boulevard Black": {
+    "Boulevard Black Naturale": {
       "12": 1030
     },
-    "Breccia Stone Beige": {
+    "Breccia Stone Beige Naturale": {
       "12": 1030
     },
-    "Calacatta Dorato": {
+    "Calacatta Dorato Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Calacatta Oro": {
-      "6": 534,
-      "12": 1030
-    },
-    "Camargue Arena": {
+    "Calacatta Dorato Levigato": {
       "12": 1208
     },
-    "Canela Roma": {
+    "Calacatta Oro Naturale": {
+      "6": 534,
+      "12": 1030
+    },
+    "Calacatta Oro Levigato": {
+      "6": 668,
       "12": 1208
     },
-    "Carrara Gold": {
+    "Camargue Arena Naturale": {
+      "12": 1208
+    },
+    "Canela Roma Naturale": {
+      "12": 1208
+    },
+    "Carrara Gold Naturale": {
       "20": 1684
     },
-    "Crystal Cream": {
+    "Crystal Cream Naturale": {
       "12": 1030
     },
-    "Fior Di Bosco": {
+    "Fior Di Bosco Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Hermon": {
+    "Hermon Naturale": {
       "12": 1030
     },
-    "Icelanic White": {
+    "Icelanic White Naturale": {
       "20": 1684
     },
-    "Kenya": {
+    "Kenya Naturale": {
       "12": 1030
     },
-    "Lasa White": {
+    "Lasa White Naturale": {
       "12": 1030
     },
-    "Laurent": {
+    "Laurent Naturale": {
       "20": 1684
     },
-    "Light Red Calacatta": {
+    "Light Red Calacatta Naturale": {
       "12": 1030
     },
-    "Macaubas Beige": {
+    "Macaubas Beige Naturale": {
       "12": 1030
     },
-    "Makrana": {
+    "Makrana Naturale": {
       "12": 1030
     },
-    "Marmo Antico": {
+    "Makrana Levigato": {
+      "12": 1208
+    },
+    "Marmo Antico Naturale": {
       "12": 1030
     },
-    "Meraki": {
+    "Meraki Naturale": {
       "12": 1030
     },
-    "Monte Bianco": {
+    "Monte Bianco Naturale": {
       "12": 1030
     },
-    "Negev": {
+    "Negev Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Nero Marquina": {
+    "Nero Marquina Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Noir Laurent": {
+    "Noir Laurent Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Pandora": {
+    "Pandora FULBODY Naturale": {
       "12": 1030
     },
-    "Patagonia": {
+    "Patagonia Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Pietra Brown": {
+    "Pietra Brown Naturale": {
       "12": 1030
     },
-    "Pietra Grigia": {
+    "Pietra Grigia Naturale": {
       "12": 1030
     },
-    "Portoro": {
+    "Portoro Naturale": {
       "12": 1030
     },
-    "Pulpis Ivory": {
+    "Pulpis Ivory Naturale": {
       "12": 1030
     },
-    "Saturnia": {
+    "Saturnia Naturale": {
       "12": 1030
     },
-    "Statuario Leonardo": {
+    "Statuario Leonardo Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Statuario Raffaello": {
+    "Statuario Raffaello Naturale": {
       "12": 1030
     },
-    "Taj Mahal": {
+    "Taj Mahal Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Tinta Unita Bianco": {
+    "Tinta Unita Bianco Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Tinta Unita Nero": {
+    "Tinta Unita Nero Naturale": {
       "6": 534,
       "12": 1030
     },
-    "Travertino Stone Beige": {
+    "Travertino Stone Beige Naturale": {
+      "6": 534
+    },
+    "Travertino Stone Beige Structured": {
       "12": 1030
     },
-    "Travertino White": {
+    "Travertino Stone Beige Leather": {
       "12": 1030
     },
-    "Aurora Black": {
-      "12": 1010
-    },
-    "Black Diamond": {
-      "12": 1010
-    },
-    "Blue Stone Negro": {
-      "12": 1188
-    },
-    "Distrito Marfil": {
-      "12": 1188
-    },
-    "Grey Soap": {
-      "12": 1010
-    },
-    "Basaltina Grigia": {
-      "12": 1010
+    "Travertino White Naturale": {
+      "12": 1030
     }
   }
 }

@@ -5,6 +5,22 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-09 (wieczorem, cz. 2) — Keralini rozbite na wykończenia
+
+Decyzja Dawida: sześć dekorów bez wiersza cenowego w cenniku Architype 2026 jest **wycofanych**, reszta idzie z podziałem na wykończenia.
+
+**Katalog Keralini: 49 → 48 pozycji.** 43 dekory bazowe × wykończenia (6/12/20 mm × naturale / levigato / structured / leather), nazwa pozycji to „<Dekor> <Wykończenie>" — ten sam wzorzec, co od dawna u Caesarstone („White Attica MAT") i InterQ („Taj Mahal Polished"), więc klient wybiera wykończenie razem z dekorem bez żadnej zmiany w kreatorze. Znaczniki `NEW`, `FULLBODY`, `A+B` odcięte z nazw.
+
+**Wycofane:** Aurora Black, Black Diamond, Basaltina Grigia, Blue Stone Negro, Distrito Marfil, Grey Soap.
+
+**Promocje X–XII na najtańsze wykończenie** (ulotka nie precyzuje wykończenia): Nero Marquina, Pietra Grigia, Portoro, Saturnia, Statuario Leonardo, Travertino White → wszystkie na **Naturale** (792 zł cennikowe, najtańszy wariant w 12 mm). Pozycje, które ulotka precyzuje (Absolute Black / Grey / White Structured, Travertino Stone Beige Structured), trafiły na swoje wykończenie bez zmian.
+
+**Grey Soap — przypadek osobny:** wycofany z cennika, ale **jest na ulotce promocyjnej**. Zostaje więc dekorem *wyłącznie promocyjnym*: wybieralny do 30.12.2026 po cenie promocyjnej, potem znika razem z kampanią. W kalkulatorze widać dziś 49 pozycji Keralini (48 katalogowych + Grey Soap z promocji).
+
+**Progi „od" bez zmian:** konglomerat 7 250 zł, spiek 7 300 zł, spiek w L 9 250 zł, spiek 620–2 110 zł/m². Rozbicie nie rusza najtańszego wariantu, a wycofane dekory nie były najtańsze.
+
+Liczba wzorów spieku w treści stron: 506 → **502**, Keralini 53 → **49**. Checklista §8.1 zeszła z 189 na 188 dekorów katalogowych.
+
 ## 2026-10-09 (wieczorem) — nowa promocja Architype X–XII 2026 w kalkulatorze
 
 Dawid wgrał ulotkę „PROMOCJE październik–grudzień 2026" i aktualny cennik Architype 2026.

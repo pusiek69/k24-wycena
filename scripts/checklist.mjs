@@ -31,7 +31,9 @@ const kolekcje = {
   'avant-quartz': 62,
   caesarstone: 24,
   technistone: 54,
-  keralini: 49,
+  // Keralini 48 od 9.10.2026: rozbicie na wykończenia (43 dekory × wykończenia)
+  // i wycofanie sześciu pozycji bez ceny w cenniku 2026 — decyzja Dawida.
+  keralini: 48,
 };
 let razem = 0;
 let zgodne = true;
@@ -40,7 +42,7 @@ for (const [slug, ile] of Object.entries(kolekcje)) {
   razem += n;
   if (n !== ile) zgodne = false;
 }
-ok(1, 'kolekcje i liczba dekorów', zgodne && razem === 189, `${razem} dekorów`);
+ok(1, 'kolekcje i liczba dekorów', zgodne && razem === 188, `${razem} dekorów`);
 
 /* 2. Technistone: format płyty, tylko całe płyty, przelicznik */
 const techn = czytaj('src/firms/technistone.js');

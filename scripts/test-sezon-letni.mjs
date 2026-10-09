@@ -226,7 +226,7 @@ test('jesie\u0144: po 30.12.2026 ceny wracaj\u0105 do cennika sta\u0142ego', () 
 });
 
 test('jesie\u0144: wycena promocyjna niesie dopisek o dost\u0119pno\u015bci', () => {
-  const w = licz('keralini', 'Portoro', '12', W_JESIENI);
+  const w = licz('keralini', 'Portoro Naturale', '12', W_JESIENI);
   assert.equal(w.promo?.nazwa, 'Promocja pa\u017adziernik\u2013grudzie\u0144 2026');
   assert.equal(w.promo?.do, '2026-12-30', 'data ko\u0144ca z ulotki, nie z pami\u0119ci');
 });
