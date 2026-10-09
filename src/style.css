@@ -2240,7 +2240,39 @@ button { color: var(--cream); background: transparent; }
 .real-pasek,
 .tabela-przewijana,
 .tabela-szeroka,
-.rozrys-ramka {
+.rozrys-ramka,
+.pom-dekory {
   scrollbar-width: thin;
   scrollbar-color: var(--vein-soft) transparent;
+}
+
+/* Strzałki paska realizacji — dorysowywane przez pasek-realizacji.js
+   wyłącznie przy myszy (hover+fine pointer), więc te reguły nie dotykają
+   telefonu. Obrys zamiast wypełnienia: jedyne pełne złoto na stronie ma
+   zostać przy wezwaniu do wyceny. */
+.real-otulina { position: relative; }
+.real-strzalka {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  background: rgba(19, 17, 15, .82);
+  border: 1px solid var(--line-hi); border-radius: 50%;
+  color: var(--vein); font-size: 19px; line-height: 1;
+  cursor: pointer; transition: border-color .15s, background .15s, opacity .15s;
+}
+.real-strzalka:hover { border-color: var(--vein); background: rgba(201, 168, 106, .14); }
+.real-strzalka:focus-visible { outline: 2px solid var(--vein); outline-offset: 2px; }
+.real-strzalka:disabled { opacity: .25; cursor: default; }
+.real-strzalka-lewo { left: -10px; }
+.real-strzalka-prawo { right: -10px; }
+
+/* Pole zgody pod palcem: 20 px kwadratu to za mało na telefonie — na
+   dotyku rośnie do 26 px (cały wiersz etykiety i tak jest klikalny,
+   ale sam kwadrat musi być widoczny i trafialny wzrokiem). */
+@media (pointer: coarse) {
+  .switch .box { width: 26px; height: 26px; font-size: 16px; }
+  /* Lista dekorów pod palcem: 40 px wiersza to dolna granica — na dotyku
+     przyciski rosną do wygodnych ~48 px, a lista dostaje więcej oddechu. */
+  .pom-dekor { padding: 13px 13px; font-size: 15px; }
+  .pom-dekory { max-height: 320px; }
 }

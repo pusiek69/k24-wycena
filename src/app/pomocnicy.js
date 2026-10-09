@@ -595,7 +595,14 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
         ]
       : [
           grupa('Zlew', 'zlew', ['podwieszany', 'nablatowy']),
-          grupa('Płyta indukcyjna', 'indukcja', ['nakładana', 'licowana z blatem']),
+          // „Licowana" to żargon — klient-laik nie wie, co klika. Jedno
+          // zdanie podpowiedzi w tym samym miejscu, co przy otworach.
+          grupa(
+            'Płyta indukcyjna',
+            'indukcja',
+            ['nakładana', 'licowana z blatem'],
+            'Nakładana stoi na blacie; licowana jest wpuszczona równo z powierzchnią (głębsze frezowanie).'
+          ),
           otwory,
         ]),
     h(

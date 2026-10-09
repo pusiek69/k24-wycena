@@ -6,6 +6,7 @@ import { FIRMY } from './firms/index.js';
 import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
+import { uzbrojPasekRealizacji } from './app/pasek-realizacji.js';
 import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 import { gotoweStawki } from './app/stawki-klient.js';
 import { pobierzPlyty, zaladowane } from './app/wyprzedaz-dane.js';
@@ -44,6 +45,8 @@ function przyklejonyPrzycisk() {
   obserwator.observe(root);
 }
 przyklejonyPrzycisk();
+// Strzałki paska realizacji — sama prezentacja, patrz komentarz w module.
+uzbrojPasekRealizacji();
 
 /*
  * „Powtórz wycenę" z panelu Dawida: fragment #powtorz=… przełącza kalkulator
