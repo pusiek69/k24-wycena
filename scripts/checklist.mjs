@@ -24,8 +24,11 @@ const ok = (nr, opis, warunek, szczegol = '') => {
 };
 
 /* 1. Kolekcje i ceny */
+// Avant 62 od 9.10.2026: Chablis (kod 8590) dodany z cennika Architype 2026
+// decyzją Dawida. Liczby są wpisane świadomie — mają piszczeć, gdy katalog
+// zmieni się bez decyzji.
 const kolekcje = {
-  'avant-quartz': 61,
+  'avant-quartz': 62,
   caesarstone: 24,
   technistone: 54,
   keralini: 49,
@@ -37,7 +40,7 @@ for (const [slug, ile] of Object.entries(kolekcje)) {
   razem += n;
   if (n !== ile) zgodne = false;
 }
-ok(1, 'kolekcje i liczba dekorów', zgodne && razem === 188, `${razem} dekorów`);
+ok(1, 'kolekcje i liczba dekorów', zgodne && razem === 189, `${razem} dekorów`);
 
 /* 2. Technistone: format płyty, tylko całe płyty, przelicznik */
 const techn = czytaj('src/firms/technistone.js');

@@ -299,3 +299,24 @@ test('odpowiedź o metrze bieżącym przelicza się z kwoty z cennika', () => {
   const zCennika = Math.round(KWOTY.konglomeratProste / 3 / 50) * 50;
   assert.equal(mb, zCennika, `${mb} zł/mb nie zgadza się z progiem ${KWOTY.konglomeratProste} zł za 300 cm`);
 });
+
+test('Chablis — nowy dekor Avant z cennika 2026, bez promocji', () => {
+  /*
+   * Decyzja Dawida 9.10.2026: dekor z cennika Architype 2026 (kod 8590,
+   * 20 mm) wchodzi do katalogu z marżą standardową marki. W PDF nazwa ma
+   * doklejone „NEW” — to oznaczenie nowości, nie część nazwy, więc
+   * w katalogu stoi samo „Chablis”.
+   */
+  const avant = FIRMY.find((f) => f.slug === 'avant-quartz');
+  assert.ok(avant.dekory.Chablis, 'brak Chablis w katalogu');
+  assert.equal(avant.dekory.Chablis['20'], 1593, '1 225 z cennika × 1,30');
+  assert.ok(!avant.dekory['ChablisNEW'], 'znacznik NEW nie ma prawa zostać w nazwie');
+
+  // Chablisa nie ma na ulotce X–XII — żadna kampania nie może go dotyczyć.
+  for (const k of avant.promocje || []) {
+    assert.ok(
+      !Object.keys(k.ceny || {}).some((klucz) => klucz.startsWith('Chablis||')),
+      `kampania „${k.nazwa}” obejmuje Chablis, a ulotka go nie wymienia`
+    );
+  }
+});
