@@ -250,3 +250,26 @@ test('jesie\u0144: ceny ZAKUPOWE z ulotki nie wyciek\u0142y do plik\u00f3w dla k
     }
   }
 });
+
+test('jesień: Mulen — promocja ma pierwszeństwo przed nowym cennikiem', () => {
+  /*
+   * Decyzja Dawida 9.10.2026: cena bazowa Mulena 20 mm idzie z cennika 2026
+   * (1 059 zakupowe), ale dekor jest na ulotce — a promocja zawsze wygrywa.
+   * Do 30.12 klient widzi 646 × 1,45, od 31.12 cennik stały 1 059 × 1,30.
+   *
+   * Ten test pilnuje OBU końców naraz, bo pomyłka w którąkolwiek stronę
+   * jest kosztowna: za nisko — sprzedaż po cenie, której nie ma w ulotce,
+   * za wysoko — klient dostaje w kalkulatorze więcej, niż Dawid obiecuje.
+   */
+  const wKampanii = licz('avant-quartz', 'Mulen', '20', W_JESIENI);
+  assert.ok(Math.abs(nettoM2(wKampanii) - 937) < 0.51, `w kampanii: ${nettoM2(wKampanii)} zamiast 937`);
+  assert.equal(wKampanii.promo?.nazwa, 'Promocja październik–grudzień 2026');
+
+  const poKampanii = licz('avant-quartz', 'Mulen', '20', PO_JESIENI);
+  assert.ok(Math.abs(nettoM2(poKampanii) - 1377) < 0.51, `po kampanii: ${nettoM2(poKampanii)} zamiast 1377`);
+  assert.equal(poKampanii.promo, null);
+
+  // 1 377 = 1 059 z cennika 2026 × 1,30 — gdyby ktoś wrócił do starych 1 106,
+  // wyszłoby 1 438 i ten test by to złapał.
+  assert.equal(FIRMY.find((f) => f.slug === 'avant-quartz').dekory.Mulen['20'], 1377);
+});
