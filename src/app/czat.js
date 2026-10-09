@@ -891,7 +891,9 @@ export function uruchomCzat(root, akcje = {}) {
       h(
         'div',
         { class: 'wiad wiad-konsultant' },
-        h('div', { class: 'wiad-kto' }, 'Konsultant'),
+        // Ta sama etykieta, co przy zwykłych wiadomościach — klient rozmawia
+        // z jedną postacią, a nie z „Konsultantem" raz i „Asystentem" potem.
+        h('div', { class: 'wiad-kto' }, 'Asystent Dawida'),
         h(
           'div',
           { class: 'wiad-tresc czat-blad' },
@@ -914,7 +916,8 @@ export function uruchomCzat(root, akcje = {}) {
     return h(
       'div',
       { class: 'wiad wiad-konsultant' },
-      h('div', { class: 'wiad-kto' }, 'Konsultant'),
+      // Jak wyżej: wskaźnik pisania podpisujemy tak samo, jak wiadomości.
+      h('div', { class: 'wiad-kto' }, 'Asystent Dawida'),
       h('div', { class: 'wiad-tresc' }, h('span', { class: 'pisze' }, h('i'), h('i'), h('i')))
     );
   }
@@ -941,10 +944,29 @@ function linkuj(linia) {
   let ostatni = 0;
   let m;
   while ((m = wzor.exec(linia)) !== null) {
-    if (m.index > ostatni) czesci.push(linia.slice(ostatni, m.index));
+    if (m.index > ostatni) czesci.push(...pogrubienia(linia.slice(ostatni, m.index)));
     czesci.push(h('a', { href: m[0], target: '_blank', rel: 'noopener nofollow' }, m[0]));
     ostatni = m.index + m[0].length;
   }
-  if (ostatni < linia.length) czesci.push(linia.slice(ostatni));
+  if (ostatni < linia.length) czesci.push(...pogrubienia(linia.slice(ostatni)));
+  return czesci;
+}
+
+/* Model potrafi odpowiedzieć z markdownowym **pogrubieniem** (np. listą
+   kolekcji), a klient widział surowe gwiazdki w rozmowie. Zamieniamy je na
+   <strong> tylko w tekście POZA linkami — URL z gwiazdkami zostawiamy
+   w spokoju, bo linkuj() tnie linię wcześniej. Czysta prezentacja: treść
+   wiadomości i przebieg rozmowy bez zmian. */
+function pogrubienia(fragment) {
+  const czesci = [];
+  const wzor = /\*\*([^*\n]+)\*\*/g;
+  let ostatni = 0;
+  let m;
+  while ((m = wzor.exec(fragment)) !== null) {
+    if (m.index > ostatni) czesci.push(fragment.slice(ostatni, m.index));
+    czesci.push(h('strong', {}, m[1]));
+    ostatni = m.index + m[0].length;
+  }
+  if (ostatni < fragment.length) czesci.push(fragment.slice(ostatni));
   return czesci;
 }

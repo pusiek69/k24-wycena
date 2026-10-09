@@ -2214,3 +2214,33 @@ button { color: var(--cream); background: transparent; }
 }
 .lista-sasiadow a { font-family: var(--sans); font-size: 15px; }
 .lista-sasiadow .drobne { font-family: var(--sans); font-size: 12px; color: var(--dim); }
+
+/* ═══════════════ PRZEWIJANIE W POZIOMIE — AFORDANCJA (09.10.2026) ════════
+   Audyt na 375 px: tabela cen na stronach miast ucinała kolumnę „gotowy
+   blat z montażem" — czyli tę jedyną, po którą klient przyszedł — i nic
+   nie mówiło, że można przesunąć palcem. Cień przy krawędzi znika, gdy
+   doścignie się koniec tabeli (trik z background-attachment: local), więc
+   działa jak strzałka „jest dalej" bez żadnego JS-a i bez zmiany układu.
+   Kolor zasłony = --ink, bo oba kontenery leżą wprost na tle strony. */
+.tabela-przewijana,
+.tabela-szeroka {
+  background:
+    linear-gradient(to right, var(--ink) 35%, rgba(19, 17, 15, 0)) left center,
+    linear-gradient(to left, var(--ink) 35%, rgba(19, 17, 15, 0)) right center,
+    radial-gradient(farthest-side at 0 50%, rgba(201, 168, 106, .30), transparent) left center,
+    radial-gradient(farthest-side at 100% 50%, rgba(201, 168, 106, .30), transparent) right center;
+  background-repeat: no-repeat;
+  background-size: 44px 100%, 44px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* Systemowy szary pasek przewijania (Windows) rozbijał ciemną elegancję
+   przy karuzeli realizacji i tabelach. Wąski, przygaszone złoto — widać,
+   że się przewija, ale nie świeci. */
+.real-pasek,
+.tabela-przewijana,
+.tabela-szeroka,
+.rozrys-ramka {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vein-soft) transparent;
+}
