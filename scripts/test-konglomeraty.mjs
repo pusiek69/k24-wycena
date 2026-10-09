@@ -266,3 +266,36 @@ test('artykuł o cenie nie zostaje przy kwotach sprzed zmiany cennika', () => {
     assert.deepEqual(stare, [], `${plik}: wycofane kwoty w formie progu: ${stare.join(', ')}`);
   }
 });
+
+/* ──────────────── pytania z „Więcej pytań" Google (K7, 9.10.2026) */
+
+test('strony materiałowe odpowiadają na pytania, które Google pokazuje w PAA', () => {
+  /*
+   * Google przy frazach o blatach pokazuje blok „Więcej pytań". Odpowiedź
+   * musi być WIDOCZNĄ TREŚCIĄ — bez nowego FAQPage w schemie, bo rich
+   * results dla FAQ Google wycofał 7.05.2026 i zostałaby sama deklaracja.
+   */
+  const kong = zrodlo('blaty-z-konglomeratu.html');
+  assert.match(kong, /<h3>Co jest tańsze: konglomerat czy granit\?<\/h3>/);
+
+  const granit = zrodlo('blaty-granitowe.html');
+  assert.match(granit, /<h3>Ile kosztuje metr bieżący blatu z kamienia\?<\/h3>/);
+
+  for (const [plik, tekst] of [['blaty-z-konglomeratu.html', kong], ['blaty-granitowe.html', granit]]) {
+    const liczbaFaq = (tekst.match(/"@type":\s*"FAQPage"/g) || []).length;
+    assert.ok(liczbaFaq <= 1, `${plik}: nie dokładamy nowego FAQPage`);
+  }
+});
+
+test('odpowiedź o metrze bieżącym przelicza się z kwoty z cennika', () => {
+  /*
+   * „Około X zł za metr bieżący" to przeliczenie progu dla blatu 300 cm.
+   * Gdy cennik się ruszy, `ceny-tresc.mjs` poprawi próg, ale NIE przeliczy
+   * tego zdania — stąd ten test. Pada, gdy kwoty przestają do siebie pasować.
+   */
+  const granit = zrodlo('blaty-granitowe.html');
+  const mb = Number((granit.match(/około\s*<strong>(\d[\d \u00a0]*) zł za metr bieżący/) || [])[1]?.replace(/[^\d]/g, ''));
+  assert.ok(mb > 0, 'brak kwoty za metr bieżący');
+  const zCennika = Math.round(KWOTY.konglomeratProste / 3 / 50) * 50;
+  assert.equal(mb, zCennika, `${mb} zł/mb nie zgadza się z progiem ${KWOTY.konglomeratProste} zł za 300 cm`);
+});

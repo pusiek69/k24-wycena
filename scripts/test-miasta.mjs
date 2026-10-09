@@ -655,3 +655,30 @@ test('STRONA GŁÓWNA niesie frazę „wycena blatu online" w sekcji „Jak to d
     'pierwszy krok zgubił frazę „wycena online w 2 minuty"'
   );
 });
+
+test('MIASTA z własnym blokiem „który materiał" nie dają się przestawić na inne miasto', () => {
+  /*
+   * Blok „który materiał" jest jedynym tekstem pisanym per miasto — reszta
+   * strony jest wspólna dla całej piętnastki. Jeśli da się go podmienić
+   * między miastami bez zmiany sensu, to znaczy, że nie niesie żadnego
+   * lokalnego konkretu i nie ma po co istnieć (swap-test z planu SEO).
+   *
+   * Konkret sprawdzamy tak: w tekście musi paść nazwa z `okolice` albo
+   * `dzielnice` TEGO miasta — czyli coś, czego nie ma na pozostałych stronach.
+   */
+  const zWlasnym = ['mielec', 'staszow'];
+  for (const slug of zWlasnym) {
+    const m = MIASTA.find((x) => x.slug === slug);
+    const t = fs.readFileSync(new URL(`../blaty-kuchenne-${slug}.html`, import.meta.url), 'utf8');
+    const blok = t.slice(t.indexOf('class="miasto-wybor"'), t.indexOf('</section>', t.indexOf('class="miasto-wybor"')));
+    assert.ok(blok.length > 400, `${slug}: brak własnego bloku wyboru materiału`);
+
+    const lokalne = [...(m.dzielnice || []), ...(m.okolice || [])];
+    const trafione = lokalne.filter((n) => blok.includes(n));
+    assert.ok(
+      trafione.length >= 2,
+      `${slug}: blok nie wymienia żadnych dwóch lokalnych nazw (${lokalne.join(', ')})`
+    );
+    assert.match(blok, new RegExp(m.nazwa + '|' + m.wMiescie + '|' + m.doMiasta));
+  }
+});

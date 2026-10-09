@@ -5,6 +5,47 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-09 — nadrabianie kolejki: inwentura + K7 i K8
+
+### Inwentura (co naprawdę stoi na produkcji)
+
+| Pozycja | Stan |
+|---|---|
+| K3 — „Jak działa wycena blatu online" na „/" | ✔ od 5.10 |
+| `/llms.txt` | ✔ 200, `text/plain; charset=utf-8`, cztery crawlery AI z nazwy w robots.txt |
+| K4 — akapit-odpowiedź o cenie | ✔ od 6.10, na `/blaty-z-konglomeratu-kwarcowego-poradnik` (adres z planu idzie 301) |
+| K5 — opis Lublina z konkretem dojazdowym | ✔ od 7.10 |
+
+**Zaległych nie było.** Wszystkie cztery pozycje stoją; nic nie wymagało ponownego wdrożenia.
+
+### Wdrożone dzisiaj
+
+**K7 — pytania z „Więcej pytań" Google.** Widoczna treść, bez nowego FAQPage w schemie (rich results dla FAQ Google wycofał 7.05.2026, zostałaby sama deklaracja):
+
+* `/blaty-z-konglomeratu` → H3 **„Co jest tańsze: konglomerat czy granit?"** — konglomerat ma cenę z cennika (blat 60 × 300 cm od 7 650 zł), granit wycenia się po wskazaniu płyty.
+* `/blaty-granitowe` → H3 **„Ile kosztuje metr bieżący blatu z kamienia?"** — metrem bieżącym nie wyceniamy, ale dla orientacji ok. 2 550 zł/mb (przeliczenie progu 7 650 zł za 300 cm). Test pilnuje, żeby te dwie liczby nie rozjechały się po zmianie cennika — `ceny-tresc.mjs` poprawi próg, ale przeliczenia samo nie zrobi.
+
+**K8 — Staszów dostał własny blok „który materiał".** Strona miała 1 181 słów (najmniej z priorytetowych) i ani jednego zdania nie do przeniesienia na inne miasto. Teraz **2 248 słów** i blok pisany pod Staszów: gminy, do których stąd jeździmy (Połaniec, Rytwiany, Osiek, Szydłów), granit przy cięższych kuchniach z okolic Połańca, spiek przy długich blatach i wyspach. Liczby wzorów z cennika, nie z palca. Nowy **swap-test**: blok musi wymieniać co najmniej dwie lokalne nazwy z danych tego miasta — tekst, który da się przestawić na inne miasto, nie przechodzi.
+
+### Wstrzymane świadomie
+
+**K6 (tytuł `/blaty-z-konglomeratu`)** — plan mówi wprost: „DOPIERO po zamknięciu obserwacji K1, ta sama klasa zmiany, nie równolegle". K1 (tytuł poradnika spieków) wszedł 4.10 z falsyfikacją na ~25.10. Zmiana tytułu dziś zmieszałaby dwa pomiary. Druga część K6 — sekcja „Ile kosztuje blat z konglomeratu" — **jest już na stronie** (powstała przy przecelowaniu 3.10), więc do zrobienia zostaje sam tytuł.
+
+### GSC, świeże 7 dni (30.09–6.10)
+
+**22 kliknięcia · 728 wyświetleń · CTR 3,0% · średnia pozycja 12,9** — pozycja najlepsza od startu pomiarów (było 15,6 tydzień wcześniej).
+
+Frazy z wyświetleniami i zerem kliknięć: „kamieniarstwo tarnobrzeg" 11 · „blaty kamienne do kuchni" 8 · **„blat ze spieku kwarcowego cena za m2" 8** · „ile kosztuje blat ze spieku kwarcowego" 8 · „blat/blaty ze spieku kwarcowego" 8 + 7 · „blaty kuchenne kamienne krasnobród" 7 · „blaty kamienne" 6.
+
+**Nowe w kolejce (z tego odczytu):**
+1. **„blat ze spieku kwarcowego cena za m2"** (8 wyśw., 0 klik.) — na `/blaty-ze-spieku` dopisać H3 „Ile kosztuje metr kwadratowy blatu ze spieku?" z zakresem 671–2 110 zł/m² (ten sam zabieg co K7, liczby z silnika).
+2. **Klaster „wągrowiec"** — „konglomerat kwarcowy wągrowiec" 8 i „blaty z konglomeratu wągrowiec" 7, razem 15 wyświetleń z miasta oddalonego o ~400 km. **Nie gonimy** — to ruch bez wartości handlowej; notujemy, żeby przy następnym odczycie nikt nie wziął tego za sygnał.
+3. „blaty kuchenne kamienne krasnobród" 7 — drugi tydzień z rzędu; miasto spoza listy priorytetowej, ale fraza łapie regularnie. Do decyzji Dawida, czy Krasnobród wchodzi na listę.
+
+**Bramka:** 966/966 testów (3 nowe), checklista §8, build i bundle czyste. Jeden push. **Zgłoszone do indeksowania (9.10):** `/blaty-z-konglomeratu`, `/blaty-granitowe`, `/blaty-kuchenne-staszow`.
+
+**Do obserwacji (ok. 23.10):** czy pytania PAA zaczną zbierać kliknięcia na obu stronach ofertowych (dziś CTR <1% przy poz. 18–25) i czy Staszów ruszy z pozycji 3 w SERP.
+
 ## 2026-10-07 — kontrola + K5: opis Lublina z konkretem dojazdowym
 
 **Kontrola (wszystko na produkcji, nic do nadrabiania):**

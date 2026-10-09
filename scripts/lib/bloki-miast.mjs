@@ -58,6 +58,39 @@ export const wyliczenie = (lista) =>
  * Kwot tu NIE MA świadomie — są w tabeli bezpośrednio pod spodem.
  */
 const WYBOR_MATERIALU = {
+  /*
+   * STASZÓW (K8 z planu 3.10.2026). Strona miała 1 181 słów — najmniej
+   * ze stron priorytetowych — i ani jednego zdania, którego nie dałoby się
+   * przenieść na dowolne inne miasto. A to właśnie Staszów jest najbliżej
+   * podium: w SERP trzeci, tuż za Ignikomem.
+   *
+   * Konkret lokalny bierzemy z `okolice` tego miasta — gminy, do których
+   * naprawdę jeździmy. Tekst ma nie działać po przestawieniu na inne miasto
+   * (swap-test pilnuje tego w test-miasta.mjs).
+   */
+  staszow: (m, liczby) => `      <section class="miasto-wybor" aria-labelledby="wybor-${m.slug}">
+        <h2 id="wybor-${m.slug}">Blaty kamienne ${m.nazwa} — granit, konglomerat czy spiek?</h2>
+        <p>
+          W samym ${m.wMiescie} i w gminach, do których stąd jesteśmy najbliżej — Połaniec,
+          Rytwiany, Osiek, Szydłów — przeważają domy jednorodzinne, a w nich kuchnie
+          robione raz na kilkanaście lat. Najczęściej wychodzi z tego
+          <strong>konglomerat kwarcowy</strong>: ${liczby.konglomeratWzory}
+          ${odmiana(liczby.konglomeratWzory, ['wzór', 'wzory', 'wzorów'])} do wyboru,
+          powtarzalny rysunek płyty i zero impregnacji przez cały czas użytkowania.
+        </p>
+        <p>
+          <strong>Granit</strong> bierze u nas spora część klientów z okolic Połańca — tam,
+          gdzie blat ma wytrzymać prawdziwie ciężką kuchnię i gdzie kamień naturalny
+          pasuje do reszty domu. Każda płyta jest inna, więc przy granicie umawiamy
+          oglądziny w Tarnobrzegu: ${m.km} km stąd, ${m.czas || 'niespełna godzina drogi'}.
+        </p>
+        <p>
+          <strong>Spiek kwarcowy</strong> ma sens tam, gdzie blat jest naprawdę długi albo
+          wchodzi na wyspę — płyta jest większa, więc mniej łączeń, a powierzchnia
+          nie boi się gorącego garnka prosto z palnika.
+        </p>
+      </section>
+`,
   mielec: (m, liczby) => `      <section class="miasto-wybor" aria-labelledby="wybor-${m.slug}">
         <h2 id="wybor-${m.slug}">Blaty kamienne ${m.nazwa} — granit, konglomerat czy spiek?</h2>
         <p>
