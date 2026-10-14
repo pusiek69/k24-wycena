@@ -25,7 +25,31 @@
   --warn: #d0a24a;
   --sans: "Helvetica Neue", Arial, sans-serif;
   --serif: Georgia, "Times New Roman", serif;
+  /* Nagłówki dostają własny krój (Cormorant) — body zostaje przy Georgii,
+     żeby długie akapity czytały się jak dotąd. Fallback = dokładnie to,
+     co było, więc zanim font dojdzie (albo gdy nie dojdzie wcale),
+     strona wygląda jak przed zmianą. */
+  --serif-ozdobny: "Cormorant", Georgia, "Times New Roman", serif;
   --radius: 4px;
+}
+
+/* Cormorant (SIL OFL) — self-host, bo CSP strony ma font-src 'self'.
+   Dwa pliki, ~70 kB łącznie, subset latin + latin-ext (polskie znaki).
+   `font-display: swap`: tekst renderuje się od razu Georgią i podmienia
+   bez blokowania — mobile nie czeka na font ani sekundy. */
+@font-face {
+  font-family: "Cormorant";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonty/cormorant-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cormorant";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonty/cormorant-500italic.woff2") format("woff2");
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -73,8 +97,10 @@ header { padding: 30px 0 26px; border-bottom: 1px solid var(--line); }
 .phone-btn .ph-lbl { font-family: var(--sans); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
 .phone-btn .ph-num { font-family: var(--sans); font-size: 16px; font-weight: 700; letter-spacing: .02em; }
 
-h1 { font-size: clamp(30px, 6vw, 52px); font-weight: 400; line-height: 1.05; letter-spacing: -.02em; margin: 34px 0 0; }
-h1 em { font-style: italic; color: var(--vein); }
+/* Cormorant jest lżejszy od Georgii, więc nagłówki idą na wadze 600 —
+   optycznie to odpowiednik dawnego 400 w Georgii, tylko z charakterem. */
+h1 { font-family: var(--serif-ozdobny); font-size: clamp(32px, 6vw, 56px); font-weight: 600; line-height: 1.05; letter-spacing: -.01em; margin: 34px 0 0; }
+h1 em { font-style: italic; font-weight: 500; color: var(--vein); }
 .sub { margin-top: 16px; max-width: 46ch; color: var(--muted); font-size: 17px; }
 .sub a { color: var(--vein); }
 
@@ -96,7 +122,7 @@ h1 em { font-style: italic; color: var(--vein); }
 .sekcja { padding: 54px 22px 0; max-width: 780px; }
 .sekcja > h2,
 .sekcja-wstep > h2 {
-  font-family: var(--serif); font-weight: 400; font-size: clamp(22px, 4.4vw, 30px);
+  font-family: var(--serif-ozdobny); font-weight: 600; font-size: clamp(23px, 4.4vw, 32px);
   line-height: 1.15; margin: 0 0 12px; color: var(--cream);
 }
 
@@ -146,7 +172,7 @@ main { padding: 26px 0 40px; }
   border-radius: var(--radius); padding: 24px 24px 26px;
 }
 .q-kicker { font-family: var(--sans); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--vein); margin-bottom: 8px; }
-.q-title { font-size: clamp(21px, 3.4vw, 27px); font-weight: 400; line-height: 1.2; }
+.q-title { font-family: var(--serif-ozdobny); font-size: clamp(22px, 3.4vw, 28px); font-weight: 600; line-height: 1.2; }
 .q-hint { color: var(--muted); font-size: 15px; margin-top: 10px; max-width: 60ch; }
 
 /* ---------- wybór kart (materiał / grubość) ---------- */
@@ -1182,7 +1208,7 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 /* ---------- strony tekstowe ---------- */
 .tekst { padding: 26px 22px 40px; max-width: 780px; }
 .tekst h2 {
-  font-size: 21px; font-weight: 400; margin: 32px 0 10px; color: var(--cream);
+  font-family: var(--serif-ozdobny); font-size: 23px; font-weight: 600; margin: 32px 0 10px; color: var(--cream);
 }
 .tekst h2:first-child { margin-top: 0; }
 .tekst p { color: var(--muted); font-size: 16px; margin-bottom: 12px; max-width: 68ch; }

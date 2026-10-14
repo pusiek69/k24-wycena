@@ -36,6 +36,10 @@
   <link rel="icon" href="/logo-k24h.png" />
   <link rel="apple-touch-icon" href="/logo-k24h.png" />
   <link rel="preload" as="image" href="/logo-k24h.png" fetchpriority="high" />
+  <!-- Font nagłówkowy: preload tylko wagi 600 (italic doładuje się sam przy
+       hero). `crossorigin` jest wymagany przy fontach nawet z własnej domeny
+       — bez niego przeglądarka pobiera plik DWA razy. -->
+  <link rel="preload" as="font" type="font/woff2" href="/fonty/cormorant-600.woff2" crossorigin />
 
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="pl_PL" />
