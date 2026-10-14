@@ -704,6 +704,13 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   letter-spacing: .14em; text-transform: uppercase; color: var(--vein);
 }
 .pom-dekory-grupa:first-child { margin-top: 0; }
+/* Marka pod nazwą wzoru na liście przekrojowej „po kolorze" (flow 2/4) —
+   informuje, nie krzyczy. */
+.pom-dekor-marka {
+  display: block; margin-top: 3px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--dim);
+}
 .pom-dekor:hover { border-color: var(--vein); }
 /* Informacja o ucięciu listy — ma zająć całą szerokość siatki. */
 .pom-dekory-wiecej {
