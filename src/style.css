@@ -696,6 +696,14 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   color: var(--cream); font-family: var(--serif); font-size: 14px; padding: 9px 11px;
   cursor: pointer; text-align: left; transition: border-color .15s;
 }
+/* Nagłówek grupy kolorystycznej w liście dekorów (flow 3/4) — pełna
+   szerokość siatki, ton kickera; pierwszy bez górnego odstępu. */
+.pom-dekory-grupa {
+  grid-column: 1 / -1; margin: 10px 0 2px;
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--vein);
+}
+.pom-dekory-grupa:first-child { margin-top: 0; }
 .pom-dekor:hover { border-color: var(--vein); }
 /* Informacja o ucięciu listy — ma zająć całą szerokość siatki. */
 .pom-dekory-wiecej {

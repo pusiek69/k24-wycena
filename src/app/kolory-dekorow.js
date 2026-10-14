@@ -110,6 +110,30 @@ const BLISKIE = {
   kolor: {},
 };
 
+/**
+ * Grupowanie listy dekorów po kolorze — pod nagłówki w pomocniku wyboru
+ * wzoru (zlecenie Dawida 9/14.10.2026, flow 3/4: „700 wzorów przytłacza").
+ *
+ * Wejście: [{ nazwa, firmaSlug }] w kolejności, w jakiej ma być pokazane —
+ * sortowanie zostaje po stronie wołającego, ta funkcja tylko tnie na grupy.
+ * Wyjście: [{ tag, etykieta, pozycje }] w kolejności TAGI, bez pustych grup;
+ * `nieznany` stoi w TAGI ostatni, więc „kolor nieoznaczony" zawsze zamyka
+ * listę — nazwa, z której nie wynika kolor, nie miesza się między biele.
+ */
+export function grupujPoKolorze(pozycje) {
+  const wiadra = new Map();
+  for (const p of pozycje) {
+    const tag = kolorDekoru(p.nazwa, p.firmaSlug || '');
+    if (!wiadra.has(tag)) wiadra.set(tag, []);
+    wiadra.get(tag).push(p);
+  }
+  return TAGI.filter((t) => wiadra.has(t.id)).map((t) => ({
+    tag: t.id,
+    etykieta: t.nazwa,
+    pozycje: wiadra.get(t.id),
+  }));
+}
+
 export const DALEKO = 4;
 
 export function odlegloscKoloru(a, b) {

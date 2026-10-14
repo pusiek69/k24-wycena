@@ -17,6 +17,7 @@ import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 import { MAKS_ETYKIETA, PODPOWIEDZI_ETYKIET, czystaEtykieta } from './etykiety-odcinkow.js';
+import { grupujPoKolorze } from './kolory-dekorow.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
@@ -348,16 +349,30 @@ export function pomocnikDekor(slug, wyslij) {
     const widoczne = pasujace.slice(0, LIMIT);
     const ukryte = pasujace.length - widoczne.length;
 
+    const przycisk = (n) =>
+      h(
+        'button',
+        { class: 'pom-dekor', type: 'button', onclick: () => wyslij(n, `Wybieram dekor ${n}.`) },
+        n
+      );
+
+    /*
+     * Bez frazy lista dostaje nagłówki grup kolorystycznych (flow 3/4,
+     * 14.10.2026): klient szuka „czegoś jasnego", nie nazwy handlowej.
+     * Przy wpisanej frazie grupy znikają — kilka trafień nie potrzebuje
+     * nagłówków, a wynik wygląda jak zwykłe wyszukiwanie.
+     */
+    const kafelki = q
+      ? widoczne.map(przycisk)
+      : grupujPoKolorze(widoczne.map((n) => ({ nazwa: n, firmaSlug: slug }))).flatMap((g) => [
+          h('div', { class: 'pom-dekory-grupa' }, g.etykieta),
+          ...g.pozycje.map((p) => przycisk(p.nazwa)),
+        ]);
+
     siatka.replaceChildren(
       ...(widoczne.length
         ? [
-            ...widoczne.map((n) =>
-              h(
-                'button',
-                { class: 'pom-dekor', type: 'button', onclick: () => wyslij(n, `Wybieram dekor ${n}.`) },
-                n
-              )
-            ),
+            ...kafelki,
             ...(ukryte > 0
               ? [
                   h(
