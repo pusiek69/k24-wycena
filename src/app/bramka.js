@@ -8,6 +8,7 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { TERMINY } from './termin.js';
 import { KANALY, potwierdzenie } from './kontakt-telefon.js';
 import { odcinekDoZapisu } from './etykiety-odcinkow.js';
+import { tekstWidelek } from './widelki.js';
 
 /**
  * BRAMKA KONTAKTOWA
@@ -277,6 +278,14 @@ function formularzBramki(w, box, opcje) {
           : 'W cenie: obróbka, wycięcie pod zlew i płytę grzewczą, montaż'
       )
     ),
+    /*
+     * Widełki PRZED formularzem (flow 4/4, decyzja Dawida 9/14.10.2026):
+     * klient widzi „od–do", zanim poda kontakt — dokładna kwota nadal
+     * dopiero po wysłaniu. Szczegóły i gwarancje w src/app/widelki.js.
+     */
+    tekstWidelek(w.razemZaokr)
+      ? h('p', { class: 'bramka-widelki' }, tekstWidelek(w.razemZaokr))
+      : null,
     form
   );
 }

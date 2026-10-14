@@ -711,6 +711,17 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
   font-family: var(--sans); font-size: 11px; letter-spacing: .06em;
   text-transform: uppercase; color: var(--dim);
 }
+
+/* Widełki ceny nad formularzem bramki (flow 4/4) — mają być pierwszą
+   rzeczą, którą klient tu przeczyta: złoto i wyraźny rozmiar, ale bez
+   konkurowania z przyciskiem wysyłki. */
+.bramka-widelki {
+  margin: 14px 0 4px; padding: 12px 15px;
+  background: rgba(201, 168, 106, .08);
+  border: 1px solid var(--line-hi); border-left: 3px solid var(--vein);
+  border-radius: var(--radius);
+  color: var(--cream); font-size: 17px; line-height: 1.45;
+}
 .pom-dekor:hover { border-color: var(--vein); }
 /* Informacja o ucięciu listy — ma zająć całą szerokość siatki. */
 .pom-dekory-wiecej {
