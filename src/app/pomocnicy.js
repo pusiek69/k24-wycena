@@ -17,7 +17,7 @@ import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 import { MAKS_ETYKIETA, PODPOWIEDZI_ETYKIET, czystaEtykieta } from './etykiety-odcinkow.js';
-import { grupujPoKolorze, dekoryFirmWKolorze } from './kolory-dekorow.js';
+import { grupujPoKolorze } from './kolory-dekorow.js';
 
 /**
  * POMOCNICY — kreator wtopiony w rozmowę.
@@ -148,50 +148,10 @@ export function pomocnikRodzaj(wyslij) {
   );
 }
 
-/**
- * Kolory, o które pytamy zamiast marek (flow 2/4, zlecenie 9/14.10.2026).
- * Klient-laik nie zna Technistone od Caesarstone — zna „jasny z żyłą".
- * Opisy po ludzku; kafel koloru pokazuje się tylko, gdy w danym rodzaju
- * kamienia rzeczywiście są takie wzory. „Kolor nieoznaczony" nie dostaje
- * kafla — te wzory i tak są pod „Pokażę wszystkie kolekcje".
- */
-const KARTY_KOLOROW = [
-  { tag: 'biel-zyla', nazwa: 'Biel z żyłą marmuru', opis: 'Jasne tło i marmurowy rysunek — najczęściej wybierany look.' },
-  { tag: 'biel', nazwa: 'Czysta biel', opis: 'Jednolite tło, bez wyraźnego rysunku.' },
-  { tag: 'krem-bez', nazwa: 'Kremy i beże', opis: 'Ciepłe, spokojne tony do klasycznych kuchni.' },
-  { tag: 'szary', nazwa: 'Szarości', opis: 'Neutralne tło, łatwe do łączenia z frontami.' },
-  { tag: 'beton', nazwa: 'Beton', opis: 'Surowy, architektoniczny charakter.' },
-  { tag: 'antracyt', nazwa: 'Antracyt i czerń', opis: 'Ciemne, eleganckie — efektowne z jasnymi frontami.' },
-  { tag: 'drewno', nazwa: 'Dekory drewna', opis: 'Rysunek drewna w odpornym na wszystko kamieniu.' },
-  { tag: 'kolor', nazwa: 'Kolorowe', opis: 'Zielenie, błękity i inne odważniejsze tony.' },
-];
-
-const etykietaKoloru = (tag) => KARTY_KOLOROW.find((k) => k.tag === tag)?.nazwa || tag;
-
-/** Firmy rodzaju z normalnym cennikiem wzorów (bez wyceny ręcznej). */
-const firmyZDekorami = (rodzaj) =>
-  FIRMY.filter((f) => rodzajMaterialu(f) === rodzaj && f.trybCeny !== 'reczna' && f.dekory);
-
-/**
- * 2. Kolekcja — od 14.10.2026 najpierw pytanie o KOLOR (konglomerat i spiek),
- * a marki dopiero na życzenie. `kolor`:
- *   null          → pytanie o kolor (albo od razu marki, gdy rodzaj bez cenników),
- *   'wszystkie'   → dotychczasowa lista marek,
- *   tag koloru    → przekrojowa lista wzorów w tym kolorze (krok „Wzór").
- */
-export function pomocnikMaterial(wyslij, rodzaj, kolor = null) {
+/** 2. Kolekcja — firmy z wybranego rodzaju kamienia. */
+export function pomocnikMaterial(wyslij, rodzaj) {
   const firmy = rodzaj ? FIRMY.filter((f) => rodzajMaterialu(f) === rodzaj) : FIRMY;
   const opisRodzaju = RODZAJE.find((r) => r.id === rodzaj);
-  // Kamień naturalny nie ma cenników wzorów — pytanie o kolor nie miałoby
-  // czego pokazać; zostaje dotychczasowa ścieżka (Interstone → magazyn).
-  const zKolorami = firmyZDekorami(rodzaj).length > 0;
-
-  if (zKolorami && kolor && kolor !== 'wszystkie') {
-    return pomocnikDekoryKoloru(wyslij, rodzaj, kolor);
-  }
-  if (zKolorami && !kolor) {
-    return pomocnikKolor(wyslij, rodzaj);
-  }
 
   /*
    * Wyprzedaż dokładamy TU, a nie do `FIRMY` — kategoria powstaje z płyt
@@ -272,17 +232,6 @@ export function pomocnikMaterial(wyslij, rodzaj, kolor = null) {
         h('span', { class: 'pom-karta-opis' }, 'Podpowiemy, co pasuje do Pana/Pani kuchni.')
       )
     ),
-    zKolorami
-      ? h(
-          'button',
-          {
-            class: 'pom-pomin',
-            type: 'button',
-            onclick: () => wyslij('kolor:wstecz', 'Wolę wybierać po kolorze.'),
-          },
-          '← Wybierz po kolorze'
-        )
-      : null,
     h(
       'button',
       {
@@ -291,166 +240,6 @@ export function pomocnikMaterial(wyslij, rodzaj, kolor = null) {
         onclick: () => wyslij('rodzaj:wstecz', 'Jednak wolę zobaczyć inny rodzaj kamienia.'),
       },
       '← Inny rodzaj kamienia'
-    )
-  );
-}
-
-/** 2a. Pytanie o kolor — zamiast ściany marek (flow 2/4). */
-function pomocnikKolor(wyslij, rodzaj) {
-  const ile = dekoryFirmWKolorze.liczebnosci(firmyZDekorami(rodzaj));
-  const karty = KARTY_KOLOROW.filter((k) => (ile.get(k.tag) || 0) > 0);
-
-  return ramka(
-    { tytul: 'Jaki kolor blatu?', krok: 'material' },
-    h(
-      'div',
-      { class: 'pom-karty' },
-      karty.map((k) =>
-        h(
-          'button',
-          {
-            class: 'pom-karta',
-            type: 'button',
-            onclick: () => wyslij('kolor:' + k.tag, `Szukam blatu w kolorze: ${k.nazwa.toLowerCase()}.`),
-          },
-          h('span', { class: 'pom-karta-nazwa' }, k.nazwa),
-          h('span', { class: 'pom-karta-typ' }, `${ile.get(k.tag)} ${formaWzoru(ile.get(k.tag))}`),
-          h('span', { class: 'pom-karta-opis' }, k.opis)
-        )
-      ),
-      h(
-        'button',
-        {
-          class: 'pom-karta pom-karta-pomoc',
-          type: 'button',
-          onclick: () => wyslij('kolor:wszystkie', 'Proszę pokazać wszystkie kolekcje.'),
-        },
-        h('span', { class: 'pom-karta-nazwa' }, 'Pokażę wszystkie kolekcje'),
-        h('span', { class: 'pom-karta-opis' }, 'Lista marek i pełne katalogi wzorów — jak dotąd.')
-      )
-    ),
-    h(
-      'button',
-      {
-        class: 'pom-pomin',
-        type: 'button',
-        onclick: () => wyslij('rodzaj:wstecz', 'Jednak wolę zobaczyć inny rodzaj kamienia.'),
-      },
-      '← Inny rodzaj kamienia'
-    )
-  );
-}
-
-const formaWzoru = (n) => (n === 1 ? 'wzór' : n < 5 ? 'wzory' : 'wzorów');
-
-/**
- * 2b. Wzory w wybranym kolorze — przekrój przez wszystkie marki rodzaju.
- * Marka stoi POD nazwą wzoru, drobna: informuje, nie wymaga decyzji.
- * Kliknięcie ustawia od razu kolekcję i dekor (czat.js#wybrano, wariant
- * obiektowy) — klient nie przechodzi drugi raz przez wybór marki.
- */
-function pomocnikDekoryKoloru(wyslij, rodzaj, kolorTag) {
-  const pozycje = dekoryFirmWKolorze(firmyZDekorami(rodzaj), kolorTag);
-
-  const wstecz = h(
-    'button',
-    {
-      class: 'pom-pomin',
-      type: 'button',
-      onclick: () => wyslij('kolor:wstecz', 'Poproszę o inny kolor.'),
-    },
-    '← Inny kolor'
-  );
-  const wszystkie = h(
-    'button',
-    {
-      class: 'pom-pomin',
-      type: 'button',
-      onclick: () => wyslij('kolor:wszystkie', 'Proszę pokazać wszystkie kolekcje.'),
-    },
-    'Pokaż wszystkie kolekcje →'
-  );
-
-  if (!pozycje.length) {
-    // Nie powinno się zdarzyć (pusty kolor nie dostaje kafla), ale gdyby
-    // cenniki się zmieniły między renderami — uczciwy komunikat, nie pustka.
-    return ramka(
-      { tytul: `Wzory — ${etykietaKoloru(kolorTag).toLowerCase()}`, krok: 'dekor' },
-      h('p', { class: 'pom-podpowiedz' }, 'W tym kolorze nie mamy teraz wzorów z cennika.'),
-      wstecz,
-      wszystkie
-    );
-  }
-
-  const LIMIT = 60;
-  const siatka = h('div', { class: 'pom-dekory' });
-
-  const przycisk = (p) =>
-    h(
-      'button',
-      {
-        class: 'pom-dekor',
-        type: 'button',
-        onclick: () =>
-          wyslij(
-            { material: p.firmaSlug, dekor: p.dekor },
-            `Wybieram dekor ${p.dekor} z kolekcji ${p.firmaNazwa}.`
-          ),
-      },
-      p.dekor,
-      h('span', { class: 'pom-dekor-marka' }, p.firmaNazwa)
-    );
-
-  const rysuj = (fraza = '') => {
-    const q = uprosc(fraza);
-    const pasujace = q
-      ? pozycje.filter((p) => uprosc(p.dekor).includes(q) || uprosc(p.firmaNazwa).includes(q))
-      : pozycje;
-    const widoczne = pasujace.slice(0, LIMIT);
-    const ukryte = pasujace.length - widoczne.length;
-
-    siatka.replaceChildren(
-      ...(widoczne.length
-        ? [
-            ...widoczne.map(przycisk),
-            ...(ukryte > 0
-              ? [
-                  h(
-                    'p',
-                    { class: 'pom-dekory-wiecej' },
-                    `…i jeszcze ${ukryte} ${formaWzoru(ukryte)} — proszę zawęzić w wyszukiwarce powyżej.`
-                  ),
-                ]
-              : []),
-          ]
-        : [h('p', { class: 'pusto' }, 'Nic nie pasuje — proszę zmienić frazę albo kolor.')])
-    );
-  };
-  rysuj();
-
-  return ramka(
-    { tytul: `Wzory — ${etykietaKoloru(kolorTag).toLowerCase()}`, krok: 'dekor' },
-    h(
-      'div',
-      { class: 'pom-narzedzia' },
-      h('input', {
-        class: 'search',
-        type: 'search',
-        placeholder: 'Szukaj wzoru lub marki…',
-        oninput: (e) => rysuj(e.target.value),
-      })
-    ),
-    siatka,
-    wstecz,
-    wszystkie,
-    h(
-      'button',
-      {
-        class: 'pom-pomin',
-        type: 'button',
-        onclick: () => wyslij(null, 'Jeszcze nie wybrałem/wybrałam wzoru — proszę o pomoc w doborze.'),
-      },
-      'Nie wiem jeszcze — proszę doradzić'
     )
   );
 }

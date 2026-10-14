@@ -731,9 +731,7 @@ export function uruchomCzat(root, akcje = {}) {
       el = pomocnikDekor(WYPRZEDAZ_SLUG, wybrano);
     else if (!stan.pomieszczenie) el = pomocnikPomieszczenie(wybrano);
     else if (!stan.rodzaj) el = pomocnikRodzaj(wybrano);
-    // `stan.kolor` steruje wariantem karty: pytanie o kolor → wzory w kolorze
-    // → (na życzenie) lista marek. Flow 2/4, 14.10.2026.
-    else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj, stan.kolor);
+    else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
     // Kamień naturalny nie ma listy wzorów — zamiast niej pytamy o nazwę
     // kamienia i pokazujemy konkretne płyty z magazynu.
     else if (stan.material === 'interstone' && !stan.kodPlyty) el = pomocnikKamien(szukajPlyt, podajKodRecznie);
@@ -763,7 +761,6 @@ export function uruchomCzat(root, akcje = {}) {
       if (rodzaj === 'wstecz') {
         stan.rodzaj = null;
         stan.material = null;
-        stan.kolor = null;
       } else {
         stan.rodzaj = rodzaj;
         zdarzenie('wybor_rodzaju', { rodzaj });
@@ -787,29 +784,6 @@ export function uruchomCzat(root, akcje = {}) {
           if (stan.material === 'interstone') stan.dekor = '(kamień naturalny)';
         }
       }
-      wyslij(wiadomosc);
-      return;
-    }
-
-    // Krok „jaki kolor" (flow 2/4): przełącza wariant karty materiału,
-    // niczego nie wycenia — dlatego osobny stan, a nie `material`.
-    if (typeof wartosc === 'string' && wartosc.startsWith('kolor:')) {
-      const kolor = wartosc.slice(6);
-      if (kolor === 'wstecz') stan.kolor = null;
-      else {
-        stan.kolor = kolor;
-        zdarzenie('wybor_koloru', { kolor });
-      }
-      wyslij(wiadomosc);
-      return;
-    }
-
-    // Wybór wzoru z listy przekrojowej: jedna decyzja ustawia kolekcję
-    // I dekor naraz — klient nie przechodzi drugi raz przez marki.
-    if (wartosc && typeof wartosc === 'object' && wartosc.material && wartosc.dekor) {
-      stan.material = wartosc.material;
-      stan.dekor = wartosc.dekor;
-      zdarzenie('wybor_materialu', { material: wartosc.material });
       wyslij(wiadomosc);
       return;
     }

@@ -134,37 +134,6 @@ export function grupujPoKolorze(pozycje) {
   }));
 }
 
-/**
- * Przekrój cenników po kolorze — serce wyboru „po kolorze, nie po marce"
- * (flow 2/4). Firmy wchodzą parametrem ({slug, nazwa, dekory}), bo
- * `firms/index.js` wymaga Vite'a, a testy chodzą w gołym node.
- * Wynik posortowany alfabetycznie po nazwie wzoru (pl) — klient przegląda
- * jedną listę, marka jest podpisem pod nazwą, nie bramką przed nią.
- */
-export function dekoryFirmWKolorze(firmy, tag) {
-  const wynik = [];
-  for (const f of firmy) {
-    for (const dekor of Object.keys(f.dekory || {})) {
-      if (kolorDekoru(dekor, f.slug) === tag) {
-        wynik.push({ dekor, firmaSlug: f.slug, firmaNazwa: f.nazwa });
-      }
-    }
-  }
-  return wynik.sort((a, b) => a.dekor.localeCompare(b.dekor, 'pl'));
-}
-
-/** Ile wzorów ma każdy kolor — żeby nie pokazywać kafla pustego koloru. */
-dekoryFirmWKolorze.liczebnosci = function (firmy) {
-  const ile = new Map();
-  for (const f of firmy) {
-    for (const dekor of Object.keys(f.dekory || {})) {
-      const tag = kolorDekoru(dekor, f.slug);
-      ile.set(tag, (ile.get(tag) || 0) + 1);
-    }
-  }
-  return ile;
-};
-
 export const DALEKO = 4;
 
 export function odlegloscKoloru(a, b) {
