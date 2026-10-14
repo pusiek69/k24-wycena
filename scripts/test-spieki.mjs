@@ -323,6 +323,24 @@ test('zakresy zł/m² na stronach zgadzają się z ceny-tresc.json', () => {
   }
 });
 
+test('sekcja „Ile kosztuje metr kwadratowy" na ofercie podaje aktualny zakres', () => {
+  /*
+   * K9 (ACTION-PLAN, odczyt GSC 9.10): fraza „blat ze spieku kwarcowego cena
+   * za m2" łapie wyświetlenia bez kliknięć — strona dostała H3 z bezpośrednią
+   * odpowiedzią. `ceny-tresc.mjs` nie zna zakresów z myślnikiem, więc po
+   * zmianie cennika ten akapit poprawia się ręcznie — a ten test to wymusza.
+   */
+  const strona = czytaj(OFERTA);
+  const sekcja = strona.match(
+    /<h3>Ile kosztuje metr kwadratowy blatu ze spieku\?<\/h3>\s*<p>([\s\S]*?)<\/p>/
+  );
+  assert.ok(sekcja, 'brak sekcji H3 o cenie metra kwadratowego spieku');
+  assert.ok(
+    sekcja[1].includes(`${zl(KWOTY.spiekM2Od)}–${zl(KWOTY.spiekM2Do)}`),
+    `akapit pod H3 nie podaje aktualnego zakresu ${zl(KWOTY.spiekM2Od)}–${zl(KWOTY.spiekM2Do)} zł/m²`
+  );
+});
+
 test('strona ofertowa nie zostawia po sobie starych, nieaktualnych kwot', () => {
   for (const [plik, stara] of [
     [OFERTA, '764'],
