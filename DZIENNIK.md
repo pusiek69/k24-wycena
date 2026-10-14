@@ -5,6 +5,25 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-14 — K9: pytanie o cenę za m² na /blaty-ze-spieku + diagnoza „spadku" Tarnobrzega
+
+**Stan GSC:** 7 dni (5–11.10): 20 klik., 918 wyśw., CTR 2,2%, śr. poz. **14,4**. 28 dni (14.09–11.10): 75 klik., 3 450 wyśw., CTR 2,2%, poz. 15,6 — vs audyt 3.10 (72/3 780/1,9%/18,6): kliknięcia i CTR w górę, pozycja +3.
+
+**Zmiany (commit `c3c0fcc` + sitemapa `6c95bf4`):**
+- `/blaty-ze-spieku` — **K9 z kolejki**: H3 „Ile kosztuje metr kwadratowy blatu ze spieku?" + akapit ~52 słowa z bezpośrednią odpowiedzią (620–2 110 zł/m² brutto, co decyduje o miejscu w przedziale). Liczby „przed" (7 dni): strona **163 wyśw., 0 kliknięć**; frazy „blat ze spieku kwarcowego cena" 9 wyśw., „blat spiek kwarcowy cena" 9, „blat ze spieku kwarcowego cena za m2" 8 (odczyt 9.10) — wszystkie 0 klik. Zakres kwotowy zgodny z `ceny-tresc.json` (620/2110 po promocji Architype z 9.10). Nowy test w `test-spieki.mjs` pilnuje, że akapit pod tym H3 podaje aktualny zakres — `ceny-tresc.mjs` nie zna zakresów z myślnikiem, więc bez testu kolejna zmiana cennika zostawiłaby tu starą kwotę.
+
+**Diagnoza Tarnobrzega (−64% z audytu 3.10) — sezonowość/szum, NIE kanibalizacja, NIE tytuł z 1.10:**
+1. Spadek dotyczył klastra zapytań z „tarnobrzeg" tydzień-do-tygodnia na małych liczbach (28 → 10 wyśw.). Wykres 3 miesięcy: szczyt 22–26.08 (~18/dzień), zjazd zaczął się **w połowie września, dwa tygodnie PRZED zmianą tytułu „/"** — zmiana tytułu nie mogła go wywołać.
+2. Połowa klastra (91 dni: 301 wyśw.) to zapytania niekomercyjne: murarz 51, zakład kamieniarski 24, nagrobki 22, kostka granitowa 20, zabudowa kuchni 17, fundamenty, piece chlebowe — ich zanik to nie strata handlowa. Na stronie miasta dodatkowo ~82 wyśw. z miast odległych (Kołobrzeg 44!, Krasnobród 27, Szczebrzeszyn 11).
+3. Po 5.10 odbicie: „kamieniarstwo tarnobrzeg" ma w tym tygodniu **1 kliknięcie / 11 wyśw.** (pierwsze kliknięcia tej frazy w ogóle — tytuł z 1.10 działa). Fraza komercyjna „…kamienne tarnobrzeg" trzyma śr. poz. **3,4** (28 dni), strona miasta stabilna (42 wyśw./7 dni). Nic nie ruszać, obserwować.
+
+**Push:** sandbox znów blokuje github (403 z proxy) — **2 commity czekają na `git push` Dawida**. Po deployu: curl `/blaty-ze-spieku` (sekcja H3 w źródle), GSC „Poproś o zindeksowanie" dla `/blaty-ze-spieku`.
+
+**Nie ruszone świadomie:** w drzewie roboczym wisiały niezacommitowane zmiany innej sesji (index.html, silnik.mjs, src/app/*, worker/*) — zostawione; commit objął tylko dwa pliki K9. K6 (tytuł konglomeratu) nadal wstrzymane do ~25.10 (obserwacja K1). Techniczne: esbuild podmieniony na linuksowy na czas testów (980/980 zielone) i **przywrócony**; `vite build` w sandboksie niemożliwy (brak @rollup/rollup-linux-x64-gnu, rejestr 403) — build zweryfikuje Netlify.
+
+**Do obserwacji (ok. 28.10):** CTR `/blaty-ze-spieku` (dziś 0% przy 163 wyśw./tydz.) i frazy „…cena za m2 / cena" po K9; „kamieniarstwo tarnobrzeg" — czy kliknięcia się utrzymają.
+**Następna sesja:** jeśli K9 stoi na produkcji — zostaje tylko K6 po 25.10; nowych pozycji nie dokładać przed odczytem efektów K7/K8/K9.
+
 ## 2026-10-09 (wieczorem, cz. 2) — Keralini rozbite na wykończenia
 
 Decyzja Dawida: sześć dekorów bez wiersza cenowego w cenniku Architype 2026 jest **wycofanych**, reszta idzie z podziałem na wykończenia.
