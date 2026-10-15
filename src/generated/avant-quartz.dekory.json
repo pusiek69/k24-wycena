@@ -1,8 +1,8 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/avant-quartz.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "avant-quartz",
-  "_wygenerowano": "2026-10-09",
-  "_dekorow": 62,
+  "_wygenerowano": "2026-10-15",
+  "_dekorow": 64,
   "dekory": {
     "Chablis": {
       "20": 1593
@@ -200,6 +200,12 @@
     },
     "Calacatta Marseille": {
       "20": 1329
+    },
+    "Patagonia Brive": {
+      "20": 1593
+    },
+    "Travertine Lacaze": {
+      "20": 1593
     }
   }
 }

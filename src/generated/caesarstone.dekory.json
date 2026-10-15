@@ -1,8 +1,8 @@
 {
   "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/caesarstone.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
   "_firma": "caesarstone",
-  "_wygenerowano": "2026-10-09",
-  "_dekorow": 24,
+  "_wygenerowano": "2026-10-15",
+  "_dekorow": 25,
   "dekory": {
     "Pure White": {
       "20": 1265
@@ -75,6 +75,9 @@
     },
     "Noble Grey": {
       "20": 1243
+    },
+    "Adamina": {
+      "20": 1430
     }
   }
 }
