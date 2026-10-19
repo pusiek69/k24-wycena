@@ -5,6 +5,23 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-19 — Mielec: FAQ z ceną za m² + linki kontekstowe; K6 NIE przyspieszamy; porządek po audycie dekorów
+
+**Stan GSC (7 dni, 10–16.10):** **31 klik.** (rekord; było 20), 921 wyśw., CTR 3,4%, śr. poz. **13,7**. Frazy 0 klik.: „spiek kwarcowy blat" 15 · „blaty kamienne lublin" 11 · „blaty ze spieku kwarcowego" 11 · „blat ze spieku kwarcowego cena za m2" 9 (K9 w indeksie od 14.10 — obserwować) · „szczebrzeszyn" 8.
+
+**Mielec (SERP na żywo 19.10):** kam24h **#3** na „blaty kamienne mielec" (kemizo #1, **ignikom wrócił na #2** — wygrywa snippetem z konkretnymi stawkami „od 544 zł/m²…"). Odpowiedź tą samą bronią:
+- `faq-miasta.mjs` — odpowiedź na „Ile kosztuje blat…" zaczyna się teraz od stawek z silnika: **od 505 zł/m² (konglomerat) i od 620 zł/m² (spiek)**, dopiero potem ceny gotowego blatu. Zmiana obejmuje 15 stron miast (jedna klasa zmiany, jeden generator; schema FAQPage = treść widoczna). Liczby „przed" dla Mielca: 2 klik./22 wyśw. (7 dni), strona #3 w SERP.
+- Kontekstowe linki do `/blaty-kuchenne-mielec` z obu najmocniejszych stron: `/blaty-z-konglomeratu` (189 wyśw./7 dni) i `/blaty-ze-spieku` (163 wyśw.) — kotwica „blaty kuchenne kamienne w Mielcu", 40 km (zweryfikowane 26.09). Dotąd linkowała tylko stopka. Commit `bdb0df7`.
+
+**K6 — decyzja wg danych: NIE przyspieszamy.** Fraza „blaty ze spieku kwarcowego" (klaster) ma w 7 dni poz. **41,2** przy 0 klik. — czyli PONIŻEJ progu falsyfikacji K1 (30). De-kanibalizacja technicznie działa (oferta 16 wyśw. vs poradnik 3; 28 dni: 54 vs 18), ale bez wzrostu pozycji. Obserwacja K1 zamyka się 25.10 — wtedy decyzja: revert tytułu poradnika (warunek falsyfikacji spełniony dziś) albo jeszcze tydzień. ⚠ Równolegle inna sesja zmieniła w drzewie tytuł `/blaty-z-konglomeratu` na „…wzory i wycena online" — to de facto K6 w trakcie; nie ruszałem (nie moje, niezacommitowane u mnie — commit selektywny przez git apply --cached, tylko moje zdanie o Mielcu).
+
+**Porządek:** poradnik konglomeratów zregenerowany po audycie dekorów z 14.10 (233→**234** wzory; commit `3948b87`) — test liczb wzorów znów zielony. Sitemapa: 19 dat.
+
+**Testy: 991/993.** Dwa czerwone NIE z tej rundy: (1) „NIE MA dwóch stron walczących o tę samą frazę" — nowy tytuł konglomeratu z drzewa zawiera „wycena" i gryzie test kanibalizacji z 03.10; rozstrzygnąć przy domknięciu K6 (tytuł albo test). (2) „jesień: po 30.12.2026…" — dekor promocyjny niewybieralny w czasie kampanii; domena sesji cennikowej. Esbuild: podmiana linux na czas testów i przywrócony.
+
+**Push: czeka na bat Dawida** (4 commity: `bdb0df7`, `3948b87`, sitemapa, dziennik). Po deployu: curl Mielca + obu ofert, GSC indeksowanie `/blaty-kuchenne-mielec`, `/blaty-ze-spieku`, `/blaty-z-konglomeratu`.
+**Do obserwacji (ok. 2.11):** CTR Mielca (dziś 9% przy poz. ~6 w GSC / #3 SERP), snippet z zł/m² w SERP, K9 („cena za m2" 9 wyśw.), decyzja K1/K6 25.10.
+
 ## 2026-10-14 — K9: pytanie o cenę za m² na /blaty-ze-spieku + diagnoza „spadku" Tarnobrzega
 
 **Stan GSC:** 7 dni (5–11.10): 20 klik., 918 wyśw., CTR 2,2%, śr. poz. **14,4**. 28 dni (14.09–11.10): 75 klik., 3 450 wyśw., CTR 2,2%, poz. 15,6 — vs audyt 3.10 (72/3 780/1,9%/18,6): kliknięcia i CTR w górę, pozycja +3.
