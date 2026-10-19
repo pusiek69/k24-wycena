@@ -89,11 +89,13 @@ export function pytaniaMiasta(miasto, kwoty, wzorow, i) {
       'Transport i montaż są wliczone w cenę blatu.';
 
   const cena =
-    `Blat 60 × 300 cm z konglomeratu kwarcowego zaczyna się od ${zl(kwoty.konglomeratProste)} brutto, ` +
+    `Sam materiał zaczyna się od ${zl(kwoty.konglomeratM2Od)}/m² w konglomeracie kwarcowym ` +
+    `i od ${zl(kwoty.spiekM2Od)}/m² w spieku. ` +
+    `Gotowy blat 60 × 300 cm z konglomeratu zaczyna się od ${zl(kwoty.konglomeratProste)} brutto, ` +
     `ten sam blat ze spieku od ${zl(kwoty.spiekProste)}. Kuchnia w L (odcinki 300 i 180 cm) to ` +
     `odpowiednio od ${zl(kwoty.konglomeratL)} i ${zl(kwoty.spiekL)}. ` +
-    'W tych kwotach jest już obróbka, wycięcie pod zlew i płytę grzewczą, transport i montaż — ' +
-    'to cena za gotowy, zamontowany blat, a nie za samą płytę.';
+    'W kwotach za gotowy blat jest już obróbka, wycięcie pod zlew i płytę grzewczą, ' +
+    'transport i montaż — to cena za zamontowany blat, a nie za samą płytę.';
 
   return [
     { pytanie: `Ile kosztuje blat kuchenny z kamienia w ${wMiescie}?`, odpowiedz: cena },
