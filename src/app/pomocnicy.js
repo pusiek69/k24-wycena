@@ -425,33 +425,61 @@ export function pomocnikWymiary(wyslij) {
   const odcinki = [{ gl: 60, dl: '', etykieta: '' }];
   const lista = h('div', { class: 'pom-odcinki' });
 
+  /*
+   * PRZEBUDOWA WIDOKU 21.10.2026 (zlecenie Dawida): na telefonie wiersz
+   * „1. [60] × [długość] cm" zlewał się w jedną linijkę drobnych pól.
+   * Każdy odcinek jest teraz OSOBNĄ KARTĄ z nagłówkiem („Odcinek 1"),
+   * widocznymi etykietami NAD polami (nie tylko placeholder) i jednostką
+   * przy każdym polu. Logika bez zmian: te same pola, ten sam stan,
+   * ta sama wiadomość na końcu.
+   */
+  const pole = (etykieta, przyklad, wartosc, ustaw, autofokus) =>
+    h(
+      'label',
+      { class: 'pom-wymiar' },
+      h('span', { class: 'pom-wymiar-etykieta' }, etykieta),
+      h(
+        'span',
+        { class: 'pom-pole-zcm' },
+        polePom(etykieta, wartosc, ustaw, autofokus, przyklad),
+        h('span', { class: 'pom-cm', 'aria-hidden': 'true' }, 'cm')
+      )
+    );
+
   const rysuj = () => {
     lista.replaceChildren(
       ...odcinki.map((o, i) =>
         h(
           'div',
           { class: 'pom-odcinek' },
-          h('span', { class: 'pom-nr' }, `${i + 1}.`),
-          polePom('głębokość', o.gl, (v) => (o.gl = v)),
-          h('span', { class: 'pom-x' }, '×'),
-          polePom('długość', o.dl, (v) => (o.dl = v), true),
-          h('span', { class: 'pom-cm' }, 'cm'),
-          poleNazwy(o, i),
-          odcinki.length > 1
-            ? h(
-                'button',
-                {
-                  class: 'icon-btn',
-                  type: 'button',
-                  'aria-label': 'Usuń odcinek',
-                  onclick: () => {
-                    odcinki.splice(i, 1);
-                    rysuj();
+          h(
+            'div',
+            { class: 'pom-odcinek-glowa' },
+            h('span', { class: 'pom-odcinek-tytul' }, `Odcinek ${i + 1}`),
+            odcinki.length > 1
+              ? h(
+                  'button',
+                  {
+                    class: 'icon-btn',
+                    type: 'button',
+                    'aria-label': `Usuń odcinek ${i + 1}`,
+                    onclick: () => {
+                      odcinki.splice(i, 1);
+                      rysuj();
+                    },
                   },
-                },
-                '×'
-              )
-            : null
+                  '×'
+                )
+              : null
+          ),
+          h(
+            'div',
+            { class: 'pom-wymiary' },
+            pole('Głębokość', '60', o.gl, (v) => (o.gl = v)),
+            h('span', { class: 'pom-x', 'aria-hidden': 'true' }, '×'),
+            pole('Długość', 'np. 300', o.dl, (v) => (o.dl = v), true)
+          ),
+          poleNazwy(o, i)
         )
       ),
       h(
@@ -997,7 +1025,7 @@ function poleNazwy(o, i) {
   );
 }
 
-function polePom(etykieta, wartosc, ustaw, autofokus) {
+function polePom(etykieta, wartosc, ustaw, autofokus, przyklad) {
   return h('input', {
     class: 'pom-pole',
     type: 'number',
@@ -1005,7 +1033,9 @@ function polePom(etykieta, wartosc, ustaw, autofokus) {
     min: '1',
     step: '1',
     value: wartosc,
-    placeholder: etykieta,
+    // Etykieta stoi teraz NAD polem (pom-wymiar-etykieta) — placeholder
+    // pokazuje przykładową wartość, zamiast dublować etykietę.
+    placeholder: przyklad ?? etykieta,
     'aria-label': etykieta + ' w centymetrach',
     autofocus: autofokus || null,
     oninput: (e) => ustaw(e.target.value),

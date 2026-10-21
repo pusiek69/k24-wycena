@@ -798,20 +798,41 @@ footer { border-top: 1px solid var(--line); padding: 26px 0 40px; }
 .pom-blad:empty { display: none; }
 .pom-blad { color: #d98a76; }
 
-.pom-odcinki { display: flex; flex-direction: column; gap: 9px; margin-bottom: 12px; }
-.pom-odcinek { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.pom-nr { font-family: var(--sans); font-size: 12px; color: var(--dim); width: 16px; }
-.pom-x { color: var(--dim); }
-.pom-cm { font-family: var(--sans); font-size: 12px; color: var(--dim); }
+/* ── Wymiary blatu: karty odcinków (przebudowa 21.10.2026) ──────────────
+   Na telefonie wiersz „1. [60]×[dł] cm" zlewał się w jedną drobną linijkę.
+   Teraz: każdy odcinek to osobna karta z nagłówkiem, etykiety stoją NAD
+   polami, pola mają dotykowe 52–56 px i 18 px pisma (18px+ zapobiega też
+   auto-zoomowi iOS przy fokusie), jednostka „cm" siedzi przy każdym polu. */
+.pom-odcinki { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.pom-odcinek {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 13px 14px 14px;
+}
+.pom-odcinek-glowa { display: flex; align-items: center; justify-content: space-between; min-height: 24px; }
+.pom-odcinek-tytul {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--vein);
+}
+.pom-wymiary { display: flex; align-items: flex-end; gap: 10px; }
+.pom-wymiar { display: flex; flex-direction: column; gap: 6px; flex: 1 1 0; min-width: 0; }
+.pom-wymiar-etykieta {
+  font-family: var(--sans); font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted);
+}
+.pom-pole-zcm { display: flex; align-items: center; gap: 7px; }
+.pom-x { color: var(--dim); padding-bottom: 14px; }
+.pom-cm { font-family: var(--sans); font-size: 13px; color: var(--dim); flex: none; }
 .pom-pole {
-  width: 92px; background: var(--ink); border: 1px solid var(--line); border-radius: var(--radius);
-  color: var(--cream); font-family: var(--sans); font-size: 16px; padding: 9px 11px;
+  width: 100%; min-width: 0; min-height: 52px;
+  background: var(--slab); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--cream); font-family: var(--sans); font-size: 18px; padding: 12px 13px;
 }
 .pom-pole:focus { outline: none; border-color: var(--vein); }
 .pom-dodaj {
   background: transparent; border: 1px dashed var(--line-hi); border-radius: var(--radius);
-  color: var(--vein); font-family: var(--sans); font-size: 12px; padding: 9px 12px;
-  cursor: pointer; align-self: flex-start;
+  color: var(--vein); font-family: var(--sans); font-size: 13px; padding: 13px 16px;
+  cursor: pointer; align-self: flex-start; min-height: 48px;
 }
 .pom-dodaj:hover { background: rgba(201, 168, 106, .08); }
 
@@ -2325,4 +2346,12 @@ button { color: var(--cream); background: transparent; }
      przyciski rosną do wygodnych ~48 px, a lista dostaje więcej oddechu. */
   .pom-dekor { padding: 13px 13px; font-size: 15px; }
   .pom-dekory { max-height: 320px; }
+  /* Karty wymiarów na dotyku (21.10.2026): pola rosną do 56 px, usuwanie
+     odcinka dostaje pełny cel 44 px, pole nazwy nie jest niższe od reszty. */
+  .pom-pole { min-height: 56px; }
+  .pom-odcinek-glowa .icon-btn { min-width: 44px; min-height: 44px; padding: 8px; }
+  .pom-nazwa { min-height: 48px; font-size: 16px; }
+  /* Przy etykietach nad polami „×" między nimi to szum — na dotyku znika,
+     a pola dostają jego miejsce. */
+  .pom-wymiary .pom-x { display: none; }
 }
