@@ -484,13 +484,71 @@ async function obsluzLead(request, env, cors) {
   if (szczegoly && !Array.isArray(szczegoly.pozycje)) szczegoly.pozycje = [];
   const klient = { imie, telefon, email, miejscowosc, terminId, telefonZgoda, uwagi: String(d.uwagi || '').trim() };
 
+  /*
+   * BAZA KLIENTÓW — od 22.10.2026 PRZED mailami, bo mail do Dawida niesie
+   * podpisany link „Edytuj tę wycenę" i potrzebuje id karty z bazy.
+   * Gwarancja z poprzedniej kolejności ZOSTAJE: zapis siedzi w try/catch,
+   * więc awaria bazy nie zatrzymuje maili — Dawid dostaje wtedy zgłoszenie
+   * po prostu bez przycisku edycji (i z błędem w logu).
+   */
+  let leadId = null;
+  try {
+    const zapis = await zapiszLead(env, {
+      imie: imie === 'Klient' ? '' : imie,
+      telefon,
+      email,
+      miejscowosc,
+      termin: terminId,
+      telefonZgoda,
+      kwota: d.kwota,
+      opis: wycena,
+      szczegoly,
+      pomieszczenie: szczegoly?.pomieszczenie || '',
+      zrodlo: d.zrodlo,
+    });
+    leadId = zapis?.klientId ?? null;
+  } catch (e) {
+    console.error('baza', e?.message || e);
+  }
+
+  /*
+   * LINK „EDYTUJ TĘ WYCENĘ" (zlecenie Dawida, 22.10.2026): z maila prosto
+   * do edytora właściciela, bez logowania. Ten sam mechanizm co „Powtórz
+   * wycenę" w panelu: HMAC `oferta|leadId|exp` z hasła panelu, 7 dni
+   * ważności, wszystko we FRAGMENCIE adresu (#…) — fragment nie wychodzi
+   * w referrerze ani do statystyk. W linku nie ma żadnego hasła, sam podpis.
+   * Trafia WYŁĄCZNIE do maila firmy — mail klienta go nie widzi.
+   */
+  let linkEdycji = '';
+  if (leadId && env.PANEL_HASLO) {
+    try {
+      const exp = Date.now() + 7 * 86400000;
+      const sig = await podpisz(env.PANEL_HASLO, `oferta|${leadId}|${exp}`);
+      const b64url = (obj) =>
+        btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj))))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      // Parametry wejściowe wyceny — edytor otwiera się z konfiguracją
+      // klienta. Gdy ich nie ma (ręczny POST), link i tak działa: edytor
+      // wstaje pusty, podpisany na tę kartę (jak „Zrób wycenę" w panelu).
+      const parametry =
+        szczegoly?.parametry && typeof szczegoly.parametry === 'object'
+          ? { parametry: szczegoly.parametry }
+          : {};
+      linkEdycji = 'https://kam24h.pl/#powtorz=' + b64url({ leadId, exp, podpis: sig, imie, ...parametry });
+    } catch (e) {
+      console.error('link edycji', e?.message || e);
+    }
+  }
+
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
     from: odKogo,
     to: [doFirmy],
     reply_to: email,
     subject: tematLeada(klient, szczegoly, wycena),
-    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
+    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji }),
     text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
     attachments: zalaczniki.length ? zalaczniki : undefined,
   });
@@ -504,28 +562,7 @@ async function obsluzLead(request, env, cors) {
     html: mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
   });
 
-  /*
-   * BAZA KLIENTÓW — dopiero po mailach i w pełni „na własne ryzyko".
-   * Zgłoszenie ma dojechać do Dawida nawet wtedy, gdy baza akurat nie
-   * odpowiada; dlatego wynik zapisu nie wpływa na odpowiedź dla przeglądarki.
-   */
-  try {
-    await zapiszLead(env, {
-      imie: imie === 'Klient' ? '' : imie,
-      telefon,
-      email,
-      miejscowosc,
-      termin: terminId,
-      telefonZgoda,
-      kwota: d.kwota,
-      opis: wycena,
-      szczegoly,
-      pomieszczenie: szczegoly?.pomieszczenie || '',
-      zrodlo: d.zrodlo,
-    });
-  } catch (e) {
-    console.error('baza', e?.message || e);
-  }
+  // Zapis do bazy stoi wyżej (przed mailami) — patrz komentarz przy nim.
 
   return json(
     { ok: true, doFirmy: doFirmyOdp, doKlienta: doKlientaOdp },
@@ -1332,6 +1369,18 @@ function mailDoFirmy(klient, s, extra) {
       ${klient.uwagi ? `<tr><td style="padding:3px 0;color:#b6ad9d">Uwagi</td><td style="padding:3px 0">${esc(klient.uwagi)}</td></tr>` : ''}
     </table>
   </div>
+  ${
+    extra.linkEdycji
+      ? `
+  <div style="margin-top:14px">
+    <a href="${esc(extra.linkEdycji)}"
+       style="display:block;background:#c9a86a;color:#13110f;border-radius:6px;padding:16px 20px;font-size:17px;font-weight:bold;text-align:center;text-decoration:none">
+      ✏️ Edytuj tę wycenę</a>
+    <div style="margin-top:6px;font-size:12px;color:#8c8474;text-align:center">
+      Otwiera edytor wyceny tego klienta bez logowania · link ważny 7 dni, potem normalnie przez panel</div>
+  </div>`
+      : ''
+  }
 
   ${
     s

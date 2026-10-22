@@ -154,6 +154,67 @@ if (JEST) {
     assert.equal(odp.status, 200, `/lead oddał ${odp.status}`);
   });
 
+  test('mail Dawida ma podpisany link „Edytuj tę wycenę"; mail klienta NIGDY (22.10.2026)', async () => {
+    wyslane.length = 0;
+    listy.length = 0;
+    const env = srodowisko();
+    const zParametrami = {
+      ...LEAD,
+      email: 'edycja@example.com',
+      szczegoly: {
+        ...LEAD.szczegoly,
+        parametry: { firma: 'technistone', dekor: 'Brilliant White', grubosc: '20', odcinki: [{ gl: 60, dl: 300 }], opcje: {} },
+      },
+    };
+    const odp = await worker.fetch(zapytanie('/lead', zParametrami), env, ctx);
+    assert.equal(odp.status, 200);
+    assert.equal(listy.length, 2, 'mają wyjść dokładnie dwa maile');
+
+    const doDawida = listy.find((l) => (l.to || []).includes(env.LEAD_EMAIL));
+    const doKlienta = listy.find((l) => (l.to || []).includes('edycja@example.com'));
+    assert.ok(doDawida && doKlienta, 'po jednym mailu do firmy i do klienta');
+
+    // Mail firmy: przycisk + drobny druk o ważności.
+    assert.match(doDawida.html, /Edytuj tę wycenę/);
+    assert.match(doDawida.html, /ważny 7 dni/);
+    const m = doDawida.html.match(/#powtorz=([A-Za-z0-9_-]+)/);
+    assert.ok(m, 'w mailu firmy brak linku #powtorz=…');
+
+    // Ładunek linku: leadId z bazy, exp ~7 dni, ŻADNEGO hasła — sam podpis,
+    // dokładnie ten, który panel by wystawił (ta sama formuła HMAC).
+    const payload = JSON.parse(Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    const karta = await env.BAZA.prepare('SELECT id FROM klienci ORDER BY id DESC LIMIT 1').bind().first();
+    assert.equal(payload.leadId, karta.id, 'link podpisany na inną kartę niż zapisany lead');
+    const siedemDni = 7 * 86400000;
+    assert.ok(Math.abs(payload.exp - Date.now() - siedemDni) < 5 * 60000, 'exp ma być ~7 dni od teraz');
+    assert.equal(payload.parametry?.firma, 'technistone', 'parametry wyceny mają jechać w linku');
+    assert.ok(!JSON.stringify(payload).includes('testowe-haslo'), 'hasło panelu nie ma prawa być w linku');
+    const { podpisz } = await import('../worker/panel.js');
+    assert.equal(
+      payload.podpis,
+      await podpisz(env.PANEL_HASLO, `oferta|${payload.leadId}|${payload.exp}`),
+      'podpis nie zgadza się z formułą panelu — edytor by go odrzucił'
+    );
+
+    // Mail KLIENTA: zero linku edycji, zero podpisu — to drzwi do edytora
+    // właściciela i mają istnieć wyłącznie w skrzynce Dawida.
+    assert.ok(!doKlienta.html.includes('#powtorz'), 'link edycji wyciekł do maila klienta!');
+    assert.ok(!doKlienta.html.includes(payload.podpis), 'podpis wyciekł do maila klienta!');
+    assert.ok(!doKlienta.html.includes('Edytuj tę wycenę'), 'przycisk edycji wyciekł do maila klienta!');
+  });
+
+  test('awaria bazy nie zatrzymuje maili — lecą bez przycisku edycji (gwarancja z 22.10)', async () => {
+    wyslane.length = 0;
+    listy.length = 0;
+    const env = srodowisko();
+    env.BAZA = { prepare() { throw new Error('baza leży'); } };
+    const odp = await worker.fetch(zapytanie('/lead', LEAD), env, ctx);
+    assert.equal(odp.status, 200, 'mail do Dawida ma wyjść mimo awarii bazy');
+    assert.equal(listy.length, 2, 'oba maile mają wyjść mimo awarii bazy');
+    const doDawida = listy.find((l) => (l.to || []).includes(env.LEAD_EMAIL));
+    assert.ok(!doDawida.html.includes('#powtorz'), 'bez id z bazy nie ma czego podpisywać');
+  });
+
   test('/lead wysyła dwa maile: zgłoszenie do Dawida i wycenę do klienta', async () => {
     wyslane.length = 0;
     const odp = await worker.fetch(zapytanie('/lead', LEAD), srodowisko(), ctx);
