@@ -144,6 +144,17 @@ export function pomocnikRodzaj(wyslij) {
         h('span', { class: 'pom-karta-nazwa' }, 'Nie wiem, proszę doradzić'),
         h('span', { class: 'pom-karta-opis' }, 'Kilka pytań i podpowiemy, co pasuje do Pana/Pani kuchni.')
       )
+    ),
+    // Wstecz z kategorii (26.10.2026): pomyłka na pierwszym pytaniu nie
+    // może oznaczać odświeżania strony.
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => wyslij('pomieszczenie:wstecz', 'Chcę jeszcze raz wybrać: kuchnia czy łazienka.'),
+      },
+      '← Kuchnia czy łazienka?'
     )
   );
 }
@@ -265,7 +276,20 @@ function pomocnikPlytWyprzedazy(wyslij) {
   const stan = { kategoria: null, typ: null, szukaj: '', ile: NA_RAZ_W_ROZMOWIE };
   const korzen = h('div', { class: 'pom-plyty-box' });
   rysuj();
-  return ramka('Płyty z wyprzedaży', korzen);
+  return ramka(
+    'Płyty z wyprzedaży',
+    korzen,
+    // Wstecz do listy marek (26.10.2026) — wyprzedaż to kolekcja jak inne.
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => wyslij('material:wstecz', 'Chcę wybrać inną kolekcję.'),
+      },
+      '← Inne kolekcje'
+    )
+  );
 
   function rysuj(opcje = {}) {
     korzen.replaceChildren();
@@ -408,6 +432,17 @@ export function pomocnikDekor(slug, wyslij) {
         : null
     ),
     siatka,
+    // Wstecz z dekoru do listy marek (26.10.2026) — dotąd jedyna droga
+    // to było odświeżenie strony i cała wycena od nowa.
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => wyslij('material:wstecz', 'Chcę wybrać inną kolekcję.'),
+      },
+      '← Inne kolekcje'
+    ),
     h(
       'button',
       {
@@ -520,7 +555,22 @@ export function pomocnikWymiary(wyslij) {
     { tytul: 'Podaj wymiary blatu', krok: 'wymiary' },
     h('p', { class: 'pom-podpowiedz' }, 'Głębokość zwykle 60 cm — wystarczy wpisać długość.'),
     lista,
-    h('button', { class: 'btn', type: 'button', onclick: gotowe }, 'Gotowe →')
+    h('button', { class: 'btn', type: 'button', onclick: gotowe }, 'Gotowe →'),
+    /*
+     * Zmiana materiału bez restartu (26.10.2026): kasuje tylko kolekcję
+     * i wzór — wpisane tu wymiary zostają w stanie rozmowy, więc po nowym
+     * wyborze dekoru klient nie wpisuje ich drugi raz. Komunikat mówi to
+     * modelowi wprost, żeby nie dopytywał o wymiary od nowa.
+     */
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => wyslij('material:wstecz', 'Chcę zmienić materiał — wymiary zostają te same.'),
+      },
+      '← Zmień materiał (wymiary zostają)'
+    )
   );
 }
 
@@ -656,6 +706,16 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
       'div',
       { class: 'nav' },
       h('button', { class: 'btn', type: 'button', onclick: () => wyslij('szczegoly', opis()) }, 'Policz wycenę →')
+    ),
+    // Jak przy wymiarach: zmiana materiału nie kasuje tego, co już podane.
+    h(
+      'button',
+      {
+        class: 'pom-pomin',
+        type: 'button',
+        onclick: () => wyslij('material:wstecz', 'Chcę zmienić materiał — wymiary zostają te same.'),
+      },
+      '← Zmień materiał (wymiary zostają)'
     )
   );
 }
@@ -669,7 +729,7 @@ export function pomocnikSzczegoly(wyslij, pomieszczenie = 'kuchnia') {
  * „kamień naturalny", szedł prosto do wymiarów i nie miał jak wskazać płyty —
  * a bez wskazanej płyty nie policzymy wyceny.
  */
-export function pomocnikKamien(szukaj, podajKod) {
+export function pomocnikKamien(szukaj, podajKod, wyslij) {
   const POPULARNE = ['Calacatta', 'Taj Mahal', 'Verde Guatemala', 'Nero Assoluto', 'Patagonia'];
 
   const poleKod = h('input', {
@@ -785,6 +845,19 @@ export function pomocnikKamien(szukaj, podajKod) {
         POPULARNE.map((n) => h('button', { class: 'wariant', type: 'button', onclick: () => szukaj(n) }, n))
       )
     ),
+    // Wstecz z wyszukiwarki kamienia (26.10.2026): przy naturalnym kolekcja
+    // ustawia się skrótem, więc powrót idzie od razu na rodzaj kamienia.
+    wyslij
+      ? h(
+          'button',
+          {
+            class: 'pom-pomin',
+            type: 'button',
+            onclick: () => wyslij('rodzaj:wstecz', 'Jednak wolę zobaczyć inny rodzaj kamienia.'),
+          },
+          '← Inny rodzaj kamienia'
+        )
+      : null,
     h(
       'button',
       {

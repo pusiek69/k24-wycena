@@ -734,7 +734,8 @@ export function uruchomCzat(root, akcje = {}) {
     else if (!stan.material) el = pomocnikMaterial(wybrano, stan.rodzaj);
     // Kamień naturalny nie ma listy wzorów — zamiast niej pytamy o nazwę
     // kamienia i pokazujemy konkretne płyty z magazynu.
-    else if (stan.material === 'interstone' && !stan.kodPlyty) el = pomocnikKamien(szukajPlyt, podajKodRecznie);
+    else if (stan.material === 'interstone' && !stan.kodPlyty)
+      el = pomocnikKamien(szukajPlyt, podajKodRecznie, wybrano);
     else if (!stan.dekor) el = pomocnikDekor(stan.material, wybrano);
     else if (!stan.wymiary) el = pomocnikWymiary(wybrano);
     else if (!stan.szczegoly) el = pomocnikSzczegoly(wybrano, stan.pomieszczenie);
@@ -784,6 +785,28 @@ export function uruchomCzat(root, akcje = {}) {
           if (stan.material === 'interstone') stan.dekor = '(kamień naturalny)';
         }
       }
+      wyslij(wiadomosc);
+      return;
+    }
+
+    /*
+     * NAWIGACJA WSTECZ W DRZEWKU MATERIAŁU (zlecenie Dawida, 26.10.2026):
+     * cofnięcie o poziom bez zaczynania wyceny od nowa. Kasujemy WYŁĄCZNIE
+     * to, co unieważnia cofnięcie — wymiary, odcinki i szczegóły zostają,
+     * więc po ponownym wyborze dekoru rozmowa idzie od razu dalej.
+     */
+    if (wartosc === 'pomieszczenie:wstecz') {
+      stan.pomieszczenie = null;
+      wyslij(wiadomosc);
+      return;
+    }
+    if (wartosc === 'material:wstecz') {
+      stan.material = null;
+      stan.dekor = null;
+      // Kamień naturalny: wskazana płyta i jej nazwa idą w parze z kolekcją.
+      stan.kodPlyty = null;
+      stan.nazwaKamienia = null;
+      stan.wyborPlyty = null;
       wyslij(wiadomosc);
       return;
     }

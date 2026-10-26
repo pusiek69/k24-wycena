@@ -2354,4 +2354,7 @@ button { color: var(--cream); background: transparent; }
   /* Przy etykietach nad polami „×" między nimi to szum — na dotyku znika,
      a pola dostają jego miejsce. */
   .pom-wymiary .pom-x { display: none; }
+  /* „← Wróć" w drzewku materiału (26.10.2026): na dotyku pełnoprawny cel,
+     nie 30-pikselowy napis. */
+  .pom-pomin { min-height: 48px; font-size: 14px; padding: 12px 14px; }
 }
