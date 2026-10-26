@@ -187,11 +187,11 @@ function przecelujKolekcje() {
   let t = surowy.toString('utf8').replace(/\r\n/g, '\n');
   const przed = t;
 
-  const NOWY_TYTUL = 'Blaty kwarcowe — kolekcje i wzory konglomeratu';
+  const NOWY_TYTUL = 'Blaty z konglomeratu kwarcowego — wzory i wycena online';
   // Odmiana z liczby: przy 230 jest „wzorów", ale przy 223 już „wzory".
   const NOWY_OPIS =
-    `${zOdmiana(WZORY.razem, 'wzor')} konglomeratu w pięciu kolekcjach: Technistone, Avant Quartz, ` +
-    'InterQ, Pacific, Caesarstone. Katalogi wzorów i wycena online.';
+    `Blaty z konglomeratu kwarcowego na wymiar: ${zOdmiana(WZORY.razem, 'wzor')} w 5 kolekcjach ` +
+    '(Technistone, Avant Quartz, InterQ, Pacific, Caesarstone). Wycena online w 2 minuty.';
 
   t = t.replace(/<title>[^<]*<\/title>/, `<title>${NOWY_TYTUL}</title>`);
   t = t.replace(/(name="description" content=")[^"]*(")/, `$1${NOWY_OPIS}$2`);

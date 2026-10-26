@@ -108,8 +108,12 @@ test('NIE MA dwóch stron walczących o tę samą frazę', () => {
   const kolekcje = tytul(KOLEKCJE);
 
   assert.match(poradnik, /ceny, wady i zalety/i, `tytuł poradnika: ${poradnik}`);
-  assert.doesNotMatch(kolekcje, /cen[ay]/i, `strona kolekcji wciąż celuje w cenę: ${kolekcje}`);
-  assert.match(kolekcje, /kolekcje i wzory/i, `strona kolekcji nieprzecelowana: ${kolekcje}`);
+  // 26.10.2026: strona kolekcji dostała tytuł z pełną frazą wolumenową
+  // „blaty z konglomeratu kwarcowego" + CTA „wycena online" (wzorzec miast).
+  // „wycena online" to wezwanie do narzędzia, nie intencja cenowa — stąd
+  // granica słowa (\b), żeby „wycena" nie wpadała w zakaz „cen…".
+  assert.doesNotMatch(kolekcje, /\bcen(a|y|nik)/i, `strona kolekcji wciąż celuje w cenę: ${kolekcje}`);
+  assert.match(kolekcje, /wzory/i, `strona kolekcji nieprzecelowana: ${kolekcje}`);
   assert.notEqual(poradnik, kolekcje);
 });
 
