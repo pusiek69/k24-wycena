@@ -221,8 +221,11 @@ test('jesie\u0144: po 30.12.2026 ceny wracaj\u0105 do cennika sta\u0142ego', () 
   assert.ok(Math.abs(nettoM2(po) - 1430) < 0.51, `po kampanii: ${nettoM2(po)} zamiast 1430`);
 
   // Dekory wy\u0142\u0105cznie promocyjne znikaj\u0105 z katalogu razem z kampani\u0105.
+  // Od 15.10.2026 liter\u00f3wka z ulotki \u201eBotticiono Burges" to katalogowy
+  // Botticino Bourges (jest w cenniku sta\u0142ym ca\u0142y rok), wi\u0119c dekorem
+  // wy\u0142\u0105cznie promocyjnym Avanta jest Calacatta Modane (kod 7810).
   const avantPo = FIRMY.find((f) => f.slug === 'avant-quartz');
-  assert.ok(avantPo.dekory['Botticiono Burges'], 'w czasie kampanii dekor ma by\u0107 wybieralny');
+  assert.ok(avantPo.dekory['Calacatta Modane'], 'w czasie kampanii dekor ma by\u0107 wybieralny');
 });
 
 test('jesie\u0144: wycena promocyjna niesie dopisek o dost\u0119pno\u015bci', () => {
