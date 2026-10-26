@@ -29,7 +29,7 @@ export const TEMAT_DO_KLIENTA = 'Odpowiedź od Dawida Ząbka — Kamieniarstwo 2
  * jest tuż pod nią: najczęstszą reakcją Dawida na pytanie o blat jest
  * telefon, nie pisanie.
  */
-export function mailDoDawida({ imie, telefon, email, opis, tresc, linkPanelu }) {
+export function mailDoDawida({ imie, telefon, email, opis, tresc, linkPanelu, linkEdycji }) {
   return szkielet(`
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578">Nowa wiadomość od klienta</p>
     <h1 style="margin:0 0 16px;font-size:20px">${esc(imie || 'Klient')} pyta o wycenę</h1>
@@ -39,8 +39,38 @@ export function mailDoDawida({ imie, telefon, email, opis, tresc, linkPanelu }) 
       ${telefon ? `<tr><td style="color:#6d6a60;padding-right:10px">Telefon</td><td><a href="tel:${esc(telefon)}" style="color:#8a6a2f;font-weight:bold">${esc(telefon)}</a></td></tr>` : ''}
       ${email ? `<tr><td style="color:#6d6a60;padding-right:10px">E-mail</td><td><a href="mailto:${esc(email)}" style="color:#8a6a2f">${esc(email)}</a></td></tr>` : ''}
     </table>
+    ${przyciskEdycji(linkEdycji)}
     ${linkPanelu ? przycisk(linkPanelu, 'Odpisz w panelu →') : ''}
     <p style="margin:0;font-size:13px;color:#6d6a60">Odpowiedź z panelu trafi do klienta mailem i pod wycenę.</p>
+  `);
+}
+
+/* ─────────────────────── feedback po wycenie (rozszerzenie 26.10.2026) */
+
+/** „Klient odpowiedział: Anna — Cena za wysoka" — sedno na liście maili. */
+export function tematFeedbacku(imie, opis) {
+  const kto = String(imie || '').trim() || 'Klient';
+  return `Klient odpowiedział: ${kto} — ${opis}`;
+}
+
+/**
+ * Klient kliknął pod wyceną „pasuje / za drogo / zastanowię się" —
+ * mail do Dawida. Do 26.10 feedback lądował tylko na karcie w panelu;
+ * Dawid chce go widzieć od razu w skrzynce, z tym samym przyciskiem
+ * edycji co w mailu leadowym — „za drogo" to moment na poprawkę oferty.
+ */
+export function mailFeedbacku({ imie, telefon, email, opis, odpowiedz, szczegoly, linkEdycji }) {
+  return szkielet(`
+    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578">Odpowiedź klienta na wycenę</p>
+    <h1 style="margin:0 0 16px;font-size:20px">${esc(imie || 'Klient')}: ${esc(odpowiedz)}</h1>
+    ${opis ? `<p style="margin:0 0 14px;font-size:14px;color:#6d6a60">Dotyczy: <b style="color:#2b2823">${esc(opis)}</b></p>` : ''}
+    ${szczegoly ? dymek(esc(szczegoly)) : ''}
+    <table role="presentation" style="margin:0 0 20px;font-size:14px;line-height:1.7">
+      ${telefon ? `<tr><td style="color:#6d6a60;padding-right:10px">Telefon</td><td><a href="tel:${esc(telefon)}" style="color:#8a6a2f;font-weight:bold">${esc(telefon)}</a></td></tr>` : ''}
+      ${email ? `<tr><td style="color:#6d6a60;padding-right:10px">E-mail</td><td><a href="mailto:${esc(email)}" style="color:#8a6a2f">${esc(email)}</a></td></tr>` : ''}
+    </table>
+    ${przyciskEdycji(linkEdycji)}
+    <p style="margin:0;font-size:13px;color:#6d6a60">Odpowiedź wisi też na karcie klienta w panelu.</p>
   `);
 }
 
@@ -82,6 +112,25 @@ const dymek = (trescHtml) =>
 
 const przycisk = (link, napis) =>
   `<p style="margin:0 0 22px"><a href="${esc(link)}" style="display:inline-block;background:#8a6a2f;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px">${napis}</a></p>`;
+
+/**
+ * PRZYCISK „✏️ EDYTUJ TĘ WYCENĘ" — jeden wygląd we WSZYSTKICH mailach do
+ * Dawida (leadowy, wiadomość spod oferty, feedback). Eksportowany, bo mail
+ * leadowy mieszka w worker.template.js — wspólny kawałek pilnuje, żeby
+ * przycisk nie rozjechał się między mailami. Pusty link = brak przycisku,
+ * nie zepsuty mail. Duży i blokowy, bo Dawid klika z telefonu.
+ */
+export const przyciskEdycji = (link) =>
+  link
+    ? `
+  <div style="margin:0 0 20px">
+    <a href="${esc(link)}"
+       style="display:block;background:#c9a86a;color:#13110f;border-radius:6px;padding:16px 20px;font-size:17px;font-weight:bold;text-align:center;text-decoration:none">
+      ✏️ Edytuj tę wycenę</a>
+    <div style="margin-top:6px;font-size:12px;color:#8c8474;text-align:center">
+      Otwiera edytor wyceny tego klienta bez logowania · link ważny 7 dni, potem normalnie przez panel</div>
+  </div>`
+    : '';
 
 const szkielet = (srodek) =>
   `<!doctype html><html lang="pl"><body style="margin:0;background:#f5f3ef;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#2b2823">

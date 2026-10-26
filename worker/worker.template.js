@@ -38,7 +38,8 @@ import { obsluzPanel, podpisz } from './panel.js';
 import { rozpoznajDyktando } from './dyktando.js';
 import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
-import { tematDoDawida, mailDoDawida } from './mail-rozmowa.js';
+import { tematDoDawida, mailDoDawida, tematFeedbacku, mailFeedbacku, przyciskEdycji } from './mail-rozmowa.js';
+import { linkEdycji, paczkaZOferty } from './link-edycji.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
@@ -512,35 +513,17 @@ async function obsluzLead(request, env, cors) {
   }
 
   /*
-   * LINK „EDYTUJ TĘ WYCENĘ" (zlecenie Dawida, 22.10.2026): z maila prosto
-   * do edytora właściciela, bez logowania. Ten sam mechanizm co „Powtórz
-   * wycenę" w panelu: HMAC `oferta|leadId|exp` z hasła panelu, 7 dni
-   * ważności, wszystko we FRAGMENCIE adresu (#…) — fragment nie wychodzi
-   * w referrerze ani do statystyk. W linku nie ma żadnego hasła, sam podpis.
-   * Trafia WYŁĄCZNIE do maila firmy — mail klienta go nie widzi.
+   * LINK „EDYTUJ TĘ WYCENĘ" (zlecenie Dawida, 22.10.2026; od 26.10 ten sam
+   * link idzie we WSZYSTKICH mailach ownerowych — wspólny moduł
+   * worker/link-edycji.js). Parametry wejściowe wyceny — edytor otwiera się
+   * z konfiguracją klienta; bez nich (ręczny POST) wstaje pusty, podpisany
+   * na tę kartę. Trafia WYŁĄCZNIE do maila firmy — mail klienta go nie widzi.
    */
-  let linkEdycji = '';
-  if (leadId && env.PANEL_HASLO) {
-    try {
-      const exp = Date.now() + 7 * 86400000;
-      const sig = await podpisz(env.PANEL_HASLO, `oferta|${leadId}|${exp}`);
-      const b64url = (obj) =>
-        btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(obj))))
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=+$/, '');
-      // Parametry wejściowe wyceny — edytor otwiera się z konfiguracją
-      // klienta. Gdy ich nie ma (ręczny POST), link i tak działa: edytor
-      // wstaje pusty, podpisany na tę kartę (jak „Zrób wycenę" w panelu).
-      const parametry =
-        szczegoly?.parametry && typeof szczegoly.parametry === 'object'
-          ? { parametry: szczegoly.parametry }
-          : {};
-      linkEdycji = 'https://kam24h.pl/#powtorz=' + b64url({ leadId, exp, podpis: sig, imie, ...parametry });
-    } catch (e) {
-      console.error('link edycji', e?.message || e);
-    }
-  }
+  const adresEdycji = await linkEdycji(env, {
+    leadId,
+    imie,
+    parametry: szczegoly?.parametry && typeof szczegoly.parametry === 'object' ? szczegoly.parametry : null,
+  });
 
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
@@ -548,7 +531,7 @@ async function obsluzLead(request, env, cors) {
     to: [doFirmy],
     reply_to: email,
     subject: tematLeada(klient, szczegoly, wycena),
-    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji }),
+    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji: adresEdycji }),
     text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
     attachments: zalaczniki.length ? zalaczniki : undefined,
   });
@@ -1031,7 +1014,13 @@ async function obsluzOfertaNapisz(request, env, cors) {
       .first();
 
     // Mail do Dawida leci obok odpowiedzi: klient nie ma czekać na Resend,
-    // żeby zobaczyć swój dymek w rozmowie.
+    // żeby zobaczyć swój dymek w rozmowie. Z przyciskiem edycji TEJ wyceny
+    // (26.10.2026) — „ile by wyszło z innym dekorem?" kończy się poprawką.
+    const adresEdycji = await linkEdycji(env, {
+      leadId: w.klientId,
+      imie: klient?.imie,
+      ...paczkaZOferty(w),
+    });
     const powiadomienie = resend(env, {
       from: nadawca(env),
       to: [doDawida(env)],
@@ -1044,6 +1033,7 @@ async function obsluzOfertaNapisz(request, env, cors) {
         opis: w.oferta?.opis,
         tresc: sprawdzenie.tresc,
         linkPanelu: `${new URL(request.url).origin}/panel`,
+        linkEdycji: adresEdycji,
       }),
     });
     if (typeof powiadomienie?.catch === 'function') powiadomienie.catch(() => {});
@@ -1066,9 +1056,10 @@ async function obsluzFeedback(request, env, cors) {
     // Ze strony wyceny online przychodzi token oferty zamiast telefonu —
     // rozwiązujemy go na kartę klienta po stronie serwera.
     let klientId = 0;
+    let zOferty = null;
     if (d.oferta) {
-      const zTokenu = await ofertaPoTokenie(env, String(d.oferta), { podglad: true });
-      klientId = zTokenu?.klientId || 0;
+      zOferty = await ofertaPoTokenie(env, String(d.oferta), { podglad: true });
+      klientId = zOferty?.klientId || 0;
       if (!klientId) return json({ ok: false }, 200, cors);
     }
     const wynik = await zapiszFeedback(env, {
@@ -1083,6 +1074,49 @@ async function obsluzFeedback(request, env, cors) {
       wariant: String(d.wariant || '').slice(0, 120),
       wersja: Number(d.wersja) || 1,
     });
+
+    /*
+     * MAIL DO DAWIDA (rozszerzenie 26.10.2026). Do tej pory feedback lądował
+     * tylko na karcie w panelu — Dawid chce go od razu w skrzynce, z tym
+     * samym przyciskiem „Edytuj tę wycenę" co w mailu leadowym: „za drogo"
+     * to dokładnie ten moment, w którym poprawia się ofertę. Mail jest
+     * dodatkiem do zapisu — jego awaria nie ma prawa zepsuć odpowiedzi.
+     */
+    if (wynik?.klientId) {
+      try {
+        const klient = await env.BAZA.prepare(`SELECT imie, telefon, email FROM klienci WHERE id = ?`)
+          .bind(wynik.klientId)
+          .first();
+        const ostatnia = await env.BAZA.prepare(
+          `SELECT opis FROM wyceny WHERE klient_id = ? ORDER BY utworzono DESC, id DESC LIMIT 1`
+        )
+          .bind(wynik.klientId)
+          .first();
+        const adresEdycji = await linkEdycji(env, {
+          leadId: wynik.klientId,
+          imie: klient?.imie,
+          ...paczkaZOferty(zOferty),
+        });
+        await resend(env, {
+          from: nadawca(env),
+          to: [doDawida(env)],
+          reply_to: klient?.email || undefined,
+          subject: tematFeedbacku(klient?.imie, wynik.opis),
+          html: mailFeedbacku({
+            imie: klient?.imie,
+            telefon: klient?.telefon,
+            email: klient?.email,
+            opis: zOferty?.oferta?.opis || ostatnia?.opis || '',
+            odpowiedz: wynik.opis,
+            szczegoly: wynik.szczegol,
+            linkEdycji: adresEdycji,
+          }),
+        });
+      } catch (e) {
+        console.error('feedback mail', e?.message || e);
+      }
+    }
+
     return json({ ok: !!wynik }, 200, cors);
   } catch (e) {
     console.error('feedback', e?.message || e);
@@ -1369,18 +1403,7 @@ function mailDoFirmy(klient, s, extra) {
       ${klient.uwagi ? `<tr><td style="padding:3px 0;color:#b6ad9d">Uwagi</td><td style="padding:3px 0">${esc(klient.uwagi)}</td></tr>` : ''}
     </table>
   </div>
-  ${
-    extra.linkEdycji
-      ? `
-  <div style="margin-top:14px">
-    <a href="${esc(extra.linkEdycji)}"
-       style="display:block;background:#c9a86a;color:#13110f;border-radius:6px;padding:16px 20px;font-size:17px;font-weight:bold;text-align:center;text-decoration:none">
-      ✏️ Edytuj tę wycenę</a>
-    <div style="margin-top:6px;font-size:12px;color:#8c8474;text-align:center">
-      Otwiera edytor wyceny tego klienta bez logowania · link ważny 7 dni, potem normalnie przez panel</div>
-  </div>`
-      : ''
-  }
+  ${extra.linkEdycji ? `<div style="margin-top:14px">${przyciskEdycji(extra.linkEdycji)}</div>` : ''}
 
   ${
     s

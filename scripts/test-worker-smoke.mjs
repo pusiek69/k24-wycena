@@ -1015,6 +1015,143 @@ if (JEST) {
     assert.equal(odp.status, 404);
   });
 
+  /* ══ PRZYCISK EDYCJI WE WSZYSTKICH MAILACH DO DAWIDA (26.10.2026) ══
+   *
+   * Rozszerzenie zlecenia z 22.10: link „✏️ Edytuj tę wycenę" ma iść nie
+   * tylko w mailu leadowym, ale w KAŻDYM mailu ownerowym — wiadomość spod
+   * oferty i feedback po wycenie. I NIGDY w żadnym mailu do klienta.
+   */
+
+  /** Rozpakowany ładunek #powtorz=… z HTML-a maila albo null. */
+  function ladunekZMaila(html) {
+    const m = String(html || '').match(/#powtorz=([A-Za-z0-9_-]+)/);
+    if (!m) return null;
+    return JSON.parse(Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+  }
+
+  /** Lead z mailem + oferta Dawida z parametrami; zwraca {id, token}. */
+  async function kartaZOferta(env, email, telefon) {
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email, phone: telefon }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = ?`).bind(email).first();
+    const oferta = {
+      ...OFERTA_TESTOWA,
+      parametry: { firma: 'avant-quartz', dekor: 'Dijon', grubosc: '20', odcinki: [{ gl: 60, dl: 300 }], opcje: {} },
+    };
+    const dane = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta }), env, ctx)
+    ).json();
+    return { id: k.id, token: String(dane.link).split('#')[1] };
+  }
+
+  test('wiadomość klienta spod oferty: mail do Dawida MA przycisk edycji tej wyceny', async () => {
+    const env = srodowisko();
+    const { id, token } = await kartaZOferta(env, 'rozmowa-edycja@example.com', '600100501');
+
+    listy.length = 0;
+    const odp = await worker.fetch(
+      zapytanie('/oferta/napisz', { token, tresc: 'Czy da się ten blat w innym dekorze? Proszę o wiadomość.' }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200, `oferta/napisz oddał ${odp.status}`);
+    assert.equal(listy.length, 1, 'z wiadomości klienta ma wyjść jeden mail — do Dawida');
+
+    const doDawida = listy[0];
+    assert.ok((doDawida.to || []).includes(env.LEAD_EMAIL), 'mail poszedł nie do Dawida');
+    assert.match(doDawida.html, /Edytuj tę wycenę/, 'brak przycisku edycji w mailu z rozmowy');
+    assert.match(doDawida.html, /ważny 7 dni/);
+
+    const payload = ladunekZMaila(doDawida.html);
+    assert.ok(payload, 'brak linku #powtorz=… w mailu z rozmowy');
+    assert.equal(payload.leadId, id, 'link podpisany na inną kartę');
+    assert.equal(payload.parametry?.firma, 'avant-quartz', 'parametry TEJ wyceny mają jechać w linku');
+    assert.ok(payload.watek, 'bez tokenu wątku edycja założyłaby nowy link zamiast aktualizacji');
+    const { podpisz } = await import('../worker/panel.js');
+    assert.equal(
+      payload.podpis,
+      await podpisz(env.PANEL_HASLO, `oferta|${payload.leadId}|${payload.exp}`),
+      'podpis nie zgadza się z formułą panelu'
+    );
+    assert.ok(!doDawida.html.includes('testowe-haslo'), 'hasło panelu w mailu!');
+  });
+
+  test('feedback „za drogo": Dawid dostaje maila z przyciskiem edycji, klient ŻADNEGO', async () => {
+    const env = srodowisko();
+    const { id, token } = await kartaZOferta(env, 'feedback-edycja@example.com', '600100502');
+
+    listy.length = 0;
+    const odp = await worker.fetch(
+      zapytanie('/feedback', { oferta: token, feedback: 'za_drogo', wariant: 'Avant Quartz Dijon', wersja: 1 }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200);
+    assert.equal((await odp.json()).ok, true);
+
+    assert.equal(listy.length, 1, `z feedbacku ma wyjść jeden mail (do Dawida), poszło ${listy.length}`);
+    const doDawida = listy[0];
+    assert.ok((doDawida.to || []).includes(env.LEAD_EMAIL), 'mail feedbacku poszedł nie do Dawida');
+    assert.match(doDawida.subject, /Klient odpowiedział/, `temat: ${doDawida.subject}`);
+    assert.match(doDawida.subject, /Cena za wysoka/, 'temat nie mówi, CO klient odpowiedział');
+    assert.match(doDawida.html, /Edytuj tę wycenę/, 'brak przycisku edycji w mailu feedbacku');
+    assert.match(doDawida.html, /Avant Quartz Dijon/, 'mail nie niesie wariantu, który wskazał klient');
+
+    const payload = ladunekZMaila(doDawida.html);
+    assert.ok(payload, 'brak linku #powtorz=… w mailu feedbacku');
+    assert.equal(payload.leadId, id);
+    assert.equal(payload.parametry?.firma, 'avant-quartz', 'link feedbacku bez parametrów wyceny');
+  });
+
+  test('feedback bez rozpoznanego klienta NIE wysyła maila', async () => {
+    // Anonimowy strzał w /feedback nie ma prawa generować poczty —
+    // inaczej bot nabiłby Dawidowi skrzynkę jednym pętlowanym POST-em.
+    const env = srodowisko();
+    listy.length = 0;
+    const odp = await worker.fetch(zapytanie('/feedback', { feedback: 'pasuje' }), env, ctx);
+    assert.ok(odp.status < 500);
+    assert.equal(listy.length, 0, 'mail wyszedł mimo braku karty klienta');
+  });
+
+  test('OCHRONA: po całym przebiegu ŻADEN mail do klienta nie niesie linku edycji', async () => {
+    /*
+     * Test parasolowy (26.10.2026): przechodzimy wszystkie ścieżki, które
+     * wysyłają pocztę (lead → oferta → odpowiedź Dawida z panelu →
+     * wiadomość klienta → feedback), a potem patrzymy na KAŻDY mail,
+     * którego adresatem nie jest Dawid. Link #powtorz= to drzwi do edytora
+     * właściciela — w skrzynce klienta nie ma prawa być ani linku,
+     * ani przycisku, ani samego podpisu HMAC.
+     */
+    const env = srodowisko();
+    listy.length = 0;
+
+    const { token } = await kartaZOferta(env, 'parasol@example.com', '600100503');
+    await worker.fetch(
+      zapytanie('/oferta/napisz', { token, tresc: 'Dzień dobry, czy montaż wchodzi w tę cenę?' }),
+      env,
+      ctx
+    );
+    // Odpowiedź Dawida z panelu — jedyny mail do klienta budowany w panel.js.
+    const w = await env.BAZA.prepare(`SELECT id FROM wyceny ORDER BY id DESC LIMIT 1`).bind().first();
+    const cookie = await ciastkoPanelu(env);
+    await worker.fetch(
+      zapytaniePanel('/panel/api/odpowiedz', { wycena: w.id, tresc: 'Tak, montaż jest w cenie tej wyceny.' }, cookie),
+      env,
+      ctx
+    );
+    await worker.fetch(zapytanie('/feedback', { oferta: token, feedback: 'zastanowi' }), env, ctx);
+
+    assert.ok(listy.length >= 5, `za mało maili do sprawdzenia (${listy.length}) — przebieg się nie domknął`);
+    const doKlientow = listy.filter((l) => !(l.to || []).includes(env.LEAD_EMAIL));
+    assert.ok(doKlientow.length >= 2, 'w przebiegu nie było maili do klienta — parasol nic nie chroni');
+    for (const mail of doKlientow) {
+      assert.ok(!String(mail.html).includes('#powtorz'), `link edycji wyciekł do klienta (${mail.subject})`);
+      assert.ok(!String(mail.html).includes('Edytuj tę wycenę'), `przycisk edycji wyciekł do klienta (${mail.subject})`);
+      // Podpis HMAC to 64 znaki hex — w mailu klienta nie ma prawa być
+      // niczego, co wygląda jak ten sekret (token oferty ma 32 znaki).
+      assert.doesNotMatch(String(mail.html), /[a-f0-9]{64}/, `64-znakowy hex w mailu klienta (${mail.subject})`);
+    }
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

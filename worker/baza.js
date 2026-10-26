@@ -1051,7 +1051,9 @@ export async function zapiszFeedback(env, dane) {
     `Klient po wycenie: ${OPIS_FEEDBACKU[feedback]}${szczegol ? ` (${szczegol})` : ''}`
   );
 
-  return { klientId: klient.id };
+  // Opis i szczegóły wracają do workera, bo od 26.10.2026 feedback idzie
+  // też mailem do Dawida — mail ma mówić tym samym językiem co notatka.
+  return { klientId: klient.id, opis: OPIS_FEEDBACKU[feedback], szczegol };
 }
 
 /**
