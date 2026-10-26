@@ -189,3 +189,44 @@ test('PODŁĄCZENIE (wzorzec 30.08: funkcja bez podłączenia to połowa roboty)
   assert.match(zrodlo('src/main.js'), /zapamietajPartnera\(\)/, 'main.js nie łapie ?p= przy wejściu');
   assert.match(zrodlo('src/app/bramka.js'), /partner: partnerDoLeada\(\)/, 'bramka nie dokleja partnera do leada');
 });
+
+/* ═══════════ etap 5: strona /dla-partnerow — zero śladów stawek ══════════ */
+
+test('STRONA dla-partnerow istnieje i jest podłączona (vite, redirect /p/)', () => {
+  assert.ok(fs.existsSync(new URL('../dla-partnerow.html', import.meta.url)), 'brak dla-partnerow.html');
+  assert.match(zrodlo('vite.config.js'), /dla-partnerow\.html/, 'strona poza buildem Vite');
+  const netlify = zrodlo('netlify.toml');
+  assert.match(netlify, /from = "\/p\/\*"/, 'brak przekierowania /p/KOD');
+  assert.match(netlify, /to = "\/\?p=:splat"/, '/p/KOD nie przepisuje się na ?p=');
+});
+
+test('STRONA: stawki NIEJAWNE — żadnych procentów ani kwot prowizji', () => {
+  // CSS ma prawo do „100%" (szerokość pola) — tniemy bloki <style>, bo
+  // wyciek stawki może siedzieć wyłącznie w treści, nie w arkuszu.
+  const html = zrodlo('dla-partnerow.html').replace(/<style>[\s\S]*?<\/style>/g, '');
+  // Decyzja Dawida: na stronie TYLKO „atrakcyjna prowizja — szczegóły przy
+  // pierwszej rozmowie". Każda liczba ze znakiem % to wyciek stawki.
+  assert.doesNotMatch(html, /\d\s*%/, 'liczba z procentem na stronie publicznej');
+  assert.doesNotMatch(html, /%\s*\d/, 'procent z liczbą na stronie publicznej');
+  assert.doesNotMatch(html, /prowizj\w*\s+(wynosi|to)\s/i, 'strona zdradza wysokość prowizji');
+  assert.match(html, /szczegóły (przy|w) pierwszej rozmowie/i, 'brak obiecanego zdania o rozmowie');
+});
+
+test('STRONA: tytuł wg wzorca, formularz z kompletem pól i pułapką', () => {
+  const html = zrodlo('dla-partnerow.html');
+  assert.match(html, /<title>[^<]*[Pp]rogram partnerski[^<]*<\/title>/);
+  assert.match(html, /wycena online w 2 minuty/i, 'description bez sprawdzonego CTA');
+  assert.match(html, /rel="canonical" href="https:\/\/kam24h\.pl\/dla-partnerow"/);
+  for (const pole of ['name="imie"', 'name="firma"', 'name="typ"', 'name="telefon"', 'name="email"'])
+    assert.match(html, new RegExp(pole), `formularz bez pola ${pole}`);
+  assert.match(html, /name="pulapka"/, 'formularz bez pola-pułapki na boty');
+  for (const typ of ['stolarz', 'meble', 'projektant'])
+    assert.match(html, new RegExp(`value="${typ}"`), `brak typu ${typ} w wyborze`);
+  assert.match(html, /workers\.dev\/partner/, 'formularz nie celuje w trasę /partner');
+  // Obietnica przypisania — liczba DNI jest jawna (to przekaz), stawka nie.
+  assert.match(html, /365 dni/, 'brak obietnicy przypisania klienta');
+});
+
+test('STRONA: w sitemapie po `npm run sitemap`', () => {
+  assert.match(zrodlo('public/sitemap.xml'), /kam24h\.pl\/dla-partnerow/, 'strony nie ma w sitemapie');
+});

@@ -22,6 +22,7 @@ export default defineConfig({
         blaty_z_konglomeratu: resolve(import.meta.dirname, 'blaty-z-konglomeratu.html'),
         blaty_ze_spieku: resolve(import.meta.dirname, 'blaty-ze-spieku.html'),
         blaty_granitowe: resolve(import.meta.dirname, 'blaty-granitowe.html'),
+        dla_partnerow: resolve(import.meta.dirname, 'dla-partnerow.html'),
         blaty_z_konglomeratu_kwarcowego_poradnik: resolve(import.meta.dirname, 'blaty-z-konglomeratu-kwarcowego-poradnik.html'),
         baza_wiedzy_index: resolve(import.meta.dirname, 'baza-wiedzy/index.html'),
         baza_wiedzy_granit: resolve(import.meta.dirname, 'baza-wiedzy/granit.html'),

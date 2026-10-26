@@ -38,6 +38,14 @@
 # `deploy-preview-N--k24-wycena.netlify.app` i `gałąź--k24-wycena.netlify.app`,
 # więc dalej działają normalnie — inaczej stracilibyśmy możliwość obejrzenia
 # zmiany przed wypuszczeniem jej na produkcję.
+# LINK PARTNERSKI /p/KOD (program partnerski, 26.10.2026): krotki adres
+# do wysylania klientom przez partnera. Przepisujemy na ?p=, ktore lapie
+# src/app/partner.js. 302, nie 301 - adres z kodem nie ma sie cache'owac.
+[[redirects]]
+  from = "/p/*"
+  to = "/?p=:splat"
+  status = 302
+
 [[redirects]]
   from = "https://k24-wycena.netlify.app/*"
   to = "https://kam24h.pl/:splat"
