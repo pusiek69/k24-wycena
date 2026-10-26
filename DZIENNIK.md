@@ -5,6 +5,12 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-26 (sesja automatyczna, 07:20 UTC) — BEZ nowej zmiany: czeka push paczki z 26.10
+
+**Dlaczego:** na origin nadal brak 5 commitów (K6 tytuł konglomeratu, fix testu sezonowego, sitemap, dziennik, nawigacja wstecz). `npm test` w sandboksie 766/789 (23 = znany artefakt esbuild linux/win, jak w baseline) - bez zielonych testów nie pushuję; nie dokładam drugiej zmiany SEO na wierzch niewdrożonej.
+**Dla Dawida (Windows):** `npm test` -> `git push origin main` -> zweryfikować /blaty-z-konglomeratu i /blaty-ze-spieku na żywo -> GSC „Poproś o zindeksowanie" obu adresów.
+**Następna sesja:** po wdrożeniu - /blaty-granitowe (title z „cena" + „wycena online w 2 minuty", najpierw kanibalizacja w GSC); Mielec bez dokładania do ok. 2.11.
+
 ## 2026-10-26 — ODBLOKOWANIE pushów: naprawa czerwonych testów + decyzja K6
 
 **Stan GSC (28 dni):** nie odpytywano w tej sesji (dane z 19.10: /blaty-ze-spieku
