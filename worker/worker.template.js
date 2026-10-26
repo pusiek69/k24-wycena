@@ -42,6 +42,7 @@ import { tematDoDawida, mailDoDawida, tematFeedbacku, mailFeedbacku, przyciskEdy
 import { linkEdycji, paczkaZOferty } from './link-edycji.js';
 import { kodWazny } from './partnerzy.js';
 import { partnerPoKodzie, konfigPartnerska } from './partnerzy-baza.js';
+import { tematZgloszeniaPartnera, mailZgloszeniePartnera, typPartnera } from './mail-partner.js';
 import { DOMYSLNE } from '../src/app/ustawienia.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
@@ -58,6 +59,7 @@ import {
   dopiszWiadomosc,
   ofertaPoTokenie,
   odczytajStawki,
+  dodajKlientaRecznie,
 } from './baza.js';
 import { listaPlyt, zdjeciePlyty, dostepna } from './wyprzedaz-baza.js';
 import { synchronizuj, wczytajKonfig } from './zakupy.js';
@@ -145,6 +147,7 @@ export default {
 
       if (sciezka === '/chat') return await obsluzChat(request, env, cors, ctx);
       if (sciezka === '/lead') return await obsluzLead(request, env, cors);
+      if (sciezka === '/partner') return await obsluzZgloszeniePartnera(request, env, cors);
       if (sciezka === '/feedback') return await obsluzFeedback(request, env, cors);
       if (sciezka === '/ustawienia') return await obsluzUstawienia(env, cors);
       if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
@@ -590,6 +593,58 @@ async function obsluzLead(request, env, cors) {
  * sprzedaży, które klient i tak zobaczy w wycenie; edytować może wyłącznie
  * Dawid z panelu (/panel/api/stawki, za hasłem).
  */
+/* ─────────────────────────── /partner (program partnerski, 26.10.2026) */
+
+/**
+ * Zgłoszenie z formularza na /dla-partnerow: karta w CRM (źródło
+ * `partner-zgloszenie`) + mail do Dawida. Stawki są NIEJAWNE — odpowiedź
+ * i mail nie niosą żadnej konfiguracji programu. Pole-pułapka jak przy
+ * rozmowie pod ofertą: bot dostaje zwykłe „ok" i nic się nie zapisuje.
+ */
+async function obsluzZgloszeniePartnera(request, env, cors) {
+  const d = await request.json().catch(() => null);
+  if (!d || typeof d !== 'object') return json({ ok: false, blad: 'Niepoprawne zgłoszenie.' }, 400, cors);
+  if (String(d.pulapka || '').trim() !== '') return json({ ok: true }, 200, cors);
+
+  const firma = String(d.firma || '').trim().slice(0, 160);
+  const typ = ['stolarz', 'meble', 'projektant'].includes(d.typ) ? d.typ : 'inny';
+  const notatka = [
+    'Zgłoszenie do programu partnerskiego',
+    `typ: ${typPartnera(typ)}`,
+    firma ? `firma: ${firma}` : '',
+  ]
+    .filter(Boolean)
+    .join(' — ');
+
+  const zapis = await dodajKlientaRecznie(
+    env,
+    { imie: d.imie, telefon: d.telefon, email: d.email, temat: 'inne', notatka },
+    { zrodlo: 'partner-zgloszenie', zrodloSzczegol: 'formularz /dla-partnerow' }
+  );
+  if (!zapis.ok) return json({ ok: false, blad: zapis.blad }, 400, cors);
+
+  // Mail jest dodatkiem do zapisu — jego awaria nie psuje zgłoszenia.
+  try {
+    await resend(env, {
+      from: nadawca(env),
+      to: [doDawida(env)],
+      reply_to: String(d.email || '').trim() || undefined,
+      subject: tematZgloszeniaPartnera({ imie: String(d.imie || '').trim(), firma }),
+      html: mailZgloszeniePartnera({
+        imie: String(d.imie || '').trim(),
+        firma,
+        typ,
+        telefon: String(d.telefon || '').trim(),
+        email: String(d.email || '').trim(),
+      }),
+    });
+  } catch (e) {
+    console.error('partner zgłoszenie mail', e?.message || e);
+  }
+
+  return json({ ok: true }, 200, cors);
+}
+
 async function obsluzUstawienia(env, cors) {
   try {
     // Tylko stawki SILNIKA. W tabeli mieszka też niejawna konfiguracja

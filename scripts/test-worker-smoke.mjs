@@ -1304,6 +1304,79 @@ if (JEST) {
     assert.equal(k.partner_kod, 'kowalski', 'drugi kod nadpisał pierwszego partnera');
   });
 
+  test('ZGŁOSZENIE PARTNERA (/partner): karta ze źródłem partner-zgloszenie + mail do Dawida', async () => {
+    const env = srodowisko();
+    listy.length = 0;
+    const odp = await worker.fetch(
+      zapytanie('/partner', {
+        imie: 'Marek Stolarz',
+        firma: 'Meble Marek',
+        typ: 'stolarz',
+        telefon: '600 100 800',
+        email: 'marek@example.com',
+      }),
+      env,
+      ctx
+    );
+    const dane = await odp.json();
+    assert.equal(odp.status, 200, `/partner oddał ${odp.status}: ${JSON.stringify(dane)}`);
+    assert.equal(dane.ok, true);
+
+    const k = await env.BAZA.prepare(
+      `SELECT id, zrodlo FROM klienci WHERE email_klucz = 'marek@example.com'`
+    ).bind().first();
+    assert.ok(k, 'zgłoszenie nie założyło karty w CRM');
+    assert.equal(k.zrodlo, 'partner-zgloszenie');
+    const notatki = await env.BAZA.prepare(`SELECT tresc FROM notatki WHERE klient_id = ?`)
+      .bind(k.id).all();
+    const razem = (notatki.results || []).map((n) => n.tresc).join(' | ');
+    assert.match(razem, /program/i, 'notatka nie mówi o programie partnerskim');
+    assert.match(razem, /stolarz/i, 'notatka bez typu partnera');
+    assert.match(razem, /Meble Marek/, 'notatka bez nazwy firmy');
+
+    assert.equal(listy.length, 1, `miał wyjść 1 mail do Dawida, poszło ${listy.length}`);
+    assert.ok((listy[0].to || []).includes(env.LEAD_EMAIL));
+    assert.match(listy[0].subject, /partner/i, `temat: ${listy[0].subject}`);
+    assert.match(listy[0].html, /Marek Stolarz/);
+    // Stawki są NIEJAWNE — mail potwierdza zgłoszenie, nie zdradza procentów.
+    assert.doesNotMatch(listy[0].html, /\d\s*%/);
+  });
+
+  test('ZGŁOSZENIE PARTNERA: pułapka na boty milczy, krótki telefon dostaje czytelny błąd', async () => {
+    const env = srodowisko();
+    listy.length = 0;
+    const bot = await worker.fetch(
+      zapytanie('/partner', { imie: 'Bot', telefon: '600100801', pulapka: 'http://spam' }),
+      env,
+      ctx
+    );
+    assert.equal(bot.status, 200, 'botowi nie tłumaczymy, co go zdradziło');
+    const ileKart = await env.BAZA.prepare(`SELECT COUNT(*) AS n FROM klienci`).bind().first();
+    assert.equal(ileKart.n, 0, 'bot założył kartę');
+    assert.equal(listy.length, 0, 'bot wywołał maila');
+
+    const krotki = await worker.fetch(
+      zapytanie('/partner', { imie: 'Pechowiec', telefon: '12345678' }),
+      env,
+      ctx
+    );
+    assert.equal(krotki.status, 400);
+    assert.match((await krotki.json()).blad, /9 cyfr/);
+  });
+
+  test('ZGŁOSZENIE PARTNERA: awaria maila nie kasuje karty', async () => {
+    const env = srodowisko();
+    env.RESEND_API_KEY = ''; // resend() odmówi — karta ma zostać
+    const odp = await worker.fetch(
+      zapytanie('/partner', { imie: 'Bez Maila', typ: 'projektant', telefon: '600100802' }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200);
+    const k = await env.BAZA.prepare(`SELECT zrodlo FROM klienci WHERE imie = 'Bez Maila'`).bind().first();
+    assert.equal(k?.zrodlo, 'partner-zgloszenie', 'karta przepadła razem z mailem');
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

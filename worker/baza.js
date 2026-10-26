@@ -276,7 +276,11 @@ export async function zapiszLead(env, lead) {
  *  Zwraca { ok, klientId, nowy, istnial } albo { ok: false, blad }.
  * ══════════════════════════════════════════════════════════════════════════
  */
-export async function dodajKlientaRecznie(env, dane) {
+export async function dodajKlientaRecznie(env, dane, opcje = {}) {
+  // PROGRAM PARTNERSKI (26.10.2026): /partner używa tej samej drogi, tylko
+  // z własnym źródłem — lejek, filtry i deduplikacja działają bez zmian.
+  const zrodloKarty = String(opcje.zrodlo || ZRODLO_RECZNE);
+  const zrodloSzczegol = String(opcje.zrodloSzczegol || 'dodany w panelu');
   const baza = env.BAZA;
   if (!baza) return { ok: false, blad: 'Panel nie ma podpiętej bazy.' };
 
@@ -358,9 +362,9 @@ export async function dodajKlientaRecznie(env, dane) {
       `INSERT INTO klienci (imie, telefon, email, miejscowosc, telefon_klucz, email_klucz,
                             status, zrodlo, zrodlo_szczegol, flagi, wycen,
                             kwota_ostatnia, kwota_max, temat, telefon_zgoda, utworzono, ruch)
-       VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, 'dodany w panelu', '[]', 0, 0, 0, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, '[]', 0, 0, 0, ?, ?, ?, ?)`
     )
-    .bind(imie, telefon, email, miejscowosc, tk, ek, ZRODLO_RECZNE, temat, telefonZgoda, czas, czas)
+    .bind(imie, telefon, email, miejscowosc, tk, ek, zrodloKarty, zrodloSzczegol, temat, telefonZgoda, czas, czas)
     .run();
 
   const klientId = wynik.meta?.last_row_id ?? null;

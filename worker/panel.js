@@ -2156,6 +2156,7 @@ async function odpisz(wycenaId){
 
 function zrodloOpis(k){
   if(k.zrodlo === 'biuro') return 'biuro / ręcznie (wpisany w panelu)';
+  if(k.zrodlo === 'partner-zgloszenie') return 'zgłoszenie do programu partnerskiego (/dla-partnerow)';
   var t = k.zrodlo === 'ads' ? 'Google Ads' : k.zrodlo === 'organiczne' ? 'organiczne' : 'nieznane';
   return k.zrodloSzczegol ? t + ' (' + k.zrodloSzczegol + ')' : t;
 }
