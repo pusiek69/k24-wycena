@@ -5,6 +5,64 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-26 — ODBLOKOWANIE pushów: naprawa czerwonych testów + decyzja K6
+
+**Stan GSC (28 dni):** nie odpytywano w tej sesji (dane z 19.10: /blaty-ze-spieku
+po K1 128→352 wyśw., poz. 21→13; „blaty z konglomeratu kwarcowego" ~1375 wyśw.).
+**Zmiany:**
+- `scripts/test-sezon-letni.mjs` — dekor wyłącznie promocyjny Avanta to po
+  naprawie literówki (15.10, b435d15) Calacatta Modane, nie „Botticiono Burges";
+  asercja wskazywała dekor, który stał się katalogowy (commit: 03858df).
+- `/blaty-z-konglomeratu` — ZATWIERDZONY wiszący od 19.10 tytuł K6:
+  „Blaty z konglomeratu kwarcowego — wzory i wycena online" + opis z CTA
+  „Wycena online w 2 minuty" (pełna fraza wolumenowa + wzorzec miast; K1 działa,
+  poradnik zostaje przy „ceny, wady i zalety"). Test kanibalizacji dopasowany:
+  zakaz cen z granicą słowa `\bcen(a|y|nik)`, żeby „wycena" (CTA narzędzia,
+  nie intencja cenowa) nie wpadała w zakaz (commit: 3fe0879).
+- `public/sitemap.xml` — lastmod 2026-10-26 dla /blaty-z-konglomeratu
+  (commit: 37076f4).
+- Rekomendacja #1 (frazy cenowe na /blaty-ze-spieku) okazała się JUŻ wdrożona
+  (tytuł „— cena za m², ile kosztuje blat" + „Wycena online w 2 minuty" w opisie,
+  na origin od K1/K9) — bez duplikowania; po pushu tylko weryfikacja + indeksowanie.
+
+Testy: 766 zielonych / 23 znane esbuildowe sandboksa (identycznie z baseline;
+asercje kanibalizacji i tytuły zweryfikowane ręcznie poza silnikiem).
+W paczce do pusha razem z 56ece4f (nawigacja wstecz w rozmowie).
+**Zgłoszone do indeksowania:** po pushu zgłosić /blaty-z-konglomeratu
+i /blaty-ze-spieku (Sprawdzenie URL → Poproś o zindeksowanie).
+**Do obserwacji:** „blaty z konglomeratu kwarcowego" (poz./CTR przed zmianą wg
+19.10), /blaty-ze-spieku „cena za m²" (poz. 8–12, 0 klik. przy ~130 wyśw./tydz.).
+**Następna sesja:** sprawdzić indeksację obu adresów i pierwsze liczby frazy
+konglomeratowej; wrócić do kolejki miast (Mielec).
+
+---
+
+## 2026-10-24 — sesja automatyczna: BEZ wdrożenia (4. dzień z rzędu ta sama blokada)
+
+**Dlaczego nie wdrożono:** `npm test` 760/783 (23 czerwone = artefakt esbuild linux/win w node_modules Windows) + w drzewie nadal niezacommitowany tytuł `/blaty-z-konglomeratu` (K6) wywalający `test-konglomeraty.mjs:100` + czerwony `test-sezon-letni.mjs:217` (Botticino Bourges) na HEAD. Strona nietknięta.
+**Proponowana zmiana (bez zmian):** `/blaty-granitowe` — title z „cena", opis z „wycena online w 2 minuty" (poz. 36 / 68 wyśw.); najpierw GSC: kanibalizacja z /blaty-kuchenne-tarnobrzeg.
+**Dla Dawida (Windows):** 1) `scripts/test-sezon-letni.mjs:225` → `Botticino Bourges`; 2) rozstrzygnij K6 (commit albo revert tytułu konglomeratu; termin obserwacji K1 minął 25.10); 3) `npm test` → `git push origin main`.
+
+## 2026-10-23 — sesja automatyczna: BEZ wdrożenia (testy czerwone, nie z SEO)
+
+**Dlaczego nie wdrożono:** `npm test` w tym środowisku 760/783 (23 = artefakt esbuild linux/win z node_modules Windows); wg wpisu 22.10 na czystym HEAD dodatkowo czerwony `test-sezon-letni.mjs:217` (Botticino Bourges) oraz `test-konglomeraty.mjs:100` przez niezacommitowany tytuł /blaty-z-konglomeratu (K6, decyzja 25.10). Bez zielonych testów nie pushuję; strona nietknięta.
+**Proponowana zmiana na jutro (bez zmian vs 22.10):** `/blaty-granitowe` — title z „cena", description z „wycena online w 2 minuty" (poz. 36 / 68 wyśw.); najpierw GSC: kanibalizacja z /blaty-kuchenne-tarnobrzeg. Mielec: nic nie dokładać do ok. 2.11.
+**Dla Dawida (Windows):** popraw asercję `scripts/test-sezon-letni.mjs:225` → `Botticino Bourges`, rozstrzygnij K6, `npm test` → jeden `git push origin main`.
+
+## 2026-10-22 — sesja automatyczna: BEZ wdrożenia (czerwony test na HEAD, nie z SEO)
+
+**Dlaczego nie wdrożono:** w czystej kopii Linux (`npm ci`, bez artefaktu esbuild) `npm test` na HEAD daje 987/988 — pada `test-sezon-letni.mjs:217` („jesień: po 30.12.2026…") bo asercja szuka starego dekoru `Botticiono Burges`, który commit b435d15 (literówki promocji) zamienił na `Botticino Bourges` — to test do zaktualizowania przy cennikowej paczce, nie ruszałem (logika wyceny/cennik = poza zakresem SEO). Dodatkowo w drzewie wisi niezacommitowany tytuł `/blaty-z-konglomeratu` (K6, decyzja 25.10), który wywala `test-konglomeraty.mjs:100`. Push = brak; strona nietknięta.
+**Proponowana zmiana na jutro (po naprawie testu sezonowego):** `/blaty-granitowe` — tytuł z „cena" i „wycena online w 2 minuty" w opisie (poz. 36 przy 68 wyśw., GSC 3.10); najpierw GSC: czy nie kanibalizuje /blaty-kuchenne-tarnobrzeg. Mielec: nic nie dokładać do ok. 2.11 (odczyt FAQ ze stawkami).
+**Do zrobienia przez Dawida:** poprawić asercję w `scripts/test-sezon-letni.mjs:225` na `Botticino Bourges` (albo zlecić mi osobno), rozstrzygnąć K6.
+
+## 2026-10-21 — sesja automatyczna: BEZ wdrożenia (bramka testów nie do przejścia w tym środowisku)
+
+**Dlaczego nie wdrożono:** `npm test` w sandboksie daje 758/781 (23 czerwone = znany artefakt esbuild linux/win, nie regresja), a w drzewie wiszą cudze rzeczy: niezacommitowany tytuł `/blaty-z-konglomeratu` (K6 w toku, decyzja K1 wg planu 25.10) oraz 2 niewypchnięte commity sesji designu (`c8d5334`, `beb370d`). Wypchnięcie ich razem z SEO-zmianą bez testów na Windows łamie zasadę „deploy tylko przy zielonych testach". Strona nietknięta.
+
+**Proponowana zmiana na jutro / następną sesję (po zielonym `npm test` na Windows):** `/blaty-granitowe` — poz. 36 przy 68 wyśw. (28 dni, odczyt 3.10); tytuł bez słowa „cena". Zmiana tytułu/opisu wg wzorca („…granit — cena, wycena online w 2 minuty"), sprawdzić kanibalizację z `/blaty-granitowe-*` w GSC przed zmianą. Mielec: odległość 40 km jest już w tytule/opisie/FAQ/H2 — nic nie dokładać, czekać na odczyt FAQ z zł/m² (ok. 2.11).
+
+**Do zrobienia przez Dawida:** `git pull --rebase` → `npm test` na Windows → rozstrzygnąć K6 (zacommitować albo cofnąć tytuł konglomeratu) → push.
+
 ## 2026-10-19 — Mielec: FAQ z ceną za m² + linki kontekstowe; K6 NIE przyspieszamy; porządek po audycie dekorów
 
 **Stan GSC (7 dni, 10–16.10):** **31 klik.** (rekord; było 20), 921 wyśw., CTR 3,4%, śr. poz. **13,7**. Frazy 0 klik.: „spiek kwarcowy blat" 15 · „blaty kamienne lublin" 11 · „blaty ze spieku kwarcowego" 11 · „blat ze spieku kwarcowego cena za m2" 9 (K9 w indeksie od 14.10 — obserwować) · „szczebrzeszyn" 8.
