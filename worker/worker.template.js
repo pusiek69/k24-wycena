@@ -40,6 +40,7 @@ import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida, tematFeedbacku, mailFeedbacku, przyciskEdycji } from './mail-rozmowa.js';
 import { linkEdycji, paczkaZOferty } from './link-edycji.js';
+import { DOMYSLNE } from '../src/app/ustawienia.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
@@ -568,7 +569,9 @@ async function obsluzLead(request, env, cors) {
  */
 async function obsluzUstawienia(env, cors) {
   try {
-    return json({ ok: true, ustawienia: await odczytajStawki(env) }, 200, cors);
+    // Tylko stawki SILNIKA. W tabeli mieszka też niejawna konfiguracja
+    // programu partnerskiego (partner*) — ta publicznie nie wychodzi.
+    return json({ ok: true, ustawienia: await odczytajStawki(env, Object.keys(DOMYSLNE)) }, 200, cors);
   } catch (e) {
     console.error('ustawienia', e?.message || e);
     // Milczące zero: kalkulator ma wtedy policzyć stawkami domyślnymi.

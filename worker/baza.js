@@ -646,6 +646,16 @@ export async function ustawStatus(env, id, status) {
   await env.BAZA.prepare(`UPDATE klienci SET status = ?, ruch = ? WHERE id = ?`)
     .bind(status, teraz(), id)
     .run();
+  // PROGRAM PARTNERSKI (26.10.2026): data PIERWSZEJ wygranej — od niej liczy
+  // się kolejność prowizji (pierwsze 15% → kolejne 10%) i miesiąc rozliczenia.
+  // Stemplujemy raz; cofnięcie statusu i ponowna wygrana nie przesuwa daty.
+  if (status === 'wygrany') {
+    await env.BAZA.prepare(
+      `UPDATE klienci SET wygrany_kiedy = ? WHERE id = ? AND wygrany_kiedy = ''`
+    )
+      .bind(teraz().slice(0, 10), id)
+      .run();
+  }
   await dopiszNotatke(
     env.BAZA,
     id,
@@ -958,11 +968,18 @@ const OPIS_FEEDBACKU = {
  * To NASZE ceny sprzedaży — cen zakupu materiału ani przeliczników
  * dostawców tu nie ma i być nie może.
  */
-export async function odczytajStawki(env) {
+export async function odczytajStawki(env, dozwolone = null) {
   if (!env.BAZA) return {};
   const wynik = await env.BAZA.prepare(`SELECT klucz, wartosc FROM ustawienia`).all();
   const stawki = {};
   for (const w of wynik.results || []) {
+    /*
+     * Filtr kluczy (26.10.2026): w tej samej tabeli mieszka od teraz także
+     * NIEJAWNA konfiguracja programu partnerskiego (klucze `partner*`).
+     * Publiczny /ustawienia podaje listę stawek silnika i dostaje TYLKO je —
+     * bez listy (stare wywołania panelu) zachowanie jak dotąd.
+     */
+    if (dozwolone && !dozwolone.includes(w.klucz)) continue;
     const liczba = Number(w.wartosc);
     if (Number.isFinite(liczba)) stawki[w.klucz] = liczba;
   }

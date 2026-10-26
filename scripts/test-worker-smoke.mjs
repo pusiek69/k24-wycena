@@ -1152,6 +1152,49 @@ if (JEST) {
     }
   });
 
+  /* ══════ PROGRAM PARTNERSKI (26.10.2026) — etap 2: szczelność i stempel ══ */
+
+  test('PUBLICZNE /ustawienia NIE zdradza konfiguracji partnerskiej', async () => {
+    /*
+     * Decyzja Dawida: stawki prowizji są NIEJAWNE. `odczytajStawki` czytało
+     * CAŁĄ tabelę ustawień, więc klucz `partnerProcPierwsze` wyszedłby na
+     * publicznym API razem ze stawkami zakładu. Ten test trzyma granicę.
+     */
+    const env = srodowisko();
+    const czas = new Date().toISOString();
+    await env.BAZA.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES (?, ?, ?)`)
+      .bind('partnerProcPierwsze', '15', czas).run();
+    await env.BAZA.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES (?, ?, ?)`)
+      .bind('obrobkaZaM2', '250', czas).run();
+
+    // /ustawienia stoi za bramką „tylko POST" — tak woła je kalkulator.
+    const odp = await worker.fetch(zapytanie('/ustawienia', {}), env, ctx);
+    const dane = await odp.json();
+    assert.equal(odp.status, 200);
+    assert.equal(dane.ustawienia.obrobkaZaM2, 250, 'stawka silnika ma dalej wychodzić');
+    const partnerskie = Object.keys(dane.ustawienia).filter((k) => k.startsWith('partner'));
+    assert.deepEqual(partnerskie, [], `konfiguracja partnerska wyciekła publicznie: ${partnerskie}`);
+  });
+
+  test('status Wygrany stempluje wygrany_kiedy RAZ — podstawa kolejności prowizji', async () => {
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'wygrany@example.com', phone: '600100601' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = ?`)
+      .bind('wygrany@example.com').first();
+
+    const cookie = await ciastkoPanelu(env);
+    await worker.fetch(zapytaniePanel('/panel/api/zmien', { id: k.id, status: 'wygrany' }, cookie), env, ctx);
+    const po = await env.BAZA.prepare(`SELECT wygrany_kiedy FROM klienci WHERE id = ?`).bind(k.id).first();
+    assert.equal(po.wygrany_kiedy, new Date().toISOString().slice(0, 10), 'brak stempla daty wygranej');
+
+    // Cofnięcie i ponowna wygrana NIE przesuwa daty — pierwsza wygrana rządzi.
+    await env.BAZA.prepare(`UPDATE klienci SET wygrany_kiedy = '2026-01-01' WHERE id = ?`).bind(k.id).run();
+    await worker.fetch(zapytaniePanel('/panel/api/zmien', { id: k.id, status: 'oferta' }, cookie), env, ctx);
+    await worker.fetch(zapytaniePanel('/panel/api/zmien', { id: k.id, status: 'wygrany' }, cookie), env, ctx);
+    const znow = await env.BAZA.prepare(`SELECT wygrany_kiedy FROM klienci WHERE id = ?`).bind(k.id).first();
+    assert.equal(znow.wygrany_kiedy, '2026-01-01', 'ponowna wygrana nadpisała pierwszą datę');
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

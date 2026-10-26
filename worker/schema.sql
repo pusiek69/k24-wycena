@@ -371,3 +371,37 @@ CREATE TABLE IF NOT EXISTS zakupy_aliasy (
 --  całym pliku D1 przewróci się na „duplicate column" tych wcześniejszych.
 -- ═══════════════════════════════════════════════════════════════════════
 ALTER TABLE klienci ADD COLUMN temat TEXT NOT NULL DEFAULT '';
+
+-- ═══════════════════════════════════════════════════════════════════════
+--  PROGRAM PARTNERSKI (zlecenie Dawida, 26.10.2026)
+--
+--  Partnerzy (stolarze, firmy meblowe, projektanci) polecają klientów
+--  linkiem kam24h.pl/?p=KOD. Prowizja liczona DERYWACYJNIE z wygranych
+--  kart klientów — nie ma osobnego rejestru prowizji (stan jest jeden).
+--  Konfiguracja (procenty, dni przypisania) w tabeli `ustawienia` pod
+--  kluczami `partner*` — NIEJAWNA: publiczny /ustawienia ją odfiltrowuje.
+-- ═══════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS partnerzy (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  nazwa     TEXT NOT NULL,
+  -- Kod do linku partnerskiego: [a-z0-9-]{3,24}, np. 'meble-kowalski'.
+  kod       TEXT NOT NULL UNIQUE,
+  -- stolarz | meble | projektant | inny
+  typ       TEXT NOT NULL DEFAULT 'inny',
+  -- standard | premium (Premium nadaje Dawid ręcznie „za dobrą współpracę")
+  status    TEXT NOT NULL DEFAULT 'standard',
+  telefon   TEXT NOT NULL DEFAULT '',
+  email     TEXT NOT NULL DEFAULT '',
+  -- 0 = kod przestaje przypisywać nowych klientów (stare przypisania zostają).
+  aktywny   INTEGER NOT NULL DEFAULT 1,
+  notatka   TEXT NOT NULL DEFAULT '',
+  utworzono TEXT NOT NULL
+);
+
+-- Kolumny dopisywane ALTER-em (wzorzec jak telefon_zgoda wyżej: świeża baza
+-- dostaje je tym samym plikiem, produkcyjna — uruchomieniem tych dwóch linii).
+ALTER TABLE klienci ADD COLUMN partner_kod TEXT NOT NULL DEFAULT '';
+-- Data PIERWSZEGO przejścia na status 'wygrany' (YYYY-MM-DD): od niej liczy
+-- się kolejność „pierwsze 15% → kolejne 10%" i zestawienie miesięczne.
+ALTER TABLE klienci ADD COLUMN wygrany_kiedy TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS klienci_partner ON klienci (partner_kod);
