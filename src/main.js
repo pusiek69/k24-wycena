@@ -6,6 +6,7 @@ import { FIRMY } from './firms/index.js';
 import { inicjujZgody, zmienZgody } from './analytics/zgody.js';
 import { sledzTelefony, zdarzenie } from './analytics/zdarzenia.js';
 import { zapamietajZrodlo } from './app/zrodlo.js';
+import { zapamietajPartnera } from './app/partner.js';
 import { uzbrojPasekRealizacji } from './app/pasek-realizacji.js';
 import { paczkaPowtorki, uruchomOferteDawida } from './app/oferta-dawida.js';
 import { gotoweStawki } from './app/stawki-klient.js';
@@ -17,6 +18,8 @@ inicjujZgody();
 sledzTelefony();
 // Znaczniki kampanii z adresu — do oceny, czy reklama się zwraca.
 zapamietajZrodlo();
+// Kod partnerski z linku ?p=KOD (program partnerski, 26.10.2026).
+zapamietajPartnera();
 
 document.getElementById('cookies')?.addEventListener('click', (e) => {
   e.preventDefault();

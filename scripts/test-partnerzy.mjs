@@ -129,3 +129,63 @@ test('KOD PARTNERA: małe litery, cyfry, myślnik, 3–24 znaki', () => {
   assert.equal(poprawnyKod(42), false);
   assert.equal(poprawnyKod(null), false);
 });
+
+/* ══════════════ etap 3: kod partnerski w przeglądarce klienta ════════════ */
+
+const { zapamietajPartnera, partnerDoLeada } = await import('../src/app/partner.js');
+
+/** Atrapa localStorage — testy biegają w gołym node. */
+function atrapaStorage(poczatek = {}) {
+  const dane = { ...poczatek };
+  return {
+    getItem: (k) => (k in dane ? dane[k] : null),
+    setItem: (k, v) => {
+      dane[k] = String(v);
+    },
+    removeItem: (k) => {
+      delete dane[k];
+    },
+    _dane: dane,
+  };
+}
+
+test('LINK ?p=KOD zapisuje kod z datą wejścia', () => {
+  const st = atrapaStorage();
+  zapamietajPartnera({ search: '?p=kowalski&utm_source=fb', storage: st, teraz: 1000 });
+  assert.deepEqual(JSON.parse(st._dane['k24h-partner']), { kod: 'kowalski', od: 1000 });
+});
+
+test('PIERWSZY KOD WYGRYWA — drugi partner nie podbiera klienta', () => {
+  const st = atrapaStorage();
+  zapamietajPartnera({ search: '?p=kowalski', storage: st, teraz: 1000 });
+  zapamietajPartnera({ search: '?p=nowak', storage: st, teraz: 2000 });
+  assert.equal(JSON.parse(st._dane['k24h-partner']).kod, 'kowalski');
+});
+
+test('kod ze śmieciami nie zapisuje się wcale', () => {
+  const st = atrapaStorage();
+  for (const s of ['?p=AB', '?p=a', '?p=ko%20d', '?p=' + 'x'.repeat(30), '?q=kowalski', ''])
+    zapamietajPartnera({ search: s, storage: st, teraz: 1000 });
+  assert.equal(st._dane['k24h-partner'], undefined);
+});
+
+test('wpis starszy niż 400 dni jest sprzątany i nowy kod może wejść', () => {
+  const d = 86400000;
+  const st = atrapaStorage({ 'k24h-partner': JSON.stringify({ kod: 'stary', od: 0 }) });
+  zapamietajPartnera({ search: '?p=nowak', storage: st, teraz: 401 * d });
+  assert.equal(JSON.parse(st._dane['k24h-partner']).kod, 'nowak', 'przeterminowany wpis miał ustąpić');
+});
+
+test('partnerDoLeada oddaje {kod, od} albo null — o ważności decyduje SERWER', () => {
+  const st = atrapaStorage({ 'k24h-partner': JSON.stringify({ kod: 'kowalski', od: 1000 }) });
+  assert.deepEqual(partnerDoLeada({ storage: st, teraz: 2000 }), { kod: 'kowalski', od: 1000 });
+  assert.equal(partnerDoLeada({ storage: atrapaStorage(), teraz: 2000 }), null);
+  // Zepsuty wpis (ręczna edycja storage) nie wywraca bramki.
+  const zepsuty = atrapaStorage({ 'k24h-partner': '{nie-json' });
+  assert.equal(partnerDoLeada({ storage: zepsuty, teraz: 2000 }), null);
+});
+
+test('PODŁĄCZENIE (wzorzec 30.08: funkcja bez podłączenia to połowa roboty)', () => {
+  assert.match(zrodlo('src/main.js'), /zapamietajPartnera\(\)/, 'main.js nie łapie ?p= przy wejściu');
+  assert.match(zrodlo('src/app/bramka.js'), /partner: partnerDoLeada\(\)/, 'bramka nie dokleja partnera do leada');
+});

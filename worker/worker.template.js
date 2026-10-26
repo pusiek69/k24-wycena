@@ -40,6 +40,8 @@ import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida, tematFeedbacku, mailFeedbacku, przyciskEdycji } from './mail-rozmowa.js';
 import { linkEdycji, paczkaZOferty } from './link-edycji.js';
+import { kodWazny } from './partnerzy.js';
+import { partnerPoKodzie, konfigPartnerska } from './partnerzy-baza.js';
 import { DOMYSLNE } from '../src/app/ustawienia.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
@@ -487,6 +489,26 @@ async function obsluzLead(request, env, cors) {
   const klient = { imie, telefon, email, miejscowosc, terminId, telefonZgoda, uwagi: String(d.uwagi || '').trim() };
 
   /*
+   * PROGRAM PARTNERSKI (26.10.2026): przeglądarka dokłada {kod, od} z linku
+   * ?p=KOD. O ważności decyduje TUTAJ konfiguracja z panelu (domyślnie
+   * 365 dni) — zmiana okresu działa od ręki, też dla starych kodów.
+   * Zły/martwy kod nie ma prawa ruszyć zgłoszenia.
+   */
+  let partner = null;
+  if (d.partner && typeof d.partner === 'object') {
+    try {
+      const znany = await partnerPoKodzie(env, String(d.partner.kod || ''));
+      if (znany && znany.aktywny) {
+        const konfig = await konfigPartnerska(env);
+        if (kodWazny({ od: Number(d.partner.od), teraz: Date.now(), dni: konfig.dni }))
+          partner = znany;
+      }
+    } catch (e) {
+      console.error('partner przy leadzie', e?.message || e);
+    }
+  }
+
+  /*
    * BAZA KLIENTÓW — od 22.10.2026 PRZED mailami, bo mail do Dawida niesie
    * podpisany link „Edytuj tę wycenę" i potrzebuje id karty z bazy.
    * Gwarancja z poprzedniej kolejności ZOSTAJE: zapis siedzi w try/catch,
@@ -507,6 +529,7 @@ async function obsluzLead(request, env, cors) {
       szczegoly,
       pomieszczenie: szczegoly?.pomieszczenie || '',
       zrodlo: d.zrodlo,
+      partnerKod: partner?.kod || '',
     });
     leadId = zapis?.klientId ?? null;
   } catch (e) {
@@ -532,7 +555,7 @@ async function obsluzLead(request, env, cors) {
     to: [doFirmy],
     reply_to: email,
     subject: tematLeada(klient, szczegoly, wycena),
-    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji: adresEdycji }),
+    html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji: adresEdycji, partner }),
     text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
     attachments: zalaczniki.length ? zalaczniki : undefined,
   });
@@ -1404,6 +1427,12 @@ function mailDoFirmy(klient, s, extra) {
           : ''
       }
       ${klient.uwagi ? `<tr><td style="padding:3px 0;color:#b6ad9d">Uwagi</td><td style="padding:3px 0">${esc(klient.uwagi)}</td></tr>` : ''}
+      ${
+        extra.partner
+          ? `<tr><td style="padding:3px 0;color:#b6ad9d">Partner</td>
+          <td style="padding:3px 0"><b>${esc(extra.partner.nazwa)}</b> (kod: ${esc(extra.partner.kod)}) — zlecenie liczy się do prowizji</td></tr>`
+          : ''
+      }
     </table>
   </div>
   ${extra.linkEdycji ? `<div style="margin-top:14px">${przyciskEdycji(extra.linkEdycji)}</div>` : ''}

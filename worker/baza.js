@@ -95,7 +95,7 @@ function przedMiesiacami(ile) {
  *
  * @param {any} env      środowisko workera (env.BAZA to baza D1)
  * @param {object} lead  { imie, telefon, email, miejscowosc, kwota, opis,
- *                         szczegoly, zrodlo }
+ *                         szczegoly, zrodlo, partnerKod }
  */
 export async function zapiszLead(env, lead) {
   const baza = env.BAZA;
@@ -124,6 +124,9 @@ export async function zapiszLead(env, lead) {
   const telefonZgoda = znanyKanal(lead.telefonZgoda) ? String(lead.telefonZgoda || '') : '';
   const kwota = liczba(lead.kwota || s.razem);
   const zrodlo = czytelneZrodlo(lead.zrodlo);
+  // PROGRAM PARTNERSKI (26.10.2026): kod zwalidowany już w obsluzLead
+  // (istnieje, aktywny, w okresie przypisania) — tu tylko zapis.
+  const partnerKod = String(lead.partnerKod || '');
 
   let klientId = istniejacy?.id ?? null;
   let nowy = false;
@@ -149,6 +152,9 @@ export async function zapiszLead(env, lead) {
                             -- które powiedział za pierwszym razem — to jest
                             -- dokładnie ten telefon, którego Dawid chce uniknąć.
                             telefon_zgoda = COALESCE(NULLIF(?, ''), telefon_zgoda),
+                            -- PIERWSZY partner wygrywa: raz przypisanej karty
+                            -- kolejny kod nie podbiera (decyzja Dawida).
+                            partner_kod = CASE WHEN partner_kod = '' THEN ? ELSE partner_kod END,
                             ruch = ?
          WHERE id = ?`
       )
@@ -164,6 +170,7 @@ export async function zapiszLead(env, lead) {
         kwota,
         termin,
         telefonZgoda,
+        partnerKod,
         czas,
         klientId
       )
@@ -175,8 +182,8 @@ export async function zapiszLead(env, lead) {
         `INSERT INTO klienci (imie, telefon, email, miejscowosc, telefon_klucz, email_klucz,
                               status, zrodlo, zrodlo_szczegol, flagi, wycen,
                               kwota_ostatnia, kwota_max, termin, telefon_zgoda,
-                              utworzono, ruch)
-         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`
+                              partner_kod, utworzono, ruch)
+         VALUES (?, ?, ?, ?, ?, ?, 'nowy', ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         String(lead.imie || '').trim(),
@@ -192,6 +199,7 @@ export async function zapiszLead(env, lead) {
         kwota,
         termin,
         telefonZgoda,
+        partnerKod,
         czas,
         czas
       )

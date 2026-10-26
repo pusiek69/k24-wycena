@@ -1195,6 +1195,115 @@ if (JEST) {
     assert.equal(znow.wygrany_kiedy, '2026-01-01', 'ponowna wygrana nadpisała pierwszą datę');
   });
 
+  /** Partner w bazie — wprost SQL-em; trasy panelu wchodzą w etapie 6. */
+  async function dodajPartnera(env, { kod, nazwa = 'Stolarnia Testowa', aktywny = 1, status = 'standard' } = {}) {
+    await env.BAZA.prepare(
+      `INSERT INTO partnerzy (nazwa, kod, typ, status, aktywny, utworzono) VALUES (?, ?, 'stolarz', ?, ?, ?)`
+    )
+      .bind(nazwa, kod, status, aktywny, new Date().toISOString())
+      .run();
+  }
+
+  const DZIEN = 86400000;
+
+  test('LEAD z ważnym kodem partnera: karta przypisana, mail do Dawida mówi o partnerze', async () => {
+    const env = srodowisko();
+    await dodajPartnera(env, { kod: 'kowalski' });
+    listy.length = 0;
+    const odp = await worker.fetch(
+      zapytanie('/lead', {
+        ...LEAD,
+        email: 'od-partnera@example.com',
+        phone: '600100701',
+        partner: { kod: 'kowalski', od: Date.now() - 1 * DZIEN },
+      }),
+      env,
+      ctx
+    );
+    assert.equal(odp.status, 200);
+    const k = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('od-partnera@example.com')
+      .first();
+    assert.equal(k.partner_kod, 'kowalski', 'lead nie został przypisany do partnera');
+
+    const doFirmy = listy[0];
+    assert.match(doFirmy.html, /Stolarnia Testowa/, 'mail do Dawida bez nazwy partnera');
+    assert.match(doFirmy.html, /kowalski/, 'mail do Dawida bez kodu partnera');
+    // Mail KLIENTA o partnerze milczy — to sprawa rozliczeń B2B.
+    assert.ok(!listy[1].html.includes('kowalski'), 'partner wyciekł do maila klienta');
+  });
+
+  test('KOD PRZETERMINOWANY (konfig domyślny 365 dni) nie przypisuje', async () => {
+    const env = srodowisko();
+    await dodajPartnera(env, { kod: 'kowalski' });
+    await worker.fetch(
+      zapytanie('/lead', {
+        ...LEAD, email: 'stary-kod@example.com', phone: '600100702',
+        partner: { kod: 'kowalski', od: Date.now() - 366 * DZIEN },
+      }),
+      env, ctx
+    );
+    const k = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('stary-kod@example.com').first();
+    assert.equal(k.partner_kod, '', 'kod po 365 dniach ma wygasać');
+  });
+
+  test('OKRES PRZYPISANIA konfigurowalny: dni=30 tnie po 30 dniach', async () => {
+    const env = srodowisko();
+    await dodajPartnera(env, { kod: 'kowalski' });
+    await env.BAZA.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES (?, ?, ?)`)
+      .bind('partnerDniPrzypisania', '30', new Date().toISOString()).run();
+
+    await worker.fetch(zapytanie('/lead', {
+      ...LEAD, email: 'kod-31d@example.com', phone: '600100703',
+      partner: { kod: 'kowalski', od: Date.now() - 31 * DZIEN },
+    }), env, ctx);
+    await worker.fetch(zapytanie('/lead', {
+      ...LEAD, email: 'kod-29d@example.com', phone: '600100704',
+      partner: { kod: 'kowalski', od: Date.now() - 29 * DZIEN },
+    }), env, ctx);
+
+    const po31 = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('kod-31d@example.com').first();
+    const po29 = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('kod-29d@example.com').first();
+    assert.equal(po31.partner_kod, '', '31 dni przy konfigu 30 ma odpadać');
+    assert.equal(po29.partner_kod, 'kowalski', '29 dni przy konfigu 30 ma wchodzić');
+  });
+
+  test('kod nieistniejący albo nieaktywny nie przypisuje i nie psuje leada', async () => {
+    const env = srodowisko();
+    await dodajPartnera(env, { kod: 'spiacy', aktywny: 0 });
+    const odp = await worker.fetch(zapytanie('/lead', {
+      ...LEAD, email: 'lewy-kod@example.com', phone: '600100705',
+      partner: { kod: 'nie-ma-takiego', od: Date.now() },
+    }), env, ctx);
+    assert.equal(odp.status, 200, 'zgłoszenie jest ważniejsze niż kod');
+    await worker.fetch(zapytanie('/lead', {
+      ...LEAD, email: 'spiacy-kod@example.com', phone: '600100706',
+      partner: { kod: 'spiacy', od: Date.now() },
+    }), env, ctx);
+    const a = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('lewy-kod@example.com').first();
+    const b = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE email = ?`)
+      .bind('spiacy-kod@example.com').first();
+    assert.equal(a.partner_kod, '');
+    assert.equal(b.partner_kod, '', 'nieaktywny partner nie przypisuje nowych klientów');
+  });
+
+  test('PIERWSZY PARTNER WYGRYWA: druga wycena z innym kodem nie podbiera karty', async () => {
+    const env = srodowisko();
+    await dodajPartnera(env, { kod: 'kowalski' });
+    await dodajPartnera(env, { kod: 'nowak', nazwa: 'Meble Nowak' });
+    const wspolne = { ...LEAD, email: 'wraca-partner@example.com', phone: '600100707' };
+    await worker.fetch(zapytanie('/lead', { ...wspolne, partner: { kod: 'kowalski', od: Date.now() } }), env, ctx);
+    await worker.fetch(zapytanie('/lead', { ...wspolne, partner: { kod: 'nowak', od: Date.now() } }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT partner_kod, wycen FROM klienci WHERE email = ?`)
+      .bind('wraca-partner@example.com').first();
+    assert.equal(k.wycen, 2, 'to miała być ta sama karta');
+    assert.equal(k.partner_kod, 'kowalski', 'drugi kod nadpisał pierwszego partnera');
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

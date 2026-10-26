@@ -3,6 +3,7 @@ import { kartaWyceny, opisOdcinkow } from './wynik-widok.js';
 import { wyslijLead, wyslijLeadZapasowo } from '../api.js';
 import { zdarzenie, zdarzenieWycena, konwersjaLead } from '../analytics/zdarzenia.js';
 import { zrodloLeada } from './zrodlo.js';
+import { partnerDoLeada } from './partner.js';
 import { panelFeedbacku } from './feedback.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { TERMINY } from './termin.js';
@@ -204,6 +205,9 @@ function formularzBramki(w, box, opcje) {
       // Do bazy klientów: skąd klient przyszedł. Bez zgody marketingowej
       // leci samo „nieznane" — patrz app/zrodlo.js.
       zrodlo: zrodloLeada(),
+      // Kod partnera z linku ?p=KOD — o ważności (365 dni, konfigurowalne)
+      // decyduje worker; tu tylko przekazujemy, co pamięta przeglądarka.
+      partner: partnerDoLeada(),
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
 
