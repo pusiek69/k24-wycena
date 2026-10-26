@@ -168,6 +168,41 @@ const WYTYCZNE = [
 ].join('\n');
 
 /**
+ * CO POWIEDZIEĆ, GDY API ODMÓWIŁO (diagnoza z 26.10.2026).
+ *
+ * ⚠ Zgłoszenie Dawida: „wprowadzanie głosowe działa bardzo słabo — wyskakuje
+ * «nie udało się rozpoznać»". W logu workera siedział prawdziwy powód:
+ * wyczerpany MIESIĘCZNY LIMIT WYDATKÓW klucza Anthropic („Access will be
+ * restored 2026-11-01…") — a nasz jeden wspólny komunikat go maskował,
+ * więc Dawid szukał winy w mikrofonie. Komunikat ma mówić, CO konkretnie
+ * nie działa i CO z tym zrobić — osobno dla limitu, klucza, modelu
+ * i przeciążenia. Eksport po to, żeby mapowanie dało się testować w node.
+ */
+export function opiszBladAnthropic(status, cialo) {
+  const t = String(cialo || '');
+  if (/usage limits|spend(ing)? limit|credit balance/i.test(t)) {
+    // „Access will be restored 2026-11-01 at 00:00 UTC" — data z odpowiedzi,
+    // nie z pamięci; gdy jej nie ma, mówimy ogólnie.
+    const m = t.match(/restored\s+(?:on\s+)?(\d{4})-(\d{2})-(\d{2})/);
+    const kiedy = m ? ` Wróci ${Number(m[3])}.${m[2]}.${m[1]}.` : '';
+    return (
+      'Wyczerpany miesięczny limit wydatków klucza Anthropic — rozpoznawanie ' +
+      `głosowe i asystent czatu stoją.${kiedy} Limit podnosi się w ` +
+      'console.anthropic.com → Billing. Na razie wpisz ręcznie.'
+    );
+  }
+  if (status === 401 || status === 403)
+    return 'Klucz API Anthropic został odrzucony — trzeba go sprawdzić w ustawieniach workera. Wpisz ręcznie.';
+  if (status === 404)
+    return 'Model AI ustawiony w workerze nie istnieje (wycofany?) — trzeba zaktualizować workera. Wpisz ręcznie.';
+  if (status === 429)
+    return 'Chwilowy limit zapytań do AI — odczekaj minutę i spróbuj jeszcze raz.';
+  if (status === 529 || status >= 500)
+    return 'Usługa AI jest chwilowo przeciążona — spróbuj za chwilę albo wpisz ręcznie.';
+  return `Rozpoznawanie odmówiło (błąd ${status}) — wpisz ręcznie.`;
+}
+
+/**
  * Transkrypt → pola formularza.
  *
  * Zwraca `{ ok: true, dane }` albo `{ ok: false, blad }` z komunikatem
@@ -211,8 +246,9 @@ export async function rozpoznajDyktando(env, tekst) {
   }
 
   if (!odp.ok) {
-    console.error('dyktando', odp.status, await odp.text().catch(() => ''));
-    return { ok: false, blad: 'Nie udało się rozpoznać — wpisz ręcznie.' };
+    const cialo = await odp.text().catch(() => '');
+    console.error('dyktando', odp.status, cialo);
+    return { ok: false, blad: opiszBladAnthropic(odp.status, cialo) };
   }
 
   const wynik = await odp.json().catch(() => null);
@@ -228,7 +264,7 @@ export async function rozpoznajDyktando(env, tekst) {
     // Odcięcie na `max_tokens` albo odmowa modelu zostawia niedomknięty JSON.
     // To nie jest awaria warta 500 — Dawid ma po prostu wpisać ręcznie.
     console.error('dyktando', 'odpowiedź nie jest JSON-em', wynik?.stop_reason);
-    return { ok: false, blad: 'Nie udało się rozpoznać — wpisz ręcznie.' };
+    return { ok: false, blad: 'Model uciął odpowiedź w pół słowa — podyktuj krócej albo wpisz ręcznie.' };
   }
 
   return { ok: true, dane: scalDyktando(surowe) };

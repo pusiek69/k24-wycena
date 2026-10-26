@@ -382,3 +382,22 @@ export function opisDyktanda(dane) {
   if (!lista.length) return 'Nic nie rozpoznałem — powiedz jeszcze raz albo wpisz ręcznie.';
   return `Wpisałem: ${lista.join(', ')}. Sprawdź i popraw, zanim zapiszesz.`;
 }
+
+/**
+ * BŁĄD WEB SPEECH → KOMUNIKAT (zgłoszenie Dawida, 26.10.2026: „działa
+ * bardzo słabo"). Jeden wspólny „Mikrofon nie zadziałał (kod)" zmuszał do
+ * zgadywania — a trzy najczęstsze kody mają trzy RÓŻNE naprawy. Kody
+ * `not-allowed`/`service-not-allowed` mają osobną, bogatszą diagnozę
+ * (powodBrakuMikrofonu w edytorze) i tu nie wchodzą. Panel ma kopię tej
+ * mapy w swoim szablonie — test pilnuje, żeby się nie rozjechały.
+ */
+export function opiszBladMowy(kod) {
+  if (kod === 'no-speech')
+    return 'Nic nie usłyszałem — mikrofon działa, ale nie złapał mowy. Powiedz głośniej albo bliżej mikrofonu.';
+  if (kod === 'network')
+    return 'Rozpoznawanie mowy w Chrome nie połączyło się z siecią — sprawdź internet i spróbuj jeszcze raz.';
+  if (kod === 'audio-capture')
+    return 'Nie znalazłem działającego mikrofonu — sprawdź, czy jest podłączony i wybrany w ustawieniach systemu.';
+  if (kod === 'aborted') return 'Przerwane — kliknij i podyktuj jeszcze raz.';
+  return 'Mikrofon nie zadziałał (' + kod + ') — wpisz ręcznie.';
+}

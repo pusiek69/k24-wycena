@@ -28,7 +28,7 @@ import {
 } from './wyprzedaz.js';
 import { zaladowane as plytyWyprzedazy } from './wyprzedaz-dane.js';
 import { API_BASE, sprawdzMagazyn } from '../api.js';
-import { ostrzezenieOGlebokosci, sklejSegmenty } from './dyktando.js';
+import { ostrzezenieOGlebokosci, sklejSegmenty, opiszBladMowy } from './dyktando.js';
 import * as plytaR from './plyta-reczna.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
@@ -769,7 +769,7 @@ function blokDyktanda(stan, paczka, odswiez) {
       porzucone = true; // żeby `onend` nie nadpisał tego komunikatu
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
         powiedz(await powodBrakuMikrofonu());
-      else powiedz(`Mikrofon nie zadziałał (${e.error}) — wpisz ręcznie.`);
+      else powiedz(opiszBladMowy(e.error));
     };
     r.onend = () => {
       sluchEdytora = null;

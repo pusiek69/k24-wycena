@@ -31,6 +31,7 @@ import {
   notatkaZDyktanda,
   normalizujTelefon,
   opisDyktanda,
+  opiszBladMowy,
   pusteDyktando,
   scalDyktando,
   wymiaryDoNotatki,
@@ -637,4 +638,65 @@ test('EDYTOR: znacznik „z głosu" nie wchodzi do zapisanej oferty', () => {
    */
   const e = zrodlo('src/app/etykiety-odcinkow.js');
   assert.match(e, /return \{ gl: odcinek\.gl, dl: odcinek\.dl, \.\.\.\(e \? \{ etykieta: e \} : \{\}\) \};/);
+});
+
+
+/* ═══════════ PRZEJRZYSTE BŁĘDY (zgłoszenie Dawida, 26.10.2026) ═══════════
+ *
+ * „Wyskakuje «nie udało się rozpoznać»" — a w logu workera siedział
+ * wyczerpany limit wydatków Anthropic. Jeden wspólny komunikat maskował
+ * przyczynę; te testy pilnują, żeby każda miała własny, mówiący CO zrobić.
+ */
+import { opiszBladAnthropic } from '../worker/dyktando.js';
+
+test('BŁĘDY API: wyczerpany limit wydatków mówi o limicie i dacie powrotu', () => {
+  // Dokładnie ta odpowiedź przyszła z produkcji 26.10.2026 (req_011CgQnS…).
+  const cialo = JSON.stringify({
+    type: 'error',
+    error: {
+      type: 'invalid_request_error',
+      message:
+        'You have reached your specified API usage limits. Access will be restored on 2026-11-01 at 00:00 UTC.',
+    },
+  });
+  const k = opiszBladAnthropic(400, cialo);
+  assert.match(k, /limit wydatków/i, k);
+  assert.match(k, /1\.11\.2026/, 'data powrotu z odpowiedzi ma być w komunikacie');
+  assert.match(k, /console\.anthropic\.com/, 'komunikat ma mówić, GDZIE podnieść limit');
+  // Wariant bez „on" (starsze brzmienie) też ma złapać datę.
+  assert.match(opiszBladAnthropic(400, cialo.replace('restored on', 'restored')), /1\.11\.2026/);
+});
+
+test('BŁĘDY API: klucz, model, przeciążenie i chwilowy limit — osobne rady', () => {
+  assert.match(opiszBladAnthropic(401, '{"error":{"type":"authentication_error"}}'), /klucz/i);
+  assert.match(opiszBladAnthropic(404, '{"error":{"type":"not_found_error"}}'), /model/i);
+  assert.match(opiszBladAnthropic(429, '{"error":{"type":"rate_limit_error"}}'), /odczekaj/i);
+  assert.match(opiszBladAnthropic(529, '{"error":{"type":"overloaded_error"}}'), /przeciążona/i);
+  // Nieznany błąd nie znika — niesie przynajmniej numer.
+  assert.match(opiszBladAnthropic(418, ''), /418/);
+});
+
+test('BŁĘDY MIKROFONU: cisza, sieć i brak urządzenia mają osobne komunikaty', () => {
+  assert.match(opiszBladMowy('no-speech'), /nie złapał mowy/i);
+  assert.match(opiszBladMowy('network'), /sieci/i);
+  assert.match(opiszBladMowy('audio-capture'), /podłączony/i);
+  assert.match(opiszBladMowy('cos-nowego'), /cos-nowego/, 'nieznany kod ma być widoczny');
+});
+
+test('BŁĘDY MIKROFONU: kopia z panelu mówi TO SAMO — uruchomiona, nie obejrzana', () => {
+  const panel = zrodlo('worker/panel.js');
+  const start = panel.indexOf('function opiszBladMowy(kod){');
+  assert.ok(start > 0, 'panel nie ma mapy błędów mikrofonu');
+  const koniec = panel.indexOf('\n}\n', start);
+  const fragment = panel.slice(start, koniec + 2);
+  assert.ok(!fragment.includes('`'), 'fragment ma odwrotny apostrof — nie złożę literału');
+  const kod = new Function('return `' + fragment + '`')();
+  const zPanelu = new Function(kod + '; return opiszBladMowy;')();
+  for (const k of ['no-speech', 'network', 'audio-capture', 'aborted', 'inny'])
+    assert.equal(zPanelu(k), opiszBladMowy(k), `panel i moduł różnią się na „${k}"`);
+});
+
+test('BŁĘDY MIKROFONU: obie strony naprawdę używają mapy', () => {
+  assert.match(zrodlo('src/app/oferta-dawida.js'), /opiszBladMowy\(e\.error\)/, 'edytor nie używa mapy');
+  assert.match(zrodlo('worker/panel.js'), /dyInfo\(opiszBladMowy\(e\.error\)\)/, 'panel nie używa mapy');
 });

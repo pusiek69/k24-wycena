@@ -1148,6 +1148,18 @@ function sklejSegmenty(segmenty){
   return przyjete.join(' ');
 }
 
+/* Kopia src/app/dyktando.js#opiszBladMowy — patrz uwaga przy sklejSegmenty. */
+function opiszBladMowy(kod){
+  if(kod === 'no-speech')
+    return 'Nic nie usłyszałem — mikrofon działa, ale nie złapał mowy. Powiedz głośniej albo bliżej mikrofonu.';
+  if(kod === 'network')
+    return 'Rozpoznawanie mowy w Chrome nie połączyło się z siecią — sprawdź internet i spróbuj jeszcze raz.';
+  if(kod === 'audio-capture')
+    return 'Nie znalazłem działającego mikrofonu — sprawdź, czy jest podłączony i wybrany w ustawieniach systemu.';
+  if(kod === 'aborted') return 'Przerwane — kliknij i podyktuj jeszcze raz.';
+  return 'Mikrofon nie zadziałał (' + kod + ') — wpisz ręcznie.';
+}
+
 function dyInfo(t){ var e = document.getElementById('dy-info'); if(e) e.textContent = t; }
 
 function dyPrzycisk(nagrywa){
@@ -1213,7 +1225,10 @@ function przelaczMikrofon(){
   r.onerror = function(e){
     porzucone = true;   // zeby onend nie nadpisal tego komunikatu
     if(e.error !== 'not-allowed' && e.error !== 'service-not-allowed'){
-      dyInfo('Mikrofon nie zadziałał (' + e.error + ') — wpisz ręcznie.');
+      /* Ta sama mapa co src/app/dyktando.js#opiszBladMowy — panel jest jednym
+         wielkim napisem i nie ma jak zaimportować modułu; test w
+         scripts/test-dyktando.mjs pilnuje, żeby kopie się nie rozjechały. */
+      dyInfo(opiszBladMowy(e.error));
       return;
     }
     var polityka = document.permissionsPolicy || document.featurePolicy;
