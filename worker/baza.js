@@ -571,6 +571,8 @@ const kartaSkrocona = (k) => ({
   reczny: k.zrodlo === ZRODLO_RECZNE,
   // Puste znaczy „nie pytaliśmy" — panel odróżnia to od wyraźnego „nie".
   telefonZgoda: k.telefon_zgoda || '',
+  // Kod partnera z programu partnerskiego ('' = klient bez partnera).
+  partnerKod: k.partner_kod || '',
   wycen: k.wycen,
   kwota: k.kwota_ostatnia,
   kwotaMax: k.kwota_max,

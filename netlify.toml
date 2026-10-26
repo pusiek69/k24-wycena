@@ -141,6 +141,12 @@
   force = true
 
 [[redirects]]
+  from = "/dla-partnerow.html"
+  to = "/dla-partnerow"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/baza-wiedzy/index.html"
   to = "/baza-wiedzy/"
   status = 301

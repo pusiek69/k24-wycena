@@ -1377,6 +1377,184 @@ if (JEST) {
     assert.equal(k?.zrodlo, 'partner-zgloszenie', 'karta przepadła razem z mailem');
   });
 
+  /* ══════════ PROGRAM PARTNERSKI — etap 6: zakładka w panelu ══════════ */
+
+  test('PANEL: dodanie partnera, dubel kodu odpada, bez ciasteczka 401', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+
+    const bez = await worker.fetch(
+      zapytanie('/panel/api/partnerzy/zapisz', { nazwa: 'Obcy', kod: 'obcy-kod' }),
+      env, ctx
+    );
+    assert.equal(bez.status, 401, 'dodawanie partnerów stoi otworem');
+
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz',
+        { nazwa: 'Stolarnia Kowalski', kod: 'kowalski', typ: 'stolarz', telefon: '600100900' }, cookie),
+      env, ctx
+    );
+    const dane = await odp.json();
+    assert.equal(odp.status, 200, `zapis oddał ${odp.status}: ${JSON.stringify(dane)}`);
+    assert.ok(dane.id > 0);
+
+    const dubel = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { nazwa: 'Inna firma', kod: 'kowalski' }, cookie),
+      env, ctx
+    );
+    assert.equal(dubel.status, 400, 'dwóch partnerów z tym samym kodem');
+
+    const zly = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { nazwa: 'Zły kod', kod: 'Kowal ski!' }, cookie),
+      env, ctx
+    );
+    assert.equal(zly.status, 400, 'śmieciowy kod wszedł do bazy');
+
+    // Edycja: przełączenie na Premium (ręczna decyzja Dawida).
+    const premium = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { id: dane.id, status: 'premium' }, cookie),
+      env, ctx
+    );
+    assert.equal(premium.status, 200);
+    const lista = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy', {}, cookie), env, ctx)
+    ).json();
+    const p = lista.partnerzy.find((x) => x.kod === 'kowalski');
+    assert.equal(p.status, 'premium', 'status Premium nie zapisał się');
+    assert.equal(lista.konfig.procPierwsze, 15, 'konfig domyślny ma być 15');
+    assert.equal(lista.konfig.dni, 365);
+  });
+
+  test('PANEL: konfiguracja programu — zapis, widełki, bez wycieku publicznego', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/konfig', { procPierwsze: 12, procKolejne: 8, dni: 30 }, cookie),
+      env, ctx
+    );
+    assert.equal(odp.status, 200);
+    const lista = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy', {}, cookie), env, ctx)
+    ).json();
+    assert.equal(lista.konfig.procPierwsze, 12);
+    assert.equal(lista.konfig.procKolejne, 8);
+    assert.equal(lista.konfig.dni, 30);
+
+    const zaDuzo = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/konfig', { procPierwsze: 60 }, cookie),
+      env, ctx
+    );
+    assert.equal(zaDuzo.status, 400, 'prowizja 60% to na pewno literówka');
+
+    // Publiczny /ustawienia dalej czysty.
+    const pub = await (await worker.fetch(zapytanie('/ustawienia', {}), env, ctx)).json();
+    assert.deepEqual(Object.keys(pub.ustawienia).filter((k) => k.startsWith('partner')), []);
+  });
+
+  /** Scenariusz rozliczeniowy: partner + 3 wygrane karty z wycenami. */
+  async function scenariuszProwizji(env, cookie) {
+    await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { nazwa: 'Stolarnia Kowalski', kod: 'kowalski', typ: 'stolarz' }, cookie),
+      env, ctx
+    );
+    const karty = [];
+    const wyceny = [
+      { brutto: 10800, vat: 0.08, wygrana: '2026-10-05' }, // netto 10000 — PIERWSZE
+      { brutto: 21600, vat: 0.08, wygrana: '2026-10-20' }, // netto 20000 — kolejne
+      { brutto: 32400, vat: 0.08, wygrana: '2026-11-03' }, // netto 30000 — kolejne
+    ];
+    for (const [i, w] of wyceny.entries()) {
+      await worker.fetch(zapytanie('/lead', {
+        ...LEAD, email: `prowizja-${i}@example.com`, phone: `60010091${i}`,
+        szczegoly: { ...LEAD.szczegoly, razem: w.brutto },
+        partner: { kod: 'kowalski', od: Date.now() },
+      }), env, ctx);
+      const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = ?`)
+        .bind(`prowizja-${i}@example.com`).first();
+      // Wycena z kwotą i stawką VAT — jak zapis z edytora właściciela.
+      await env.BAZA.prepare(
+        `INSERT INTO wyceny (klient_id, utworzono, kwota, opis, dane) VALUES (?, ?, ?, 'Blat testowy', ?)`
+      ).bind(k.id, new Date().toISOString(), w.brutto,
+             JSON.stringify({ razem: w.brutto, stawkaVat: w.vat, pozycje: [] })).run();
+      await worker.fetch(zapytaniePanel('/panel/api/zmien', { id: k.id, status: 'wygrany' }, cookie), env, ctx);
+      await env.BAZA.prepare(`UPDATE klienci SET wygrany_kiedy = ? WHERE id = ?`)
+        .bind(w.wygrana, k.id).run();
+      karty.push(k.id);
+    }
+    return karty;
+  }
+
+  test('ROZLICZENIE: 15% od pierwszego, 10% od kolejnych — co do złotówki', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    await scenariuszProwizji(env, cookie);
+
+    const pazdziernik = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-10' }, cookie), env, ctx)
+    ).json();
+    const kow = pazdziernik.partnerzy.find((p) => p.kod === 'kowalski');
+    assert.ok(kow, 'partner nie wszedł do rozliczenia');
+    assert.equal(kow.pozycje.length, 2, 'październik ma mieć 2 wygrane');
+    // Pierwsze wygrane zlecenie w HISTORII partnera: 15% × 10 000 = 1 500.
+    assert.equal(kow.pozycje[0].procent, 15);
+    assert.equal(kow.pozycje[0].prowizja, 1500);
+    // Drugie: 10% × 20 000 = 2 000.
+    assert.equal(kow.pozycje[1].procent, 10);
+    assert.equal(kow.pozycje[1].prowizja, 2000);
+    assert.equal(kow.suma, 3500);
+
+    const listopad = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-11' }, cookie), env, ctx)
+    ).json();
+    const kow11 = listopad.partnerzy.find((p) => p.kod === 'kowalski');
+    // Trzecie wygrane GLOBALNIE (mimo że pierwsze w listopadzie): 10% × 30 000.
+    assert.equal(kow11.suma, 3000, 'kolejność pierwsze/kolejne ma być globalna, nie per miesiąc');
+  });
+
+  test('ROZLICZENIE: Premium bierze 15% od wszystkich — także wstecz w podglądzie', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    await scenariuszProwizji(env, cookie);
+    const p = await env.BAZA.prepare(`SELECT id FROM partnerzy WHERE kod = 'kowalski'`).bind().first();
+    await worker.fetch(zapytaniePanel('/panel/api/partnerzy/zapisz', { id: p.id, status: 'premium' }, cookie), env, ctx);
+
+    const listopad = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-11' }, cookie), env, ctx)
+    ).json();
+    const kow = listopad.partnerzy.find((x) => x.kod === 'kowalski');
+    assert.equal(kow.suma, 4500, 'Premium: 15% × 30 000 = 4 500');
+  });
+
+  test('PANEL: ręczne przypisanie partnera na karcie (apiZmien partnerKod)', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { nazwa: 'Stolarnia', kod: 'kowalski' }, cookie),
+      env, ctx
+    );
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'reczny-partner@example.com', phone: '600100920' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = 'reczny-partner@example.com'`).bind().first();
+
+    // Klient podał partnera telefonicznie — Dawid przypisuje ręcznie.
+    const odp = await worker.fetch(
+      zapytaniePanel('/panel/api/zmien', { id: k.id, partnerKod: 'kowalski' }, cookie), env, ctx
+    );
+    assert.equal(odp.status, 200);
+    let w = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE id = ?`).bind(k.id).first();
+    assert.equal(w.partner_kod, 'kowalski');
+
+    // Nieznany kod — czytelna odmowa, karta bez zmian.
+    const zly = await worker.fetch(
+      zapytaniePanel('/panel/api/zmien', { id: k.id, partnerKod: 'nie-ma' }, cookie), env, ctx
+    );
+    assert.equal(zly.status, 400, 'nieznany kod partnera wszedł na kartę');
+
+    // Odpięcie pustym kodem.
+    await worker.fetch(zapytaniePanel('/panel/api/zmien', { id: k.id, partnerKod: '' }, cookie), env, ctx);
+    w = await env.BAZA.prepare(`SELECT partner_kod FROM klienci WHERE id = ?`).bind(k.id).first();
+    assert.equal(w.partner_kod, '', 'odpięcie partnera nie działa');
+  });
+
   test('/wyprzedaz bez żadnej płyty zwraca pustą listę, nie błąd', async () => {
     const env = srodowisko();
     const odp = await worker.fetch(zapytanie('/wyprzedaz', {}), env, ctx);

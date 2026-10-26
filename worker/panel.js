@@ -18,6 +18,14 @@
 import { resend, nadawca, doDawida } from './poczta.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { PARAMETRY } from '../src/app/ustawienia.js';
+import { poprawnyKod } from './partnerzy.js';
+import {
+  partnerPoKodzie,
+  listaPartnerow,
+  zapiszPartnera,
+  zapiszKonfigPartnerska,
+  rozliczenieMiesiaca,
+} from './partnerzy-baza.js';
 import { sprawdzWiadomosc } from './rozmowa.js';
 import { sprawdzDostep, listaTablic } from './trello.js';
 import {
@@ -129,6 +137,14 @@ export async function obsluzPanel(request, env) {
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
   if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
     return await apiOdpowiedz(request, env);
+  if (sciezka === '/panel/api/partnerzy' && request.method === 'POST')
+    return json(await listaPartnerow(env));
+  if (sciezka === '/panel/api/partnerzy/zapisz' && request.method === 'POST')
+    return await apiPartnerZapisz(request, env);
+  if (sciezka === '/panel/api/partnerzy/konfig' && request.method === 'POST')
+    return await apiPartnerKonfig(request, env);
+  if (sciezka === '/panel/api/partnerzy/rozliczenie' && request.method === 'POST')
+    return await apiPartnerRozliczenie(request, env);
   if (sciezka === '/panel/api/wyprzedaz') return await apiWyprzedaz(request, env);
   if (sciezka === '/panel/api/wyprzedaz/zapisz' && request.method === 'POST')
     return await apiWyprzedazZapisz(request, env);
@@ -433,6 +449,20 @@ async function apiZmien(request, env) {
   if (d.status !== undefined && !(await ustawStatus(env, id, d.status)))
     return json({ error: 'Nieznany status.' }, 400);
   if (d.oddzwonic !== undefined) await ustawOddzwonic(env, id, d.oddzwonic);
+  /*
+   * PROGRAM PARTNERSKI (26.10.2026): ręczne przypisanie, gdy klient podał
+   * partnera telefonicznie. Pusty kod = odpięcie; nieznany kod = odmowa,
+   * żeby literówka nie fundowała partnerowi cudzych prowizji.
+   */
+  if (d.partnerKod !== undefined) {
+    const kod = String(d.partnerKod || '').trim();
+    if (kod && !(await partnerPoKodzie(env, kod)))
+      return json({ error: 'Nie ma partnera o takim kodzie.' }, 400);
+    await env.BAZA.prepare(`UPDATE klienci SET partner_kod = ?, ruch = ? WHERE id = ?`)
+      .bind(kod, new Date().toISOString(), id)
+      .run();
+    await dodajNotatke(env, id, kod ? `Przypisano do partnera: ${kod}` : 'Odpięto od partnera');
+  }
   if (d.notatka !== undefined) await dodajNotatke(env, id, d.notatka);
   if (d.skasuj === true) {
     await skasujKlienta(env, id);
@@ -440,6 +470,26 @@ async function apiZmien(request, env) {
   }
 
   return json({ ok: true, karta: await karta(env, id) });
+}
+
+/* ───────────────────────── program partnerski (26.10.2026) ───────────── */
+
+async function apiPartnerZapisz(request, env) {
+  const d = await request.json().catch(() => null);
+  const wynik = await zapiszPartnera(env, d);
+  return json(wynik, wynik.ok ? 200 : 400);
+}
+
+async function apiPartnerKonfig(request, env) {
+  const d = await request.json().catch(() => null);
+  const wynik = await zapiszKonfigPartnerska(env, d);
+  return json(wynik, wynik.ok ? 200 : 400);
+}
+
+async function apiPartnerRozliczenie(request, env) {
+  const d = await request.json().catch(() => null);
+  const wynik = await rozliczenieMiesiaca(env, d?.miesiac);
+  return json(wynik, wynik.ok ? 200 : 400);
 }
 
 /**
@@ -984,6 +1034,7 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
   <section id="reakcje"></section>
   <section id="stawki"></section>
   <section id="wyprzedaz"></section>
+  <section id="partnerzy"></section>
   <section id="zakupy"></section>
   <section>
     <h2>Wszystkie zgłoszenia</h2>
@@ -1075,6 +1126,7 @@ function rysuj(){
 
   rysujStawki();
   rysujWyprzedaz();
+  rysujPartnerzy();
 
   document.getElementById('lista').innerHTML =
     dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
@@ -1472,6 +1524,148 @@ async function rysujStawki(){
       '<p class="mini" id="stawki-info"></p>' +
     '</div>';
 }
+
+
+/**
+ * PROGRAM PARTNERSKI (zlecenie Dawida, 26.10.2026) - panel.
+ *
+ * Partnerzy (stolarze, firmy meblowe, projektanci) polecaja klientow linkiem
+ * kam24h.pl/p/KOD. Tu: lista z licznikami i suma prowizji, dodawanie,
+ * przelacznik Standard/Premium, konfiguracja programu (NIEJAWNA - nie
+ * wychodzi na strone) i zestawienie do rozliczenia miesiecznego.
+ */
+var PARTNERZY = [], PARTNER_KONFIG = null;
+
+async function rysujPartnerzy(){
+  var d = await (await fetch('/panel/api/partnerzy', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'})).json();
+  PARTNERZY = d.partnerzy || []; PARTNER_KONFIG = d.konfig || {};
+
+  var wiersze = PARTNERZY.length ? PARTNERZY.map(function(pp){
+    var link = 'https://kam24h.pl/p/' + pp.kod;
+    return '<li class="' + (pp.aktywny ? '' : 'system') + '">' +
+      '<b>' + esc(pp.nazwa) + '</b> (' + esc(pp.kod) + ') · ' + esc(pp.typ) +
+      ' · <button class="chip" type="button" data-partner-status="' + pp.id + '">' +
+        (pp.status === 'premium' ? '★ Premium' : 'Standard') + '</button>' +
+      ' · <button class="chip" type="button" data-partner-aktywny="' + pp.id + '">' +
+        (pp.aktywny ? 'aktywny' : 'wyłączony') + '</button>' +
+      '<br><span class="mini">leady: ' + pp.leadow + ' · wygrane: ' + pp.wygranych +
+      ' · prowizja od początku: <b>' + zl(pp.prowizjaSuma) + '</b> · ' +
+      '<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(link) + '</a></span></li>';
+  }).join('') : '<li class="mini">Jeszcze nie ma partnerów. Dodaj pierwszego poniżej.</li>';
+
+  var k = PARTNER_KONFIG;
+  document.getElementById('partnerzy').innerHTML =
+    '<h2>Partnerzy <button class="chip" type="button" id="partnerzy-pokaz">pokaż / ukryj</button></h2>' +
+    '<div class="lejek" id="partnerzy-tresc" hidden>' +
+      '<p class="mini">Link partnera: kam24h.pl/p/KOD. Klient z linku jest przypisany ' +
+      'przez tyle dni, ile stoi w konfiguracji. Prowizja: pierwsze wygrane zlecenie partnera ' +
+      'po stawce „pierwsze", kolejne po „kolejne", Premium zawsze po swojej.</p>' +
+      '<ul class="log" id="partnerzy-lista">' + wiersze + '</ul>' +
+      '<h3>Dodaj partnera</h3>' +
+      '<p class="stawki-siatka">' +
+        '<input id="pn-nazwa" placeholder="Nazwa (np. Stolarnia Kowalski)"> ' +
+        '<input id="pn-kod" placeholder="kod do linku (np. kowalski)"> ' +
+        '<select id="pn-typ"><option value="stolarz">stolarz</option><option value="meble">firma meblowa</option><option value="projektant">projektant</option><option value="inny">inny</option></select> ' +
+        '<input id="pn-telefon" placeholder="telefon"> ' +
+        '<input id="pn-email" placeholder="e-mail"> ' +
+        '<button class="btn" type="button" id="pn-dodaj">+ Dodaj partnera</button></p>' +
+      '<h3>Konfiguracja programu <span class="mini">(niejawna — nie wychodzi na stronę)</span></h3>' +
+      '<p class="stawki-siatka">' +
+        '<label class="stawka">% pierwsze zlecenie<input type="number" min="0" max="50" id="pk-pierwsze" value="' + k.procPierwsze + '"></label>' +
+        '<label class="stawka">% kolejne<input type="number" min="0" max="50" id="pk-kolejne" value="' + k.procKolejne + '"></label>' +
+        '<label class="stawka">% Premium<input type="number" min="0" max="50" id="pk-premium" value="' + k.procPremium + '"></label>' +
+        '<label class="stawka">dni przypisania klienta<input type="number" min="1" max="3650" id="pk-dni" value="' + k.dni + '"></label>' +
+        '<label class="stawka">podstawa naliczania<select id="pk-podstawa">' +
+          '<option value="0"' + (k.podstawa ? '' : ' selected') + '>całość zlecenia netto</option>' +
+          '<option value="1"' + (k.podstawa ? ' selected' : '') + '>materiał + prace (wkrótce — liczy jak całość)</option>' +
+        '</select></label>' +
+        '<button class="btn" type="button" id="pk-zapisz">Zapisz konfigurację</button></p>' +
+      '<p class="mini" id="partnerzy-info"></p>' +
+      '<h3>Rozliczenie miesięczne</h3>' +
+      '<p><input type="month" id="pr-miesiac" value="' + new Date().toISOString().slice(0,7) + '"> ' +
+      '<button class="btn cichy" type="button" id="pr-pokaz">Pokaż zestawienie</button></p>' +
+      '<div id="pr-wynik"></div>' +
+    '</div>';
+
+  document.getElementById('partnerzy-pokaz').onclick = function(){
+    var t = document.getElementById('partnerzy-tresc');
+    t.hidden = !t.hidden;
+  };
+  document.getElementById('pn-dodaj').onclick = dodajPartneraUI;
+  document.getElementById('pk-zapisz').onclick = zapiszKonfigPartnerow;
+  document.getElementById('pr-pokaz').onclick = pokazRozliczenie;
+}
+
+function partnerInfo(t){ var e = document.getElementById('partnerzy-info'); if(e) e.textContent = t; }
+
+async function partnerApi(sciezka, dane){
+  var r = await fetch(sciezka, {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(dane)});
+  return r.json();
+}
+
+async function dodajPartneraUI(){
+  var odp = await partnerApi('/panel/api/partnerzy/zapisz', {
+    nazwa: document.getElementById('pn-nazwa').value,
+    kod: document.getElementById('pn-kod').value.trim().toLowerCase(),
+    typ: document.getElementById('pn-typ').value,
+    telefon: document.getElementById('pn-telefon').value,
+    email: document.getElementById('pn-email').value
+  });
+  if(!odp.ok){ partnerInfo(odp.blad || 'Nie udało się zapisać.'); return; }
+  await rysujPartnerzy();
+  document.getElementById('partnerzy-tresc').hidden = false;
+  partnerInfo('Partner dodany — jego link stoi przy nazwie na liście.');
+}
+
+async function zapiszKonfigPartnerow(){
+  var odp = await partnerApi('/panel/api/partnerzy/konfig', {
+    procPierwsze: Number(document.getElementById('pk-pierwsze').value),
+    procKolejne: Number(document.getElementById('pk-kolejne').value),
+    procPremium: Number(document.getElementById('pk-premium').value),
+    dni: Number(document.getElementById('pk-dni').value),
+    podstawa: Number(document.getElementById('pk-podstawa').value)
+  });
+  if(!odp.ok){ partnerInfo(odp.blad || 'Nie udało się zapisać.'); return; }
+  partnerInfo('Konfiguracja zapisana — działa od razu, także dla kodów zapisanych wcześniej.');
+}
+
+async function pokazRozliczenie(){
+  var miesiac = document.getElementById('pr-miesiac').value;
+  var odp = await partnerApi('/panel/api/partnerzy/rozliczenie', {miesiac: miesiac});
+  var cel = document.getElementById('pr-wynik');
+  if(!odp.ok){ cel.innerHTML = '<p class="mini">' + esc(odp.blad || 'Błąd.') + '</p>'; return; }
+  if(!odp.partnerzy.length){ cel.innerHTML = '<p class="pusto">Brak wygranych zleceń partnerskich w ' + esc(miesiac) + '.</p>'; return; }
+  cel.innerHTML = odp.partnerzy.map(function(pp){
+    var wiersze = pp.pozycje.map(function(z){
+      return '<li>' + esc(z.data) + ' · ' + esc(z.imie || 'klient #' + z.klientId) +
+        ' · netto ' + zl(z.netto) + (z.zPodgladu ? ' <b>(sprawdź podstawę — brak wyceny z VAT)</b>' : '') +
+        ' · ' + z.procent + '&#37; = <b>' + zl(z.prowizja) + '</b></li>';
+    }).join('');
+    return '<h3>' + esc(pp.nazwa) + ' (' + esc(pp.kod) + ')' + (pp.status === 'premium' ? ' ★' : '') + '</h3>' +
+      '<ul class="log">' + wiersze + '</ul>' +
+      '<p><b>Razem do FV: ' + zl(pp.suma) + '</b></p>';
+  }).join('');
+}
+
+document.addEventListener('click', async function(e){
+  var st = e.target.closest('[data-partner-status]');
+  if(st){
+    var pp = PARTNERZY.find(function(x){ return x.id === Number(st.dataset.partnerStatus); });
+    if(!pp) return;
+    await partnerApi('/panel/api/partnerzy/zapisz', {id: pp.id, status: pp.status === 'premium' ? 'standard' : 'premium'});
+    await rysujPartnerzy();
+    document.getElementById('partnerzy-tresc').hidden = false;
+    return;
+  }
+  var ak = e.target.closest('[data-partner-aktywny]');
+  if(ak){
+    var pa = PARTNERZY.find(function(x){ return x.id === Number(ak.dataset.partnerAktywny); });
+    if(!pa) return;
+    await partnerApi('/panel/api/partnerzy/zapisz', {id: pa.id, aktywny: pa.aktywny ? 0 : 1});
+    await rysujPartnerzy();
+    document.getElementById('partnerzy-tresc').hidden = false;
+  }
+});
 
 /**
  * WYPRZEDAZ PLYT (zlecenie Dawida, 30.08.2026) - panel.
@@ -2064,6 +2258,9 @@ async function pokazSzczegoly(id, cicho){
     '<p class="mini">Telefon: ' + esc(k.telefon || '—') + ' · ' + esc(k.email || '—') +
     (k.tematNazwa ? ' · temat: ' + esc(k.tematNazwa) : '') +
     ' · źródło: ' + esc(zrodloOpis(k)) + '</p>' +
+    '<p class="mini">Partner: ' + (k.partnerKod ? '<b>' + esc(k.partnerKod) + '</b>' : 'brak') +
+    ' · <input data-pole="partner" data-oryginal="' + esc(k.partnerKod || '') + '" value="' + esc(k.partnerKod || '') +
+    '" placeholder="kod partnera" style="max-width:150px"> (zmień i Zapisz; puste = odepnij)</p>' +
     '<h2>Wyceny</h2><ul class="log">' + wyceny + '</ul>' +
     '<h2>Notatki</h2><ul class="log">' + notatki + '</ul>';
 }
@@ -2170,6 +2367,8 @@ async function zapisz(id){
     oddzwonic: boks.querySelector('[data-pole="oddzwonic"]').value || null
   };
   if(notatka) zmiana.notatka = notatka;
+  var pk = boks.querySelector('[data-pole="partner"]');
+  if(pk && pk.value.trim() !== pk.dataset.oryginal) zmiana.partnerKod = pk.value.trim().toLowerCase();
   await fetch('/panel/api/zmien', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(zmiana)});
   otwarta = Number(id);
   await wczytaj();
