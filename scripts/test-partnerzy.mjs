@@ -227,6 +227,21 @@ test('STRONA: tytuł wg wzorca, formularz z kompletem pól i pułapką', () => {
   assert.match(html, /365 dni/, 'brak obietnicy przypisania klienta');
 });
 
+test('STRONA: bez słów z listy strażnika bundla (marża/rabat/narzut/zakupowe)', () => {
+  /*
+   * ⚠ Z PRODUKCJI (27.10.2026): pierwsza wersja strony miała „prowizję
+   * płacimy z naszej marży" — scripts/sprawdz-bundle.mjs (strażnik
+   * tajemnicy handlowej) PRZERWAŁ build na Netlify i /dla-partnerow
+   * oddawał 404, a cała strona została przy starej wersji. Ten test łapie
+   * to lokalnie, zanim commit dojedzie do builda.
+   */
+  const html = zrodlo('dla-partnerow.html');
+  assert.doesNotMatch(html, /rabat/i, 'słowo „rabat" ubije build (strażnik bundla)');
+  assert.doesNotMatch(html, /mar[żz]a|mar[żz]y|mar[żz]ą|mar[żz]ę/i, 'słowo „marża" ubije build');
+  assert.doesNotMatch(html, /\bnarzut\b/i, 'słowo „narzut" ubije build');
+  assert.doesNotMatch(html, /zakupow|cena zakupu/i, 'ceny zakupowe ubiją build');
+});
+
 test('STRONA: w sitemapie po `npm run sitemap`', () => {
   assert.match(zrodlo('public/sitemap.xml'), /kam24h\.pl\/dla-partnerow/, 'strony nie ma w sitemapie');
 });
