@@ -269,3 +269,14 @@ test('DOJŚCIE do /dla-partnerow: stopka wszystkich stron + pasek na głównej (
     'pasek ma zapraszać, nie krzyczeć — bez wykrzykników');
   assert.match(zrodlo('src/style.css'), /\.pasek-partnerzy/, 'brak stylu paska');
 });
+
+test('FORMULARZ: etykiety i selekt jawnie ciemne na białej karcie (kontrast AA)', () => {
+  // Zgłoszenie Dawida (29.10, zrzut): strona ma ciemny motyw, karta
+  // formularza jest biała — etykiety dziedziczyły jasnozłoty kolor
+  // i ginęły. Kolory muszą być JAWNE w stylach karty.
+  const html = zrodlo('dla-partnerow.html');
+  const styl = (html.match(/<style>([\s\S]*?)<\/style>/) || [])[1] || '';
+  assert.match(styl, /\.pf label[^}]*color:\s*#2b2823/, 'etykiety bez jawnego ciemnego koloru');
+  assert.match(styl, /\.pf input, \.pf select[^}]*color:\s*#2b2823/, 'pola/selekt bez jawnego koloru tekstu');
+  assert.match(styl, /\.pf \{[^}]*color:\s*#2b2823/, 'karta bez bazowego koloru tekstu');
+});
