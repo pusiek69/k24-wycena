@@ -245,3 +245,27 @@ test('STRONA: bez słów z listy strażnika bundla (marża/rabat/narzut/zakupowe
 test('STRONA: w sitemapie po `npm run sitemap`', () => {
   assert.match(zrodlo('public/sitemap.xml'), /kam24h\.pl\/dla-partnerow/, 'strony nie ma w sitemapie');
 });
+
+test('DOJŚCIE do /dla-partnerow: stopka wszystkich stron + pasek na głównej (29.10)', () => {
+  // Dawid: „czemu nie widać na stronie głównej" — strona bez dojścia
+  // to strona, której nie ma.
+  const fs2 = fs;
+  const strony = [...fs2.readdirSync(new URL('..', import.meta.url))
+      .filter((f) => f.endsWith('.html')),
+    ...fs2.readdirSync(new URL('../baza-wiedzy', import.meta.url)).map((f) => 'baza-wiedzy/' + f)]
+    .filter((f) => f.endsWith('.html') && f !== 'podglad.html');
+  const bezLinku = strony.filter((p) => {
+    const t = zrodlo(p);
+    if (!t.includes('/o-mnie">O właścicielu</a>')) return false; // strony bez pełnej stopki
+    return !t.includes('href="/dla-partnerow"') && !t.includes('foot-tu">Dla partnerów');
+  });
+  assert.deepEqual(bezLinku, [], `stopka bez linku „Dla partnerów": ${bezLinku.join(', ')}`);
+
+  const glowna = zrodlo('index.html');
+  assert.match(glowna, /pasek-partnerzy/, 'główna bez paska partnerskiego');
+  assert.match(glowna, /stolarzem, firmą meblową albo projektantem/i);
+  assert.match(glowna, /Współpracuj z nami/);
+  assert.doesNotMatch(glowna.match(/<section[^>]*sekcja-partnerzy[\s\S]*?<\/section>/)[0], /!/,
+    'pasek ma zapraszać, nie krzyczeć — bez wykrzykników');
+  assert.match(zrodlo('src/style.css'), /\.pasek-partnerzy/, 'brak stylu paska');
+});

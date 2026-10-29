@@ -2358,3 +2358,25 @@ button { color: var(--cream); background: transparent; }
      nie 30-pikselowy napis. */
   .pom-pomin { min-height: 48px; font-size: 14px; padding: 12px 14px; }
 }
+
+/* ── pasek „Dla partnerów" przed stopką (29.10.2026) ──────────────────────
+   Dyskretne dojście do programu partnerskiego ze strony głównej: jedna
+   linia tekstu + przycisk ghost, oddzielone cienką złotą kreską. Żadnych
+   wykrzykników — stawki są niejawne, pasek ma zapraszać, nie krzyczeć. */
+.sekcja-partnerzy { margin: 28px auto 8px; }
+.pasek-partnerzy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 18px 22px;
+  border-top: 1px solid var(--vein);
+  border-bottom: 1px solid var(--line);
+}
+.pasek-partnerzy p { margin: 0; color: var(--muted); font-size: 15px; max-width: 60ch; }
+.pasek-partnerzy .btn { white-space: nowrap; }
+@media (max-width: 640px) {
+  .pasek-partnerzy { flex-direction: column; align-items: flex-start; }
+  .pasek-partnerzy .btn { width: 100%; text-align: center; }
+}
