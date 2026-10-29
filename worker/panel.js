@@ -920,6 +920,9 @@ main{padding:.9rem;max-width:820px;margin:0 auto}
 section{margin-bottom:1.4rem}
 h2{font-size:.78rem;letter-spacing:.09em;text-transform:uppercase;color:var(--szary);
 margin:0 0 .55rem;font-weight:600}
+/* Oczko otwarc ofert: zlote = ogladal, szare = wyslana i nieotwarta. */
+.znacznik.oczko-zlote{background:#fdf6e9;border:1px solid #c9a86a;color:#8a6a2f;font-weight:bold}
+.znacznik.oczko-szare{background:#f1efe9;border:1px solid #d8d3c6;color:#8c8474;opacity:.85}
 .chipy{display:flex;flex-wrap:wrap;gap:.4rem}
 .chip{background:var(--karta);border:1px solid var(--linia);border-radius:999px;
 padding:.3rem .7rem;font-size:.85rem;cursor:pointer;color:inherit}
@@ -1048,6 +1051,8 @@ const HTML_PANELU = `<!doctype html><html lang="pl"><head>
         <option value="pol_roku">Za 3–6 miesięcy</option>
         <option value="pozniej">Później — dopiero planuje</option>
       </select>
+      <label class="mini" style="display:inline-flex;align-items:center;gap:.35rem;min-height:40px">
+        <input type="checkbox" id="f-nieotwarte"> 👁 tylko nieotwarte oferty</label>
       <input id="f-kwota" type="number" inputmode="numeric" placeholder="Kwota od (zł)">
       <input id="f-od" type="date" aria-label="Zgłoszenia od">
       <input id="f-do" type="date" aria-label="Zgłoszenia do">
@@ -1128,9 +1133,16 @@ function rysuj(){
   rysujWyprzedaz();
   rysujPartnerzy();
 
+  /* Filtr „nieotwarte oferty" (29.10.2026): wyslana oferta + zero otwarc
+     = pierwszy telefon do wykonania. Filtruje po stronie przegladarki —
+     lista i tak jest w pamieci. */
+  var nieotwarte = document.getElementById('f-nieotwarte');
+  var doListy = (nieotwarte && nieotwarte.checked)
+    ? dane.lista.filter(function(k){ return k.oferta && !k.oferta.otwarcia; })
+    : dane.lista;
   document.getElementById('lista').innerHTML =
-    dane.lista.length ? dane.lista.map(function(k){ return kartaHtml(k, false); }).join('')
-                      : '<p class="pusto">Brak zgłoszeń dla tych filtrów.</p>';
+    doListy.length ? doListy.map(function(k){ return kartaHtml(k, false); }).join('')
+                   : '<p class="pusto">Brak zgłoszeń dla tych filtrów.</p>';
 
   if(otwarta) pokazSzczegoly(otwarta, true);
 }
@@ -1436,6 +1448,23 @@ async function zapiszRecznego(){
       : 'Dodane. Karta jest otwarta niżej.') + '</span></div>';
 }
 
+
+/*
+ * PLAKIETKA OTWARC OFERTY (zlecenie Dawida, 29.10.2026): „kto otworzyl,
+ * a kto nie — bez wchodzenia w karte". Zlota = klient ogladal (z liczba
+ * otwarc), szara = oferta wyslana i NIEOTWARTA (telefon!). Klient bez
+ * wyslanej oferty plakietki nie ma — nie ma czego otwierac.
+ */
+function oczkoOferty(k){
+  if(!k.oferta) return '';
+  var ile = k.oferta.otwarcia || 0;
+  var kiedy = k.oferta.ostatnieOtwarcie
+    ? 'ostatnio: ' + godzina(k.oferta.ostatnieOtwarcie)
+    : 'klient jeszcze nie otworzyl oferty';
+  return '<span class="znacznik ' + (ile ? 'oczko-zlote' : 'oczko-szare') + '"' +
+    ' title="Otwarcia oferty - ' + esc(kiedy) + '">👁 ' + ile + '</span>';
+}
+
 function kartaHtml(k, dzis){
   var flagi = (k.flagi||[]).map(function(f){ return '<span class="znacznik flaga">' + esc(opisFlagi(f)) + '</span>'; }).join('');
   if(k.feedback) flagi = znacznikFeedbacku(k) + flagi;
@@ -1459,6 +1488,7 @@ function kartaHtml(k, dzis){
   // Skad wzieła sie karta. Idzie na KONIEC rzedu plakietek: to informacja
   // o pochodzeniu, a nie sygnal operacyjny jak PILNE czy NIE DZWONIC.
   if(k.reczny) flagi = flagi + '<span class="znacznik reczny">DODANY RĘCZNIE</span>';
+  flagi = oczkoOferty(k) + flagi;
   var goracy = (k.feedback === 'pasuje' || k.termin === 'pilne') && (k.status === 'nowy' || k.status === 'cieply');
   return '<article class="karta' + (dzis ? ' dzis' : '') + (goracy ? ' goracy' : '') + '" data-id="' + k.id + '">' +
     '<div class="gora"><div class="kto"><b>' + esc(k.imie || 'Klient') + ' · ' + esc(k.miejscowosc || '—') + '</b>' +
@@ -2497,6 +2527,7 @@ var czasomierz;
 document.getElementById('f-szukaj').addEventListener('input', function(){
   clearTimeout(czasomierz); czasomierz = setTimeout(wczytaj, 350);
 });
+document.getElementById('f-nieotwarte').addEventListener('change', function(){ rysuj(); });
 document.getElementById('f-czysc').addEventListener('click', function(){
   ['f-status','f-termin','f-kwota','f-od','f-do','f-szukaj'].forEach(function(id){ document.getElementById(id).value = ''; });
   wczytaj();

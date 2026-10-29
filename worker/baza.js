@@ -545,7 +545,40 @@ export async function lista(env, filtry = {}) {
     .bind(...dane)
     .all();
 
-  return (wynik.results || []).map(kartaSkrocona);
+  const karty = (wynik.results || []).map(kartaSkrocona);
+
+  /*
+   * OTWARCIA OFERT NA LIŚCIE (zlecenie Dawida, 29.10.2026): kto otworzył
+   * wycenę, a kto nie — widać bez wchodzenia w kartę. Jedna zbiorcza
+   * kwerenda o NAJNOWSZĄ wersję Dawida każdego klienta z listy; licznik
+   * otwarć i data siedzą przy wersji (ofertaPoTokenie podbija tę, którą
+   * klient właśnie zobaczył). `oferta: null` = nic nie wysłano.
+   */
+  if (karty.length) {
+    try {
+      const ids = karty.map((k) => k.id);
+      const znaki = ids.map(() => '?').join(',');
+      const ostatnie = await env.BAZA.prepare(
+        `SELECT klient_id, otwarcia, ostatnie_otwarcie FROM wyceny
+          WHERE wersja = 'dawid' AND klient_id IN (${znaki})
+            AND id IN (SELECT MAX(id) FROM wyceny WHERE wersja = 'dawid' GROUP BY klient_id)`
+      )
+        .bind(...ids)
+        .all();
+      const mapa = new Map(
+        (ostatnie.results || []).map((w) => [
+          w.klient_id,
+          { otwarcia: w.otwarcia || 0, ostatnieOtwarcie: w.ostatnie_otwarcie || '' },
+        ])
+      );
+      for (const k of karty) k.oferta = mapa.get(k.id) || null;
+    } catch (e) {
+      // Lista bez plakietek jest lepsza niż brak listy.
+      console.error('otwarcia ofert', e?.message || e);
+      for (const k of karty) k.oferta = null;
+    }
+  }
+  return karty;
 }
 
 const kartaSkrocona = (k) => ({

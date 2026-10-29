@@ -1624,6 +1624,52 @@ if (JEST) {
     assert.equal(zaDuzo.status, 400);
   });
 
+
+  test('LISTA panelu niesie otwarcia najnowszej oferty (plakietka bez wchodzenia w kartę)', async () => {
+    /*
+     * Zlecenie Dawida (29.10.2026): kto otworzył ofertę, a kto nie —
+     * widoczne z listy. 0 otwarć = do obdzwonienia.
+     */
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+
+    // Klient A: oferta wysłana, klient otworzył ją dwa razy.
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'otwiera@example.com', phone: '600100761' }), env, ctx);
+    const a = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='otwiera@example.com'`).bind().first();
+    const oferta = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, a.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    const token = String(oferta.link).split('#')[1];
+    await worker.fetch(zapytanie('/oferta/dane', { token }), env, ctx);
+    await worker.fetch(zapytanie('/oferta/dane', { token }), env, ctx);
+
+    // Klient B: oferta wysłana, NIEOTWARTA. Klient C: bez oferty.
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'nie-otwiera@example.com', phone: '600100762' }), env, ctx);
+    const b = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='nie-otwiera@example.com'`).bind().first();
+    await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, b.id)), oferta: OFERTA_TESTOWA }), env, ctx);
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'bez-oferty@example.com', phone: '600100763' }), env, ctx);
+
+    const dane = await (
+      await worker.fetch(new Request('https://k24h.example/panel/api/dane', { headers: { origin: 'https://kam24h.pl', cookie } }), env, ctx)
+    ).json();
+    const kA = dane.lista.find((k) => k.email === 'otwiera@example.com');
+    const kB = dane.lista.find((k) => k.email === 'nie-otwiera@example.com');
+    const kC = dane.lista.find((k) => k.email === 'bez-oferty@example.com');
+
+    assert.equal(kA.oferta?.otwarcia, 2, 'licznik otwarć nie dojechał na listę');
+    assert.ok(kA.oferta?.ostatnieOtwarcie, 'brak daty ostatniego otwarcia');
+    assert.equal(kB.oferta?.otwarcia, 0, 'nieotwarta oferta ma pokazywać zero');
+    assert.equal(kC.oferta, null, 'klient bez oferty nie ma plakietki');
+  });
+
+  test('UI listy: plakietka 👁 (szara 0 / złota ≥1) i filtr nieotwartych ofert', () => {
+    const panel = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
+    assert.match(panel, /oczkoOferty/, 'brak plakietki otwarć w kartaHtml');
+    assert.match(panel, /oczko-zlote/, 'otwarta oferta bez złotego wyróżnienia');
+    assert.match(panel, /oczko-szare/, 'nieotwarta oferta bez szarego stanu');
+    assert.match(panel, /nieotwarte/i, 'brak filtru nieotwartych ofert');
+  });
+
   test('PANEL: ręczne przypisanie partnera na karcie (apiZmien partnerKod)', async () => {
     const env = srodowisko();
     const cookie = await ciastkoPanelu(env);
