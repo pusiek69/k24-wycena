@@ -5,6 +5,25 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-29 (sesja Cowork, noc) — WDROŻONA paczka 26–29.10 + weryfikacja produkcji + indeksowanie
+
+**Zmiany (na produkcji po bacie Dawida):** ceny Architype wprost (Avant/
+Keralini/Caesarstone −23%, np. Monaco 1388→1068 netto/m²; progi stron
+przeliczone: konglomerat materiał od 505 zł/m², blat od 7 250 zł), program
+partnerski MVP (/dla-partnerow + /p/KOD + zakładka w panelu), nawigacja
+wstecz, przycisk edycji w mailach, rozkrój ręczny (puste płyty), K6 tytuł
+konglomeratu.
+**Weryfikacja produkcji:** Monaco 11 811 zł materiał/2 płyty ✓; /dla-partnerow
+200 bez stawek ✓; formularz /partner → karta partner-zgloszenie ✓; ścieżka
+/p/testkod → lead → partner_kod → wygrany → rozliczenie 15% = 1 640 zł ✓
+(dane testowe usunięte, partner testkod skasowany); rozkrój: × i auto-znikanie ✓.
+**Zgłoszone do indeksowania (GSC):** /dla-partnerow, /, /blaty-granitowe,
+/blaty-z-konglomeratu, /blaty-ze-spieku — wszystkie „Zgłoszono żądanie".
+**Do obserwacji:** wpływ NIŻSZYCH progów cen na CTR fraz cenowych (spiek/
+konglomerat — K7/K9 wyżej); indeksacja /dla-partnerow.
+**Następna sesja:** sprawdzić indeksację i pierwsze liczby po obniżce progów.
+
+
 ## 2026-10-29 (sesja Cowork, wieczór) — punkt kontrolny K7/K8/K9: frazy cenowe spieku EKSPLODOWAŁY; K1 zostaje; /blaty-granitowe + linki do Lublina (commity BEZ pusha — idzie batem Dawida)
 
 **Stan GSC (7 dni, 21–27.10):** 30 klik., **1 570 wyśw. (+70% t/t)**, CTR 1,9%, śr. poz. **11,0** (najlepsza w historii).
