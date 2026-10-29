@@ -174,8 +174,8 @@ const licz = (slug, dekor, grubosc, dzien) =>
 
 test('jesień: Avant, Caesarstone i Keralini licz\u0105 z ceny promocyjnej', () => {
   // Ceny klienckie = cena po rabacie z ulotki × 1,45 — TA SAMA reguła, co
-  // w kampanii letniej Architype (Dawid, 9.10.2026). Mnożnik 1,30 dotyczy
-  // cennika BAZOWEGO tych marek i nie miesza się z promocyjnym.
+  // w kampanii letniej Architype (Dawid, 9.10.2026; potwierdzona 29.10:
+  // promo zostaje ×1,45, choć cennik BAZOWY liczy się już wprost ×1,0).
   for (const [slug, dekor, grubosc, oczekiwana] of [
     ['avant-quartz', 'Dijon', '20', 566],              // 390 × 1,45
     ['avant-quartz', 'Calacatta Dauphine', '20', 929], // 641 × 1,45
@@ -218,7 +218,9 @@ test('jesie\u0144: po 30.12.2026 ceny wracaj\u0105 do cennika sta\u0142ego', () 
   const po = licz('caesarstone', 'White Attica', '20', PO_JESIENI);
   assert.equal(po.ok, true, po.blad);
   assert.equal(po.promo, null, 'po ostatnim dniu kampanii plakietki nie ma');
-  assert.ok(Math.abs(nettoM2(po) - 1430) < 0.51, `po kampanii: ${nettoM2(po)} zamiast 1430`);
+  // 1 100 = cena z cennika Architype 2026 WPROST (29.10.2026: cennik jest
+  // detaliczny, mnożnik 1,30 dublował marżę — wcześniej stało tu 1 430).
+  assert.ok(Math.abs(nettoM2(po) - 1100) < 0.51, `po kampanii: ${nettoM2(po)} zamiast 1100`);
 
   // Dekory wy\u0142\u0105cznie promocyjne znikaj\u0105 z katalogu razem z kampani\u0105.
   // Od 15.10.2026 liter\u00f3wka z ulotki \u201eBotticiono Burges" to katalogowy
@@ -258,7 +260,8 @@ test('jesień: Mulen — promocja ma pierwszeństwo przed nowym cennikiem', () =
   /*
    * Decyzja Dawida 9.10.2026: cena bazowa Mulena 20 mm idzie z cennika 2026
    * (1 059 zakupowe), ale dekor jest na ulotce — a promocja zawsze wygrywa.
-   * Do 30.12 klient widzi 646 × 1,45, od 31.12 cennik stały 1 059 × 1,30.
+   * Do 30.12 klient widzi 646 × 1,45, od 31.12 cennik stały 1 059 WPROST
+   * (29.10.2026: cennik Architype jest detaliczny, bez mnożnika).
    *
    * Ten test pilnuje OBU końców naraz, bo pomyłka w którąkolwiek stronę
    * jest kosztowna: za nisko — sprzedaż po cenie, której nie ma w ulotce,
@@ -269,10 +272,10 @@ test('jesień: Mulen — promocja ma pierwszeństwo przed nowym cennikiem', () =
   assert.equal(wKampanii.promo?.nazwa, 'Promocja październik–grudzień 2026');
 
   const poKampanii = licz('avant-quartz', 'Mulen', '20', PO_JESIENI);
-  assert.ok(Math.abs(nettoM2(poKampanii) - 1377) < 0.51, `po kampanii: ${nettoM2(poKampanii)} zamiast 1377`);
+  assert.ok(Math.abs(nettoM2(poKampanii) - 1059) < 0.51, `po kampanii: ${nettoM2(poKampanii)} zamiast 1059`);
   assert.equal(poKampanii.promo, null);
 
-  // 1 377 = 1 059 z cennika 2026 × 1,30 — gdyby ktoś wrócił do starych 1 106,
-  // wyszłoby 1 438 i ten test by to złapał.
-  assert.equal(FIRMY.find((f) => f.slug === 'avant-quartz').dekory.Mulen['20'], 1377);
+  // 1 059 = cena z cennika 2026 wprost — gdyby ktoś przywrócił mnożnik 1,30,
+  // wyszłoby 1 377 i ten test by to złapał.
+  assert.equal(FIRMY.find((f) => f.slug === 'avant-quartz').dekory.Mulen['20'], 1059);
 });

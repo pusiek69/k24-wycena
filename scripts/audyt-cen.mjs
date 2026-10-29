@@ -37,11 +37,11 @@ const GEN = path.join(ROOT, 'src', 'generated');
  */
 const OCZEKIWANE = {
   'atlas-plan': { mnoznik: 0.55 * 1.3 * 4.35, opis: 'detal −45% × marża 30% × kurs 4,35' },
-  'avant-quartz': { mnoznik: 1.3, opis: 'cennik zakupu × 1,30' },
-  caesarstone: { mnoznik: 1.3, opis: 'cennik zakupu × 1,30' },
+  'avant-quartz': { mnoznik: 1, opis: 'cennik Architype 2026 detaliczny — wprost (29.10.2026)' },
+  caesarstone: { mnoznik: 1, opis: 'cennik Architype 2026 detaliczny — wprost (29.10.2026)' },
   'florim-stone': { mnoznik: 1, opis: 'cennik wprost (marża wliczona)' },
   interq: { mnoznik: 1, opis: 'cz.1 detal × 1,35 wliczone w plik, cz.2 „na stanie" wprost' },
-  keralini: { mnoznik: 1.3, opis: 'cennik zakupu × 1,30' },
+  keralini: { mnoznik: 1, opis: 'cennik Architype 2026 detaliczny — wprost (29.10.2026)' },
   laminam: { mnoznik: 1, opis: 'cennik wprost (marża wliczona)' },
   marazzi: { mnoznik: 1.3 * 4.35, opis: 'cena po rabacie B2B × marża 30% × kurs 4,35' },
   pacific: { mnoznik: 1.3 / 1.23, opis: 'zakup brutto ÷ 1,23 × 1,30 → netto' },

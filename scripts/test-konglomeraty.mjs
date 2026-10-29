@@ -313,7 +313,8 @@ test('Chablis — nowy dekor Avant z cennika 2026, bez promocji', () => {
    */
   const avant = FIRMY.find((f) => f.slug === 'avant-quartz');
   assert.ok(avant.dekory.Chablis, 'brak Chablis w katalogu');
-  assert.equal(avant.dekory.Chablis['20'], 1593, '1 225 z cennika × 1,30');
+  // 29.10.2026: cennik Architype 2026 jest detaliczny — klient płaci wprost.
+  assert.equal(avant.dekory.Chablis['20'], 1225, '1 225 z cennika wprost (mnożnik 1,0 od 29.10.2026)');
   assert.ok(!avant.dekory['ChablisNEW'], 'znacznik NEW nie ma prawa zostać w nazwie');
 
   // Chablisa nie ma na ulotce X–XII — żadna kampania nie może go dotyczyć.
