@@ -981,8 +981,15 @@ if (JEST) {
     assert.equal(w.kwota, 4900);
   });
 
-  test('karta Z adresem nadal dostaje maila', async () => {
-    // Zabezpieczenie przed „naprawą", która wyłączyłaby wysyłkę wszystkim.
+  test('karta Z adresem: oferta do klienta + KOPIA-KOTWICA do Dawida z przyciskiem edycji', async () => {
+    /*
+     * ⚠ ZGŁOSZENIE DAWIDA (29.10.2026, klient Bartłomiej): klient ODPISAŁ
+     * mailem na ofertę (reply-to = Gmail) i Dawid miał w wątku tylko cudzy
+     * mail — bez drogi do edytora. W cudzy mail przycisku nie wstrzykniemy,
+     * więc Dawid dostaje przy wysyłce oferty WŁASNĄ kopię-potwierdzenie
+     * z TYM SAMYM tematem (Gmail sklei ją z „Re:" klienta w jeden wątek)
+     * i z przyciskiem „Edytuj tę wycenę" — edycja na wyciągnięcie ręki.
+     */
     const env = srodowisko();
     await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'zmailem@example.com' }), env, ctx);
     const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email = ?`)
@@ -990,19 +997,54 @@ if (JEST) {
       .first();
 
     listy.length = 0;
+    const oferta = {
+      ...OFERTA_TESTOWA,
+      parametry: { firma: 'keralini', dekor: 'Taj Mahal Naturale', grubosc: '12', odcinki: [{ gl: 60, dl: 300 }], opcje: {} },
+    };
     const dane = await (
       await worker.fetch(
-        zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }),
+        zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta }),
         env,
         ctx
       )
     ).json();
 
     assert.equal(dane.ok, true);
-    assert.equal(dane.brakMaila, false);
     assert.equal(dane.mail, true, 'mail z ofertą przestał wychodzić');
-    assert.equal(listy.length, 1, `poszło ${listy.length} maili zamiast jednego`);
-    assert.match(listy[0].subject, /Wycena przygotowana/);
+    assert.equal(listy.length, 2, `oferta + kopia dla Dawida, poszło ${listy.length}`);
+
+    const doKlienta = listy.find((l) => (l.to || []).includes('zmailem@example.com'));
+    const kopia = listy.find((l) => (l.to || []).includes(env.LEAD_EMAIL));
+    assert.ok(doKlienta && kopia, 'ma być mail klienta i kopia Dawida');
+    // TEN SAM temat — inaczej Gmail nie sklei wątku z odpowiedzią klienta.
+    assert.equal(kopia.subject, doKlienta.subject, 'kopia musi mieć temat oferty (wątek Gmaila)');
+    assert.match(doKlienta.subject, /Wycena przygotowana/);
+
+    // Kopia: przycisk edycji z parametrami tej wyceny i tokenem wątku.
+    assert.match(kopia.html, /Edytuj tę wycenę/);
+    const m = kopia.html.match(/#powtorz=([A-Za-z0-9_-]+)/);
+    assert.ok(m, 'kopia bez linku edycji');
+    const payload = JSON.parse(Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    assert.equal(payload.leadId, k.id);
+    assert.equal(payload.parametry?.firma, 'keralini');
+    assert.ok(payload.watek, 'edycja z kopii ma aktualizować TEN wątek oferty');
+
+    // Wersja KLIENTA — bez przycisku, bez linku, bez podpisu (ochrona).
+    assert.ok(!doKlienta.html.includes('#powtorz'), 'link edycji w mailu klienta!');
+    assert.ok(!doKlienta.html.includes('Edytuj tę wycenę'), 'przycisk edycji w mailu klienta!');
+    assert.doesNotMatch(doKlienta.html, /[a-f0-9]{64}/, '64-hex w mailu klienta');
+  });
+
+  test('bez maila klienta nie ma też kopii — kotwica wisi przy wysłanej ofercie', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const id = await kartaBezMaila(env, cookie, '600100750');
+    listy.length = 0;
+    await worker.fetch(
+      zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, id)), oferta: OFERTA_TESTOWA }),
+      env, ctx
+    );
+    assert.equal(listy.length, 0, 'kopia wyszła, choć oferta nie poszła mailem');
   });
 
   test('nieistniejąca karta nadal jest odrzucana', async () => {

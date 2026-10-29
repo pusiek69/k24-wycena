@@ -36,7 +36,7 @@
 
 import { obsluzPanel, podpisz } from './panel.js';
 import { rozpoznajDyktando } from './dyktando.js';
-import { mailOferty, TEMAT_OFERTY } from './mail-oferty.js';
+import { mailOferty, mailOfertyKopia, TEMAT_OFERTY } from './mail-oferty.js';
 import { sprawdzWiadomosc, MAKS_ZNAKOW } from './rozmowa.js';
 import { tematDoDawida, mailDoDawida, tematFeedbacku, mailFeedbacku, przyciskEdycji } from './mail-rozmowa.js';
 import { linkEdycji, paczkaZOferty } from './link-edycji.js';
@@ -1038,6 +1038,31 @@ async function obsluzOfertaWyslij(request, env, cors) {
         html: mailOferty(klient.imie, o, link),
       })
     : false;
+
+  /*
+   * KOPIA-KOTWICA DLA DAWIDA (29.10.2026): ten sam temat co mail klienta,
+   * żeby Gmail skleił ją w jeden wątek z ewentualnym „Re:" klienta —
+   * wtedy przycisk edycji jest w wątku na wyciągnięcie ręki. Idzie TYLKO
+   * wtedy, gdy oferta naprawdę poszła mailem; jej awaria niczego nie psuje.
+   */
+  if (wyslany) {
+    try {
+      const adresEdycji = await linkEdycji(env, {
+        leadId: Number(d.leadId),
+        imie: klient.imie,
+        parametry: o.parametry && typeof o.parametry === 'object' ? o.parametry : null,
+        watek: zapis.watek,
+      });
+      await resend(env, {
+        from: nadawca(env),
+        to: [doDawida(env)],
+        subject: aktualizacja ? `${TEMAT_OFERTY} (aktualizacja)` : TEMAT_OFERTY,
+        html: mailOfertyKopia({ imie: klient.imie, o, link, linkEdycji: adresEdycji, aktualizacja }),
+      });
+    } catch (e) {
+      console.error('kopia oferty', e?.message || e);
+    }
+  }
 
   return json({ ok: true, token: zapis.watek, link, mail: wyslany, brakMaila: !maMail, aktualizacja }, 200, cors);
 }

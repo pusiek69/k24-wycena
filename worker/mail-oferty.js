@@ -126,3 +126,42 @@ export function mailOferty(imie, o, link) {
 
 const eskapuj = (t) =>
   String(t ?? '').replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
+
+
+/**
+ * KOPIA-KOTWICA DLA DAWIDA (zgłoszenie z 29.10.2026, klient Bartłomiej).
+ *
+ * Klient odpisuje na ofertę zwykłym mailem (reply-to = skrzynka Dawida)
+ * i w wątku Gmaila wisiał tylko cudzy mail — bez drogi do edytora.
+ * W cudzy mail przycisku nie wstrzykniemy, więc przy KAŻDEJ wysłanej
+ * ofercie Dawid dostaje własne potwierdzenie z TYM SAMYM tematem
+ * (Gmail sklei je z „Re:" klienta w jeden wątek) i przyciskiem
+ * „Edytuj tę wycenę". Do klienta ta wersja nigdy nie idzie.
+ */
+export function mailOfertyKopia({ imie, o, link, linkEdycji, aktualizacja }) {
+  const kwota = Math.round(Number(o?.razem) || 0).toLocaleString('pl-PL');
+  return `<!doctype html><html lang="pl"><body style="margin:0;background:#f5f3ef;padding:24px 12px;font-family:Arial,Helvetica,sans-serif;color:#2b2823">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e4e0d6;border-radius:12px;padding:28px">
+    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8a8578">Kopia dla Ciebie — oferta ${aktualizacja ? 'zaktualizowana' : 'wysłana'} do klienta</p>
+    <h1 style="margin:0 0 14px;font-size:20px">${esc(imie || 'Klient')} — ${kwota} zł</h1>
+    ${o?.opis ? `<p style="margin:0 0 14px;font-size:14px;color:#6d6a60">${esc(o.opis)}</p>` : ''}
+    ${
+      linkEdycji
+        ? `<div style="margin:0 0 18px">
+    <a href="${esc(linkEdycji)}"
+       style="display:block;background:#c9a86a;color:#13110f;border-radius:6px;padding:16px 20px;font-size:17px;font-weight:bold;text-align:center;text-decoration:none">
+      ✏️ Edytuj tę wycenę</a>
+    <div style="margin-top:6px;font-size:12px;color:#8c8474;text-align:center">
+      Otwiera edytor tej wyceny bez logowania · link ważny 7 dni, potem normalnie przez panel</div>
+  </div>`
+        : ''
+    }
+    <p style="margin:0 0 6px;font-size:13px;color:#6d6a60"><a href="${esc(link)}" style="color:#8a6a2f">Oferta, którą widzi klient ↗</a></p>
+    <p style="margin:0;font-size:13px;color:#6d6a60">Gdy klient odpisze mailem, jego odpowiedź zawiśnie w tym samym wątku — przycisk edycji masz wtedy pod ręką.</p>
+  </div>
+</body></html>`;
+}
+
+/* Eskejp do kopii-kotwicy — moduł celowo bez importów (testowalny w node). */
+const esc = (t) =>
+  String(t ?? '').replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[z]));
