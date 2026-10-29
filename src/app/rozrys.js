@@ -29,6 +29,7 @@ import {
   obroc,
   przenies,
   dodajPlyte,
+  usunPlyte,
   sprawdz,
   roznicaPlyt,
   magnes,
@@ -109,7 +110,39 @@ export function widokRozrysu(kontekst, onZmiana) {
       ...wynik.plyty.map((p) => {
         const rysunek = svgPlyty(reczny ? { ...p, edycja: true, zle, wybrany } : p);
         if (reczny) podepnijEdycje(rysunek);
-        return h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, k.opisMaterialu), rysunek);
+        /*
+         * Jawny przycisk na PUSTEJ płycie (zgłoszenie Dawida, 29.10.2026):
+         * auto-znikanie sprząta po przeniesieniu, ale pełna kontrola bez
+         * blokad znaczy, że pustą płytę można też zdjąć ręcznie — np. tę
+         * dodaną przez „+ Płyta" chwilę wcześniej. Zajętej płyty przycisk
+         * nie dotyczy; jedyną chroni samo `usunPlyte`/`uporzadkuj`.
+         */
+        const pustaReczna =
+          reczny && reczny.plyty.length > 1 &&
+          (reczny.plyty.find((x) => x.nr === p.nr)?.elementy.length ?? 1) === 0;
+        const usun = pustaReczna
+          ? h(
+              'button',
+              {
+                type: 'button',
+                class: 'btn-maly',
+                title: 'Zdejmij pusty arkusz z rozkroju',
+                onclick: () => {
+                  const w = usunPlyte(reczny, p.nr);
+                  if (w.blad) komunikat = w.blad;
+                  else {
+                    reczny = w.model;
+                    komunikat = 'Pusta płyta zdjęta.';
+                    if (wybrany && !reczny.plyty.some((x) => x.elementy.some((e) => e.id === wybrany)))
+                      wybrany = null;
+                  }
+                  rysujWyniki();
+                },
+              },
+              '× Usuń pustą płytę'
+            )
+          : null;
+        return h('div', { class: 'rozrys-plyta' }, tytulPlyty(p, k.opisMaterialu), usun, rysunek);
       }),
       tabelaElementow(k.elementy, wynik)
     );
@@ -226,7 +259,11 @@ export function widokRozrysu(kontekst, onZmiana) {
       const { id, el, cel } = ciagniety;
       ciagniety = null;
       schowajLinie(svg);
-      reczny = uporzadkuj(przesun(reczny, id, { x: cel?.x ?? el.x, y: cel?.y ?? el.y }));
+      // Bez `uporzadkuj`: przeciąganie nie zmienia przypisania do płyty,
+      // a sprzątanie kasowałoby świeżo dodany arkusz („+ Płyta"), zanim
+      // Dawid zdąży cokolwiek na niego przenieść (reguła z 29.10.2026:
+      // pusta płyta znika też na końcu listy).
+      reczny = przesun(reczny, id, { x: cel?.x ?? el.x, y: cel?.y ?? el.y });
       komunikat = null;
       rysujWyniki();
     };

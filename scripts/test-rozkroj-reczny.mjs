@@ -234,6 +234,12 @@ test('roznicaPlyt mówi, o ile ręczny układ rozjeżdża się z wyceną', () =>
 
   assert.equal(roznicaPlyt(model, 3).reczne, 2);
   assert.equal(roznicaPlyt(model, null), null, 'bez liczby z wyceny nie ma czego porównać');
+
+  // Scenariusz Dawida (29.10.2026): wszystko zmieścił na JEDNEJ płycie,
+  // wycena liczyła dwie — ostrzeżenie ma mówić, że materiału trzeba mniej.
+  const mniej = roznicaPlyt({ plyty: [{ nr: 1, elementy: [] }] }, 2);
+  assert.equal(mniej.reczne, 1);
+  assert.match(mniej.komunikat, /mniej/i, 'brak informacji o nadliczonym materiale');
 });
 
 /* ══════════════════════ warstwa widoku (skan źródeł, jak reszta repo) */
@@ -375,21 +381,44 @@ test('próg magnesu mieści się w obiecanych 5–10 mm', () => {
   assert.ok(PROG_MAGNESU_MM >= 5 && PROG_MAGNESU_MM <= 10, `próg to ${PROG_MAGNESU_MM} mm`);
 });
 
-test('uporzadkuj kasuje puste płyty, ale zostawia ostatnią jako miejsce odkładcze', () => {
+test('uporzadkuj: pusta płyta znika TAKŻE na końcu — zostaje tylko jedyna (29.10.2026)', () => {
   /*
-   * Mniej przycisków: zamiast „− Pusta płyta" puste arkusze znikają same.
-   * Ostatni zostaje, żeby było GDZIE przeciągnąć element z zatłoczonej płyty.
+   * ⚠ ZGŁOSZENIE DAWIDA (29.10.2026): zmieścił wszystko na jednej płycie,
+   * a rozrys dalej pokazywał dwie — stara reguła „ostatnia zostaje jako
+   * miejsce odkładcze" oszczędzała pusty arkusz na końcu listy. Miejsce
+   * odkładcze zapewnia przycisk „+ Płyta", więc pusta znika ZAWSZE,
+   * chyba że jest jedyną płytą w układzie (model bez płyt nie istnieje).
    */
-  const model = {
-    plyty: [
-      { nr: 1, szer: 3200, wys: 1600, elementy: [] },
-      { nr: 2, szer: 3200, wys: 1600, elementy: [{ id: 'a', nazwa: 'A', x: 0, y: 0, szer: 10, gl: 10 }] },
-      { nr: 3, szer: 3200, wys: 1600, elementy: [] },
-    ],
-  };
-  const po = uporzadkuj(model);
-  assert.equal(po.plyty.length, 2, 'pusta ze środka znika, końcowa zostaje');
-  assert.deepEqual(po.plyty.map((p) => p.nr), [1, 2]);
-  assert.equal(po.plyty[0].elementy.length, 1);
-  assert.deepEqual(po.plyty[1].elementy, []);
+  const plyta = (nr, elementy = []) => ({ nr, szer: 3200, wys: 1600, elementy });
+  const el = { id: 'a', nazwa: 'A', x: 0, y: 0, szer: 10, gl: 10 };
+
+  // Scenariusz Dawida: wszystko na płycie 1, pusta OSTATNIA ma zniknąć.
+  const poPrzeniesieniu = uporzadkuj({ plyty: [plyta(1, [el]), plyta(2)] });
+  assert.equal(poPrzeniesieniu.plyty.length, 1, 'pusta końcowa płyta ma zniknąć');
+  assert.equal(poPrzeniesieniu.plyty[0].elementy.length, 1);
+
+  // Pusta ze środka — jak dotąd.
+  const zeSrodka = uporzadkuj({ plyty: [plyta(1), plyta(2, [el]), plyta(3)] });
+  assert.deepEqual(zeSrodka.plyty.map((p) => p.elementy.length), [1], 'zostaje tylko zajęta');
+  assert.deepEqual(zeSrodka.plyty.map((p) => p.nr), [1], 'numeracja od nowa');
+
+  // Jedyna płyta — choćby pusta — zostaje: nie ma rozkroju bez arkusza.
+  const jedyna = uporzadkuj({ plyty: [plyta(1)] });
+  assert.equal(jedyna.plyty.length, 1, 'jedyna płyta nie ma prawa zniknąć');
 });
+
+test('UI: pusta płyta ma jawny przycisk usunięcia, a drag nie sprząta płyt (29.10.2026)', () => {
+  /*
+   * Pełna kontrola bez blokad (zasada Dawida): obok auto-znikania jest
+   * jawne „×" na pustej płycie. A skoro pusta znika już też na końcu,
+   * `uporzadkuj` NIE może odpalać się po zwykłym przeciągnięciu w obrębie
+   * płyty — kasowałoby świeżo dodany arkusz („+ Płyta"), zanim Dawid
+   * zdąży cokolwiek na niego przenieść.
+   */
+  const rozrys = fs.readFileSync(new URL('../src/app/rozrys.js', import.meta.url), 'utf8');
+  assert.match(rozrys, /usunPlyte/, 'rozrys nie importuje usunPlyte');
+  assert.match(rozrys, /Usuń pustą płytę/, 'brak przycisku usunięcia pustej płyty');
+  assert.match(rozrys, /uporzadkuj\(przenies\(/, 'po przeniesieniu między płytami sprzątanie ma zostać');
+  assert.doesNotMatch(rozrys, /uporzadkuj\(przesun\(/, 'drag w obrębie płyty nie ma prawa kasować płyt');
+});
+

@@ -262,9 +262,16 @@ export function magnes(model, id, { x, y }, { rzaz = 0, margines = 0, prog = PRO
  * element z zat\u0142oczonej p\u0142yty.
  */
 export function uporzadkuj(model) {
-  const plyty = (model?.plyty || []).filter(
-    (p, i, lista) => p.elementy.length > 0 || i === lista.length - 1
-  );
+  /*
+   * ⚠ ZGŁOSZENIE DAWIDA (29.10.2026): po przeniesieniu wszystkiego na jedną
+   * płytę rozrys dalej pokazywał dwie — stara reguła zostawiała pusty arkusz
+   * na KOŃCU listy jako „miejsce odkładcze". Miejsce odkładcze daje przycisk
+   * „+ Płyta", więc pusta znika zawsze; zostaje tylko wtedy, gdy jest jedyną
+   * płytą układu (rozkrój bez arkusza nie istnieje).
+   */
+  const wejscie = model?.plyty || [];
+  let plyty = wejscie.filter((p) => p.elementy.length > 0);
+  if (!plyty.length) plyty = wejscie.slice(0, 1);
   return { ...model, plyty: plyty.map((p, i) => ({ ...p, nr: i + 1 })) };
 }
 
