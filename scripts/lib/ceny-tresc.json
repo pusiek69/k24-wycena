@@ -4,12 +4,12 @@
     "Służą do znalezienia ich przy następnej zmianie cennika — nie edytuj ręcznie.",
     "\"historia\" to kwoty już wycofane — checklista pilnuje, żeby nie wróciły."
   ],
-  "_zapisano": "2026-10-09",
+  "_zapisano": "2026-10-29",
   "kwoty": {
-    "konglomeratProste": 7250,
+    "konglomeratProste": 7200,
     "konglomeratL": 8650,
     "konglomeratM2Od": 505,
-    "konglomeratM2Do": 2451,
+    "konglomeratM2Do": 2103,
     "spiekProste": 7300,
     "spiekL": 9250,
     "spiekM2Od": 620,
@@ -26,8 +26,8 @@
     1683,
     1916,
     2025,
-    2103,
     2306,
+    2451,
     3600,
     3650,
     4100,
@@ -64,7 +64,7 @@
     6950,
     7050,
     7150,
-    7200,
+    7250,
     7350,
     7650,
     7750,
@@ -79,7 +79,7 @@
     9600
   ],
   "liczby": {
-    "avantDekory": 64,
+    "avantDekory": 65,
     "caesarstoneDekory": 31,
     "technistoneDekory": 66,
     "keraliniDekory": 49,
@@ -87,8 +87,8 @@
     "atlasDekory": 143,
     "laminamDekory": 108,
     "florimDekory": 73,
-    "konglomeratWzory": 233,
-    "konglomeratDekory": 233,
+    "konglomeratWzory": 234,
+    "konglomeratDekory": 234,
     "spiekWzory": 502,
     "wszystkieWzory": 700
   }
