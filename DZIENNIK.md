@@ -5,6 +5,33 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-10-29 (sesja Cowork, wieczór) — punkt kontrolny K7/K8/K9: frazy cenowe spieku EKSPLODOWAŁY; K1 zostaje; /blaty-granitowe + linki do Lublina (commity BEZ pusha — idzie batem Dawida)
+
+**Stan GSC (7 dni, 21–27.10):** 30 klik., **1 570 wyśw. (+70% t/t)**, CTR 1,9%, śr. poz. **11,0** (najlepsza w historii).
+
+**Punkt kontrolny (plan z 14/19.10):**
+- **K9/K7 — działa.** `/blaty-ze-spieku`: **736 wyśw. / 10 klik.** w 7 dni (14 dni temu: 163/0). Klaster „cena za m2": 80 wyśw., śr. poz. **9,0**, 1 klik. — trzyma TOP10 przy 6× większym wolumenie; sama fraza „spiek kwarcowy blat cena m2" **159 wyśw./2 klik.** Frazy cenowe z 0 klik. do obserwacji: „blat ze spieku kwarcowego cena" 33 (jest w tytule strony), „spiek kwarcowy blat cena za m2" 29, „ile kosztuje blat ze spieku kwarcowego" 26.
+- **K1 — ZOSTAJE (falsyfikacja odwołana).** Fraza główna „blaty ze spieku kwarcowego" wróciła do poz. 30,4 (z 41 tydzień temu), a oferta urosła 163→736 wyśw. — warunek „bez wzrostu oferty" nie zachodzi. Revertu nie będzie.
+- **K6** (tytuł konglomeratu, wdrożony 26.10): fraza „blaty z konglomeratu kwarcowego" 11 wyśw./poz. 41,4 — za wcześnie; odczyt ~9.11.
+- **K8 (Staszów):** bez odczytu w tej sesji — przy następnym tygodniowym.
+- **Mielec:** SERP **#3** (było #4 przed wzmocnieniem z 19.10; kemizo #1, ignikom #2). kam24h cytowany w Przeglądzie AI Google dla „blaty kamienne mielec" (obok ignikom, który karmi AI cenami zł/m²). GSC strony: 38 wyśw./1 klik. Bez dokładania zmian — odczyt pełny ~2.11.
+
+**Zmiany (commity na wierzchu paczki, PUSH przez wdroz-nowe-ceny.bat Dawida):**
+1. `/blaty-granitowe` — zatwierdzona wisząca zmiana automatu z 29.10 (tytuł „Blaty granitowe — cena za m², kamień naturalny, Tarnobrzeg" + opis z „Wycena online w 2 minuty", schema spójna, kwota 7 200 zgodna z nowym cennikiem). Przed commitem sprawdzono kanibalizację w GSC: frazy „blaty granitowe <miasto>" należą do stron miast, generyczna fraza cenowa do tej strony — konfliktu brak. Liczby „przed": fraza generyczna poz. ~36 / 68 wyśw. (28 dni).
+2. **Lublin** — kontekstowe linki z `/blaty-ze-spieku` i `/blaty-z-konglomeratu` (kotwica „blaty kuchenne kamienne w Lublinie", ok. 160 km — zweryfikowane w Mapach 7.10, „dojazd ustalany indywidualnie" zgodnie z zasadą promienia). Liczby „przed": strona Lublina **105 wyśw. / poz. 10,6 / 0 klik.** (7 dni). Ten sam wzorzec co Mielec 19.10 (#4→#3).
+
+**Testy: 1043/1043 zielone** (esbuild linux na czas testów, przywrócony). Sitemapa: 3 daty. Kwoty w FAQ miast (505 zł/m² itd.) przeliczy `ceny:tresc` w bacie Dawida — nie ruszane ręcznie.
+**Po pushu Dawida:** weryfikacja `/blaty-granitowe`, `/blaty-ze-spieku`, `/blaty-z-konglomeratu` na produkcji + GSC „Poproś o zindeksowanie" tych trzech.
+**Do obserwacji (~9.11):** CTR klastra cenowego spieku (poz. 9 → cel: kliknięcia), K6 fraza konglomeratowa, Lublin po linkach, granit po tytule.
+
+## 2026-10-29 (sesja automatyczna) — BEZ wdrożenia: wisi niezacommitowana zmiana /blaty-granitowe, testy nie do potwierdzenia w tym środowisku
+
+**Stan:** origin/main = HEAD (partnerski wypchnięty). W drzewie niezacommitowane: `blaty-granitowe.html` (title „Blaty granitowe — cena za m², kamień naturalny, Tarnobrzeg", opis z „cena zależy od płyty… Wycena online w 2 minuty", og/schema spójne) + lastmod sitemapy. To zmiana z planu (poz. 36 / 68 wyśw.).
+**Dlaczego nie wdrożono:** `npm test` 812/835 — 23 czerwone to wyłącznie „esbuild for another platform" (node_modules z Windows w Linuxowej VM), `npm run build` niemożliwy; zasada „deploy tylko przy zielonych testach" nie do spełnienia tu. Niczego nie commitowałem ani nie pushowałem.
+**Dla Dawida (Windows):** `npm test` + `npm run build` -> `git add blaty-granitowe.html public/sitemap.xml` -> commit -> `git push origin main` -> weryfikacja /blaty-granitowe na żywo -> GSC „Poproś o zindeksowanie". (Przed tym opcjonalnie sprawdzić w GSC kanibalizację z /blaty-kuchenne-tarnobrzeg.) Uwaga: w .git leżał martwy index.lock - przeniosłem go do .git/stale-index-lock-*, można usunąć.
+
+---
+
 ## 2026-10-26 (sesja automatyczna, 07:20 UTC) — BEZ nowej zmiany: czeka push paczki z 26.10
 
 **Dlaczego:** na origin nadal brak 5 commitów (K6 tytuł konglomeratu, fix testu sezonowego, sitemap, dziennik, nawigacja wstecz). `npm test` w sandboksie 766/789 (23 = znany artefakt esbuild linux/win, jak w baseline) - bez zielonych testów nie pushuję; nie dokładam drugiej zmiany SEO na wierzch niewdrożonej.
