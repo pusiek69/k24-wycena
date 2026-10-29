@@ -405,3 +405,9 @@ ALTER TABLE klienci ADD COLUMN partner_kod TEXT NOT NULL DEFAULT '';
 -- się kolejność „pierwsze 15% → kolejne 10%" i zestawienie miesięczne.
 ALTER TABLE klienci ADD COLUMN wygrany_kiedy TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS klienci_partner ON klienci (partner_kod);
+
+-- INDYWIDUALNE PROWIZJE PARTNERA (29.10.2026): liczba nadpisuje globalną
+-- konfigurację (także 0), NULL dziedziczy — jak edytowalne ceny pozycji.
+ALTER TABLE partnerzy ADD COLUMN proc_pierwsze INTEGER;
+ALTER TABLE partnerzy ADD COLUMN proc_kolejne INTEGER;
+ALTER TABLE partnerzy ADD COLUMN proc_premium INTEGER;

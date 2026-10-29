@@ -69,6 +69,25 @@ export async function zapiszPartnera(env, d) {
   if (dane.email !== undefined) pola.email = String(dane.email || '').trim().slice(0, 160);
   if (dane.aktywny !== undefined) pola.aktywny = dane.aktywny ? 1 : 0;
   if (dane.notatka !== undefined) pola.notatka = String(dane.notatka || '').trim().slice(0, 2000);
+  /*
+   * INDYWIDUALNE STAWKI (29.10.2026): liczba 0-50 nadpisuje globalna
+   * konfiguracje, null/'' czysci pole = powrot do dziedziczenia.
+   */
+  for (const [pole, kolumna] of [
+    ['procPierwsze', 'proc_pierwsze'],
+    ['procKolejne', 'proc_kolejne'],
+    ['procPremium', 'proc_premium'],
+  ]) {
+    if (dane[pole] === undefined) continue;
+    if (dane[pole] === null || dane[pole] === '') {
+      pola[kolumna] = null;
+      continue;
+    }
+    const w = Number(dane[pole]);
+    if (!Number.isFinite(w) || w < 0 || w > 50)
+      return { ok: false, blad: `${pole}: stawka spoza widelek 0-50%.` };
+    pola[kolumna] = w;
+  }
 
   if (pola.kod !== undefined && !poprawnyKod(pola.kod))
     return { ok: false, blad: 'Kod: 3–24 znaki, małe litery, cyfry i myślnik (np. meble-kowalski).' };
@@ -195,6 +214,12 @@ async function naliczWygrane(env, partner, konfig, miesiac = null) {
       premium: partner.status === 'premium',
       pierwsze: i === 0,
       konfig,
+      // Indywidualne stawki partnera (null = dziedziczy globalne).
+      partner: {
+        procPierwsze: partner.proc_pierwsze ?? null,
+        procKolejne: partner.proc_kolejne ?? null,
+        procPremium: partner.proc_premium ?? null,
+      },
     });
     const kwota = prowizja(netto, procent);
     pozycje.push({
@@ -230,6 +255,10 @@ export async function listaPartnerow(env) {
     const { suma } = await naliczWygrane(env, p, konfig);
     wynik.push({
       ...p,
+      // Aliasy czytelne dla panelu; null = dziedziczy globalne.
+      procPierwsze: p.proc_pierwsze ?? null,
+      procKolejne: p.proc_kolejne ?? null,
+      procPremium: p.proc_premium ?? null,
       leadow: liczby?.leadow || 0,
       wygranych: liczby?.wygranych || 0,
       prowizjaSuma: suma,

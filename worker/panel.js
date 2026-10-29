@@ -1548,6 +1548,9 @@ async function rysujPartnerzy(){
         (pp.status === 'premium' ? '★ Premium' : 'Standard') + '</button>' +
       ' · <button class="chip" type="button" data-partner-aktywny="' + pp.id + '">' +
         (pp.aktywny ? 'aktywny' : 'wyłączony') + '</button>' +
+      '<br><span class="mini">stawki: ' + poleStawki(pp, 'procPierwsze', 'pierwsze') +
+        poleStawki(pp, 'procKolejne', 'kolejne') + poleStawki(pp, 'procPremium', 'Premium') +
+        '<span style="color:#8c8474">(puste = globalna)</span></span>' +
       '<br><span class="mini">leady: ' + pp.leadow + ' · wygrane: ' + pp.wygranych +
       ' · prowizja od początku: <b>' + zl(pp.prowizjaSuma) + '</b> · ' +
       '<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(link) + '</a></span></li>';
@@ -1595,6 +1598,36 @@ async function rysujPartnerzy(){
   document.getElementById('pk-zapisz').onclick = zapiszKonfigPartnerow;
   document.getElementById('pr-pokaz').onclick = pokazRozliczenie;
 }
+
+
+/*
+ * Pole indywidualnej stawki partnera (29.10.2026) — jak edytowalne ceny
+ * pozycji: wartość wpisana NADPISUJE globalną (złote obramowanie),
+ * puste pole dziedziczy (placeholder pokazuje globalną). Zapis na change.
+ */
+function poleStawki(pp, pole, etykieta){
+  var globalna = PARTNER_KONFIG ? PARTNER_KONFIG[pole] : '';
+  var wlasna = pp[pole];
+  var nadpisana = wlasna !== null && wlasna !== undefined;
+  return etykieta + ' <input type="number" min="0" max="50" data-partner-stawka="' + pp.id + '"' +
+    ' data-pole="' + pole + '" value="' + (nadpisana ? wlasna : '') + '"' +
+    ' placeholder="' + globalna + '" title="Puste = globalna stawka ' + globalna + '%"' +
+    ' style="width:54px;min-height:34px;padding:2px 6px;' +
+    (nadpisana ? 'border:1px solid #c9a86a;background:#fdf6e9;font-weight:bold;' : '') + '">% · ';
+}
+
+document.addEventListener('change', async function(e){
+  var pole = e.target.closest('[data-partner-stawka]');
+  if(!pole) return;
+  var wartosc = pole.value.trim();
+  var dane = { id: Number(pole.dataset.partnerStawka) };
+  dane[pole.dataset.pole] = wartosc === '' ? null : Number(wartosc);
+  var odp = await partnerApi('/panel/api/partnerzy/zapisz', dane);
+  if(!odp.ok){ partnerInfo(odp.blad || 'Nie udało się zapisać stawki.'); return; }
+  partnerInfo(wartosc === '' ? 'Stawka wraca do globalnej.' : 'Indywidualna stawka zapisana.');
+  await rysujPartnerzy();
+  document.getElementById('partnerzy-tresc').hidden = false;
+});
 
 function partnerInfo(t){ var e = document.getElementById('partnerzy-info'); if(e) e.textContent = t; }
 

@@ -1525,6 +1525,63 @@ if (JEST) {
     assert.equal(kow.suma, 4500, 'Premium: 15% × 30 000 = 4 500');
   });
 
+  test('STAWKI INDYWIDUALNE partnera: nadpisanie, dziedziczenie i powrót do globalnych', async () => {
+    /*
+     * Zlecenie Dawida (29.10.2026): procenty per partner, puste pole
+     * dziedziczy globalne — jak edytowalne ceny pozycji w edytorze.
+     */
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    await scenariuszProwizji(env, cookie); // 2 wygrane w X (10k/20k netto), 1 w XI
+    const p = await env.BAZA.prepare(`SELECT id FROM partnerzy WHERE kod = 'kowalski'`).bind().first();
+
+    // Nadpisane tylko „pierwsze": 20% × 10 000 + globalne 10% × 20 000 = 4 000.
+    await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { id: p.id, procPierwsze: 20 }, cookie),
+      env, ctx
+    );
+    let roz = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-10' }, cookie), env, ctx)
+    ).json();
+    assert.equal(roz.partnerzy.find((x) => x.kod === 'kowalski').suma, 4000,
+      'indywidualne 20% za pierwsze + globalne 10% za kolejne');
+
+    // Lista oddaje stawki partnera (UI maluje po nich złote nadpisanie).
+    const lista = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy', {}, cookie), env, ctx)
+    ).json();
+    const wpis = lista.partnerzy.find((x) => x.kod === 'kowalski');
+    assert.equal(wpis.procPierwsze, 20);
+    assert.equal(wpis.procKolejne, null, 'niedotknięte pole ma być null (dziedziczy)');
+
+    // Wyczyszczenie pola = powrót do globalnej 15%: suma znów 3 500.
+    await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { id: p.id, procPierwsze: null }, cookie),
+      env, ctx
+    );
+    roz = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-10' }, cookie), env, ctx)
+    ).json();
+    assert.equal(roz.partnerzy.find((x) => x.kod === 'kowalski').suma, 3500, 'puste pole ma wrócić do globalnych');
+
+    // Premium z WŁASNĄ stawką: 18% × 30 000 (listopad) = 5 400.
+    await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { id: p.id, status: 'premium', procPremium: 18 }, cookie),
+      env, ctx
+    );
+    const listopad = await (
+      await worker.fetch(zapytaniePanel('/panel/api/partnerzy/rozliczenie', { miesiac: '2026-11' }, cookie), env, ctx)
+    ).json();
+    assert.equal(listopad.partnerzy.find((x) => x.kod === 'kowalski').suma, 5400);
+
+    // Widełki jak w konfiguracji globalnej: 60% to literówka.
+    const zaDuzo = await worker.fetch(
+      zapytaniePanel('/panel/api/partnerzy/zapisz', { id: p.id, procKolejne: 60 }, cookie),
+      env, ctx
+    );
+    assert.equal(zaDuzo.status, 400);
+  });
+
   test('PANEL: ręczne przypisanie partnera na karcie (apiZmien partnerKod)', async () => {
     const env = srodowisko();
     const cookie = await ciastkoPanelu(env);

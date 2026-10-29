@@ -280,3 +280,30 @@ test('FORMULARZ: etykiety i selekt jawnie ciemne na białej karcie (kontrast AA)
   assert.match(styl, /\.pf input, \.pf select[^}]*color:\s*#2b2823/, 'pola/selekt bez jawnego koloru tekstu');
   assert.match(styl, /\.pf \{[^}]*color:\s*#2b2823/, 'karta bez bazowego koloru tekstu');
 });
+
+/* ═══════ indywidualne prowizje per partner (zlecenie Dawida, 29.10) ═══════ */
+
+test('STAWKA INDYWIDUALNA: pole partnera nadpisuje globalne, puste dziedziczy', () => {
+  const k = KONFIG_DOMYSLNA; // 15 / 10 / 15
+  const bez = {}; // partner bez indywidualnych stawek
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: true, konfig: k, partner: bez }), 15);
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: false, konfig: k, partner: bez }), 10);
+
+  const wlasne = { procPierwsze: 20, procKolejne: 12, procPremium: 18 };
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: true, konfig: k, partner: wlasne }), 20);
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: false, konfig: k, partner: wlasne }), 12);
+  // Premium to OSOBNE, trzecie pole — też z dziedziczeniem.
+  assert.equal(stawkaProwizji({ premium: true, pierwsze: true, konfig: k, partner: wlasne }), 18);
+
+  // Nadpisane tylko „pierwsze" — reszta z globalnych (null = dziedziczy).
+  const czesciowe = { procPierwsze: 25, procKolejne: null, procPremium: null };
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: true, konfig: k, partner: czesciowe }), 25);
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: false, konfig: k, partner: czesciowe }), 10);
+  assert.equal(stawkaProwizji({ premium: true, pierwsze: false, konfig: k, partner: czesciowe }), 15);
+
+  // Zero jest LEGALNĄ stawką indywidualną (0%), nie „pustym" polem.
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: true, konfig: k, partner: { procPierwsze: 0 } }), 0);
+
+  // Bez partnera w ogóle — jak dotąd (zgodność wstecz).
+  assert.equal(stawkaProwizji({ premium: false, pierwsze: true, konfig: k }), 15);
+});

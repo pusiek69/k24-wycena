@@ -40,11 +40,23 @@ export const KLUCZE_KONFIGU = {
   dni: 'partnerDniPrzypisania',
 };
 
-/** Procent dla zlecenia: Premium bije wszystko, potem pierwsze/kolejne. */
-export function stawkaProwizji({ premium, pierwsze, konfig }) {
+/**
+ * Procent dla zlecenia: Premium bije wszystko, potem pierwsze/kolejne.
+ *
+ * INDYWIDUALNE STAWKI (zlecenie Dawida, 29.10.2026): partner może mieć
+ * własne pola procPierwsze/procKolejne/procPremium — liczba (także 0!)
+ * nadpisuje globalną konfigurację, `null`/brak pola dziedziczy z niej.
+ * Dokładnie jak edytowalne ceny pozycji: puste pole = wartość z cennika.
+ */
+export function stawkaProwizji({ premium, pierwsze, konfig, partner = null }) {
   const k = konfig || KONFIG_DOMYSLNA;
-  if (premium) return k.procPremium;
-  return pierwsze ? k.procPierwsze : k.procKolejne;
+  const wlasna = (pole) => {
+    const w = Number(partner?.[pole]);
+    return partner?.[pole] != null && Number.isFinite(w) ? w : null;
+  };
+  if (premium) return wlasna('procPremium') ?? k.procPremium;
+  if (pierwsze) return wlasna('procPierwsze') ?? k.procPierwsze;
+  return wlasna('procKolejne') ?? k.procKolejne;
 }
 
 /** Prowizja w całych złotych — pół złotego w górę, jak w rachunkach. */
