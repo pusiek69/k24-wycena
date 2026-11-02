@@ -923,6 +923,8 @@ function zamrozRozrys(stan, w) {
       // U części dostawców można kupić pół płyty — rysunek ma to pokazać,
       // bo inaczej odpad na rozrysie kłóci się z kwotą w wycenie.
       polowkaDozwolona: polowkaZRozkroju(w),
+      // Resztki poprodukcyjne (2.11.2026) — zamrożony rysunek ma je nieść.
+      dodatkowePlyty: ustawienia.dodatkowePlyty || [],
     });
     if (!wynik.plyty.length) return null;
 

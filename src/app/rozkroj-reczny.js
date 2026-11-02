@@ -50,7 +50,8 @@ export function doUkladu(model, plyta) {
     nieumieszczone: [],
     statystyki: {
       plyt: plyty.length,
-      plytPelnych: plyty.length - polowek,
+      plytPelnych: plyty.length - polowek - plyty.filter((p) => p.dodatkowa).length,
+      dodatkowych: plyty.filter((p) => p.dodatkowa).length,
       polowek,
       polePlytyM2: zaokr((format.szer * format.wys) / 1e6, 3),
       plytM2: zaokr(plytM2, 3),
@@ -105,13 +106,19 @@ export function przenies(model, id, nrPlyty) {
 }
 
 /** Pusta płyta w formacie pozostałych — miejsce na element, który się nie mieści. */
-export function dodajPlyte(model) {
+export function dodajPlyte(model, wymiar = null) {
   const wzorzec = model.plyty[model.plyty.length - 1] || { szer: 0, wys: 0, margines: 0 };
+  /*
+   * PŁYTA DODATKOWA (2.11.2026): resztka poprodukcyjna o własnym wymiarze.
+   * Bez `wymiar` — pełny arkusz jak dotąd (wzorzec z ostatniej płyty).
+   */
+  const resztka = wymiar && Number(wymiar.szer) > 0 && Number(wymiar.wys) > 0;
   const nowa = {
     nr: model.plyty.length + 1,
-    szer: wzorzec.szer,
-    wys: wzorzec.wys,
+    szer: resztka ? Number(wymiar.szer) : wzorzec.szer,
+    wys: resztka ? Number(wymiar.wys) : wzorzec.wys,
     margines: wzorzec.margines || 0,
+    ...(resztka ? { dodatkowa: true, etykieta: String(wymiar.etykieta || '') } : {}),
     elementy: [],
     poleElementowMm2: 0,
   };

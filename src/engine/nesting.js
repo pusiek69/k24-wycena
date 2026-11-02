@@ -43,7 +43,9 @@ export const DOMYSLNY_MARGINES_MM = 0;
 /**
  * @param {Array} elementy  [{ nazwa, szer, gl, ilosc }] w mm
  * @param {object} plyta    { szer, wys } w mm
- * @param {object} opcje    { rzaz, margines, rotacja, polowkaDozwolona }
+ * @param {object} opcje    { rzaz, margines, rotacja, polowkaDozwolona,
+ *                            dodatkowePlyty: [{szer, wys, etykieta}] — resztki
+ *                            poprodukcyjne (mm), używane PRZED pełnymi płytami }
  * @returns {{plyty: Array, nieumieszczone: Array, statystyki: object}}
  */
 export function rozrysuj(elementy, plyta, opcje = {}) {
@@ -72,6 +74,22 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
    * (engine/pakowanie.js) i tu — jedna i druga muszą mówić to samo.
    */
   const polowkaDozwolona = opcje.polowkaDozwolona === true;
+
+  /*
+   * PŁYTY DODATKOWE — RESZTKI POPRODUKCYJNE (zlecenie Dawida, 2.11.2026):
+   * „mam kawałek po produkcji i mogę go wykorzystać przy następnym
+   * zleceniu". Arkusze o własnych wymiarach, układane PRZED pełnymi
+   * płytami (Dawid dodaje resztkę po to, żeby ją zużyć). Resztka, na
+   * którą nic nie wchodzi, jest pomijana — nie blokuje układu i nie
+   * zostawia pustego arkusza na rysunku.
+   */
+  const dodatkowe = (opcje.dodatkowePlyty || [])
+    .map((d) => ({
+      szer: Number(d?.szer) || 0,
+      wys: Number(d?.wys) || 0,
+      etykieta: String(d?.etykieta || ''),
+    }))
+    .filter((d) => d.szer > 0 && d.wys > 0);
 
   const polePlyty = { szer: Number(plyta?.szer) || 0, wys: Number(plyta?.wys) || 0 };
   const uzyteczna = {
@@ -120,6 +138,7 @@ export function rozrysuj(elementy, plyta, opcje = {}) {
           maksPlyt,
           polowkaDozwolona,
           trybObrotu,
+          dodatkowe,
         })
       );
     }
@@ -167,7 +186,10 @@ const KOLEJNOSCI = [
  */
 function koszt(proba) {
   const polowek = proba.plyty.filter((p) => p.polowka).length;
-  const wPolowkach = (proba.plyty.length - polowek) * 2 + polowek;
+  const dodatkowych = proba.plyty.filter((p) => p.dodatkowa).length;
+  // Resztka jest już opłacona — w porównaniu prób liczy się jak darmowa,
+  // więc układ, który nią zastępuje pełny arkusz, wygrywa.
+  const wPolowkach = (proba.plyty.length - polowek - dodatkowych) * 2 + polowek;
   const odpad = proba.plyty.reduce((a, p) => a + p.szer * p.wys - p.poleElementowMm2, 0);
   return proba.nieumieszczone.length * 1e9 + wPolowkach * 1e6 + odpad / 1e6;
 }
@@ -179,24 +201,38 @@ function poJednejPlycie(elementy, uzyteczna, polePlyty, opcje) {
   const plyty = [];
   const nieumieszczone = [];
   let zostalo = elementy;
+  // Resztki idą PIERWSZE; kopia, bo każda próba zużywa własną kolejkę.
+  const kolejkaDodatkowych = [...(opcje.dodatkowe || [])];
 
   while (zostalo.length && plyty.length < maksPlyt) {
-    const { ulozone, reszta } = ulozNaPlycie(zostalo, uzyteczna, ustawienia);
-    // Zabezpieczenie przed pętlą bez końca: skoro nic nie weszło na pustą
-    // płytę, to nie wejdzie już nigdy.
+    const resztka = kolejkaDodatkowych[0] || null;
+    const biezacaUzyteczna = resztka
+      ? { szer: resztka.szer - 2 * margines, wys: resztka.wys - 2 * margines }
+      : uzyteczna;
+    const { ulozone, reszta } = ulozNaPlycie(zostalo, biezacaUzyteczna, ustawienia);
     if (!ulozone.length) {
+      // Na resztkę nic nie wchodzi — pomijamy ją i próbujemy dalej
+      // (następna resztka albo pełna płyta).
+      if (resztka) {
+        kolejkaDodatkowych.shift();
+        continue;
+      }
+      // Zabezpieczenie przed pętlą bez końca: skoro nic nie weszło na pustą
+      // PEŁNĄ płytę, to nie wejdzie już nigdy.
       for (const el of reszta) nieumieszczone.push({ ...el, powod: 'nie-zmiescil-sie' });
       zostalo = [];
       break;
     }
     plyty.push({
       nr: plyty.length + 1,
-      szer: polePlyty.szer,
-      wys: polePlyty.wys,
+      szer: resztka ? resztka.szer : polePlyty.szer,
+      wys: resztka ? resztka.wys : polePlyty.wys,
       margines,
+      ...(resztka ? { dodatkowa: true, etykieta: resztka.etykieta } : {}),
       elementy: ulozone,
       poleElementowMm2: ulozone.reduce((a, e) => a + e.szer * e.gl, 0),
     });
+    if (resztka) kolejkaDodatkowych.shift();
     zostalo = reszta;
   }
 
@@ -241,6 +277,8 @@ function poJednejPlycie(elementy, uzyteczna, polePlyty, opcje) {
  */
 function domknijNaPolowce(plyty, uzyteczna, polePlyty, opcje) {
   const ostatnia = plyty[plyty.length - 1];
+  // Resztka ma fizyczny wymiar z magazynu — nie da się jej „kupić w połowie".
+  if (ostatnia.dodatkowa) return;
   const polowaWys = polePlyty.wys / 2;
 
   // Układ, który już jest, mieści się w połowie — nie ma czego przestawiać.
@@ -456,11 +494,14 @@ function statystyki(plyty, plyta, nieumieszczone) {
   const plytM2 = plyty.reduce((a, p) => a + (p.szer * p.wys) / 1e6, 0);
   const elementyM2 = plyty.reduce((a, p) => a + p.poleElementowMm2, 0) / 1e6;
   const polowek = plyty.filter((p) => p.polowka).length;
+  const dodatkowych = plyty.filter((p) => p.dodatkowa).length;
   return {
     plyt: plyty.length,
     // Rozbicie na pełne i połówki — z tego wycena składa „2 i ½ płyty".
-    plytPelnych: plyty.length - polowek,
+    // Resztki (dodatkowe) stoją OSOBNO: nie są ani pełną płytą, ani połówką.
+    plytPelnych: plyty.length - polowek - dodatkowych,
     polowek,
+    dodatkowych,
     polePlytyM2: zaokr(polePlytyM2, 3),
     plytM2: zaokr(plytM2, 3),
     elementyM2: zaokr(elementyM2, 3),

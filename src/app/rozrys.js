@@ -87,7 +87,71 @@ export function widokRozrysu(kontekst, onZmiana) {
     return rozrysuj(k.elementy, k.plyta, {
       rotacja: k.rotacja, rzaz: k.rzaz, margines: k.margines,
       polowkaDozwolona: k.polowkaDozwolona === true,
+      // Resztki poprodukcyjne (2.11.2026) — automat używa ich przed pełnymi.
+      dodatkowePlyty: k.dodatkowePlyty || [],
     });
+  }
+
+
+  /*
+   * PŁYTY DODATKOWE — RESZTKI (zlecenie Dawida, 2.11.2026).
+   *
+   * „Mam kawałek po produkcji i mogę go wykorzystać przy następnym
+   * zleceniu." Formularz dokłada arkusz o własnym wymiarze (cm) z opcjonalną
+   * etykietą i CENĄ (domyślnie 0 zł — resztka jest już opłacona). Działa
+   * w automacie (lista w k.dodatkowePlyty, silnik używa ich przed pełnymi)
+   * i w trybie ręcznym (od razu pusty arkusz do przeciągania). Kwoty w
+   * wycenie NIE zmieniają się same — rozbicie niżej tylko informuje.
+   */
+  function formularzResztki() {
+    const pole = (ph, szer) => h('input', {
+      type: 'text', inputmode: 'decimal', placeholder: ph,
+      style: 'width:' + szer + 'px;min-height:40px;padding:4px 8px',
+    });
+    const szerIn = pole('szer. (cm)', 76);
+    const wysIn = pole('wys. (cm)', 76);
+    const etykietaIn = pole('etykieta (np. resztka z magazynu)', 180);
+    const cenaIn = pole('cena tej płyty (zł)', 110);
+    cenaIn.value = '0';
+    const dodaj = h('button', { class: 'btn-maly', type: 'button' }, 'Dodaj');
+    dodaj.addEventListener('click', () => {
+      const szer = Math.round(Number(String(szerIn.value).replace(',', '.')) * 10);
+      const wys = Math.round(Number(String(wysIn.value).replace(',', '.')) * 10);
+      if (!(szer > 0 && wys > 0)) { komunikat = 'Podaj szerokość i wysokość resztki w cm.'; rysujWyniki(); return; }
+      const nowa = {
+        szer, wys,
+        etykieta: String(etykietaIn.value || '').trim().slice(0, 60),
+        cena: Math.max(0, Math.round(Number(String(cenaIn.value).replace(',', '.')) || 0)),
+      };
+      zmiana({ dodatkowePlyty: [...(k.dodatkowePlyty || []), nowa] });
+      if (reczny) reczny = dodajPlyte(reczny, nowa);
+      komunikat = 'Dodano płytę ' + (szer / 10) + '×' + (wys / 10) + ' cm' + (nowa.cena ? ' za ' + nowa.cena + ' zł' : ' (resztka, 0 zł)') + '.';
+      rysujWyniki();
+    });
+    return h('div', { class: 'rozrys-resztka' },
+      h('span', { class: 'mini' }, '+ Dodaj płytę o innym wymiarze: '),
+      szerIn, ' × ', wysIn, ' cm ', etykietaIn, cenaIn, dodaj);
+  }
+
+  /** Lista dodanych resztek (automat) z usuwaniem i rozbicie informacyjne. */
+  function blokResztek() {
+    const lista = k.dodatkowePlyty || [];
+    if (!lista.length) return null;
+    const suma = lista.reduce((a, d) => a + (d.cena || 0), 0);
+    return h('div', { class: 'rozrys-uwagi' },
+      ...lista.map((d, i) => h('div', { class: 'mini' },
+        '• ' + (d.etykieta || 'płyta dodatkowa') + ' — ' + (d.szer / 10) + '×' + (d.wys / 10) + ' cm · ' +
+        (d.cena ? d.cena + ' zł' : '0 zł (resztka)') + ' ',
+        h('button', {
+          class: 'link-btn', type: 'button',
+          onclick: () => {
+            zmiana({ dodatkowePlyty: lista.filter((_, j) => j !== i) });
+            rysujWyniki();
+          },
+        }, 'usuń'))),
+      h('div', { class: 'mini' },
+        'Materiał w wycenie: płyty pełnowymiarowe wg automatu + dodatkowe wg wpisanych cen (razem ' +
+        suma + ' zł). Kwota dla klienta nie zmienia się sama — decyzja należy do Ciebie.'));
   }
 
   function rysujWyniki() {
@@ -101,9 +165,10 @@ export function widokRozrysu(kontekst, onZmiana) {
     gora.replaceChildren(
       naglowek(wynik, k.plyta, k.opisMaterialu, !!reczny),
       ostrzezenia(wynik, k.plytZWyceny, k.polowkaZWyceny),
-      ...(reczny ? [blokProblemow(problemy, reczny, k.plytZWyceny)] : [])
+      ...(reczny ? [blokProblemow(problemy, reczny, k.plytZWyceny)] : []),
+      ...[blokResztek()].filter(Boolean)
     );
-    pasek.replaceChildren(...narzedzia());
+    pasek.replaceChildren(...narzedzia(), formularzResztki());
 
     const zle = new Set(problemy.map((x) => x.id));
     dol.replaceChildren(
