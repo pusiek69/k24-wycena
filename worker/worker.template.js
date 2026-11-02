@@ -44,6 +44,7 @@ import { kodWazny } from './partnerzy.js';
 import { partnerPoKodzie, konfigPartnerska } from './partnerzy-baza.js';
 import { tematZgloszeniaPartnera, mailZgloszeniePartnera, typPartnera } from './mail-partner.js';
 import { DOMYSLNE } from '../src/app/ustawienia.js';
+import { wyslijSmsOferta } from './sms.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
@@ -945,7 +946,7 @@ async function obsluzOfertaWyslij(request, env, cors) {
    */
   o.wiadomosc = String(o.wiadomosc || '').trim().slice(0, MAKS_ZNAKOW);
 
-  const klient = await env.BAZA.prepare(`SELECT id, imie, email FROM klienci WHERE id = ?`)
+  const klient = await env.BAZA.prepare(`SELECT id, imie, email, telefon FROM klienci WHERE id = ?`)
     .bind(Number(d.leadId))
     .first();
   if (!klient) return json({ error: 'Nie ma takiej karty.' }, 404, cors);
@@ -1064,7 +1065,51 @@ async function obsluzOfertaWyslij(request, env, cors) {
     }
   }
 
-  return json({ ok: true, token: zapis.watek, link, mail: wyslany, brakMaila: !maMail, aktualizacja }, 200, cors);
+  /*
+   * SMS DO KLIENTA (2.11.2026, korekta: AUTOMATYCZNIE, zero-klik):
+   * po wysłanym mailu z ofertą klient dostaje SMS-a, że wycena czeka
+   * na e-mailu. Globalny wyłącznik w panelu (klucz `smsPoOfercie`,
+   * brak wpisu = włączone). Awaria SMS-a niczego nie psuje; ślad idzie
+   * w notatkę karty.
+   */
+  let sms = { wyslany: false, powod: 'bez-maila' };
+  if (wyslany) {
+    try {
+      const wlacznik = await env.BAZA.prepare(
+        `SELECT wartosc FROM ustawienia WHERE klucz = 'smsPoOfercie'`
+      ).first();
+      if (wlacznik && Number(wlacznik.wartosc) === 0) {
+        sms = { wyslany: false, powod: 'wylaczony-w-panelu' };
+      } else {
+        sms = await wyslijSmsOferta(env, klient.telefon);
+        if (sms.wyslany) {
+          await dopiszWiadomoscLubNotatkeSms(env, klient.id);
+        }
+      }
+    } catch (e) {
+      console.error('sms oferta', e?.message || e);
+      sms = { wyslany: false, powod: 'blad' };
+    }
+  }
+
+  return json({ ok: true, token: zapis.watek, link, mail: wyslany, brakMaila: !maMail, aktualizacja, sms }, 200, cors);
+}
+
+/** Ślad SMS-a na karcie — osobna funkcja, żeby awaria notatki nie ubiła odpowiedzi. */
+async function dopiszWiadomoscLubNotatkeSms(env, klientId) {
+  try {
+    await env.BAZA.prepare(
+      `INSERT INTO notatki (klient_id, autor, tresc, utworzono) VALUES (?, 'system', ?, ?)`
+    )
+      .bind(
+        klientId,
+        'SMS do klienta: „wycena wyslana na e-mail, kontakt 796 991 128" (automat po wysłaniu oferty)',
+        new Date().toISOString()
+      )
+      .run();
+  } catch (e) {
+    console.error('sms notatka', e?.message || e);
+  }
 }
 
 

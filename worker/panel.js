@@ -134,6 +134,7 @@ export async function obsluzPanel(request, env) {
     return await apiKlientNowy(request, env);
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
   if (sciezka === '/panel/api/stawki') return await apiStawki(request, env);
+  if (sciezka === '/panel/api/sms-auto') return await apiSmsAuto(request, env);
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
   if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
     return await apiOdpowiedz(request, env);
@@ -490,6 +491,25 @@ async function apiPartnerRozliczenie(request, env) {
   const d = await request.json().catch(() => null);
   const wynik = await rozliczenieMiesiaca(env, d?.miesiac);
   return json(wynik, wynik.ok ? 200 : 400);
+}
+
+/**
+ * GLOBALNY WYŁĄCZNIK SMS-ów po ofercie (2.11.2026) — furtka: przepływ
+ * jest zero-klik (SMS idzie automatycznie), ale Dawid może go wyłączyć
+ * w jednym miejscu. Brak wpisu = włączone.
+ */
+async function apiSmsAuto(request, env) {
+  if (request.method === 'POST') {
+    const d = await request.json().catch(() => null);
+    await env.BAZA.prepare(
+      `INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES ('smsPoOfercie', ?, ?)
+       ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmieniono = excluded.zmieniono`
+    )
+      .bind(d?.wlaczony ? '1' : '0', new Date().toISOString())
+      .run();
+  }
+  const w = await env.BAZA.prepare(`SELECT wartosc FROM ustawienia WHERE klucz = 'smsPoOfercie'`).first();
+  return json({ ok: true, wlaczony: !(w && Number(w.wartosc) === 0) });
 }
 
 /**
@@ -1543,6 +1563,12 @@ async function rysujStawki(){
       '</label>';
   }).join('');
 
+  fetch('/panel/api/sms-auto').then(function(r){return r.json();}).then(function(d){
+    var c = document.getElementById('sms-auto');
+    if(c){ c.checked = !!d.wlaczony; c.onchange = function(){
+      fetch('/panel/api/sms-auto', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({wlaczony: c.checked})});
+    }; }
+  });
   document.getElementById('stawki').innerHTML =
     '<h2>Stawki zak\u0142adu <button class="chip" type="button" id="stawki-pokaz">poka\u017c / ukryj</button></h2>' +
     '<div class="lejek" id="stawki-tresc" hidden>' +
@@ -1551,6 +1577,8 @@ async function rysujStawki(){
       '<div class="stawki-siatka">' + pola + '</div>' +
       '<p><button class="btn" type="button" id="stawki-zapisz">Zapisz stawki</button> ' +
       '<button class="btn cichy" type="button" id="stawki-test">Wycena testowa \u2197</button></p>' +
+      '<p class="mini"><label style="display:inline-flex;align-items:center;gap:.4rem;min-height:40px">' +
+      '<input type="checkbox" id="sms-auto"> \u{1F4F1} SMS do klienta po wys\u0142aniu wyceny (automatycznie, gdy karta ma numer)</label></p>' +
       '<p class="mini" id="stawki-info"></p>' +
     '</div>';
 }

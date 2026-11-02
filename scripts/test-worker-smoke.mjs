@@ -69,9 +69,15 @@ const wyslane = [];
 // Treść wychodzących maili — bez niej dało się sprawdzić tylko ILE ich
 // poszło, a nie CO w nich było (np. czy temat niesie „PILNE").
 const listy = [];
+// Wywołania mostu SMS (bartek-sms) — co i do kogo poszłoby SMS-em.
+const smsy = [];
 const prawdziwyFetch = globalThis.fetch;
 globalThis.fetch = async (url, opcje) => {
   const adres = String(url?.url || url);
+  if (/bartek-sms\.kamieniarstwo24h\.workers\.dev/.test(adres)) {
+    smsy.push({ auth: opcje?.headers?.authorization || opcje?.headers?.Authorization || '', ...JSON.parse(String(opcje?.body || '{}')) });
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } });
+  }
   if (/api\.resend\.com|api\.anthropic\.com|interstone\.pl/.test(adres)) {
     wyslane.push(adres);
     if (adres.includes('resend.com')) {
@@ -98,6 +104,7 @@ const srodowisko = () => ({
   PANEL_HASLO: 'testowe-haslo',
   RESEND_API_KEY: 'test-klucz-bez-pokrycia',
   LEAD_EMAIL: 'kamieniarstwo24h@example.com',
+  MOST_SEKRET: 'testowy-most',
 });
 
 const zapytanie = (sciezka, cialo) =>
@@ -1662,6 +1669,75 @@ if (JEST) {
     assert.equal(kC.oferta, null, 'klient bez oferty nie ma plakietki');
   });
 
+
+
+  test('SMS po ofercie: domyślnie idzie, treść GSM-7, notatka na karcie (2.11.2026)', async () => {
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'sms-tak@example.com', phone: '600 100 881' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-tak@example.com'`).bind().first();
+    smsy.length = 0;
+    const odp = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    assert.equal(odp.mail, true);
+    assert.equal(odp.sms?.wyslany, true, `sms: ${JSON.stringify(odp.sms)}`);
+    assert.equal(smsy.length, 1, 'miał pójść dokładnie jeden SMS');
+    assert.equal(smsy[0].do, '600100881');
+    assert.equal(smsy[0].auth, 'Bearer testowy-most');
+    assert.equal(
+      smsy[0].tresc,
+      'Kamieniarstwo 24h: wycena blatu zostala wyslana na Pana/Pani e-mail. Zapraszamy do kontaktu: 796 991 128'
+    );
+    assert.ok(smsy[0].tresc.length <= 160, 'SMS ma się mieścić w jednym segmencie');
+    assert.ok(!/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(smsy[0].tresc), 'ogonki rozbiłyby segmenty GSM-7');
+    const notatki = await env.BAZA.prepare(`SELECT tresc FROM notatki WHERE klient_id = ?`).bind(k.id).all();
+    assert.ok((notatki.results || []).some((n) => /SMS/i.test(n.tresc)), 'brak śladu SMS na karcie');
+  });
+
+  test('SMS: globalny wyłącznik / brak telefonu / brak sekretu = ZERO SMS, mail żyje', async () => {
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    // a) Dawid wyłączył SMS-y w panelu (furtka; przepływ i tak zero-klik).
+    await env.BAZA.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES ('smsPoOfercie','0',?)`)
+      .bind(new Date().toISOString()).run();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'sms-nie@example.com', phone: '600100882' }), env, ctx);
+    const a = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-nie@example.com'`).bind().first();
+    smsy.length = 0;
+    const odpA = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, a.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    assert.equal(odpA.mail, true);
+    assert.equal(smsy.length, 0, 'SMS poszedł mimo wyłącznika');
+    assert.equal(odpA.sms?.powod, 'wylaczony-w-panelu');
+    await env.BAZA.prepare(`DELETE FROM ustawienia WHERE klucz='smsPoOfercie'`).bind().run();
+
+    // b) karta bez telefonu (ręczna z samym mailem się nie da — telefon obowiązkowy;
+    //    czyścimy numer wprost w bazie, jak przy starych kartach).
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'sms-bez-tel@example.com', phone: '600100883' }), env, ctx);
+    const b = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-bez-tel@example.com'`).bind().first();
+    await env.BAZA.prepare(`UPDATE klienci SET telefon='' WHERE id=?`).bind(b.id).run();
+    smsy.length = 0;
+    const odpB = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, b.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    assert.equal(odpB.mail, true, 'mail ma iść niezależnie od SMS');
+    assert.equal(odpB.sms?.wyslany, false);
+    assert.equal(odpB.sms?.powod, 'brak-telefonu');
+    assert.equal(smsy.length, 0);
+
+    // c) brak sekretu mostu = funkcja wyłączona, zero prób.
+    const envBez = srodowisko();
+    delete envBez.MOST_SEKRET;
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'sms-off@example.com', phone: '600100884' }), envBez, ctx);
+    const c = await envBez.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-off@example.com'`).bind().first();
+    smsy.length = 0;
+    const odpC = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(envBez, c.id)), oferta: OFERTA_TESTOWA }), envBez, ctx)
+    ).json();
+    assert.equal(odpC.mail, true);
+    assert.equal(odpC.sms?.powod, 'wylaczony');
+    assert.equal(smsy.length, 0);
+  });
 
   test('PLAKIETKI przeżywają listę >100 kart (limit zmiennych D1)', async () => {
     /*
