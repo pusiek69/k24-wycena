@@ -35,14 +35,25 @@ export async function wyslijSmsOferta(env, telefon) {
   const cyfry = numerDoSms(telefon);
   if (!cyfry) return { wyslany: false, powod: 'brak-telefonu' };
   try {
-    const r = await fetch(MOST_URL, {
+    /*
+     * SERVICE BINDING zamiast gołego fetch (naprawa 2.11.2026): wywołanie
+     * własnej domeny *.workers.dev z innego workera tego samego konta
+     * Cloudflare odbija 404 — binding (env.SMS_MOST_WORKER) idzie wprost
+     * do workera bartek-sms, z pominięciem publicznej sieci. Fallback na
+     * fetch zostaje dla testów (atrapa przechwytuje adres) i na wypadek
+     * braku bindingu w środowisku.
+     */
+    const init = {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         authorization: `Bearer ${env.MOST_SEKRET}`,
       },
       body: JSON.stringify({ do: cyfry, tresc: TRESC_SMS_OFERTA }),
-    });
+    };
+    const r = env.SMS_MOST_WORKER
+      ? await env.SMS_MOST_WORKER.fetch(new Request(MOST_URL, init))
+      : await fetch(MOST_URL, init);
     if (!r.ok) {
       console.error('sms most', r.status, await r.text().catch(() => ''));
       return { wyslany: false, powod: `most-${r.status}` };

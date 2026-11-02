@@ -57,3 +57,13 @@ database_id = "ef8cf85e-b185-4c1c-84b8-c1d62e03a023"
 # nie kosztuje.
 [triggers]
 crons = ["*/30 * * * *"]
+
+# MOST SMS (2.11.2026): wywołanie workera bartek-sms przez SERVICE BINDING,
+# nie przez publiczny adres *.workers.dev — fetch między workerami po tej
+# domenie w tym samym koncie Cloudflare odbija 404 (złapane na produkcji
+# przy pierwszym teście SMS po ofercie). Binding omija sieć publiczną
+# w całości; autoryzacja MOST_SEKRET i tak zostaje (obrona w głąb).
+[[services]]
+binding = "SMS_MOST_WORKER"
+service = "bartek-sms"
+
