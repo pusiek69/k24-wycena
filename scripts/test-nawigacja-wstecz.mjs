@@ -54,7 +54,7 @@ test('każdy poziom drzewka ma przycisk wstecz w pomocniku', () => {
 });
 
 test('wymiary i szczegóły mają dyskretne „zmień materiał" bez restartu', () => {
-  assert.match(pom, /pomocnikWymiary[\s\S]{0,4500}material:wstecz/, 'pomocnikWymiary bez „zmień materiał"');
+  assert.match(pom, /pomocnikWymiary[\s\S]{0,7000}material:wstecz/, 'pomocnikWymiary bez „zmień materiał"');
   assert.match(pom, /pomocnikSzczegoly[\s\S]{0,6000}material:wstecz/, 'pomocnikSzczegoly bez „zmień materiał"');
   assert.match(pom, /Zmień materiał/);
 });

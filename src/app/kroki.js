@@ -1,4 +1,5 @@
 import { h, zl, liczba, uprosc } from './dom.js';
+import { poprzednieWymiary, zapomnijWymiary, opisWymiarow } from './pamiec-wymiarow.js';
 import { opcjaDostepna } from '../engine/opcje-dekoru.js';
 import { FIRMY, grubosciDekoru, cenaWpisu } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
@@ -364,6 +365,37 @@ export function krokWymiary(stan, a) {
   };
 
   const listaOdcinkow = h('div', { class: 'odcinki' });
+
+  /*
+   * PAMIĘĆ WYMIARÓW (2.11.2026) — jak w rozmowie: klient wraca policzyć
+   * inny materiał i dostaje propozycję zamiast pustych pól. „Użyj" ładuje
+   * odcinki do normalnego widoku (edycja naturalna, pola są na ekranie),
+   * „od nowa" czyści pamięć. Tylko gdy w kroku stoją jeszcze domyślne.
+   */
+  const pamiec = poprzednieWymiary();
+  let pamiecPasek = null;
+  if (pamiec && stan.odcinki.length === 1 && !(stan.odcinki[0].dl > 0 && stan.odcinki[0].uzupelnione)) {
+    pamiecPasek = h(
+      'div',
+      { class: 'info pom-pamiec' },
+      h('p', {}, 'Użyć poprzednich wymiarów? ' + opisWymiarow(pamiec.odcinki)),
+      h('button', {
+        class: 'btn', type: 'button',
+        onclick: () => {
+          stan.odcinki.length = 0;
+          for (const o of pamiec.odcinki) stan.odcinki.push({ gl: o.gl, dl: o.dl, ...(o.etykieta ? { etykieta: o.etykieta } : {}) });
+          pamiecPasek?.remove();
+          rysujOdcinki();
+          odswiez();
+        },
+      }, 'Tak, te same (możesz poprawić)'),
+      ' ',
+      h('button', {
+        class: 'btn ghost', type: 'button',
+        onclick: () => { zapomnijWymiary(); pamiecPasek?.remove(); },
+      }, 'Zacznij od nowa')
+    );
+  }
   const rysujOdcinki = () => {
     listaOdcinkow.replaceChildren(
       ...stan.odcinki.map((o, i) =>
@@ -431,6 +463,7 @@ export function krokWymiary(stan, a) {
       'Typowa głębokość blatu kuchennego to 60–65 cm. Wymiary mogą być przybliżone, dokładne bierzemy na pomiarze.',
 
     plytaPasek(stan, a),
+    pamiecPasek,
 
     grubosci.length > 1
       ? h(

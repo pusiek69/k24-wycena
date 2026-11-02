@@ -1,3 +1,4 @@
+import { poprzednieWymiary, zapomnijWymiary, opisWymiarow } from './pamiec-wymiarow.js';
 import { h, uprosc } from './dom.js';
 import { postep } from './kroki-postep.js';
 import { FIRMY, firmaWgSlug, grubosciDekoru } from '../firms/index.js';
@@ -461,6 +462,45 @@ export function pomocnikWymiary(wyslij) {
   const lista = h('div', { class: 'pom-odcinki' });
 
   /*
+   * PAMIĘĆ WYMIARÓW (zlecenie Dawida, 2.11.2026): klient, który już raz
+   * policzył blat, nie wpisuje wymiarów od nowa. Jedno jasne pytanie,
+   * trzy duże przyciski: te same (wysyła od razu), edytuj (ładuje do pól),
+   * od nowa (czyści pamięć). Dane tylko w JEGO przeglądarce, 90 dni.
+   */
+  const pamiec = poprzednieWymiary();
+  let pytanie = null;
+  if (pamiec) {
+    const uzyj = () =>
+      wyslij(
+        'wymiary',
+        'Wymiary blatu: ' +
+          pamiec.odcinki.map((o) => `${o.etykieta ? `${o.etykieta} ` : ''}${o.gl}×${o.dl} cm`).join(', ') +
+          '.'
+      );
+    const edytuj = () => {
+      odcinki.length = 0;
+      for (const o of pamiec.odcinki) odcinki.push({ gl: o.gl, dl: o.dl, etykieta: o.etykieta || '' });
+      pytanie?.remove();
+      pytanie = null;
+      rysuj();
+    };
+    const odNowa = () => {
+      zapomnijWymiary();
+      pytanie?.remove();
+      pytanie = null;
+    };
+    pytanie = h(
+      'div',
+      { class: 'pom-pamiec' },
+      h('p', { class: 'pom-podpowiedz' }, 'Użyć poprzednich wymiarów? ' + opisWymiarow(pamiec.odcinki)),
+      h('div', { class: 'pom-pamiec-przyciski' },
+        h('button', { class: 'btn', type: 'button', onclick: uzyj }, 'Tak, te same'),
+        h('button', { class: 'pom-pomin', type: 'button', onclick: edytuj }, 'Edytuj'),
+        h('button', { class: 'pom-pomin', type: 'button', onclick: odNowa }, 'Zacznij od nowa'))
+    );
+  }
+
+  /*
    * PRZEBUDOWA WIDOKU 21.10.2026 (zlecenie Dawida): na telefonie wiersz
    * „1. [60] × [długość] cm" zlewał się w jedną linijkę drobnych pól.
    * Każdy odcinek jest teraz OSOBNĄ KARTĄ z nagłówkiem („Odcinek 1"),
@@ -553,6 +593,7 @@ export function pomocnikWymiary(wyslij) {
 
   return ramka(
     { tytul: 'Podaj wymiary blatu', krok: 'wymiary' },
+    pytanie,
     h('p', { class: 'pom-podpowiedz' }, 'Głębokość zwykle 60 cm — wystarczy wpisać długość.'),
     lista,
     h('button', { class: 'btn', type: 'button', onclick: gotowe }, 'Gotowe →'),

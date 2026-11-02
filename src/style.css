@@ -2380,3 +2380,9 @@ button { color: var(--cream); background: transparent; }
   .pasek-partnerzy { flex-direction: column; align-items: flex-start; }
   .pasek-partnerzy .btn { width: 100%; text-align: center; }
 }
+
+/* Pamięć wymiarów (2.11.2026): jedno pytanie, duże przyciski na dotyk. */
+.pom-pamiec { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--vein); border-radius: 10px; }
+.pom-pamiec .pom-podpowiedz, .pom-pamiec p { margin: 0 0 10px; }
+.pom-pamiec-przyciski { display: flex; flex-wrap: wrap; gap: 8px; }
+.pom-pamiec .btn, .pom-pamiec .pom-pomin { min-height: 48px; }

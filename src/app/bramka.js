@@ -4,6 +4,7 @@ import { wyslijLead, wyslijLeadZapasowo } from '../api.js';
 import { zdarzenie, zdarzenieWycena, konwersjaLead } from '../analytics/zdarzenia.js';
 import { zrodloLeada } from './zrodlo.js';
 import { partnerDoLeada } from './partner.js';
+import { zapamietajWymiary } from './pamiec-wymiarow.js';
 import { panelFeedbacku } from './feedback.js';
 import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { TERMINY } from './termin.js';
@@ -210,6 +211,15 @@ function formularzBramki(w, box, opcje) {
       partner: partnerDoLeada(),
       transcript: typeof opcje.transkrypcja === 'function' ? opcje.transkrypcja() : '',
     };
+
+    /*
+     * PAMIĘĆ WYMIARÓW (2.11.2026): zapis dopiero przy wysłaniu zgłoszenia
+     * i TYLKO lokalnie (localStorage klienta, 90 dni) — gdy klient wróci
+     * policzyć inny materiał, rozmowa i kreator zaproponują te same
+     * odcinki zamiast kazać wpisywać od nowa. Nic nie idzie na serwer
+     * poza normalnym leadem.
+     */
+    zapamietajWymiary(zgloszenie.szczegoly?.odcinki);
 
     const zalacznik = plik.files?.[0];
     if (zalacznik && zalacznik.size <= MAX_PLIK) {
