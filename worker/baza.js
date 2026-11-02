@@ -556,15 +556,19 @@ export async function lista(env, filtry = {}) {
    */
   if (karty.length) {
     try {
-      const ids = karty.map((k) => k.id);
-      const znaki = ids.map(() => '?').join(',');
+      /*
+       * ⚠ BEZ listy parametrów (naprawa 2.11.2026): przy 107 kartach
+       * wiązanie po parametrze na kartę przebiło limit zmiennych D1 (100)
+       * i kwerenda padała — catch gasił wszystkie plakietki. Bierzemy
+       * najnowsze wersje Dawida WSZYSTKICH klientów (dziesiątki wierszy)
+       * i filtrujemy mapą po stronie JS — koszt pomijalny, limit nie
+       * istnieje niezależnie od długości listy.
+       */
       const ostatnie = await env.BAZA.prepare(
         `SELECT klient_id, otwarcia, ostatnie_otwarcie FROM wyceny
-          WHERE wersja = 'dawid' AND klient_id IN (${znaki})
+          WHERE wersja = 'dawid'
             AND id IN (SELECT MAX(id) FROM wyceny WHERE wersja = 'dawid' GROUP BY klient_id)`
-      )
-        .bind(...ids)
-        .all();
+      ).all();
       const mapa = new Map(
         (ostatnie.results || []).map((w) => [
           w.klient_id,

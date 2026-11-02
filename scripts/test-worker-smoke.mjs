@@ -1662,6 +1662,38 @@ if (JEST) {
     assert.equal(kC.oferta, null, 'klient bez oferty nie ma plakietki');
   });
 
+
+  test('PLAKIETKI przeżywają listę >100 kart (limit zmiennych D1)', async () => {
+    /*
+     * ⚠ REGRESJA Z PRODUKCJI (2.11.2026): przy 107 kartach kwerenda
+     * o otwarcia wiązała po parametrze na kartę i D1 odbijał ją błędem
+     * „too many SQL variables" (limit 100) — catch gasił WSZYSTKIE
+     * plakietki. Kwerenda nie może zależeć od długości listy.
+     */
+    const env = srodowisko();
+    const cookie = await ciastkoPanelu(env);
+    const czas = new Date().toISOString();
+    for (let i = 0; i < 120; i++) {
+      await env.BAZA.prepare(
+        `INSERT INTO klienci (imie, telefon, telefon_klucz, status, zrodlo, flagi, utworzono, ruch)
+         VALUES (?, ?, ?, 'nowy', 'nieznane', '[]', ?, ?)`
+      ).bind(`Masowy ${i}`, `6001${String(i).padStart(5, '0')}`, `6001${String(i).padStart(5, '0')}`, czas, czas).run();
+    }
+    await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'wsrod-tlumu@example.com', phone: '600199999' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='wsrod-tlumu@example.com'`).bind().first();
+    const oferta = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    await worker.fetch(zapytanie('/oferta/dane', { token: String(oferta.link).split('#')[1] }), env, ctx);
+
+    const dane = await (
+      await worker.fetch(new Request('https://k24h.example/panel/api/dane?limit=500', { headers: { origin: 'https://kam24h.pl', cookie } }), env, ctx)
+    ).json();
+    assert.ok(dane.lista.length > 100, `lista ma ${dane.lista.length} kart — scenariusz wymaga >100`);
+    const moja = dane.lista.find((x) => x.email === 'wsrod-tlumu@example.com');
+    assert.equal(moja.oferta?.otwarcia, 1, 'plakietka zgasła na dużej liście (limit zmiennych D1)');
+  });
+
   test('UI listy: plakietka 👁 (szara 0 / złota ≥1) i filtr nieotwartych ofert', () => {
     const panel = fs.readFileSync(new URL('../worker/panel.js', import.meta.url), 'utf8');
     assert.match(panel, /oczkoOferty/, 'brak plakietki otwarć w kartaHtml');
