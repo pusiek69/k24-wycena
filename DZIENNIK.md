@@ -5,6 +5,33 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-11-03 (sesja Cowork) — opis meta spieku pod CTR; trend trzyma (64 klik./tydz.); leady: 48 zdarzeń = 28 osób
+
+**Stan GSC (7 dni, 26.10–1.11):** **64 klik.** (kolejny rekord; 25–31.10 było 56), 1 840 wyśw., CTR 3,5%, śr. poz. 11,7. Trend po odczycie 25–31.10 TRZYMA i rośnie. Frazy 0 klik. z wolumenem: „blat ze spieku kwarcowego cena" 42 · „spiek kwarcowy cena za m2 blat" 28 · „blat ze spieku kwarcowego" 25 · „spiek kwarcowy blat" 25 — wszystkie na /blaty-ze-spieku, wszystkie adresuje dzisiejsza zmiana opisu.
+
+**Zmiana (commit `d854ea8` + sitemapa):** opis meta `/blaty-ze-spieku` (NAJPILNIEJSZA z planu: 937–975 wyśw./tydz., **CTR 1,1%**). Nowy (152 zn., identyczny w meta/og/schema): „Ile kosztuje blat ze spieku? Materiał 620–2110 zł/m², gotowy blat 60×300 cm — pomiar i montaż w cenie — od 7300 zł. 502 wzory. Wycena online w 2 minuty." Wyróżnik „pomiar i montaż w cenie" — konkurencja (ignikom) podaje w snippecie ceny samego materiału; kotwica generatora „zł. NNN wzory." zachowana. Liczby „przed": strona 937 wyśw./10 klik./CTR 1,1% (7 dni). Jedna domena zmian — nic więcej nie ruszane (tytuły miast już na wzorcu, wg automatu z 3.11).
+
+**Leady — weryfikacja w GA4 (28 dni):** `lead_wyslany` = **48 zdarzeń, ale 28 użytkowników** (1,71 zdarzenia/os.) — „20 leadów" z tygodnia to zdarzenia, nie osoby; realnie ~60% tego. Tygodniowy skok ruchu w dużej mierze z Facebooka (Organic Social 79 sesji; facebook.com 47 użytk.) i z Warszawy (36 użytk.) — część leadów może być spoza obszaru. Rozstrzygnięcie: unikalne telefony w CRM (Dawid).
+
+**Obserwacje:** K6 (tytuł konglomeratu) — odczyt ~9.11, NIE ruszane (dziś fraza 11 wyśw./poz. 41 — za świeże). Mielec/Lublin po linkach z 19/29.10 — odczyt przy K6.
+**Po pushu Dawida (bat):** weryfikacja opisu na produkcji + GSC „Poproś o zindeksowanie" `/blaty-ze-spieku`.
+
+## 2026-11-03 (sesja automatyczna) — BEZ wdrożenia: brak możliwości pusha z tej sesji; testy zielone w czystej kopii
+
+**Stan:** repo czyste, origin/main = HEAD. W czystej kopii repo (npm ci na Linuxie, bez ruszania node_modules Dawida) `npm test` = **1067/1067 zielone** — czerwone 23 z 2.11 to wyłącznie artefakt esbuild Windows/Linux, nie realny błąd. Tytuły/opisy Mielec, Tarnobrzeg, Sandomierz, Staszów są już na wzorcu („kamienne … granit, spiek, kwarc", „wycena online w 2 minuty"), więc blind zmiana tytułu nic nie da bez odczytu GSC.
+**Dlaczego bez zmiany:** push na GitHub (deploy) nie jest możliwy z tej sesji (brak poświadczeń), a świeżych liczb GSC nie mam. Nie dokładałem treści „na ślepo".
+**Proponowana zmiana na jutro:** (1) Dawid/sesja z Chrome: odczyt GSC 28 dni — Mielec (poz., CTR), Staszów, granit, klaster cenowy spieku; (2) jedna mała zmiana na stronie z największą liczbą wyświetleń przy 0 kliknięć; (3) jeśli brak danych — FAQ z czasem dojazdu na /blaty-kuchenne-mielec, ale TYLKO po weryfikacji trasy w Mapach Google (obecnie 40 km).
+
+---
+
+## 2026-11-02 (sesja automatyczna) — BEZ wdrożenia: testy nie do potwierdzenia w tym środowisku; propozycja na jutro
+
+**Stan:** repo czyste, origin/main = HEAD. `npm test` 834/857 — 23 czerwone to wyłącznie „esbuild for another platform" (node_modules z Windows w Linuxowej VM), jak 21–29.10. Brak dostępu do GSC/Chrome w tej sesji, więc bez świeżych liczb nie dobierałem zmiany „na ślepo".
+**Proponowana zmiana na jutro (wykonać w pierwszej kolejności, najlepiej z Chrome/GSC albo sesją na Windows):** odczyt punktu kontrolnego z 29.10 (Mielec po wzmocnieniu z 19.10 — czy SERP #3 się trzyma; granit po nowym tytule; klaster cenowy spieku), a potem jedna mała zmiana na stronie, która ma najwięcej wyświetleń przy 0 kliknięć — pierwszy kandydat: tytuł/opis `/blaty-kuchenne-staszow` (K8, bez odczytu) albo FAQ z odległością i czasem dojazdu na `/blaty-kuchenne-mielec` (tylko wartości zweryfikowane w Mapach Google; ignikom wygrywa tam snippetem z odległością).
+**Dla Dawida:** w razie potrzeby uruchom `npm test` na Windows — tam bramka przechodzi.
+
+---
+
 ## 2026-10-29 (sesja Cowork, noc) — WDROŻONA paczka 26–29.10 + weryfikacja produkcji + indeksowanie
 
 **Zmiany (na produkcji po bacie Dawida):** ceny Architype wprost (Avant/
