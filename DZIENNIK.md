@@ -5,6 +5,11 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-11-04 (sesja automatyczna) — BEZ nowej zmiany: opis spieku (d854ea8) nadal NIE wypchniety; push niemozliwy z tej sesji
+
+**Stan:** repo czyste, 3 commity przed origin/main (d854ea8 opis meta /blaty-ze-spieku, b8965d5 sitemapa, 6a356b6 dziennik). `git push` z tej sesji: brak poswiadczen GitHub (could not read Username). Nie dokladam kolejnych zmian na wierzch niewdrozonej — przy jednej zmianie dziennie nie daloby sie ocenic efektu.
+**Do zrobienia przez Dawida:** `git push origin main` (Windows) -> po deployu weryfikacja opisu na /blaty-ze-spieku + GSC „Poproś o zindeksowanie". Dopiero potem kolejna zmiana (kandydaci: /blaty-z-konglomeratu „cena za metr", FAQ z dojazdem na Mielec — tylko km/czas z Map Google).
+
 ## 2026-11-03 (sesja Cowork) — opis meta spieku pod CTR; trend trzyma (64 klik./tydz.); leady: 48 zdarzeń = 28 osób
 
 **Stan GSC (7 dni, 26.10–1.11):** **64 klik.** (kolejny rekord; 25–31.10 było 56), 1 840 wyśw., CTR 3,5%, śr. poz. 11,7. Trend po odczycie 25–31.10 TRZYMA i rośnie. Frazy 0 klik. z wolumenem: „blat ze spieku kwarcowego cena" 42 · „spiek kwarcowy cena za m2 blat" 28 · „blat ze spieku kwarcowego" 25 · „spiek kwarcowy blat" 25 — wszystkie na /blaty-ze-spieku, wszystkie adresuje dzisiejsza zmiana opisu.
