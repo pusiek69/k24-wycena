@@ -5,6 +5,11 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-11-06 (sesja automatyczna) — BEZ nowej zmiany: 5 commitow nadal NIE wypchnietych (czwarty dzien); push niemozliwy z tej sesji
+
+**Stan:** repo czyste, 5 commitow przed origin/main (w tym opis spieku d854ea8). `git push`: brak poswiadczen GitHub (could not read Username). Nie dokladam zmian na wierzch niewdrozonej.
+**Dawid:** `git push origin main` (Windows) -> weryfikacja opisu /blaty-ze-spieku -> GSC „Poproś o zindeksowanie". Potem: FAQ z dojazdem na /blaty-kuchenne-mielec (km/czas tylko z Map Google), /blaty-z-konglomeratu „cena za metr".
+
 ## 2026-11-05 (sesja automatyczna) — BEZ nowej zmiany: 4 commity (opis spieku d854ea8 + sitemapa + dziennik) nadal NIE wypchniete
 
 **Stan:** repo czyste, 4 commity przed origin/main. `git push` z tej sesji: brak poswiadczen GitHub (could not read Username) — trzeci dzien z rzedu. Nie dokladam kolejnej zmiany na wierzch niewdrozonej (nie dalo by sie ocenic efektu).
