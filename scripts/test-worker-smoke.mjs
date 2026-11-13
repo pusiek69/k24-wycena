@@ -1739,6 +1739,82 @@ if (JEST) {
     assert.equal(smsy.length, 0);
   });
 
+
+  /* ═══ SMS DO DAWIDA: nowa wycena + wiadomość klienta (zlecenie 13.11.2026) ═══ */
+
+  const tylkoGsm = (t) => /^[A-Za-z0-9 .,:;!?'"()\-+\/@&%=*#<>_\n]*$/.test(t);
+
+  test('SMS DO DAWIDA o nowej wycenie z kalkulatora: kto, skąd, kwota, materiał, telefon', async () => {
+    const env = srodowisko();
+    smsy.length = 0;
+    await worker.fetch(
+      zapytanie('/lead', { ...LEAD, name: 'Łucja Żółć', city: 'Świętokrzyskie', phone: '600 100 901', email: 'sms-lead@example.com', termin: 'pilne' }),
+      env, ctx
+    );
+    const doDawida = smsy.filter((x) => x.do === '796991128');
+    assert.equal(doDawida.length, 1, `do Dawida miał pójść 1 SMS, poszło ${doDawida.length}`);
+    const t = doDawida[0].tresc;
+    assert.match(t, /Nowa wycena/);
+    assert.match(t, /Lucja Zolc/, 'imię bez ogonków (GSM-7)');
+    assert.match(t, /600100901/, 'brak telefonu klienta — Dawid ma oddzwonić z SMS-a');
+    assert.match(t, /PILNE/, 'pilny klient ma to mieć na początku');
+    assert.ok(t.length <= 160, `SMS ma ${t.length} znaków — jeden segment to 160`);
+    assert.ok(tylkoGsm(t), `znaki spoza GSM-7: ${t}`);
+    assert.equal(doDawida[0].auth, 'Bearer testowy-most');
+  });
+
+  test('SMS DO DAWIDA o wiadomości klienta spod wyceny: o co pyta + telefon', async () => {
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, name: 'Anna', email: 'sms-pyta@example.com', phone: '600100902' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-pyta@example.com'`).bind().first();
+    const oferta = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    const token = String(oferta.link).split('#')[1];
+
+    smsy.length = 0;
+    const pytanie = 'Dzień dobry, czy montaż jest w cenie? I czy zdążycie przed świętami? 😊';
+    const odp = await worker.fetch(zapytanie('/oferta/napisz', { token, tresc: pytanie }), env, ctx);
+    assert.equal(odp.status, 200);
+    await new Promise((r) => setTimeout(r, 20)); // SMS leci obok odpowiedzi (jak mail)
+    const doDawida = smsy.filter((x) => x.do === '796991128');
+    assert.equal(doDawida.length, 1, 'brak SMS-a do Dawida o wiadomości');
+    const t = doDawida[0].tresc;
+    assert.match(t, /Anna/);
+    assert.match(t, /600100902/);
+    assert.match(t, /czy montaz jest w cenie/, 'brak treści pytania (bez ogonków)');
+    assert.ok(t.length <= 160, `SMS ma ${t.length} znaków`);
+    assert.ok(tylkoGsm(t), `znaki spoza GSM-7: ${t}`);
+  });
+
+  test('SMS DO DAWIDA: długie pytanie ucięte z „...", telefon NIE wypada', async () => {
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, name: 'Basia', email: 'sms-dlugo@example.com', phone: '600100903' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='sms-dlugo@example.com'`).bind().first();
+    const oferta = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+    smsy.length = 0;
+    await worker.fetch(zapytanie('/oferta/napisz', { token: String(oferta.link).split('#')[1], tresc: 'bardzo dlugie pytanie '.repeat(20) }), env, ctx);
+    await new Promise((r) => setTimeout(r, 20));
+    const t = smsy.find((x) => x.do === '796991128').tresc;
+    assert.ok(t.length <= 160);
+    assert.match(t, /600100903/, 'telefon ma stać PRZED treścią, żeby ucięcie go nie zjadło');
+    assert.match(t, /\.\.\.$/, 'ucięta treść ma kończyć się „..."');
+  });
+
+  test('SMS DO DAWIDA: wyłącznik w panelu = cisza, a lead i maile żyją', async () => {
+    const env = srodowisko();
+    await env.BAZA.prepare(`INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES ('smsDoDawida','0',?)`)
+      .bind(new Date().toISOString()).run();
+    smsy.length = 0;
+    listy.length = 0;
+    const odp = await worker.fetch(zapytanie('/lead', { ...LEAD, email: 'sms-cisza@example.com', phone: '600100904' }), env, ctx);
+    assert.equal(odp.status, 200);
+    assert.equal(listy.length, 2, 'maile mają iść niezależnie od SMS-ów');
+    assert.equal(smsy.filter((x) => x.do === '796991128').length, 0, 'SMS poszedł mimo wyłącznika');
+  });
+
   test('PLAKIETKI przeżywają listę >100 kart (limit zmiennych D1)', async () => {
     /*
      * ⚠ REGRESJA Z PRODUKCJI (2.11.2026): przy 107 kartach kwerenda

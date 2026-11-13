@@ -134,7 +134,8 @@ export async function obsluzPanel(request, env) {
     return await apiKlientNowy(request, env);
   if (sciezka === '/panel/api/csv') return await apiCsv(env);
   if (sciezka === '/panel/api/stawki') return await apiStawki(request, env);
-  if (sciezka === '/panel/api/sms-auto') return await apiSmsAuto(request, env);
+  if (sciezka === '/panel/api/sms-auto') return await apiSmsAuto(request, env, 'smsPoOfercie');
+  if (sciezka === '/panel/api/sms-dawid') return await apiSmsAuto(request, env, 'smsDoDawida');
   if (sciezka === '/panel/api/test') return await apiTest(request, env);
   if (sciezka === '/panel/api/odpowiedz' && request.method === 'POST')
     return await apiOdpowiedz(request, env);
@@ -498,17 +499,20 @@ async function apiPartnerRozliczenie(request, env) {
  * jest zero-klik (SMS idzie automatycznie), ale Dawid może go wyłączyć
  * w jednym miejscu. Brak wpisu = włączone.
  */
-async function apiSmsAuto(request, env) {
+async function apiSmsAuto(request, env, klucz) {
+  // Dwa wyłączniki tą samą drogą (2.11 i 13.11.2026): SMS do KLIENTA po
+  // ofercie (smsPoOfercie) i SMS do DAWIDA o wycenie/wiadomości (smsDoDawida).
+  if (!['smsPoOfercie', 'smsDoDawida'].includes(klucz)) return json({ error: 'Nieznany przełącznik.' }, 400);
   if (request.method === 'POST') {
     const d = await request.json().catch(() => null);
     await env.BAZA.prepare(
-      `INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES ('smsPoOfercie', ?, ?)
+      `INSERT INTO ustawienia (klucz, wartosc, zmieniono) VALUES (?, ?, ?)
        ON CONFLICT(klucz) DO UPDATE SET wartosc = excluded.wartosc, zmieniono = excluded.zmieniono`
     )
-      .bind(d?.wlaczony ? '1' : '0', new Date().toISOString())
+      .bind(klucz, d?.wlaczony ? '1' : '0', new Date().toISOString())
       .run();
   }
-  const w = await env.BAZA.prepare(`SELECT wartosc FROM ustawienia WHERE klucz = 'smsPoOfercie'`).first();
+  const w = await env.BAZA.prepare(`SELECT wartosc FROM ustawienia WHERE klucz = ?`).bind(klucz).first();
   return json({ ok: true, wlaczony: !(w && Number(w.wartosc) === 0) });
 }
 
@@ -1563,11 +1567,13 @@ async function rysujStawki(){
       '</label>';
   }).join('');
 
-  fetch('/panel/api/sms-auto').then(function(r){return r.json();}).then(function(d){
-    var c = document.getElementById('sms-auto');
-    if(c){ c.checked = !!d.wlaczony; c.onchange = function(){
-      fetch('/panel/api/sms-auto', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({wlaczony: c.checked})});
-    }; }
+  [['sms-auto','/panel/api/sms-auto'], ['sms-dawid','/panel/api/sms-dawid']].forEach(function(para){
+    fetch(para[1]).then(function(r){return r.json();}).then(function(d){
+      var c = document.getElementById(para[0]);
+      if(c){ c.checked = !!d.wlaczony; c.onchange = function(){
+        fetch(para[1], {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({wlaczony: c.checked})});
+      }; }
+    });
   });
   document.getElementById('stawki').innerHTML =
     '<h2>Stawki zak\u0142adu <button class="chip" type="button" id="stawki-pokaz">poka\u017c / ukryj</button></h2>' +
@@ -1579,6 +1585,8 @@ async function rysujStawki(){
       '<button class="btn cichy" type="button" id="stawki-test">Wycena testowa \u2197</button></p>' +
       '<p class="mini"><label style="display:inline-flex;align-items:center;gap:.4rem;min-height:40px">' +
       '<input type="checkbox" id="sms-auto"> \u{1F4F1} SMS do klienta po wys\u0142aniu wyceny (automatycznie, gdy karta ma numer)</label></p>' +
+      '<p class="mini"><label style="display:inline-flex;align-items:center;gap:.4rem;min-height:40px">' +
+      '<input type="checkbox" id="sms-dawid"> \u{1F514} SMS do mnie (796 991 128) o nowej wycenie i wiadomo\u015bci klienta</label></p>' +
       '<p class="mini" id="stawki-info"></p>' +
     '</div>';
 }

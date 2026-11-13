@@ -44,7 +44,7 @@ import { kodWazny } from './partnerzy.js';
 import { partnerPoKodzie, konfigPartnerska } from './partnerzy-baza.js';
 import { tematZgloszeniaPartnera, mailZgloszeniePartnera, typPartnera } from './mail-partner.js';
 import { DOMYSLNE } from '../src/app/ustawienia.js';
-import { wyslijSmsOferta } from './sms.js';
+import { wyslijSmsOferta, wyslijSmsDoDawida, trescSmsLead, trescSmsWiadomosc } from './sms.js';
 import { linkPlyty } from '../src/app/magazyn-linki.js';
 import { kluczDekoru } from '../src/app/wyprzedaz-klucz.js';
 import { etykietaTerminu, pilny, znanyTermin } from '../src/app/termin.js';
@@ -574,6 +574,24 @@ async function obsluzLead(request, env, cors) {
   });
 
   // Zapis do bazy stoi wyżej (przed mailami) — patrz komentarz przy nim.
+
+  /*
+   * SMS DO DAWIDA o nowej wycenie (zlecenie 13.11.2026): szybki sygnał
+   * w telefonie obok maila — kto, telefon, skąd, kwota, materiał; PILNE
+   * i NIE DZWONIĆ na początku. Awaria SMS-a nie rusza leada ani maili.
+   */
+  await wyslijSmsDoDawida(
+    env,
+    trescSmsLead({
+      imie,
+      miejscowosc,
+      telefon,
+      kwota: szczegoly?.razem || d.kwota,
+      material: szczegoly?.firma ? [szczegoly.firma, szczegoly.dekor].filter(Boolean).join(' ') : (szczegoly?.material ? [szczegoly.material, szczegoly.dekor].filter(Boolean).join(' ') : ''),
+      pilne: pilny(terminId),
+      nieDzwonic: odmowiono(telefonZgoda),
+    })
+  );
 
   return json(
     { ok: true, doFirmy: doFirmyOdp, doKlienta: doKlientaOdp },
@@ -1188,6 +1206,12 @@ async function obsluzOfertaNapisz(request, env, cors) {
       }),
     });
     if (typeof powiadomienie?.catch === 'function') powiadomienie.catch(() => {});
+    // SMS DO DAWIDA (13.11.2026): „o co klient zapytał" — telefon przed
+    // treścią, ucięcie z „..." przy długich pytaniach. Leci obok odpowiedzi.
+    wyslijSmsDoDawida(
+      env,
+      trescSmsWiadomosc({ imie: klient?.imie, telefon: klient?.telefon, tresc: sprawdzenie.tresc })
+    ).catch(() => {});
 
     return json({ ok: true, rozmowa: await rozmowaOferty(env, kotwica) }, 200, cors);
   } catch (e) {
