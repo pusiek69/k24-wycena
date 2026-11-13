@@ -2386,3 +2386,20 @@ button { color: var(--cream); background: transparent; }
 .pom-pamiec .pom-podpowiedz, .pom-pamiec p { margin: 0 0 10px; }
 .pom-pamiec-przyciski { display: flex; flex-wrap: wrap; gap: 8px; }
 .pom-pamiec .btn, .pom-pamiec .pom-pomin { min-height: 48px; }
+
+/* ── Szybkie odpowiedzi w wiadomości do klienta (13.11.2026) ─────────────
+   Rządek przycisków-szablonów nad polem „Wiadomość od Ciebie" (edytor
+   właściciela). Zawijane, na dotyku pełnoprawny cel 44 px. */
+.od-szybkie-tytul { font-size: 13px; color: var(--muted); margin: 6px 0 6px; }
+.od-szybkie { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+.od-szybka {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.od-szybka:hover, .od-szybka:focus-visible { border-color: var(--vein); color: var(--vein); }

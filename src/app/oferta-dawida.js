@@ -49,6 +49,7 @@ import { gotoweStawki } from './stawki-klient.js';
 import { bezCenJednostkowych } from './oferta-detal.js';
 import { kartaOferty } from './oferta-widok.js';
 import { widokRozrysu, elementyZOdcinkow, podpisWyceny } from './rozrys.js';
+import { SZYBKIE_ODPOWIEDZI, doklejSzablon } from './szybkie-odpowiedzi.js';
 import { rozrysuj } from '../engine/nesting.js';
 import { doUkladu } from './rozkroj-reczny.js';
 import { DOMYSLNE } from './ustawienia.js';
@@ -1565,10 +1566,48 @@ function blokWiadomosci(stan) {
     stan.wiadomosc = pole.value;
   });
 
+  /*
+   * SZYBKIE ODPOWIEDZI (zlecenie Dawida, 13.11.2026): klik dokleja gotowy
+   * akapit (treści zaakceptowane przez Dawida — src/app/szybkie-odpowiedzi.js).
+   * Wspólny limit znaków z polem: szablon, który się nie zmieści w całości,
+   * nie wchodzi wcale — zamiast urwanego zdania jest czytelny komunikat.
+   */
+  const info = h('p', { class: 'form-nota', role: 'status' });
+  const szybkie = h(
+    'div',
+    { class: 'od-szybkie', 'aria-label': 'Szybkie odpowiedzi' },
+    ...SZYBKIE_ODPOWIEDZI.map((s) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'od-szybka',
+          title: s.tresc,
+          onclick: () => {
+            const nowy = doklejSzablon(pole.value, s.tresc, MAKS_WIADOMOSCI);
+            if (nowy === null) {
+              info.textContent = 'Ten szablon nie zmieści się w limicie ' + MAKS_WIADOMOSCI + ' znaków — skróć wiadomość albo wstaw inny.';
+              return;
+            }
+            pole.value = nowy;
+            stan.wiadomosc = pole.value; // szybkie: podgląd czyta świeży stan
+            info.textContent = '';
+            pole.focus();
+            pole.setSelectionRange(pole.value.length, pole.value.length);
+          },
+        },
+        s.etykieta
+      )
+    )
+  );
+
   return h(
     'div',
     { class: 'od-pasek', style: 'margin-top:18px' },
     h('div', { class: 'q-kicker' }, 'Wiadomość od Ciebie (zobaczy ją klient)'),
+    h('div', { class: 'od-szybkie-tytul' }, 'Szybkie odpowiedzi — kliknij, żeby dopisać (możesz łączyć i poprawiać):'),
+    szybkie,
+    info,
     pole,
     h(
       'p',
