@@ -1815,6 +1815,35 @@ if (JEST) {
     assert.equal(smsy.filter((x) => x.do === '796991128').length, 0, 'SMS poszedł mimo wyłącznika');
   });
 
+
+  test('SMS o wiadomości REJESTROWANY w ctx.waitUntil — inaczej Cloudflare go ucina', async () => {
+    /*
+     * ⚠ Z PRODUKCJI (13.11.2026): SMS o wiadomości klienta nie dochodził.
+     * Handler puszczał go w tle bez waitUntil, a Cloudflare przerywa
+     * niedokończone zadania po wysłaniu odpowiedzi. Testy czekały
+     * setTimeoutem, więc tego nie widziały. Ten test łapie zadania
+     * zarejestrowane w ctx tak, jak robi to prawdziwe środowisko.
+     */
+    const env = srodowisko();
+    await worker.fetch(zapytanie('/lead', { ...LEAD, name: 'Ola', email: 'wait@example.com', phone: '600100905' }), env, ctx);
+    const k = await env.BAZA.prepare(`SELECT id FROM klienci WHERE email='wait@example.com'`).bind().first();
+    const oferta = await (
+      await worker.fetch(zapytanie('/oferta/wyslij', { ...(await paczkaWlasciciela(env, k.id)), oferta: OFERTA_TESTOWA }), env, ctx)
+    ).json();
+
+    const zadania = [];
+    const ctxPrawdziwy = { waitUntil(p) { zadania.push(p); }, passThroughOnException() {} };
+    smsy.length = 0;
+    await worker.fetch(
+      zapytanie('/oferta/napisz', { token: String(oferta.link).split('#')[1], tresc: 'Czy montaż w cenie?' }),
+      env,
+      ctxPrawdziwy
+    );
+    assert.ok(zadania.length >= 1, 'SMS/mail nie trafiły do ctx.waitUntil — produkcja je utnie');
+    await Promise.all(zadania);
+    assert.equal(smsy.filter((x) => x.do === '796991128').length, 1, 'po dokończeniu zadań SMS do Dawida ma wyjść');
+  });
+
   test('PLAKIETKI przeżywają listę >100 kart (limit zmiennych D1)', async () => {
     /*
      * ⚠ REGRESJA Z PRODUKCJI (2.11.2026): przy 107 kartach kwerenda

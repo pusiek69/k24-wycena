@@ -153,7 +153,7 @@ export default {
       if (sciezka === '/ustawienia') return await obsluzUstawienia(env, cors);
       if (sciezka === '/oferta/dane') return await obsluzOfertaDane(request, env, cors);
       if (sciezka === '/oferta/wyslij') return await obsluzOfertaWyslij(request, env, cors);
-      if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors);
+      if (sciezka === '/oferta/napisz') return await obsluzOfertaNapisz(request, env, cors, ctx);
       if (sciezka === '/dyktando') return await obsluzDyktando(request, env, cors);
       if (sciezka === '/magazyn') return await obsluzMagazyn(request, cors, ctx);
       if (sciezka === '/wyprzedaz') return await obsluzWyprzedaz(request, env, cors);
@@ -1150,7 +1150,7 @@ async function dopiszWiadomoscLubNotatkeSms(env, klientId) {
  * Odpowiadamy ZAWSZE całym wątkiem, żeby strona nie musiała zgadywać,
  * co się zapisało.
  */
-async function obsluzOfertaNapisz(request, env, cors) {
+async function obsluzOfertaNapisz(request, env, cors, ctx) {
   const d = await request.json().catch(() => null);
   if (!d?.token) return json({ ok: false, powod: 'Brak wyceny.' }, 400, cors);
 
@@ -1205,13 +1205,21 @@ async function obsluzOfertaNapisz(request, env, cors) {
         linkEdycji: adresEdycji,
       }),
     });
-    if (typeof powiadomienie?.catch === 'function') powiadomienie.catch(() => {});
     // SMS DO DAWIDA (13.11.2026): „o co klient zapytał" — telefon przed
-    // treścią, ucięcie z „..." przy długich pytaniach. Leci obok odpowiedzi.
-    wyslijSmsDoDawida(
+    // treścią, ucięcie z „..." przy długich pytaniach.
+    const sms = wyslijSmsDoDawida(
       env,
       trescSmsWiadomosc({ imie: klient?.imie, telefon: klient?.telefon, tresc: sprawdzenie.tresc })
-    ).catch(() => {});
+    );
+    /*
+     * ⚠ ctx.waitUntil (naprawa z produkcji, 13.11.2026): mail i SMS lecą
+     * OBOK odpowiedzi (klient nie czeka), ale Cloudflare PRZERYWA
+     * niedokończone zadania po wysłaniu odpowiedzi — SMS ginął po cichu.
+     * waitUntil każe dokończyć oba zadania po odpowiedzi.
+     */
+    const wTle = Promise.allSettled([powiadomienie, sms]);
+    if (typeof ctx?.waitUntil === 'function') ctx.waitUntil(wTle);
+    else await wTle;
 
     return json({ ok: true, rozmowa: await rozmowaOferty(env, kotwica) }, 200, cors);
   } catch (e) {
