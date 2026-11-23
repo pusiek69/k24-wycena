@@ -118,7 +118,15 @@ test('przeglądarka nie przejmuje gestów nad zdjęciem', () => {
 /* ═══════════════════════════════════════════ waga */
 
 test('duże zdjęcie dociąga się dopiero przy podglądzie', () => {
-  // Na kafelku miniatura (~1 kB), pełna płyta dopiero w dymku i w oknie.
-  assert.match(KOMPONENT, /plikWzoru\(marka, dekor, true\)/);
+  // Na kafelku miniatura (~1 kB), cała płyta dopiero w dymku i w oknie.
+  assert.match(KOMPONENT, /plikWzoru\(marka, dekor, 'mini'\)/);
   assert.match(KOMPONENT, /loading="lazy"/);
+});
+
+test('podgląd prosi o CAŁĄ PŁYTĘ, nie o teksturę', () => {
+  // Sedno reklamacji Dawida: w dymku i w oknie ma być slab.
+  const dymek = KOMPONENT.slice(KOMPONENT.indexOf('function pokazDymek'), KOMPONENT.indexOf('function pokazDymek') + 400);
+  assert.match(dymek, /plikWzoru\(marka, dekor, 'slab'\)/);
+  const okno = KOMPONENT.slice(KOMPONENT.indexOf('export function otworzPodglad'), KOMPONENT.indexOf('export function otworzPodglad') + 400);
+  assert.match(okno, /plikWzoru\(marka, dekor, 'slab'\)/);
 });

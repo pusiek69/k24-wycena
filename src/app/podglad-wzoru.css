@@ -103,7 +103,9 @@
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 10px;
   padding: 12px max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-bottom, 0px));
-  background: rgba(10, 9, 8, 0.94);
+  /* Pełne krycie: przy 0,94 przez tło przebijał nagłówek strony
+     i płyta przestawała być jedyną rzeczą na ekranie. */
+  background: #0b0a09;
   opacity: 0;
   transition: opacity 0.16s ease;
 }

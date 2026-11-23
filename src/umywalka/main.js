@@ -423,7 +423,7 @@ function rysujKamienie() {
       const f = fakturaDekoru(p.marka, p.dekor, kolorDekoru(p.dekor, p.marka));
       const wybrany = p.marka === S.marka && p.dekor === S.dekor;
       // Kropka pokazuje PRAWDZIWY wzór, jeśli mamy zdjęcie z katalogu.
-      const mini = plikWzoru(p.marka, p.dekor, true);
+      const mini = plikWzoru(p.marka, p.dekor, 'mini');
       const tlo = mini
         ? `background-image:url('${mini}');background-size:cover;background-position:center`
         : `background:radial-gradient(circle at 32% 30%,${f.sp[1] || f.sp[0]},${f.base} 45%,${f.vein} 150%)`;

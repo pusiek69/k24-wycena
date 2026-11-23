@@ -23,7 +23,7 @@
  * ⚠ To warstwa wyświetlania. Nie dotyka wyceny, bramki leadów ani zdarzeń.
  */
 import './podglad-wzoru.css';
-import { plikWzoru } from '../generated/wzory-dekorow.js';
+import { plikWzoru, maCalaPlyte } from '../generated/wzory-dekorow.js';
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 6;
@@ -41,7 +41,8 @@ function schowajDymek() {
 }
 
 function pokazDymek(element, { marka, dekor }) {
-  const plik = plikWzoru(marka, dekor);
+  // CAŁA PŁYTA, nie wycinek — po to klient tu najeżdża.
+  const plik = plikWzoru(marka, dekor, 'slab');
   if (!plik || dymekDla === element) return;
   schowajDymek();
   dymekDla = element;
@@ -50,7 +51,7 @@ function pokazDymek(element, { marka, dekor }) {
   dymek.className = 'wzor-dymek';
   dymek.innerHTML =
     `<img src="${plik}" alt="" loading="lazy">` +
-    `<div class="wzor-dymek-stopka"><b>${dekor}</b><span>Kliknij, żeby przybliżyć</span></div>`;
+    `<div class="wzor-dymek-stopka"><b>${dekor}</b><span>${maCalaPlyte(marka, dekor) ? 'cała płyta · kliknij, żeby przybliżyć' : 'kliknij, żeby przybliżyć'}</span></div>`;
   document.body.appendChild(dymek);
 
   // Dymek ustawiamy przy kafelku, ale nigdy poza ekranem — na wąskim
@@ -80,7 +81,7 @@ export function zamknijPodglad() {
  * @param {{marka:string, dekor:string, marka_nazwa?:string}} p
  */
 export function otworzPodglad({ marka, dekor, nazwaMarki }) {
-  const plik = plikWzoru(marka, dekor);
+  const plik = plikWzoru(marka, dekor, 'slab');
   if (!plik) return;
   zamknijPodglad();
   schowajDymek();
@@ -95,7 +96,7 @@ export function otworzPodglad({ marka, dekor, nazwaMarki }) {
     `<div><b>${dekor}</b>${nazwaMarki ? `<span>${nazwaMarki}</span>` : ''}</div>` +
     `<button class="wzor-zamknij" type="button" aria-label="Zamknij podgląd">✕</button>` +
     `</div>` +
-    `<div class="wzor-plyta"><img src="${plik}" alt="Wzór kamienia ${dekor}" draggable="false"></div>` +
+    `<div class="wzor-plyta"><img src="${plik}" alt="Cała płyta ${dekor}" draggable="false"></div>` +
     `<p class="wzor-wskazowka">Przybliż kółkiem, kliknięciem albo dwoma palcami · zamknij tapnięciem w tło</p>`;
   document.body.appendChild(okno);
   document.documentElement.classList.add('wzor-blokada');
@@ -306,7 +307,7 @@ export function podlaczPodglad(element, dane) {
  * wzoru nie ma jak trafić do HTML-a inaczej niż jako tekst.
  */
 export function elementyWzoru(marka, dekor) {
-  const mini = plikWzoru(marka, dekor, true);
+  const mini = plikWzoru(marka, dekor, 'mini');
   if (!mini) return [];
 
   const kropka = document.createElement('span');
@@ -330,4 +331,4 @@ export function maWzor(marka, dekor) {
   return !!plikWzoru(marka, dekor);
 }
 
-export { plikWzoru };
+export { plikWzoru, maCalaPlyte };

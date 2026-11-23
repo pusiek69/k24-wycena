@@ -1,25 +1,26 @@
 /**
- * ZDJĘCIA WZORÓW KAMIENIA DO PODGLĄDU 3D UMYWALKI
+ * ZDJĘCIA WZORÓW KAMIENIA — pobranie i przygotowanie plików
  *
  *   node scripts/pobierz-wzory.mjs            — pobiera brakujące
  *   node scripts/pobierz-wzory.mjs --od-nowa  — pobiera wszystko od nowa
  *
- * Bryła umywalki ma pokazywać PRAWDZIWY wzór wybranego kamienia, a nie
- * wygenerowaną imitację (polecenie Dawida, 23.11.2026). Zdjęcia pochodzą
- * z katalogu Architype — dystrybutora Keralini i Avant Quartz, z którym
- * Dawid współpracuje i który zgodził się na ich użycie.
+ * Źródła zebrane wcześniej: `node scripts/zbierz-wzory.mjs`.
  *
- * ZASADA: zdjęcia leżą U NAS. Nie podłączamy się do serwera dostawcy przy
- * każdym wejściu klienta — ani im nie generujemy ruchu, ani nie ryzykujemy,
- * że pewnego dnia zmienią ścieżki i strona zostanie bez wzorów.
+ * Z każdego dekoru robimy trzy pliki, bo trzy różne zastosowania:
  *
- * Z każdego zdjęcia robimy dwa pliki:
- *   • `<slug>.webp`      640 px — tekstura na bryłę 3D,
- *   • `<slug>-mini.webp`  96 px — kropka na kafelku wyboru kamienia.
+ *   <klucz>-slab.webp   CAŁA PŁYTA w naturalnych proporcjach (szeroki
+ *                       prostokąt, płyta na stojaku) — to widzi klient po
+ *                       najechaniu i po kliknięciu lupki. Widać przebieg
+ *                       żyły od krawędzi do krawędzi.
+ *   <klucz>.webp        zbliżenie struktury, przycięte do kwadratu —
+ *                       tekstura na bryle 3D, która kafelkuje się po
+ *                       powierzchni (cała płyta wyglądałaby tam jak
+ *                       tapeta w płyty).
+ *   <klucz>-mini.webp   96 px — kropka przy nazwie dekoru.
  *
- * Na koniec skrypt wypisuje `src/umywalka/wzory-dekorow.js` — mapę
- * „dekor z cennika → plik", budowaną przez porównanie nazw. Dekory bez
- * zdjęcia zostają przy teksturze proceduralnej i są wypisane na konsoli.
+ * Zdjęcia pochodzą z katalogu Architype (dystrybutor Keralini i Avant
+ * Quartz), za zgodą dystrybutora, i leżą U NAS: nie podłączamy się do
+ * ich serwera przy każdym wejściu klienta.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,19 +28,30 @@ import sharp from 'sharp';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const KATALOG = path.join(ROOT, 'public', 'wzory');
-/*
- * Wariant 1920 px. W mniejszym (540) część zdjęć jest tak skompresowana,
- * że zostaje z nich jednolita plama — Calacatta Oro wychodziła szarym
- * prostokątem bez żyły. Gdy większego wariantu nie ma, schodzimy do 540.
- */
-const WARIANTY = ['https://architype.pl/media/images/1920/stones/', 'https://architype.pl/media/images/540/stones/'];
 const ZRODLA = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'wzory-architype.json'), 'utf8'));
 const ODNOWA = process.argv.includes('--od-nowa');
-
-/** Nasze marki → klucz w pliku źródeł. */
 const MARKI = ['keralini', 'avant-quartz'];
 
-/** Wykończenia i znaczniki, które doklejamy do nazw w cenniku. */
+/*
+ * Wariant 1920 px. W mniejszym (540) część zdjęć jest tak skompresowana,
+ * że zostaje z nich jednolita plama. Gdy większego nie ma — schodzimy niżej.
+ */
+const WARIANTY = [
+  'https://architype.pl/media/images/1920/stones/',
+  'https://architype.pl/media/images/540/stones/',
+];
+
+/*
+ * LITERÓWKI PO STRONIE DOSTAWCY. W cenniku mamy „Sorbona" i „Patagonia
+ * Martinica", a w katalogu zdjęć leżą jako „sorbonne" i „mortinica".
+ * Jedna linijka na przypadek — lepsze to niż dwa dekory bez zdjęcia.
+ */
+const ALIASY = {
+  sorbona: 'sorbonne',
+  'patagonia-martinica': 'patagonia-mortinica',
+};
+
+/** Wykończenia i znaczniki doklejane do nazw w cenniku. */
 const KONCOWKI = /\s+(naturale|levigato|structured|leather|fulbody|fullbody|mat|polerowany|new)$/i;
 
 const slug = (s) =>
@@ -54,9 +66,8 @@ const slug = (s) =>
 /** Nazwa z cennika → możliwe klucze w katalogu dostawcy. */
 function kandydaci(nazwa) {
   const warianty = new Set();
-  let n = String(nazwa).trim();
+  const n = String(nazwa).trim();
   warianty.add(slug(n));
-  // „Absolute Black Structured" → „Absolute Black"
   let bez = n;
   for (let i = 0; i < 3; i++) {
     const krotsza = bez.replace(KONCOWKI, '').trim();
@@ -64,8 +75,8 @@ function kandydaci(nazwa) {
     bez = krotsza;
     warianty.add(slug(bez));
   }
-  // „Pandora FULBODY Naturale" → „Pandora"
   warianty.add(slug(n.replace(/\b(fulbody|fullbody|new|a\+b)\b/gi, '')));
+  for (const w of [...warianty]) if (ALIASY[w]) warianty.add(ALIASY[w]);
   return [...warianty].filter(Boolean);
 }
 
@@ -85,6 +96,22 @@ async function pobierz(sciezka) {
   throw new Error(ostatni);
 }
 
+/** Zapis z dociśnięciem, gdy plik wyszedł cięższy niż limit. */
+async function zapisz(dane, plik, { szer, wys, kadr, limitKB }) {
+  const przygotuj = (jakosc) => {
+    const obraz = sharp(dane);
+    return (
+      kadr
+        ? obraz.resize(szer, wys, { fit: 'cover', position: 'centre' })
+        : obraz.resize({ width: szer, withoutEnlargement: true })
+    )
+      .webp({ quality: jakosc })
+      .toFile(plik);
+  };
+  await przygotuj(78);
+  if (fs.statSync(plik).size > limitKB * 1024) await przygotuj(58);
+}
+
 async function main() {
   fs.mkdirSync(KATALOG, { recursive: true });
 
@@ -98,33 +125,42 @@ async function main() {
     const katalogMarki = path.join(KATALOG, marka);
     fs.mkdirSync(katalogMarki, { recursive: true });
     mapa[marka] = {};
+    process.stdout.write(`${marka}: `);
 
-    for (const [klucz, sciezka] of Object.entries(zrodla)) {
-      const plik = path.join(katalogMarki, `${klucz}.webp`);
+    for (const [klucz, zrodlo] of Object.entries(zrodla)) {
+      const tekstura = path.join(katalogMarki, `${klucz}.webp`);
       const mini = path.join(katalogMarki, `${klucz}-mini.webp`);
+      const slab = path.join(katalogMarki, `${klucz}-slab.webp`);
 
-      if (!ODNOWA && fs.existsSync(plik) && fs.existsSync(mini)) {
+      const juzJest =
+        fs.existsSync(tekstura) && fs.existsSync(mini) && (!zrodlo.slab || fs.existsSync(slab));
+      if (!ODNOWA && juzJest) {
         pominiete++;
-        mapa[marka][klucz] = true;
+        mapa[marka][klucz] = { slab: fs.existsSync(slab) };
         continue;
       }
 
       try {
-        const dane = await pobierz(sciezka);
-        // Kwadrat ze środka zdjęcia: tekstura ma się kafelkować na bryle,
-        // więc interesuje nas sam rysunek kamienia, nie proporcje zdjęcia.
-        await sharp(dane).resize(640, 640, { fit: 'cover', position: 'centre' }).webp({ quality: 76 }).toFile(plik);
-        // Wzory o gęstym rysunku (np. Epiphany) potrafią wyjść dwa razy
-        // cięższe od reszty — takie dociskamy, żeby żaden nie przekroczył
-        // ~110 kB. Na teksturze kamienia tej różnicy nie widać.
-        if (fs.statSync(plik).size > 110 * 1024) {
-          await sharp(dane).resize(640, 640, { fit: 'cover', position: 'centre' }).webp({ quality: 58 }).toFile(plik + '.tmp');
-          fs.renameSync(plik + '.tmp', plik);
+        // Zbliżenie: kwadratowy kadr ze środka — tekstura kafelkuje się
+        // po bryle, więc interesuje nas sam rysunek kamienia.
+        const daneZoom = await pobierz(zrodlo.zoom || zrodlo.slab);
+        await zapisz(daneZoom, tekstura, { szer: 640, wys: 640, kadr: true, limitKB: 110 });
+        await zapisz(daneZoom, mini, { szer: 96, wys: 96, kadr: true, limitKB: 12 });
+
+        // Cała płyta: BEZ kadrowania. Proporcje zdjęcia zostają, bo to one
+        // pokazują, że patrzymy na płytę, a nie na jej wycinek.
+        let maSlab = false;
+        if (zrodlo.slab) {
+          const daneSlab = await pobierz(zrodlo.slab);
+          await zapisz(daneSlab, slab, { szer: 1400, kadr: false, limitKB: 220 });
+          maSlab = true;
+        } else if (fs.existsSync(slab)) {
+          fs.unlinkSync(slab);
         }
-        await sharp(dane).resize(96, 96, { fit: 'cover', position: 'centre' }).webp({ quality: 70 }).toFile(mini);
-        mapa[marka][klucz] = true;
+
+        mapa[marka][klucz] = { slab: maSlab };
         pobrane++;
-        process.stdout.write('.');
+        process.stdout.write(maSlab ? '.' : 'z');
       } catch (e) {
         bledy.push(`${marka}/${klucz}: ${e.message}`);
         process.stdout.write('x');
@@ -146,43 +182,59 @@ async function main() {
 
     for (const nazwa of Object.keys(katalog.dekory)) {
       const trafiony = kandydaci(nazwa).find((k) => mapa[marka][k]);
-      if (trafiony) przypisane[marka][nazwa] = trafiony;
+      if (trafiony) przypisane[marka][nazwa] = { k: trafiony, slab: !!mapa[marka][trafiony].slab };
       else bezZdjecia.push(`${marka}: ${nazwa}`);
     }
   }
 
-  const naglowek = `/**
- * WZORY KAMIENIA — mapa „dekor z cennika → plik ze zdjęciem".
+  const tresc = `/**
+ * WZORY KAMIENIA — mapa „dekor z cennika → pliki ze zdjęciami".
  *
  * ⚠ PLIK GENEROWANY: node scripts/pobierz-wzory.mjs
  *   Ręczne zmiany przepadną przy następnym uruchomieniu.
  *
  * Zdjęcia: katalog Architype (dystrybutor Keralini i Avant Quartz),
- * za zgodą dystrybutora. Leżą w public/wzory/<marka>/<klucz>.webp
- * (tekstura 640 px) oraz -mini.webp (kropka na kafelku, 96 px).
+ * za zgodą dystrybutora. Leżą w public/wzory/<marka>/:
+ *   <klucz>-slab.webp  CAŁA PŁYTA (podgląd dla klienta),
+ *   <klucz>.webp       zbliżenie w kwadracie (tekstura na bryle 3D),
+ *   <klucz>-mini.webp  kropka przy nazwie dekoru.
  *
- * Z tej mapy korzystają OBA kalkulatory: umywalki (tekstura na bryle 3D)
- * i blaty (miniaturka przy dekorze oraz podgląd całej płyty).
+ * Z tej mapy korzystają OBA kalkulatory: umywalki i blaty.
  */
-`;
+export const WZORY = ${JSON.stringify(przypisane, null, 2)};
 
-  const tresc =
-    naglowek +
-    `export const WZORY = ${JSON.stringify(przypisane, null, 2)};\n\n` +
-    `/** Ścieżka do tekstury wzoru albo \`null\`, gdy zdjęcia nie mamy. */\n` +
-    `export function plikWzoru(marka, dekor, mini = false) {\n` +
-    `  const klucz = WZORY[marka]?.[dekor];\n` +
-    `  if (!klucz) return null;\n` +
-    `  return \`/wzory/\${marka}/\${klucz}\${mini ? '-mini' : ''}.webp\`;\n` +
-    `}\n`;
+/**
+ * Ścieżka do zdjęcia wzoru albo \`null\`, gdy go nie mamy.
+ * @param {string} marka
+ * @param {string} dekor
+ * @param {'tekstura'|'mini'|'slab'} [rodzaj]
+ */
+export function plikWzoru(marka, dekor, rodzaj = 'tekstura') {
+  const wpis = WZORY[marka]?.[dekor];
+  if (!wpis) return null;
+  if (rodzaj === 'mini') return \`/wzory/\${marka}/\${wpis.k}-mini.webp\`;
+  // Gdy dostawca nie ma zdjęcia całej płyty, podgląd pokazuje zbliżenie —
+  // lepsze to niż puste miejsce, a strukturę kamienia widać tak czy tak.
+  if (rodzaj === 'slab') return \`/wzory/\${marka}/\${wpis.k}\${wpis.slab ? '-slab' : ''}.webp\`;
+  return \`/wzory/\${marka}/\${wpis.k}.webp\`;
+}
+
+/** Czy dla tego dekoru mamy zdjęcie CAŁEJ płyty, a nie tylko zbliżenie. */
+export function maCalaPlyte(marka, dekor) {
+  return !!WZORY[marka]?.[dekor]?.slab;
+}
+`;
 
   fs.writeFileSync(path.join(ROOT, 'src', 'generated', 'wzory-dekorow.js'), tresc, 'utf8');
 
   const ile = (m) => Object.keys(przypisane[m] || {}).length;
+  const zeSlabem = (m) => Object.values(przypisane[m] || {}).filter((x) => x.slab).length;
   console.log(`\n✓ pobrane: ${pobrane}, już były: ${pominiete}, błędy: ${bledy.length}`);
-  console.log(`✓ dekory ze zdjęciem wzoru: keralini ${ile('keralini')}, avant-quartz ${ile('avant-quartz')}`);
+  for (const m of MARKI) {
+    console.log(`✓ ${m}: ${ile(m)} dekorów ze zdjęciem, w tym ${zeSlabem(m)} z całą płytą`);
+  }
   if (bezZdjecia.length) {
-    console.log(`\nBez zdjęcia (zostają przy teksturze rysowanej) — ${bezZdjecia.length}:`);
+    console.log(`\nBez zdjęcia (tekstura rysowana, bez podglądu) — ${bezZdjecia.length}:`);
     for (const b of bezZdjecia) console.log('  ·', b);
   }
   if (bledy.length) {
