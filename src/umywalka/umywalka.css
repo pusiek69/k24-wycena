@@ -1,0 +1,820 @@
+/*
+ * KALKULATOR UMYWALEK — wygląd.
+ *
+ * Kierunek: „ciemny kamień i złota żyła" — ten sam system, co reszta
+ * kam24h.pl. Tokeny kolorów i kroje pism przychodzą z `src/style.css`,
+ * tu nie definiujemy ani jednego nowego koloru poza cieniowaniem bryły.
+ *
+ * Nowoczesność ma wynikać z ruchu, światła i porządku, nie z nowej palety.
+ * Jeden akcent (złoto), jedno mocne miejsce na ekranie (bryła), jedna
+ * główna akcja (Dalej).
+ *
+ * Czego tu świadomie NIE MA, bo tak dziś wygląda „strona generowana przez
+ * AI": gradientów fioletowo-niebieskich, szkła (glassmorphism), karty
+ * w karcie, emoji jako ikon, animacji „bounce", kółek z ikonkami przy
+ * każdym nagłówku i pomarańczowego akcentu.
+ */
+
+.umywalka {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 16px 120px;
+}
+
+/* ───────────────────────────────────────────── scena z bryłą */
+
+/*
+ * Przyklejona scena musi być NIEPRZEZROCZYSTA na całej wysokości.
+ * Przy gradiencie schodzącym do przejrzystości karty kroku przejeżdżały
+ * pod przyciskiem „Rozłóż na części" i obie warstwy czytały się naraz.
+ * Zmiękczenie zostaje — ale pod sceną, jako osobny pasek.
+ */
+.scena {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 8px 0 10px;
+  background: var(--slab);
+}
+
+.scena::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -14px;
+  left: 0;
+  height: 14px;
+  background: linear-gradient(180deg, var(--slab), transparent);
+  pointer-events: none;
+}
+
+.bryla-ramka {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 38vh;
+  min-height: 210px;
+  max-height: 330px;
+  border-radius: var(--radius);
+  cursor: grab;
+  /* Pion zostawiamy przeglądarce: palcem w górę przewija się strona,
+     palcem w bok obraca się bryła. */
+  touch-action: pan-y;
+  /* Światło „z góry" na kamień — głębia zamiast płaskiej czerni. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(201, 168, 106, 0.09) 0%, transparent 62%),
+    radial-gradient(70% 60% at 50% 110%, rgba(0, 0, 0, 0.45) 0%, transparent 70%);
+}
+
+.bryla-ramka:focus-visible {
+  outline: 2px solid var(--vein);
+  outline-offset: 3px;
+}
+
+.bryla-obracana {
+  cursor: grabbing;
+}
+
+.bryla-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bryla-blat {
+  stroke: rgba(0, 0, 0, 0.18);
+  stroke-width: 0.4;
+}
+
+.bryla-cien {
+  filter: blur(1.5px);
+  opacity: 0.5;
+}
+
+.bryla-chip rect {
+  fill: rgba(201, 168, 106, 0.16);
+  stroke: var(--line-hi);
+  stroke-width: 0.5;
+}
+
+.bryla-chip text {
+  fill: var(--vein-hi);
+  font: 600 8px / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.rozl-numer-tlo {
+  fill: rgba(19, 17, 15, 0.72);
+}
+
+.rozl-numer {
+  fill: var(--cream);
+  font: 600 7px / 1 var(--sans);
+}
+
+.scena-wymiar {
+  margin-top: 2px;
+  font: 400 clamp(1.5rem, 6vw, 2.1rem) / 1.1 var(--serif-ozdobny);
+  font-variant-numeric: tabular-nums;
+  color: var(--cream);
+  text-align: center;
+}
+
+.scena-znaczek {
+  margin-top: 4px;
+  font: 600 0.8rem / 1.3 var(--sans);
+  color: var(--ok);
+  text-align: center;
+  transition: color 0.25s ease;
+}
+
+.scena-rada {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto 0;
+  max-width: 44rem;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--vein-soft);
+  border-radius: var(--radius);
+  background: var(--stone);
+  font: 400 0.85rem / 1.45 var(--sans);
+  color: var(--muted);
+  text-align: left;
+}
+
+/* `display: flex` z reguł wyżej bije domyślne `[hidden] { display: none }` —
+   bez tego pusta ramka podpowiedzi wisiała pod bryłą przez cały czas. */
+.scena-rada[hidden],
+.scena-znaczek[hidden],
+.przelaczniki[hidden],
+.wiecej-tresc[hidden],
+.pasek[hidden] {
+  display: none;
+}
+
+.scena-narzedzia {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.scena-hint {
+  font: 400 0.72rem / 1 var(--sans);
+  color: var(--dim);
+}
+
+/* ───────────────────────────────────────────── ekran kroku */
+
+.ekran {
+  margin: 18px auto 0;
+  max-width: 44rem;
+}
+
+.ekran-naglowek h2 {
+  margin: 0 0 4px;
+  font: 400 clamp(1.35rem, 5vw, 1.85rem) / 1.2 var(--serif-ozdobny);
+  color: var(--cream);
+  text-wrap: balance;
+}
+
+.ekran-naglowek p {
+  margin: 0 0 16px;
+  font: 400 0.9rem / 1.5 var(--sans);
+  color: var(--dim);
+}
+
+/* ───────────────────────────────────────────── wybór rodzaju */
+
+.wybor-karty {
+  display: grid;
+  gap: 12px;
+}
+
+.wybor-karta {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--stone);
+  color: var(--cream);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.wybor-karta:hover,
+.wybor-karta:focus-visible {
+  border-color: var(--line-hi);
+  background: var(--stone-hi);
+}
+
+.wybor-karta.wybrana {
+  border-color: var(--vein);
+}
+
+.wybor-rysunek {
+  display: block;
+  height: 130px;
+}
+
+.wybor-rysunek svg {
+  height: 100%;
+}
+
+.wybor-tytul {
+  font: 600 1rem / 1.3 var(--sans);
+}
+
+.wybor-opis {
+  font: 400 0.82rem / 1.45 var(--sans);
+  color: var(--dim);
+}
+
+.kotwica {
+  margin: 16px 0 0;
+  font: 400 0.92rem / 1.5 var(--sans);
+  color: var(--muted);
+  text-align: center;
+}
+
+.kotwica b {
+  color: var(--vein-hi);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ───────────────────────────────────────────── kontrolki */
+
+.pigulki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.pigulka {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 0.88rem / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.pigulka:hover {
+  border-color: var(--line-hi);
+  color: var(--cream);
+}
+
+.pigulka.wybrana {
+  border-color: var(--vein);
+  background: rgba(201, 168, 106, 0.12);
+  color: var(--vein-hi);
+}
+
+.pole-suwak,
+.pole-grupa,
+.domyslne,
+.wiecej {
+  margin-bottom: 18px;
+}
+
+.pole-suwak > label,
+.pole-etykieta {
+  display: block;
+  margin-bottom: 7px;
+  font: 600 0.78rem / 1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.suwak-rzad {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.suwak-zakres {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  accent-color: var(--vein);
+  background: transparent;
+}
+
+.suwak-liczba {
+  width: 4.6rem;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--stone);
+  color: var(--cream);
+  font: 600 1rem / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.suwak-liczba:focus-visible {
+  outline: 2px solid var(--vein);
+  outline-offset: 1px;
+}
+
+.suwak-jednostka {
+  font: 400 0.85rem / 1 var(--sans);
+  color: var(--dim);
+}
+
+.kafelki {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.kafelek {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--stone);
+  color: var(--cream);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.kafelek:hover {
+  border-color: var(--line-hi);
+}
+
+.kafelek.wybrany {
+  border-color: var(--vein);
+}
+
+.kafelek-rysunek {
+  display: block;
+  height: 64px;
+}
+
+.kafelek-rysunek svg {
+  height: 100%;
+}
+
+.kafelek-tytul {
+  font: 600 0.82rem / 1.25 var(--sans);
+}
+
+.kafelek-opis {
+  font: 400 0.72rem / 1.35 var(--sans);
+  color: var(--dim);
+}
+
+.pole-nota {
+  margin: 8px 0 0;
+  font: 400 0.78rem / 1.5 var(--sans);
+  color: var(--dim);
+}
+
+.domyslne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--stone);
+}
+
+.domyslne-opis {
+  flex: 1 1 auto;
+  font: 400 0.85rem / 1.4 var(--sans);
+  color: var(--muted);
+}
+
+.link-zmien {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--vein-hi);
+  font: 600 0.85rem / 1 var(--sans);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.przelaczniki {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.segment {
+  display: grid;
+  gap: 6px;
+}
+
+.segment-etykieta {
+  font: 600 0.72rem / 1 var(--sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.segment-opcje {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.segment-opcja {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: 500 0.85rem / 1 var(--sans);
+  cursor: pointer;
+}
+
+.segment-opcja.wybrana {
+  border-color: var(--vein);
+  background: rgba(201, 168, 106, 0.12);
+  color: var(--vein-hi);
+}
+
+.wiecej-przycisk {
+  min-height: 44px;
+  width: 100%;
+  border: 1px dashed var(--line-hi);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: 500 0.85rem / 1 var(--sans);
+  cursor: pointer;
+}
+
+.wiecej-tresc {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.pola-rzad {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pole-male {
+  display: grid;
+  gap: 5px;
+}
+
+.pole-male label {
+  font: 400 0.72rem / 1 var(--sans);
+  color: var(--dim);
+}
+
+/* ───────────────────────────────────────────── dekory */
+
+.dekory {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+  max-height: 58vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.dekor {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--stone);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dekor:hover {
+  border-color: var(--line-hi);
+}
+
+.dekor.wybrany {
+  border-color: var(--vein);
+  background: var(--stone-hi);
+}
+
+.dekor-probka {
+  grid-row: 1 / 3;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+}
+
+.dekor-nazwa {
+  font: 500 0.84rem / 1.25 var(--sans);
+  color: var(--cream);
+}
+
+.dekor-marka {
+  font: 400 0.7rem / 1 var(--sans);
+  color: var(--dim);
+}
+
+/* ───────────────────────────────────────────── dolny pasek */
+
+.pasek {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: rgba(19, 17, 15, 0.94);
+}
+
+.pasek-krok {
+  flex: 0 0 auto;
+  font: 600 0.75rem / 1 var(--sans);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.pasek .btn {
+  flex: 1 1 auto;
+  min-height: 56px;
+}
+
+/* ───────────────────────────────────────────── karta ceny */
+
+.cena-karta {
+  margin-top: 20px;
+  padding: 20px 16px;
+  border: 1px solid var(--line-hi);
+  border-radius: var(--radius);
+  background: var(--stone);
+}
+
+.cena-naglowek {
+  font: 600 0.74rem / 1 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.cena-kwota {
+  margin: 6px 0 2px;
+  font: 400 clamp(2.6rem, 11vw, 3.8rem) / 1 var(--serif-ozdobny);
+  font-variant-numeric: tabular-nums;
+  color: var(--vein-hi);
+}
+
+.cena-podpis {
+  font: 400 0.8rem / 1.4 var(--sans);
+  color: var(--dim);
+}
+
+.cena-linie {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cena-linia {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font: 400 0.9rem / 1.4 var(--sans);
+  color: var(--cream);
+}
+
+.cena-linia-kwota {
+  flex: 0 0 auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cena-wcenie .cena-linia-kwota {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+.cena-promo {
+  margin: 12px 0 0;
+  font: 500 0.85rem / 1.45 var(--sans);
+  color: var(--ok);
+}
+
+.cena-wcenie-blok {
+  margin-top: 18px;
+  display: grid;
+  gap: 2px;
+}
+
+.cena-wcenie-blok h4 {
+  margin: 10px 0 2px;
+  font: 600 0.74rem / 1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.cena-wcenie-blok ul {
+  margin: 0;
+  padding-left: 18px;
+  font: 400 0.85rem / 1.6 var(--sans);
+  color: var(--muted);
+}
+
+.cena-tansza {
+  margin: 16px 0 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--vein-soft);
+  border-radius: var(--radius);
+  font: 400 0.87rem / 1.5 var(--sans);
+  color: var(--muted);
+}
+
+.cena-tansza b {
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.cena-dalej {
+  margin-top: 20px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.cena-dalej .btn {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cena-zastrzezenie,
+.cena-ostrzezenia {
+  margin: 16px 0 0;
+  font: 400 0.76rem / 1.55 var(--sans);
+  color: var(--dim);
+}
+
+.cena-ostrzezenia {
+  padding-left: 18px;
+}
+
+.umywalka-potwierdzenie {
+  display: grid;
+  gap: 8px;
+}
+
+/* ───────────────────────────────────────────── drobne */
+
+.btn-maly {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--vein-soft);
+  border-radius: var(--radius);
+  background: rgba(201, 168, 106, 0.12);
+  color: var(--vein-hi);
+  font: 600 0.8rem / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-przezroczysty {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+  font: 500 0.82rem / 1 var(--sans);
+  cursor: pointer;
+}
+
+.btn-przezroczysty[aria-pressed='true'] {
+  border-color: var(--vein);
+  color: var(--vein-hi);
+}
+
+/* ───────────────────────────────────────────── ruch */
+
+@media (prefers-reduced-motion: no-preference) {
+  .ekran {
+    animation: ekran-wejscie 0.34s ease both;
+  }
+
+  .ekran > * {
+    animation: ekran-wejscie 0.38s ease both;
+  }
+
+  .ekran > *:nth-child(2) { animation-delay: 0.06s; }
+  .ekran > *:nth-child(3) { animation-delay: 0.12s; }
+  .ekran > *:nth-child(4) { animation-delay: 0.18s; }
+  .ekran > *:nth-child(5) { animation-delay: 0.24s; }
+
+  .rozl-kawalek {
+    animation: kawalek-wejscie 0.42s ease both;
+    animation-delay: var(--opoznienie, 0ms);
+  }
+
+  .wybor-karta:active {
+    transform: scale(0.995);
+  }
+}
+
+@keyframes ekran-wejscie {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kawalek-wejscie {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ───────────────────────────────────────────── desktop */
+
+@media (min-width: 900px) {
+  .umywalka {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(360px, 520px);
+    gap: 36px;
+    align-items: start;
+    padding-bottom: 60px;
+  }
+
+  .scena {
+    position: sticky;
+    top: 16px;
+    padding-top: 16px;
+  }
+
+  .bryla-ramka {
+    height: 46vh;
+    max-height: 460px;
+  }
+
+  .pasek {
+    position: sticky;
+    right: auto;
+    bottom: 16px;
+    left: auto;
+    /* Pod kolumną z pytaniami, nie pod bryłą — „Dalej" ma stać tam,
+       gdzie klient właśnie patrzy i klika. */
+    grid-column: 2;
+    margin-top: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .ekran {
+    margin-top: 0;
+  }
+}

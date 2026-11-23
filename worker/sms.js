@@ -100,8 +100,17 @@ function jedenSegment(tekst) {
 }
 
 /** „PILNE Nowa wycena: Anna, Tarnobrzeg, 9 000 zl, Technistone Crystal. Tel 600100200" */
-export function trescSmsLead({ imie, miejscowosc, telefon, kwota, material, pilne, nieDzwonic }) {
-  const flagi = [nieDzwonic ? 'NIE DZWONIC (woli mail)' : '', pilne ? 'PILNE' : ''].filter(Boolean).join(' ');
+export function trescSmsLead({ imie, miejscowosc, telefon, kwota, material, pilne, nieDzwonic, produkt }) {
+  /*
+   * `produkt` (23.11.2026) — przy umywalce Dawid ma to widzieć w pierwszym
+   * słowie SMS-a, bo obsługa jest inna niż przy blacie (projekt 3D, inna
+   * ekipa przy klejeniu niecki). Puste = zgłoszenie blatu, treść bez zmian.
+   */
+  const flagi = [
+    String(produkt || '').trim(),
+    nieDzwonic ? 'NIE DZWONIC (woli mail)' : '',
+    pilne ? 'PILNE' : '',
+  ].filter(Boolean).join(' ');
   const tel = numerDoSms(telefon) || doGsm(telefon);
   const kwotaTxt = Number(kwota) > 0 ? `${Math.round(Number(kwota)).toLocaleString('pl-PL').replace(/\s/g, ' ')} zl` : '';
   const glowa = `${flagi ? flagi + ' ' : ''}Nowa wycena: ${doGsm(imie) || 'Klient'}${tel ? ` tel ${tel}` : ''}`;

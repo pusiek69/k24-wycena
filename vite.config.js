@@ -65,6 +65,12 @@ export default defineConfig({
         licencja_zdjec: resolve(import.meta.dirname, 'licencja-zdjec.html'),
         oferta: resolve(import.meta.dirname, 'oferta.html'),
         dziekujemy: resolve(import.meta.dirname, 'dziekujemy.html'),
+        /*
+         * Kalkulator umywalek (23.11.2026) — strona UKRYTA: `noindex`,
+         * bez linków i poza sitemapą, do decyzji Dawida o publikacji.
+         * Buduje się normalnie, żeby dało się ją obejrzeć na żywo.
+         */
+        umywalka_na_wymiar: resolve(import.meta.dirname, 'umywalka-na-wymiar.html'),
         nieznaleziono: resolve(import.meta.dirname, '404.html'),
       },
     },

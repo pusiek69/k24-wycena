@@ -146,6 +146,34 @@ export const PARAMETRY = [
   },
 
   /*
+   * UMYWALKI Z KAMIENIA (23.11.2026) — dwie stawki, których nie dało się
+   * wziąć z cennika blatów, bo takiej roboty przy blacie nie ma.
+   *
+   * ⚠ Wartości startowe są PRZYKŁADOWE — Dawid dopracuje je w panelu
+   * („narazie daj przykladowe ceny pozniej bedziemy dopracowywać").
+   * Reszta umywalki liczy się stawkami, które już tu stoją: otwór,
+   * montaż (baza + od m²) i materiał z cennika.
+   */
+  {
+    klucz: 'umywalkaPogrubienieMb',
+    label: 'Umywalka — pogrubienie krawędzi 45°',
+    jednostka: 'zł/m.b.',
+    domyslnie: 200,
+    opis:
+      'Cięcie pod kątem, klejenie i polerowanie krawędzi. Liczone od metrów ' +
+      'bieżących pogrubionego frontu i boków. Wartość przykładowa — do ustalenia.',
+  },
+  {
+    klucz: 'umywalkaNiecka',
+    label: 'Umywalka — zlew wycięty w kamieniu (robocizna)',
+    jednostka: 'zł/szt.',
+    domyslnie: 1200,
+    opis:
+      'Ryczałt za wykonanie niecki: ścianki, dno ze spadkiem i odpływ. ' +
+      'Nie wchodzi przy blacie pod umywalkę nablatową. Wartość przykładowa.',
+  },
+
+  /*
    * Poniższe dwa NIE są cenami — to parametry cięcia używane przez rozrys
    * płyt (app/rozrys.js). Trzymamy je w tym samym miejscu, bo to ta sama
    * szuflada „ustawienia zakładu", którą Dawid otwiera w panelu.

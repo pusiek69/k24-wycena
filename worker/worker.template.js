@@ -553,12 +553,20 @@ async function obsluzLead(request, env, cors) {
     parametry: szczegoly?.parametry && typeof szczegoly.parametry === 'object' ? szczegoly.parametry : null,
   });
 
+  /*
+   * UMYWALKA Z KAMIENIA (23.11.2026) — kalkulator umywalek dokłada do
+   * zgłoszenia pole `produkt`. Zgłoszenia blatów go nie mają i idą tą samą
+   * drogą co dotąd, co do znaku; umywalka dostaje tylko inny temat, inny
+   * szablon maila do klienta i dopisek w SMS-ie.
+   */
+  const umywalka = String(d.produkt || '') === 'umywalka';
+
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
     from: odKogo,
     to: [doFirmy],
     reply_to: email,
-    subject: tematLeada(klient, szczegoly, wycena),
+    subject: (umywalka ? 'UMYWALKA — ' : '') + tematLeada(klient, szczegoly, wycena),
     html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji: adresEdycji, partner }),
     text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
     attachments: zalaczniki.length ? zalaczniki : undefined,
@@ -569,8 +577,12 @@ async function obsluzLead(request, env, cors) {
     from: odKogo,
     to: [email],
     reply_to: doFirmy,
-    subject: 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
-    html: mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
+    subject: umywalka
+      ? 'Pana/Pani wycena umywalki — Kamieniarstwo 24h'
+      : 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
+    html: umywalka
+      ? mailDoKlientaUmywalka(imie, wycena, szczegoly)
+      : mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
   });
 
   // Zapis do bazy stoi wyżej (przed mailami) — patrz komentarz przy nim.
@@ -590,6 +602,8 @@ async function obsluzLead(request, env, cors) {
       material: szczegoly?.firma ? [szczegoly.firma, szczegoly.dekor].filter(Boolean).join(' ') : (szczegoly?.material ? [szczegoly.material, szczegoly.dekor].filter(Boolean).join(' ') : ''),
       pilne: pilny(terminId),
       nieDzwonic: odmowiono(telefonZgoda),
+      // Puste przy blacie — treść SMS-a zostaje wtedy bez zmian.
+      produkt: umywalka ? 'UMYWALKA' : '',
     })
   );
 
@@ -1799,6 +1813,86 @@ function podsumowanieDlaKlienta(s) {
            </p>`
         : ''
     }`;
+}
+
+/**
+ * MAIL DO KLIENTA PO WYCENIE UMYWALKI (23.11.2026).
+ *
+ * Osobny szablon, bo umywalka ma inną treść niż blat: nie ma tu płyt
+ * grzewczych ani wyboru bloku kamienia, jest za to zlew wycięty w kamieniu,
+ * projekt 3D i pomiar w cenie.
+ *
+ * Co do zasady jest tak samo oszczędny jak mail blatowy: kwota, jedno
+ * zdanie o konfiguracji i co jest w cenie. Rozkroju, metrów i stawek
+ * warsztatu tu nie ma — te idą wyłącznie do Dawida.
+ */
+function mailDoKlientaUmywalka(imie, wycena, szczegoly) {
+  const kwota = Number(szczegoly?.razemZaokr || szczegoly?.razem || 0);
+  const zMontazem = !szczegoly?.odbiorWlasny;
+  const zintegrowana = szczegoly?.typ === 'zintegrowana';
+
+  const wCenie = [
+    'projekt 3D umywalki do zatwierdzenia',
+    'pomiar u klienta przed wykonaniem',
+    'wycięcie, klejenie i polerowanie krawędzi',
+    zintegrowana ? 'zlew wycięty w tym samym kamieniu' : '',
+    zMontazem ? 'transport i montaż u klienta' : '',
+  ].filter(Boolean);
+
+  return `<!doctype html>
+<html lang="pl"><body style="margin:0;background:#13110f;color:#ece6da;font-family:Georgia,serif">
+  <div style="max-width:600px;margin:0 auto;padding:32px 24px">
+    <div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:.18em;color:#c9a86a;text-transform:uppercase">
+      Kamieniarstwo 24h
+    </div>
+    <h1 style="font-weight:400;font-size:28px;margin:14px 0 6px">Dziękujemy, ${esc(imie)}.</h1>
+    <p style="color:#b6ad9d;font-size:16px;line-height:1.55;margin:0 0 22px">
+      Poniżej orientacyjna wycena umywalki z kamienia, przygotowana na podstawie
+      podanych wymiarów.
+    </p>
+    <div style="background:#1b1815;border:1px solid rgba(201,168,106,.25);border-left:3px solid #c9a86a;
+                border-radius:4px;padding:18px 20px">
+      <div style="font-size:16px;line-height:1.6;color:#ece6da">${esc(wycena)}</div>
+      ${
+        kwota > 0
+          ? `<div style="font-size:32px;color:#d9bd84;margin-top:12px">${zl(kwota)}</div>
+             <div style="font-family:Arial,sans-serif;font-size:13px;color:#8c8474;margin-top:4px">
+               brutto, ${zMontazem ? 'z montażem (VAT 8% — lokal mieszkalny)' : 'odbiór własny z zakładu (VAT 23%)'}
+             </div>`
+          : ''
+      }
+    </div>
+    <div style="margin:18px 0 0;padding:16px 18px;background:#1b1815;
+                border:1px solid rgba(201,168,106,.25);border-radius:4px">
+      <div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:.14em;
+                  text-transform:uppercase;color:#c9a86a;margin-bottom:8px">W cenie</div>
+      <ul style="margin:0;padding-left:18px;color:#d8cfbc;font-size:15px;line-height:1.7">
+        ${wCenie.map((p) => `<li>${esc(p)}</li>`).join('')}
+      </ul>
+      <div style="font-family:Arial,sans-serif;font-size:11px;letter-spacing:.14em;
+                  text-transform:uppercase;color:#c9a86a;margin:14px 0 8px">Nie ma w cenie</div>
+      <ul style="margin:0;padding-left:18px;color:#8c8474;font-size:14px;line-height:1.7">
+        <li>bateria i syfon</li>
+        <li>demontaż starej umywalki</li>
+      </ul>
+    </div>
+    <p style="color:#8c8474;font-size:13px;line-height:1.6;margin:20px 0">
+      Wycena jest orientacyjna i nie stanowi oferty w rozumieniu art. 66 §1 Kodeksu cywilnego.
+      ${
+        zMontazem
+          ? 'Ostateczną cenę potwierdzamy po pomiarze u klienta. Stawka 8% dotyczy usługi w lokalu mieszkalnym.'
+          : 'Przy odbiorze własnym odpowiedzialność za poprawność wymiarów jest po stronie zamawiającego.'
+      }
+    </p>
+    <p style="color:#b6ad9d;font-size:15px;line-height:1.6;margin:0">
+      Pytania i termin pomiaru: <a href="tel:+48796991128" style="color:#c9a86a">796 991 128</a>
+      (pon.–pt. 8:00–18:00) albo odpowiedź na tego maila.
+    </p>
+    <p style="color:#8c8474;font-size:12px;line-height:1.6;margin:22px 0 0">
+      Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg
+    </p>
+  </div>
+</body></html>`;
 }
 
 function mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly) {
