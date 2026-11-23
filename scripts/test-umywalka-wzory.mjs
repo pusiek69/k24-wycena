@@ -16,7 +16,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { WZORY, plikWzoru } from '../src/umywalka/wzory-dekorow.js';
+import { WZORY, plikWzoru } from '../src/generated/wzory-dekorow.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const czytaj = (s) => fs.readFileSync(path.join(ROOT, s), 'utf8');
@@ -31,7 +31,7 @@ test('zdjęcia wzorów leżą w repozytorium, a nie na serwerze dostawcy', () =>
       `${plik} sięga po zdjęcia na serwer Architype zamiast do naszych plików`
     );
   }
-  assert.match(czytaj('src/umywalka/wzory-dekorow.js'), /\/wzory\/\$\{marka\}/);
+  assert.match(czytaj('src/generated/wzory-dekorow.js'), /\/wzory\/\$\{marka\}/);
 });
 
 test('każdy wzór z mapy ma swój plik — teksturę i miniaturę', () => {

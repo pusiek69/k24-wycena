@@ -39,7 +39,8 @@ import {
 import { wycenUmywalke } from './wycena-umywalki.js';
 import { znacznikPolowki, podpowiedzPolowki, ostrzezeniaWykonawcze } from './podpowiedzi.js';
 import { POLECANE, ODCIENIE, fakturaDekoru, probkaDekoru } from './dekory-polecane.js';
-import { plikWzoru } from './wzory-dekorow.js';
+import { plikWzoru } from '../generated/wzory-dekorow.js';
+import { podlaczPodglad } from '../app/podglad-wzoru.js';
 import { zrobWizualizacje, nazwaPliku, pobierz, udostepnij } from './wizualizacja.js';
 import { uruchomPodglad } from './scena3d.js';
 import { formularzUmywalki, potwierdzenieWyslania } from './formularz.js';
@@ -426,13 +427,26 @@ function rysujKamienie() {
       const tlo = mini
         ? `background-image:url('${mini}');background-size:cover;background-position:center`
         : `background:radial-gradient(circle at 32% 30%,${f.sp[1] || f.sp[0]},${f.base} 45%,${f.vein} 150%)`;
+      // Lupka otwiera całą płytę — w kropce 28 px wzoru nie widać.
+      const lupa = mini
+        ? `<span class="wzor-lupa" role="button" tabindex="-1" title="Zobacz całą płytę" aria-label="Zobacz całą płytę ${p.dekor}">⌕</span>`
+        : '';
       return (
         `<button class="mat" data-dekor="${p.dekor}" data-marka="${p.marka}" data-grubosc="${p.grubosc}" aria-pressed="${String(wybrany)}">` +
         `<span class="dot" style="${tlo}"></span>` +
-        `<span><b>${p.dekor}</b><small>${p.marka === 'keralini' ? 'Keralini' : 'Avant Quartz'}</small></span></button>`
+        `<span><b>${p.dekor}</b><small>${p.marka === 'keralini' ? 'Keralini' : 'Avant Quartz'}</small></span>${lupa}</button>`
       );
     })
     .join('');
+
+  // Podgląd całej płyty: najechanie myszą, lupka albo przytrzymanie palca.
+  for (const kafelek of $('#mats').querySelectorAll('.mat')) {
+    podlaczPodglad(kafelek, {
+      marka: kafelek.dataset.marka,
+      dekor: kafelek.dataset.dekor,
+      nazwaMarki: kafelek.dataset.marka === 'keralini' ? 'Keralini' : 'Avant Quartz',
+    });
+  }
 
   const ile = FIRMY.reduce((s, f) => s + Object.keys(f.dekory || {}).length, 0);
   $('#wszystkie').textContent = pelnyKatalog ? 'Pokaż krótką listę' : `Pokaż wszystkie wzory (${ile})`;

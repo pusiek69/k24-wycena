@@ -161,8 +161,8 @@ async function main() {
  * za zgodą dystrybutora. Leżą w public/wzory/<marka>/<klucz>.webp
  * (tekstura 640 px) oraz -mini.webp (kropka na kafelku, 96 px).
  *
- * Dekory, których nie ma w tej mapie, dostają teksturę proceduralną
- * w kolorze zbliżonym do wzoru — patrz dekory-polecane.js.
+ * Z tej mapy korzystają OBA kalkulatory: umywalki (tekstura na bryle 3D)
+ * i blaty (miniaturka przy dekorze oraz podgląd całej płyty).
  */
 `;
 
@@ -176,7 +176,7 @@ async function main() {
     `  return \`/wzory/\${marka}/\${klucz}\${mini ? '-mini' : ''}.webp\`;\n` +
     `}\n`;
 
-  fs.writeFileSync(path.join(ROOT, 'src', 'umywalka', 'wzory-dekorow.js'), tresc, 'utf8');
+  fs.writeFileSync(path.join(ROOT, 'src', 'generated', 'wzory-dekorow.js'), tresc, 'utf8');
 
   const ile = (m) => Object.keys(przypisane[m] || {}).length;
   console.log(`\n✓ pobrane: ${pobrane}, już były: ${pominiete}, błędy: ${bledy.length}`);

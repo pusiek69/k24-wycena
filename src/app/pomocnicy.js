@@ -18,6 +18,7 @@ import { kartaPlyty } from './wyprzedaz-karta.js';
 import { normalizujKodPlyty, doWyszukania } from './plyta-kod.js';
 import { RODZAJE_KAMIENIA, linkRodzaju } from './magazyn-linki.js';
 import { MAKS_ETYKIETA, PODPOWIEDZI_ETYKIET, czystaEtykieta } from './etykiety-odcinkow.js';
+import { podlaczPodglad, elementyWzoru } from './podglad-wzoru.js';
 import { grupujPoKolorze } from './kolory-dekorow.js';
 
 /**
@@ -374,12 +375,32 @@ export function pomocnikDekor(slug, wyslij) {
     const widoczne = pasujace.slice(0, LIMIT);
     const ukryte = pasujace.length - widoczne.length;
 
-    const przycisk = (n) =>
-      h(
+    /*
+     * ZDJĘCIE WZORU przy nazwie (zlecenie Dawida, 23.11.2026: „dolacz tez
+     * te zdjecia do głównego kalkulatora do avant i keralini"). Mamy je
+     * lokalnie dla Keralini i Avant Quartz — przy pozostałych kolekcjach
+     * kafelek zostaje dokładnie taki, jaki był.
+     *
+     * To WYŁĄCZNIE warstwa wyświetlania: kliknięcie kafelka nadal robi to
+     * samo `wyslij(...)`, co przedtem. Podgląd otwiera się z lupki albo
+     * z przytrzymania i wtedy wyboru nie ma — patrz podglad-wzoru.js.
+     */
+    const przycisk = (n) => {
+      const [kropka, lupa] = elementyWzoru(slug, n);
+      const el = h(
         'button',
-        { class: 'pom-dekor', type: 'button', onclick: () => wyslij(n, `Wybieram dekor ${n}.`) },
-        n
+        {
+          class: kropka ? 'pom-dekor pom-dekor-wzor' : 'pom-dekor',
+          type: 'button',
+          onclick: () => wyslij(n, `Wybieram dekor ${n}.`),
+        },
+        kropka || null,
+        kropka ? h('span', { class: 'pom-dekor-nazwa' }, n) : n,
+        lupa || null
       );
+      if (kropka) podlaczPodglad(el, { marka: slug, dekor: n, nazwaMarki: firma.nazwa });
+      return el;
+    };
 
     /*
      * Bez frazy lista dostaje nagłówki grup kolorystycznych (flow 3/4,

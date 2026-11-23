@@ -34,6 +34,7 @@ import { rodzajMaterialu } from '../engine/alternatywy.js';
 import { wycenZMagazynu, wycenWlasciciela, wariantReczny } from './wycena-naturalny.js';
 import { wariantZPlyty, doWyszukania } from './plyta-kod.js';
 import { linkPlyty, linkMagazynu } from './magazyn-linki.js';
+import { maWzor, otworzPodglad } from './podglad-wzoru.js';
 import { kolorDekoru, nazwaTagu, odlegloscKoloru } from './kolory-dekorow.js';
 import { tanszeAlternatywy, ILE_PODPOWIEDZI } from './podpowiedzi.js';
 import {
@@ -1042,13 +1043,41 @@ function rysuj(box, stan, paczka) {
           ? null
           : pole(
               zWyprzedazy ? 'Płyta z wyprzedaży' : 'Dekor',
-              wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => {
-                stan.dekor = v;
-                // Każda płyta ma własną grubość — bierzemy ją razem z płytą.
-                const p = zWyprzedazy ? plytaWgDekoru(plytyWyprzedazy(), v) : null;
-                if (p) stan.grubosc = String(p.gruboscMm);
-                odswiez();
-              })
+              h(
+                'span',
+                { class: 'dekor-z-podgladem' },
+                wybor(dekory.map((d) => [d, d]), stan.dekor, (v) => {
+                  stan.dekor = v;
+                  // Każda płyta ma własną grubość — bierzemy ją razem z płytą.
+                  const p = zWyprzedazy ? plytaWgDekoru(plytyWyprzedazy(), v) : null;
+                  if (p) stan.grubosc = String(p.gruboscMm);
+                  odswiez();
+                }),
+                /*
+                 * Lupka przy liście dekorów (23.11.2026): Dawid wybiera wzór
+                 * z nazwy, a przy kliencie często musi od razu pokazać, jak
+                 * ten kamień wygląda. Tam, gdzie mamy zdjęcie wzoru (Keralini,
+                 * Avant Quartz), otwiera się ten sam podgląd co w kalkulatorze.
+                 */
+                maWzor(stan.firma, stan.dekor)
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        class: 'wzor-lupa',
+                        title: 'Zobacz całą płytę',
+                        'aria-label': `Zobacz całą płytę: ${stan.dekor}`,
+                        onclick: () =>
+                          otworzPodglad({
+                            marka: stan.firma,
+                            dekor: stan.dekor,
+                            nazwaMarki: firma?.nazwa || '',
+                          }),
+                      },
+                      '⌕'
+                    )
+                  : null
+              )
             ),
         naturalny ? null : pole('Grubość', wybor(grubosci.map((g) => [g, g + ' mm']), stan.grubosc, (v) => ((stan.grubosc = v), odswiez()))),
         pole('Pomieszczenie', wybor([['kuchnia', 'kuchnia'], ['lazienka', 'łazienka']], stan.opcje.pomieszczenie || 'kuchnia', (v) => {

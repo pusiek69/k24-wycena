@@ -2403,3 +2403,21 @@ button { color: var(--cream); background: transparent; }
   cursor: pointer;
 }
 .od-szybka:hover, .od-szybka:focus-visible { border-color: var(--vein); color: var(--vein); }
+
+/* ── KAFELEK DEKORU ZE ZDJĘCIEM WZORU (23.11.2026) ──────────────────
+   Keralini i Avant Quartz mają u nas zdjęcia wzorów, więc ich kafelki
+   dostają miniaturkę i lupkę do podglądu całej płyty. Pozostałe kolekcje
+   wyglądają dokładnie tak, jak dotąd. Sam podgląd stylujemy w osobnym
+   pliku komponentu (app/podglad-wzoru.css), bo używa go też kalkulator
+   umywalek. */
+.pom-dekor-wzor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.pom-dekor-nazwa {
+  flex: 1 1 auto;
+  min-width: 0;
+}
