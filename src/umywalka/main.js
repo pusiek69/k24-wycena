@@ -32,6 +32,8 @@ import {
   limity,
   formatki,
   szerokoscZlewu,
+  maksUmywalek,
+  zOtworem,
   iloscBokow,
   ranty,
   plytaCm,
@@ -126,7 +128,8 @@ function czytajURL() {
     const v = liczba(p.get(k));
     if (Number.isFinite(v)) S[k] = v;
   }
-  if (p.get('mode')) S.mode = p.get('mode') === 'top' ? 'top' : 'int';
+  const tryb = p.get('mode');
+  if (tryb === 'top' || tryb === 'under' || tryb === 'int') S.mode = tryb;
   if (p.get('mont')) S.mont = p.get('mont') === '1';
   if (p.get('reuse')) S.reuse = p.get('reuse') === '1';
   if (p.get('left')) S.left = p.get('left') === '1';
@@ -333,12 +336,15 @@ function opisPozycji(p) {
 function rysujOdczyt() {
   $('#rd1').textContent = `${fd(S.L)} × ${fd(S.W)} × ${fd(S.H)} cm`;
   const opisKamienia = `${firma().nazwa} ${S.dekor}, płyta ${fd(plytaCm(S))} cm`;
-  $('#rd2').textContent =
-    (S.mode === 'int'
-      ? S.n === 2
-        ? `2 zlewy ${fd(S.sL)} × ${fd(S.sW)}, mostek ${fd(S.gap)} · `
+  const opisRodzaju =
+    S.mode === 'int'
+      ? S.n > 1
+        ? `${S.n} zlewy ${fd(S.sL)} × ${fd(S.sW)}, mostek ${fd(S.gap)} · `
         : `zlew ${fd(S.sL)} × ${fd(S.sW)} · `
-      : 'pod umywalkę nablatową · ') + opisKamienia;
+      : S.mode === 'under'
+        ? `${S.n > 1 ? `${S.n} otwory` : 'otwór'} pod podblatową ${fd(S.sL)} × ${fd(S.sW)} · `
+        : `pod ${S.n > 1 ? `${S.n} umywalki nablatowe` : 'umywalkę nablatową'} · `;
+  $('#rd2').textContent = opisRodzaju + opisKamienia;
 
   $('#hint').textContent =
     $('#ex').getAttribute('aria-pressed') === 'true' ? 'Numery jak na liście formatek' : 'Przeciągnij, aby obrócić';
@@ -346,11 +352,15 @@ function rysujOdczyt() {
 
 function rysujOstrzezenia() {
   const r = ranty(S);
-  if (S.mode === 'int') {
+  if (zOtworem(S)) {
     $('#sinkInfo').textContent =
-      `Dno${S.n === 2 ? ' każdego zlewu' : ''}: płyta spadkowa ${fd(S.sL)} × ${fd(S.sW - S.ins)}` +
-      `${S.ins > 0 ? ` + wstawka ${fd(S.sL)} × ${fd(S.ins)}` : ''}. ` +
-      `Rant: ${fd(r.bok)} cm po bokach${S.n === 2 ? `, mostek ${fd(S.gap)} cm` : ''}, ${fd(r.przod)} cm z przodu i z tyłu.`;
+      S.mode === 'under'
+        ? `Otwór ${fd(S.sL)} × ${fd(S.sW)} cm z wypolerowaną krawędzią. ` +
+          `Rant: ${fd(r.bok)} cm po bokach${S.n > 1 ? `, ${fd(S.gap)} cm między otworami` : ''}, ` +
+          `${fd(r.przod)} cm z przodu i z tyłu.`
+        : `Dno${S.n > 1 ? ' każdego zlewu' : ''}: płyta spadkowa ${fd(S.sL)} × ${fd(S.sW - S.ins)}` +
+          `${S.ins > 0 ? ` + wstawka ${fd(S.sL)} × ${fd(S.ins)}` : ''}. ` +
+          `Rant: ${fd(r.bok)} cm po bokach${S.n > 1 ? `, mostek ${fd(S.gap)} cm` : ''}, ${fd(r.przod)} cm z przodu i z tyłu.`;
   }
 
   const lista = ostrzezeniaWykonawcze(S);
@@ -405,8 +415,11 @@ function kontrolki() {
   const l = limity(S);
   const int = S.mode === 'int';
 
-  $('#d-gap').hidden = S.n !== 2;
-  $('label[for=n-sL]').textContent = S.n === 2 ? 'Szerokość każdego zlewu' : 'Szerokość zlewu';
+  $('#d-gap').hidden = S.n < 2 || S.mode === 'top';
+  $('label[for=n-sL]').textContent =
+    (S.n > 1 ? 'Szerokość każdego ' : 'Szerokość ') + (int ? 'zlewu' : 'otworu');
+  $('label[for=n-sW]').textContent = int ? 'Głębokość zlewu (od przodu)' : 'Głębokość otworu (od przodu)';
+  $('label[for=n-gap]').textContent = int ? 'Mostek między zlewami' : 'Odstęp między umywalkami';
 
   for (const k of ['L', 'W', 'H', 'sL', 'gap', 'sW', 'ins']) {
     const n = $('#n-' + k);
@@ -418,15 +431,25 @@ function kontrolki() {
     r.style.setProperty('--p', ((S[k] - l[k][0]) / Math.max(0.001, l[k][1] - l[k][0])) * 100 + '%');
   }
 
-  $('#sinkCard').hidden = !int;
+  /*
+   * Karta „zlew" obsługuje teraz trzy rodzaje: zlew wycięty w kamieniu,
+   * otwór pod umywalkę podblatową i miski nablatowe. Przy nablatowej nie
+   * ma czego wycinać, więc zostaje sam wybór liczby umywalek.
+   */
+  $('#sinkCard').hidden = false;
   $('#reuseRow').hidden = !int;
+  $('#sinkTytul').textContent = int ? 'Zlew w kamieniu' : S.mode === 'under' ? 'Umywalki podblatowe' : 'Umywalki nablatowe';
+  $('#d-sL').hidden = S.mode === 'top';
+  $('#d-sW').hidden = S.mode === 'top';
+  $('#d-ins').hidden = !int;
+  rysujLiczbeUmywalek();
   document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
   document.querySelectorAll('[data-side]').forEach((b) => b.setAttribute('aria-pressed', String(!!S[b.dataset.side])));
   document.querySelectorAll('[data-pre]').forEach((b) => {
     const [a, c] = b.dataset.pre.split(',').map(Number);
     b.setAttribute('aria-pressed', String(a === S.L && c === S.W));
   });
-  document.querySelectorAll('[data-n]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === S.n)));
+
   $('#hn').textContent = S.holes;
   $('#mont').checked = !!S.mont;
   $('#reuse').checked = !!S.reuse;
@@ -438,6 +461,32 @@ function kontrolki() {
 
   rysujKamienie();
   rysujGrubosci();
+}
+
+/**
+ * Wybór liczby umywalek. Ile się da, zależy od długości blatu — przy
+ * krótkim nie ma gdzie postawić trzech, więc nie udajemy, że się da.
+ */
+function rysujLiczbeUmywalek() {
+  const maks = maksUmywalek(S);
+  const slowo = S.mode === 'int' ? ['Jeden zlew', 'Dwa zlewy'] : ['Jedna', 'Dwie', 'Trzy'];
+  const opis = (i) =>
+    S.mode === 'int'
+      ? slowo[i - 1]
+      : `${slowo[i - 1]} umywalk${i === 1 ? 'a' : i === 2 ? 'i' : 'i'}`;
+
+  $('#nsink').innerHTML = [1, 2, 3]
+    .slice(0, Math.max(1, maks))
+    .map((i) => `<button data-n="${i}" aria-pressed="${String(i === S.n)}">${opis(i)}</button>`)
+    .join('');
+
+  const nota = $('#sinkInfo');
+  if (S.mode === 'top' && nota) {
+    nota.textContent =
+      S.n > 1
+        ? `${S.n} miski na blacie, odstęp ${fd(S.gap)} cm. Same umywalki kupuje Pan/Pani osobno.`
+        : 'Miska stoi na blacie. Samą umywalkę kupuje Pan/Pani osobno.';
+  }
 }
 
 function rysujKamienie() {
@@ -667,6 +716,9 @@ document.addEventListener('click', (e) => {
 
   if (d.mode) {
     S.mode = d.mode;
+    // Z dwóch zlewów w kamieniu na trzy umywalki nablatowe da się przejść
+    // tylko wtedy, gdy blat jest dość długi — `zacisnij` to przytnie.
+    S.sL = szerokoscZlewu(S, S.L);
     ga.start(S.mode);
     przelicz();
   } else if (d.side) {
@@ -680,10 +732,12 @@ document.addEventListener('click', (e) => {
   } else if (d.n) {
     const v = +d.n;
     if (v !== S.n) {
+      const poprzednie = S.n;
       S.n = v;
       S.sL = szerokoscZlewu(S, S.L);
-      if (v === 2 && S.holes === 1) S.holes = 2;
-      else if (v === 1 && S.holes === 2) S.holes = 1;
+      // Liczba otworów podpowiada się z liczby umywalek: jedna bateria
+      // (albo jeden odpływ) na miskę. Klient może to potem zmienić.
+      if (S.holes === poprzednie) S.holes = Math.min(3, v);
     }
     przelicz();
   } else if (d.dekor) {

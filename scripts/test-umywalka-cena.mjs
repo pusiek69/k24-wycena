@@ -153,6 +153,54 @@ test('montaż liczy się od powierzchni blatu, nie od kupionej płyty', () => {
   assert.equal(kwota(w, 'montaz'), grosze(((1500 + 200 * 0.6) / 1.23) * 1.08));
 });
 
+/* ═══════════════════════════════════════════ podblatowa i kilka umywalek */
+
+test('podblatowa: płatne wycięcie otworu z polerowaną krawędzią', () => {
+  // Stawka `zlewPodblatowy` z panelu: 450 zł netto = 486 brutto przy 8%.
+  const w = policz({ mode: 'under', n: 1, holes: 1 });
+  assert.equal(kwota(w, 'podblatowa'), 486);
+  assert.equal(kwota(w, 'niecka'), 0, 'podblatowa nie ma niecki z kamienia');
+});
+
+test('dwie umywalki podblatowe — dwa wycięcia', () => {
+  // Blat kontrolny ma 120 cm i otwór 100 cm — dwa takie się nie zmieszczą,
+  // więc bierzemy wymiar, przy którym naprawdę da się je zrobić.
+  const w = policz({ mode: 'under', n: 2, holes: 2, L: 160, sL: 55, sW: 38, gap: 20 });
+  assert.equal(w.stan.n, 2, 'dwie umywalki powinny się zmieścić na 160 cm');
+  assert.equal(kwota(w, 'podblatowa'), 972);
+});
+
+test('za ciasny blat przycina liczbę umywalek zamiast policzyć niemożliwe', () => {
+  // 120 cm i otwory po 100 cm — dwóch się nie da wyciąć i cena tego nie udaje.
+  const w = policz({ mode: 'under', n: 2, holes: 2 });
+  assert.equal(w.stan.n, 1);
+  assert.equal(kwota(w, 'podblatowa'), 486);
+});
+
+test('nablatowa nie płaci ani za nieckę, ani za wycięcie', () => {
+  const w = policz({ mode: 'top', n: 2, holes: 2 });
+  assert.equal(kwota(w, 'niecka'), 0);
+  assert.equal(kwota(w, 'podblatowa'), 0);
+  // Płaci za otwory na odpływy — po jednym na miskę.
+  assert.equal(kwota(w, 'otwory'), 324);
+});
+
+test('ceramika nie wchodzi w cenę — mówimy to wprost', () => {
+  for (const tryb of ['top', 'under']) {
+    const w = policz({ mode: tryb });
+    const tekst = JSON.stringify(w.linieKlienta) + JSON.stringify(w.pozycje);
+    assert.ok(!/miska|ceramik/i.test(tekst), `w cenie ${tryb} nie ma prawa być miski`);
+  }
+});
+
+test('kolejność cen: nablatowa taniej niż podblatowa, ta taniej niż zlew w kamieniu', () => {
+  const nablatowa = policz({ mode: 'top', n: 1, holes: 1 }).razemZaokr;
+  const podblatowa = policz({ mode: 'under', n: 1, holes: 1 }).razemZaokr;
+  const wKamieniu = policz({ mode: 'int', n: 1, holes: 1 }).razemZaokr;
+  assert.ok(nablatowa < podblatowa, `${nablatowa} ≥ ${podblatowa}`);
+  assert.ok(podblatowa < wKamieniu, `${podblatowa} ≥ ${wKamieniu}`);
+});
+
 /* ═══════════════════════════════════════════ promocje dostawcy */
 
 test('promocja aktywna w dacie wyceny obniża materiał (tańsza wygrywa)', () => {

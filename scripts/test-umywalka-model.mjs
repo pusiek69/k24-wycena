@@ -12,6 +12,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   STAN_DOMYSLNY,
+  maksUmywalek,
+  iloscPodblatowych,
+  iloscMisek,
+  zOtworem,
   zacisnij,
   limity,
   formatki,
@@ -75,6 +79,72 @@ test('cienka krawędź (bez pogrubienia) zostawia sam blat', () => {
   assert.equal(grube(s), false);
   assert.equal(formatki(s).length, 1);
   assert.equal(mbPogrubienia(s), 0);
+});
+
+/* ═══════════════════════════════════════════ trzy rodzaje umywalek */
+
+test('podblatowa: otwór w blacie, bez ścianek niecki', () => {
+  // Zlecenie Dawida (24.11.2026): „dodaj tez mozliwosc kilku umywalek
+  // nablatowych lub podblatowych (nie wchodzą w cene umywalki)".
+  const s = stan({ mode: 'under', L: 120, W: 50, H: 15, sL: 55, sW: 38 });
+  const f = formatki(s);
+
+  assert.equal(zOtworem(s), true, 'w blacie wycinamy otwór');
+  assert.equal(iloscPodblatowych(s), 1);
+  assert.equal(iloscMisek(s), 1, 'miska jest, tylko nie z kamienia');
+  assert.equal(wg(f, 'wl'), undefined, 'podblatowa nie ma ścianek z kamienia');
+  assert.match(wg(f, 'top').n, /otworem pod umywalkę/);
+});
+
+test('nablatowa: pełny blat, miski stoją na wierzchu', () => {
+  const s = stan({ mode: 'top', L: 120, W: 50, H: 15 });
+  assert.equal(zOtworem(s), false);
+  assert.equal(iloscPodblatowych(s), 0);
+  assert.equal(iloscMisek(s), 1);
+  assert.equal(wg(formatki(s), 'top').n, 'Blat');
+});
+
+test('kilka umywalek: do trzech, ale tylko gdy jest gdzie je postawić', () => {
+  assert.equal(maksUmywalek(stan({ mode: 'top', L: 240, sL: 45, gap: 15 })), 3);
+  // Dwie miski po 45 cm z odstępem 15 i rantami po 10 potrzebują 125 cm —
+  // na 130 się mieszczą, na 120 już nie. Granica jest policzona, nie zgadnięta.
+  assert.equal(maksUmywalek(stan({ mode: 'top', L: 130, sL: 45, gap: 15 })), 2);
+  assert.equal(maksUmywalek(stan({ mode: 'top', L: 120, sL: 45, gap: 15 })), 1);
+  // Zlew wycięty w kamieniu zostaje przy dwóch — dwie niecki z mostkiem
+  // to już cała szerokość typowego blatu łazienkowego.
+  assert.equal(maksUmywalek(stan({ mode: 'int', L: 300 })), 2);
+});
+
+test('za dużo umywalek jak na blat — liczba przycina się sama', () => {
+  assert.equal(stan({ mode: 'top', L: 100, sL: 45, gap: 15, n: 3 }).n, 1);
+  assert.equal(stan({ mode: 'top', L: 240, sL: 45, gap: 15, n: 3 }).n, 3);
+  assert.equal(stan({ mode: 'int', L: 300, n: 3 }).n, 2);
+});
+
+test('trzy miski dostają trzy środki, równo rozstawione', () => {
+  const s = stan({ mode: 'top', L: 240, W: 50, sL: 45, gap: 15, n: 3 });
+  const c = srodkiZlewow(s);
+  assert.equal(c.length, 3);
+  assert.ok(Math.abs(c[0] + c[2]) < 0.01, 'rozstaw ma być symetryczny');
+  assert.ok(Math.abs(c[1]) < 0.01, 'środkowa miska na środku blatu');
+  assert.ok(Math.abs(c[1] - c[0] - (45 + 15)) < 0.01, 'odstęp między miskami');
+});
+
+test('bryła podblatowej: otwór w blacie i miska pod nim', () => {
+  const b = bryly(stan({ mode: 'under', L: 120, W: 50, H: 15, sL: 55, sW: 38 }));
+  const miski = b.filter((x) => x.obj === 'bowl');
+  assert.equal(miski.length, 1);
+  assert.equal(miski[0].pod, true, 'miska ma wisieć pod blatem');
+  // Blat jest rozbity na kawałki wokół otworu — jak przy zlewie w kamieniu.
+  assert.ok(b.filter((x) => x.k === 'top').length > 1);
+});
+
+test('bryła nablatowej z trzema miskami', () => {
+  const b = bryly(stan({ mode: 'top', L: 240, W: 50, sL: 45, gap: 15, n: 3 }));
+  const miski = b.filter((x) => x.obj === 'bowl');
+  assert.equal(miski.length, 3);
+  assert.ok(miski.every((m) => !m.pod));
+  assert.equal(b.filter((x) => x.k === 'top').length, 1, 'blat bez otworów to jeden kawałek');
 });
 
 /* ═══════════════════════════════════════════ metry krawędzi */

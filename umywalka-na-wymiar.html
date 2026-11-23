@@ -71,8 +71,8 @@
     <div class="card total" id="total"></div>
 
     <div class="card">
-      <div class="seg wide" id="mode" role="group" aria-label="Rodzaj">
-        <button data-mode="int" aria-pressed="true">Zlew wycięty w kamieniu</button><button data-mode="top" aria-pressed="false">Pod umywalkę nablatową</button>
+      <div class="seg trzy" id="mode" role="group" aria-label="Rodzaj umywalki">
+        <button data-mode="int" aria-pressed="true">Zlew w kamieniu</button><button data-mode="under" aria-pressed="false">Pod podblatową</button><button data-mode="top" aria-pressed="false">Pod nablatową</button>
       </div>
       <div class="lbl">Szybkie wymiary</div>
       <div class="chips" id="presets"></div>
@@ -85,8 +85,8 @@
     </div>
 
     <div class="card" id="sinkCard">
-      <h3>Zlew</h3>
-      <div class="seg wide" id="nsink" role="group" aria-label="Liczba zlewów" style="margin-bottom:6px"><button data-n="1" aria-pressed="true">Jeden zlew</button><button data-n="2" aria-pressed="false">Dwa zlewy</button></div>
+      <h3 id="sinkTytul">Zlew</h3>
+      <div class="seg trzy" id="nsink" role="group" aria-label="Liczba umywalek" style="margin-bottom:6px"></div>
       <div id="dimsSink"></div>
       <p class="info" id="sinkInfo"></p>
     </div>

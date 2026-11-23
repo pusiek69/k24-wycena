@@ -218,14 +218,19 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     return g;
   }
 
-  /** Ceramiczna misa przy blacie pod umywalkę nablatową. */
-  function misa(S) {
+  /**
+   * Ceramiczna misa. Nablatowa stoi na kamieniu całą bryłą; podblatowa
+   * wisi pod otworem, więc obracamy ją i chowamy pod blat — widać wtedy
+   * samą czaszę przez wycięcie, dokładnie jak w rzeczywistości.
+   */
+  function misa(S, pod = false) {
     const pts = [
       [0, 0], [9, 0], [15, 1.5], [19, 5], [20.5, 11], [21, 13.5],
       [20, 13.5], [19.2, 10.5], [17.6, 6], [13.6, 2.8], [8, 1.7], [0, 1.7],
     ].map((a) => new T.Vector2(a[0], a[1]));
     const o = new T.Mesh(new T.LatheGeometry(pts, oszczedzaj ? 28 : 56), ceramika);
-    o.scale.set(Math.min(1, (S.L - 18) / 42), 1, Math.min(1, (S.W - 14) / 42));
+    const skala = Math.min(1, (Number(S.sL) || 40) / 42);
+    o.scale.set(skala, pod ? -0.85 : 1, skala);
     o.castShadow = !oszczedzaj;
     const g = new T.Group();
     g.add(o);
@@ -273,7 +278,7 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
 
     bryly(S).forEach((pt) => {
       let o;
-      if (pt.obj) o = pt.obj === 'tap' ? bateria(S) : misa(S);
+      if (pt.obj) o = pt.obj === 'tap' ? bateria(S) : misa(S, pt.pod);
       else {
         const g = new T.BoxGeometry(pt.s[0], pt.s[1], pt.s[2]);
         uv(g, pt.p, pt.k);

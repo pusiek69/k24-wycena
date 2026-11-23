@@ -27,6 +27,8 @@ import {
   mbPogrubienia,
   m2Blatu,
   iloscZlewow,
+  iloscPodblatowych,
+  iloscMisek,
   grube,
   opisKonfiguracji,
   ranty,
@@ -90,6 +92,7 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
   // ---------- robocizna umywalki ----------
   const mb = mbPogrubienia(S);
   const zlewy = iloscZlewow(S);
+  const podblatowe = iloscPodblatowych(S);
   const powierzchnia = m2Blatu(S);
 
   const pozycje = [
@@ -109,6 +112,21 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
       nazwa: zlewy > 1 ? 'Zlewy wycięte w kamieniu' : 'Zlew wycięty w kamieniu',
       brutto: zeStawki(st.umywalkaNiecka, firma, vat) * zlewy,
       ilosc: zlewy,
+    },
+    {
+      /*
+       * UMYWALKA PODBLATOWA — wycięcie otworu i wypolerowanie jego
+       * krawędzi na gotowo. Ta krawędź zostaje widoczna i dotykalna,
+       * więc robota jest inna niż zwykły otwór pod baterię.
+       *
+       * Liczymy stawką `zlewPodblatowy` z panelu — tą samą, którą Dawid
+       * ma na wycięcie zlewu podwieszanego w blacie kuchennym. To ta sama
+       * operacja w zakładzie, więc jedna stawka zamiast dwóch do pilnowania.
+       */
+      id: 'podblatowa',
+      nazwa: podblatowe > 1 ? 'Wycięcia pod umywalki podblatowe' : 'Wycięcie pod umywalkę podblatową',
+      brutto: zeStawki(st.zlewPodblatowy, firma, vat) * podblatowe,
+      ilosc: podblatowe,
     },
     {
       id: 'otwory',
@@ -139,7 +157,7 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
    * kwotę, a nie samo „mamy też tańsze opcje".
    */
   let tanszaWersja = 0;
-  if (!bezAlternatywy && S.mode === 'int') {
+  if (!bezAlternatywy && S.mode !== 'top') {
     const alternatywa = wycenUmywalke({
       firma,
       stan: { ...S, mode: 'top' },
@@ -192,11 +210,12 @@ function udzialy(pozycje, razem) {
  */
 function linieKlienta(pozycje, S, firma) {
   const kwota = (id) => pozycje.find((p) => p.id === id)?.brutto || 0;
-  const wykonanie = kwota('pogrubienie') + kwota('niecka') + kwota('otwory');
+  const wykonanie = kwota('pogrubienie') + kwota('niecka') + kwota('podblatowa') + kwota('otwory');
 
   const skladniki = [];
   if (grube(S)) skladniki.push('pogrubiona krawędź');
   if (S.mode === 'int') skladniki.push(S.n > 1 ? 'dwa zlewy w kamieniu' : 'zlew w kamieniu');
+  if (S.mode === 'under') skladniki.push(S.n > 1 ? 'wycięcia pod umywalki' : 'wycięcie pod umywalkę');
   if (S.holes > 0) skladniki.push(S.holes === 1 ? 'otwór' : 'otwory');
 
   return [

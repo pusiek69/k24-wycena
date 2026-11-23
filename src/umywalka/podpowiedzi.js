@@ -55,15 +55,32 @@ export function najblizszaPolowka(S, plyta) {
  */
 export function ostrzezeniaWykonawcze(S) {
   const lista = [];
-  if (S.mode !== 'int') {
+
+  /*
+   * Ceramika nie wchodzi w cenę — ani nablatowa, ani podblatowa. Klient
+   * kupuje miskę tam, gdzie mu się podoba; my robimy kamień i wycięcia.
+   * To musi stać przy wyborze, a nie dopiero w rozbiciu ceny.
+   */
+  if (S.mode === 'top') {
     return [
       {
         rodzaj: 'info',
         tekst:
-          'Umywalka nablatowa nie jest wliczona w cenę. Otwór na jej odpływ ' +
-          'policz w „Otworach w blacie".',
+          `${S.n > 1 ? 'Umywalki nablatowe nie są wliczone' : 'Umywalka nablatowa nie jest wliczona'} ` +
+          'w cenę — kupuje je Pan/Pani osobno. W cenie jest blat, ' +
+          'wycięcie otworów na odpływ i baterię oraz montaż.',
       },
     ];
+  }
+
+  if (S.mode === 'under') {
+    lista.push({
+      rodzaj: 'info',
+      tekst:
+        `${S.n > 1 ? 'Umywalki podblatowe nie są wliczone' : 'Umywalka podblatowa nie jest wliczona'} ` +
+        'w cenę — kupuje je Pan/Pani osobno. W cenie jest blat oraz ' +
+        `${S.n > 1 ? 'wycięcia otworów' : 'wycięcie otworu'} z wypolerowaną krawędzią.`,
+    });
   }
 
   const r = ranty(S);
@@ -75,10 +92,13 @@ export function ostrzezeniaWykonawcze(S) {
         'transporcie i montażu.',
     });
   }
-  if (S.n === 2 && S.gap < 10) {
+  if (S.n > 1 && S.gap < 10) {
     lista.push({
       rodzaj: 'uwaga',
-      tekst: 'Wąski mostek między zlewami (poniżej 10 cm) — łatwo go złamać przy transporcie.',
+      tekst:
+        S.mode === 'under'
+          ? 'Wąski pas kamienia między otworami (poniżej 10 cm) — łatwo go złamać przy transporcie.'
+          : 'Wąski mostek między zlewami (poniżej 10 cm) — łatwo go złamać przy transporcie.',
     });
   }
   if (S.holes > 0 && r.przod < 7) {

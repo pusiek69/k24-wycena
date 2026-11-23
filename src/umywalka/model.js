@@ -15,13 +15,16 @@
 
 /** Stan startowy — ten sam, od którego zaczyna projekt Dawida. */
 export const STAN_DOMYSLNY = {
-  mode: 'int', // 'int' = zlew wycięty w kamieniu, 'top' = blat pod nablatową
+  // 'int'   — zlew wycięty w kamieniu (jedna płyta, bez łączeń)
+  // 'top'   — blat pod umywalkę NABLATOWĄ (miska stoi na kamieniu)
+  // 'under' — blat pod umywalkę PODBLATOWĄ (miska pod wyciętym otworem)
+  mode: 'int',
   L: 120, // długość blatu
   W: 50, // głębokość blatu
   H: 15, // wysokość widocznej krawędzi (z pogrubieniem)
   left: true, // pogrubienie lewego boku
   right: true, // pogrubienie prawego boku
-  n: 1, // liczba zlewów (1 albo 2)
+  n: 1, // liczba umywalek: 1–2 przy zlewie w kamieniu, 1–3 przy nablatowej/podblatowej
   sL: 100, // szerokość zlewu
   gap: 15, // mostek między zlewami
   sW: 35, // głębokość zlewu (od przodu)
@@ -43,8 +46,37 @@ export const grube = (S) => S.H > plytaCm(S) + 0.01;
 /** Ile boków pogrubiamy (0–2). */
 export const iloscBokow = (S) => (S.left ? 1 : 0) + (S.right ? 1 : 0);
 
-/** Ile zlewów wycinamy (przy blacie pod nablatową — zero). */
+/** Czy w blacie wycinamy otwór pod miskę (zlew w kamieniu albo podblatowa). */
+export const zOtworem = (S) => S.mode === 'int' || S.mode === 'under';
+
+/** Ile niecek wycinamy w kamieniu — przy nablatowej żadnej. */
 export const iloscZlewow = (S) => (S.mode === 'int' ? S.n : 0);
+
+/** Ile otworów pod umywalki podblatowe (każdy z polerowaną krawędzią). */
+export const iloscPodblatowych = (S) => (S.mode === 'under' ? S.n : 0);
+
+/** Ile misek stoi na blacie albo pod nim — przy zlewie w kamieniu żadnej. */
+export const iloscMisek = (S) => (S.mode === 'int' ? 0 : S.n);
+
+/**
+ * Ile umywalek zmieści się na blacie tej długości.
+ *
+ * Przy zlewie wyciętym w kamieniu zostajemy przy dwóch: dwie niecki
+ * z mostkiem to już cała szerokość typowego blatu łazienkowego.
+ * Nablatowe i podblatowe idą do trzech — ale tylko jeśli naprawdę jest
+ * gdzie je postawić: każda potrzebuje swojej szerokości, odstępu między
+ * sąsiadkami i rantu przy ścianach.
+ */
+export function maksUmywalek(S) {
+  if (S.mode === 'int') return 2;
+  const szer = Math.max(30, Number(S.sL) || 40);
+  const odstep = Math.max(8, Number(S.gap) || 10);
+  const rant = 10;
+  for (let n = 3; n > 1; n--) {
+    if (n * szer + (n - 1) * odstep + 2 * rant <= S.L) return n;
+  }
+  return 1;
+}
 
 const polowki = (v) => Math.floor(v * 2) / 2;
 
@@ -55,14 +87,17 @@ export const szerokoscZlewu = (S, L) =>
 /** Granice suwaków — zależą od siebie nawzajem, stąd funkcja, a nie stała. */
 export function limity(S) {
   const int = S.mode === 'int';
-  const dwa = S.n === 2;
   const t = plytaCm(S);
+  const ile = Math.max(1, Math.min(3, Number(S.n) || 1));
+  // Przy kilku umywalkach szerokość każdej liczy się z tego, co zostaje
+  // po odjęciu odstępów między nimi.
+  const naSzerokosc = ile > 1 ? (S.L - 10 - (ile - 1) * S.gap) / ile : S.L - 10;
   return {
     L: [40, 300],
     W: [30, 80],
     H: [int ? 15 : t, int ? 30 : 20],
-    sL: [30, Math.max(30, dwa ? (S.L - 10 - S.gap) / 2 : S.L - 10)],
-    gap: [8, dwa ? Math.max(8, Math.min(60, S.L - 10 - 2 * S.sL)) : 60],
+    sL: [30, Math.max(30, naSzerokosc)],
+    gap: [8, ile > 1 ? Math.max(8, Math.min(60, (S.L - 10 - ile * S.sL) / (ile - 1))) : 60],
     sW: [25, Math.max(25, S.W - 10)],
     ins: [0, Math.max(0, Math.min(10, S.sW - 15))],
   };
@@ -75,7 +110,8 @@ export function limity(S) {
  * dopuszczalną szerokość zlewu, a ta — dopuszczalny mostek.
  */
 export function zacisnij(S) {
-  S.n = S.n === 2 ? 2 : 1;
+  S.n = Math.max(1, Math.min(3, Math.round(Number(S.n) || 1)));
+  S.n = Math.min(S.n, maksUmywalek(S));
   S.holes = Math.max(0, Math.min(3, Math.round(Number(S.holes) || 0)));
   for (let i = 0; i < 2; i++) {
     const l = limity(S);
@@ -89,7 +125,7 @@ export function zacisnij(S) {
 
 /** Środki zlewów na osi długości (jeden na środku, dwa symetrycznie z mostkiem). */
 export function srodkiZlewow(S) {
-  const n = Math.max(1, iloscZlewow(S));
+  const n = Math.max(1, S.mode === 'int' ? iloscZlewow(S) : iloscMisek(S));
   const g = n > 1 ? S.gap : 0;
   const calosc = n * S.sL + (n - 1) * g;
   return [...Array(n)].map((_, i) => -calosc / 2 + S.sL / 2 + i * (S.sL + g));
@@ -102,6 +138,16 @@ export function srodkiZlewow(S) {
  * takiego kawałka NIE dokładamy do zakupu materiału, bo on już jest w cenie
  * blatu, z którego wypadł.
  */
+/** Jak nazywamy blat na liście formatek — zależnie od tego, co w nim wycinamy. */
+function nazwaBlatu(S) {
+  const n = S.n;
+  if (S.mode === 'int') return n > 1 ? `Blat z ${n} otworami na zlewy` : 'Blat z otworem na zlew';
+  if (S.mode === 'under') {
+    return n > 1 ? `Blat z ${n} otworami pod umywalki` : 'Blat z otworem pod umywalkę';
+  }
+  return 'Blat';
+}
+
 export function formatki(S) {
   const { L, W, H, sL, sW, ins } = S;
   const int = S.mode === 'int';
@@ -111,7 +157,7 @@ export function formatki(S) {
 
   lista.push({
     k: 'top',
-    n: int ? (n > 1 ? 'Blat z 2 otworami na zlewy' : 'Blat z otworem na zlew') : 'Blat',
+    n: nazwaBlatu(S),
     a: L,
     b: W,
     q: 1,
@@ -208,8 +254,12 @@ export function bryly(S) {
   const cs = srodkiZlewow(S);
   const n = int ? S.n : 1;
 
-  if (int) {
-    // Blat wokół otworów: pas z przodu, pas z tyłu i kawałki między zlewami.
+  if (zOtworem(S)) {
+    /*
+     * Blat wokół otworów: pas z przodu, pas z tyłu i kawałki między nimi.
+     * Ten sam rysunek obsługuje zlew wycięty w kamieniu i otwór pod
+     * umywalkę podblatową — różni je to, co widać POD otworem.
+     */
     B('top', lx, rx, ty, H, sz1, fz, up);
     B('top', lx, rx, ty, H, zb, sz0, up);
     const xs = [lx, ...cs.flatMap((c) => [c - sL / 2, c + sL / 2]), rx];
@@ -255,14 +305,30 @@ export function bryly(S) {
       B('chan', a0 + e, a1 - e, 0, 0.4, sz0, zA + 0.5, [0, 0, 0], { dark: 1, hideEx: 1 });
     });
   } else {
-    P.push({ k: 'bowl', obj: 'bowl', p: [0, H, 3], ex: up });
+    /*
+     * MISKI CERAMICZNE — nablatowe stoją na kamieniu, podblatowe wiszą
+     * pod wyciętym otworem. Nie wchodzą w cenę (klient kupuje je sam),
+     * ale muszą być na podglądzie: bez nich blat z dziurą wygląda jak
+     * pomyłka, a nie jak umywalka.
+     */
+    cs.forEach((c) => {
+      P.push({
+        k: 'bowl',
+        obj: 'bowl',
+        p: [c, S.mode === 'under' ? H - t : H, S.mode === 'under' ? 0 : 3],
+        pod: S.mode === 'under',
+        ex: up,
+      });
+    });
   }
 
-  for (let i = 0; i < Math.min(S.holes, n); i++) {
+  for (let i = 0; i < Math.min(S.holes, Math.max(1, cs.length)); i++) {
     P.push({
       k: 'tap',
       obj: 'tap',
-      p: [int ? cs[i] : 0, H, int ? (zb + sz0) / 2 : zb + 5],
+      // Bateria stoi za miską: przy zlewie w kamieniu i przy podblatowej
+      // na rancie za otworem, przy nablatowej przy tylnej krawędzi.
+      p: [cs[i] ?? 0, H, zOtworem(S) ? (zb + sz0) / 2 : zb + 5],
       ex: up,
     });
   }
@@ -273,14 +339,21 @@ export function bryly(S) {
 /** Jedno zdanie o konfiguracji — na kartę, do maila i do tematu zgłoszenia. */
 export function opisKonfiguracji(S) {
   const czesci = [`Umywalka ${fd(S.L)} × ${fd(S.W)} cm`];
+  const ile = S.n;
   if (S.mode === 'int') {
     czesci.push(
-      S.n === 2
+      ile === 2
         ? `dwa zlewy w kamieniu ${fd(S.sL)} × ${fd(S.sW)}, mostek ${fd(S.gap)} cm`
         : `zlew wycięty w kamieniu ${fd(S.sL)} × ${fd(S.sW)}`
     );
+  } else if (S.mode === 'under') {
+    czesci.push(
+      ile > 1
+        ? `${slownie(ile)} otwory pod umywalki podblatowe ${fd(S.sL)} × ${fd(S.sW)}`
+        : `otwór pod umywalkę podblatową ${fd(S.sL)} × ${fd(S.sW)}`
+    );
   } else {
-    czesci.push('blat pod umywalkę nablatową');
+    czesci.push(ile > 1 ? `blat pod ${slownie(ile)} umywalki nablatowe` : 'blat pod umywalkę nablatową');
   }
   if (grube(S)) {
     const boki = iloscBokow(S);
@@ -291,3 +364,4 @@ export function opisKonfiguracji(S) {
 }
 
 const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');
+const slownie = (n) => ({ 2: 'dwa', 3: 'trzy' })[n] || String(n);
