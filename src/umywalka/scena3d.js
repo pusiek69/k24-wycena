@@ -89,7 +89,8 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
   const dimG = new T.Group();
   sc.add(grp, dimG);
 
-  const lineM = new T.LineBasicMaterial({ color: 0xff4f00, depthTest: false, transparent: true });
+  // Linie wymiarowe w kolorze złotej żyły — ten sam akcent co na stronie.
+  const lineM = new T.LineBasicMaterial({ color: 0xc9a86a, depthTest: false, transparent: true });
   const chrom = new T.MeshPhongMaterial({ color: 0xb7bbc2, specular: 0xffffff, shininess: 120 });
   const ceramika = new T.MeshStandardMaterial({ color: 0xfbfbfb, roughness: 0.25, side: T.DoubleSide });
   const ciemny = new T.MeshBasicMaterial({ color: 0x151515 });
@@ -178,8 +179,9 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     const mapa = w.plik ? zeZdjecia(w.plik) : tekstura(w.faktura);
     const a = new T.MeshStandardMaterial({ map: mapa, roughness: 0.42, metalness: 0 });
     const b = a.clone();
-    b.emissive = new T.Color(0xff4f00);
-    b.emissiveIntensity = 0.42;
+    // Podświetlenie formatki: rozgrzane złoto, nie pomarańcz.
+    b.emissive = new T.Color(0xd9bd84);
+    b.emissiveIntensity = 0.38;
     return (matC[klucz] = { a, b });
   }
 

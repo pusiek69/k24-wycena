@@ -16,15 +16,20 @@
 
 const SZER = 1200;
 const WYS = 900;
-const AKCENT = '#ff4f00';
-const TUSZ = '#111214';
-const SZARY = '#596069';
+/* Paleta kam24h.pl — wizualizacja ma wyglądać jak strona, bo trafia dalej:
+   do maila, na telefon klienta i stamtąd do drugiej osoby w domu. */
+const AKCENT = '#c9a86a';
+const AKCENT_JASNY = '#d9bd84';
+const TUSZ = '#ece6da';
+const SZARY = '#b6ad9d';
+const KARTA = '#1b1815';
 
 const zl = (v) => Math.round(v).toLocaleString('pl-PL') + ' zł';
 const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');
 
-/** Font z podpisu — Geist, jeśli zdążył się wczytać; inaczej systemowy. */
-const font = (waga, rozmiar) => `${waga} ${rozmiar}px Geist, system-ui, -apple-system, sans-serif`;
+/** Kroje jak na stronie: nagłówki i kwota Cormorantem, reszta sansem. */
+const font = (waga, rozmiar) => `${waga} ${rozmiar}px "Helvetica Neue", Arial, sans-serif`;
+const ozdobny = (rozmiar) => `400 ${rozmiar}px Cormorant, Georgia, "Times New Roman", serif`;
 
 /**
  * @param {object} p
@@ -72,15 +77,21 @@ function wczytaj(src) {
 /** Jasne tło z delikatnym światłem u góry — jak płyta pod lampą. */
 function tlo(g) {
   const grad = g.createLinearGradient(0, 0, 0, WYS);
-  grad.addColorStop(0, '#fbfbfc');
-  grad.addColorStop(0.62, '#eceef0');
-  grad.addColorStop(1, '#dfe2e6');
+  grad.addColorStop(0, '#221d19');
+  grad.addColorStop(0.6, '#191614');
+  grad.addColorStop(1, '#13110f');
   g.fillStyle = grad;
   g.fillRect(0, 0, SZER, WYS);
 
-  const plama = g.createRadialGradient(SZER * 0.5, WYS * 0.3, 40, SZER * 0.5, WYS * 0.3, SZER * 0.6);
-  plama.addColorStop(0, 'rgba(255,255,255,0.85)');
-  plama.addColorStop(1, 'rgba(255,255,255,0)');
+  // Światło lampy nad stołem kamieniarza — ciepłe, złote, przygaszone.
+  /*
+   * Mocniejsza plama światła niż na stronie: na obrazku ląduje też czarny
+   * kamień (Portoro, Absolute Black) i bez tego zlewałby się z tłem.
+   */
+  const plama = g.createRadialGradient(SZER * 0.5, WYS * 0.4, 60, SZER * 0.5, WYS * 0.4, SZER * 0.66);
+  plama.addColorStop(0, 'rgba(236,230,218,0.13)');
+  plama.addColorStop(0.45, 'rgba(201,168,106,0.09)');
+  plama.addColorStop(1, 'rgba(201,168,106,0)');
   g.fillStyle = plama;
   g.fillRect(0, 0, SZER, WYS);
 }
@@ -93,8 +104,8 @@ function naglowek(g, w) {
   g.letterSpacing = '0px';
 
   g.fillStyle = TUSZ;
-  g.font = font(600, 42);
-  g.fillText('Umywalka z kamienia na wymiar', 64, 128);
+  g.font = ozdobny(46);
+  g.fillText('Umywalka z kamienia na wymiar', 64, 130);
 
   g.fillStyle = SZARY;
   g.font = font(400, 22);
@@ -119,8 +130,8 @@ function wklejBryle(g, bryla) {
 
   // Miękki cień pod bryłą — osadza ją na tle zamiast zawieszać w powietrzu.
   const cien = g.createRadialGradient(SZER / 2, y + h * 0.82, 10, SZER / 2, y + h * 0.82, w * 0.34);
-  cien.addColorStop(0, 'rgba(17,18,20,0.13)');
-  cien.addColorStop(1, 'rgba(17,18,20,0)');
+  cien.addColorStop(0, 'rgba(0,0,0,0.38)');
+  cien.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = cien;
   g.fillRect(0, y + h * 0.55, SZER, h * 0.6);
 
@@ -132,10 +143,10 @@ function stopka(g, w) {
   const y = 672;
   const h = 150;
 
-  zaokraglony(g, 48, y, SZER - 96, h, 18);
-  g.fillStyle = '#ffffff';
+  zaokraglony(g, 48, y, SZER - 96, h, 14);
+  g.fillStyle = KARTA;
   g.fill();
-  g.strokeStyle = 'rgba(17,18,20,0.08)';
+  g.strokeStyle = 'rgba(201,168,106,0.28)';
   g.lineWidth = 1.5;
   g.stroke();
 
@@ -147,8 +158,8 @@ function stopka(g, w) {
   g.letterSpacing = '0px';
 
   g.fillStyle = TUSZ;
-  g.font = font(600, 30);
-  g.fillText(`${fd(S.L)} × ${fd(S.W)} × ${fd(S.H)} cm`, 80, y + 80);
+  g.font = ozdobny(34);
+  g.fillText(`${fd(S.L)} × ${fd(S.W)} × ${fd(S.H)} cm`, 80, y + 82);
 
   g.fillStyle = SZARY;
   g.font = font(400, 19);
@@ -162,9 +173,9 @@ function stopka(g, w) {
   g.fillText('CENA ORIENTACYJNA', SZER - 80, y + 40);
   g.letterSpacing = '0px';
 
-  g.fillStyle = TUSZ;
-  g.font = font(700, 46);
-  g.fillText(zl(w.razemZaokr), SZER - 80, y + 88);
+  g.fillStyle = AKCENT_JASNY;
+  g.font = ozdobny(52);
+  g.fillText(zl(w.razemZaokr), SZER - 80, y + 90);
 
   g.fillStyle = SZARY;
   g.font = font(400, 17);

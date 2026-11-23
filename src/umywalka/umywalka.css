@@ -1,62 +1,69 @@
 /*
  * KALKULATOR UMYWALEK — wygląd.
  *
- * ŹRÓDŁO: projekt Dawida (artefakt z 23.11.2026). Jego styl, jego akcent
- * (#ff4f00), jego krój (Geist), jego układ: lewa kolumna to przyklejona
- * scena 3D, prawa to cena i kontrolki, pod spodem formatki i rozbicie ceny.
+ * UKŁAD I ZACHOWANIE: projekt Dawida (artefakt z 23.11.2026) — przyklejona
+ * scena 3D po lewej, cena i kontrolki po prawej, formatki i rozbicie ceny
+ * pod spodem. Tego nie ruszamy.
  *
- * VOICE narzędzie warsztatowe: precyzyjne i spokojne, jedna głośna liczba (cena)
- * IDEA stół pomiarowy kamieniarza: płyta pod lampą, pomarańczowe znaczniki
- * COLOUR aluminium, biel paneli, czarny tusz, pomarańcz do mierzenia
+ * KOLORY I KROJE: paleta kam24h.pl (polecenie Dawida z 23.11: „popraw kolory
+ * kalkulatora na takie jak na głównej stronie zeby to wszystko pasowalo").
+ * Ciemny kamień i złota żyła zamiast pomarańczu #ff4f00 z artefaktu,
+ * nagłówki Cormorantem jak na reszcie strony.
  *
- * ZMIANY WOBEC ARTEFAKTU:
- *   • Geist z własnego serwera (Content-Security-Policy strony nie dopuszcza
- *     fontów z zewnątrz, a i tak lepiej nie wysyłać nikomu adresu klienta),
- *   • style formularza zapytania w jego języku wizualnym — pola i walidacja
- *     są te same co przy wycenie blatów, ale wyglądają jak reszta tej strony,
- *   • drobiazgi dostępności: podpowiedź połówki płyty, komunikat błędu.
+ * Wszystko, co złote, jest akcentem. Czerwień („żar") pojawia się wyłącznie
+ * przy błędzie formularza — tak samo jak na stronie głównej, gdzie jest
+ * zarezerwowana dla jednej rzeczy i dlatego działa.
  */
 
+/* Cormorant (SIL OFL) — ten sam plik, co reszta strony. CSP ma font-src 'self',
+   więc fonty idą z naszego serwera; `swap` nie blokuje renderu ani sekundy. */
 @font-face {
-  font-family: Geist;
-  src: url('/fonty/Geist-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: Geist;
-  src: url('/fonty/Geist-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: Geist;
-  src: url('/fonty/Geist-SemiBold.woff2') format('woff2');
+  font-family: 'Cormorant';
+  font-style: normal;
   font-weight: 600;
   font-display: swap;
+  src: url('/fonty/cormorant-600.woff2') format('woff2');
 }
 @font-face {
-  font-family: Geist;
-  src: url('/fonty/Geist-Bold.woff2') format('woff2');
-  font-weight: 700;
+  font-family: 'Cormorant';
+  font-style: italic;
+  font-weight: 500;
   font-display: swap;
+  src: url('/fonty/cormorant-500italic.woff2') format('woff2');
 }
 
+/*
+ * PALETA: dokładnie ta, co na kam24h.pl (polecenie Dawida — „zeby to
+ * wszystko pasowalo"). Nazwy zmiennych zostają z projektu Dawida, żeby
+ * reszta tego pliku i układ zostały nietknięte — zmieniają się wartości.
+ *
+ * Co pod czym siedzi:
+ *   --bg   tło strony          = --ink ze style.css (najciemniejszy kamień)
+ *   --card karty i panele      = --slab
+ *   --ink  GŁÓWNY TEKST        = --cream (na ciemnym tle tekst jest jasny,
+ *          i tę samą barwę biorą odwrócone plomby: numerki formatek)
+ *   --acc  akcent              = --vein, złota żyła zamiast pomarańczu
+ */
 :root {
-  color-scheme: light dark;
-  --bg: light-dark(#e9eaec, #141517);
-  --card: light-dark(#fff, #1d1f22);
-  --ink: light-dark(#111214, #eceef0);
-  --mute: light-dark(#596069, #9ba1a9);
-  --line: light-dark(#d4d6da, #2f3236);
-  --soft: light-dark(#f3f4f5, #26292d);
-  --acc: #ff4f00;
-  --s1: light-dark(#fdfdfd, #2b2e32);
-  --s2: light-dark(#d5d8dc, #101113);
-  --ok: light-dark(#1d7a4c, #5fd09a);
+  color-scheme: dark;
+  --bg: #13110f;
+  --card: #1b1815;
+  --stone-hi: #2f2a26;
+  --ink: #ece6da;
+  --mute: #b6ad9d;
+  --dim: #8c8474;
+  --line: rgba(201, 168, 106, 0.2);
+  --line-hi: rgba(201, 168, 106, 0.45);
+  --soft: #272320;
+  --acc: #c9a86a;
+  --acc-hi: #d9bd84;
+  --zar: #c2402c;
+  --s1: #2f2a26;
+  --s2: #13110f;
+  --ok: #7a9d66;
+  --sans: 'Helvetica Neue', Arial, sans-serif;
+  --serif-ozdobny: 'Cormorant', Georgia, 'Times New Roman', serif;
 }
-:root[data-theme='light'] { color-scheme: light; }
-:root[data-theme='dark'] { color-scheme: dark; }
 
 * { box-sizing: border-box; min-width: 0; }
 html, body { margin: 0; }
@@ -64,13 +71,15 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--ink);
-  font: 16px/1.5 Geist, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font: 16px/1.55 var(--sans);
   overflow-x: clip;
 }
-h1, h2, h3 { margin: 0; font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; }
-h1 { font-size: clamp(28px, 3.2vw, 40px); text-wrap: balance; }
-h2 { font-size: 22px; margin-bottom: 12px; }
-h3 { font-size: 16px; letter-spacing: 0; margin-bottom: 10px; }
+/* Nagłówki Cormorantem, jak na całej stronie — reszta zostaje sansem,
+   bo to kontrolki, a nie tekst do czytania. */
+h1, h2, h3 { margin: 0; font-weight: 400; line-height: 1.08; font-family: var(--serif-ozdobny); }
+h1 { font-size: clamp(30px, 3.4vw, 44px); text-wrap: balance; }
+h2 { font-size: 26px; margin-bottom: 12px; }
+h3 { font-size: 20px; margin-bottom: 10px; }
 button { font: inherit; color: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
   outline: 2px solid var(--acc);
@@ -103,15 +112,23 @@ a { color: inherit; }
 }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
 .lab { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+/*
+ * Etykiety wymiarów. Jaśniejsze złoto niż akcent w panelu, bo leżą raz na
+ * ciemnym tle sceny, a raz na jasnym kamieniu — i w obu sytuacjach mają być
+ * czytelne. Stąd też ciemny kontur: na białym marmurze samo złoto zlewałoby
+ * się z blatem.
+ */
 .lb {
-  position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 13px; font-weight: 600;
-  padding: 3px 8px; border-radius: 6px; background: var(--acc); color: #111;
+  position: absolute; left: 0; top: 0; white-space: nowrap; font-size: 13px; font-weight: 700;
+  padding: 3px 8px; border-radius: 4px; background: var(--acc-hi); color: #13110f;
+  box-shadow: 0 0 0 1px rgba(19, 17, 15, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
   font-variant-numeric: tabular-nums; transition: opacity 0.2s;
 }
-.lb.sink { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1.5px var(--acc); }
+.lb.sink { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1.5px var(--acc), 0 1px 3px rgba(0, 0, 0, 0.5); }
 .lb.n {
   width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
-  border-radius: 50%; background: var(--ink); color: var(--card);
+  border-radius: 50%; background: var(--ink); color: var(--bg);
+  box-shadow: 0 0 0 1px rgba(19, 17, 15, 0.4);
 }
 .sui {
   position: absolute; top: 12px; left: 12px; right: 12px; display: flex;
@@ -127,7 +144,7 @@ a { color: inherit; }
   cursor: pointer; font-size: 14px; font-weight: 500; color: var(--mute);
 }
 .seg button[aria-pressed='true'] {
-  background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  background: var(--stone-hi); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-hi);
 }
 .seg.wide { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
 .seg.wide button { min-height: 44px; }
@@ -135,16 +152,16 @@ a { color: inherit; }
   border: 1px solid var(--line); background: var(--card); border-radius: 10px;
   padding: 8px 14px; min-height: 44px; font-weight: 600; font-size: 14px; cursor: pointer;
 }
-.btn:hover { border-color: var(--ink); }
+.btn:hover { border-color: var(--line-hi); }
 /* Główna akcja jest wyraźnie wyższa od reszty — na telefonie trafia się
    w nią kciukiem bez celowania. */
 .btn.acc { background: var(--acc); border-color: var(--acc); color: #111; min-height: 52px; }
-.btn[aria-pressed='true'] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn[aria-pressed='true'] { background: rgba(201, 168, 106, 0.16); color: var(--acc-hi); border-color: var(--acc); }
 .btn:disabled { opacity: 0.6; cursor: default; }
 .read { position: absolute; left: 16px; bottom: 14px; right: 150px; pointer-events: none; }
 .read b {
-  display: block; font-size: clamp(22px, 2.6vw, 34px); font-weight: 600;
-  letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums;
+  display: block; font-family: var(--serif-ozdobny); font-size: clamp(24px, 2.8vw, 36px);
+  font-weight: 400; line-height: 1.1; font-variant-numeric: tabular-nums;
 }
 .read span { font-size: 14px; color: var(--mute); }
 .hint {
@@ -157,8 +174,8 @@ a { color: inherit; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
 .total .tl { font-size: 14px; color: var(--mute); }
 .big {
-  font-size: clamp(40px, 4.6vw, 56px); font-weight: 700; letter-spacing: -0.03em;
-  line-height: 1.05; font-variant-numeric: tabular-nums; white-space: nowrap;
+  font-family: var(--serif-ozdobny); font-size: clamp(42px, 4.8vw, 60px); font-weight: 400;
+  line-height: 1.02; color: var(--acc-hi); font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 .big small { font-size: 16px; font-weight: 500; color: var(--mute); letter-spacing: 0; }
 .total .sub { color: var(--mute); font-size: 14px; margin-top: 2px; }
@@ -183,7 +200,7 @@ a { color: inherit; }
   background: var(--soft); padding-right: 10px; flex: none;
 }
 .num input {
-  width: 74px; border: 0; background: transparent; font: 600 16px Geist, system-ui, sans-serif;
+  width: 74px; border: 0; background: transparent; font: 600 16px var(--sans);
   color: var(--ink); padding: 8px 4px 8px 10px; text-align: right;
   font-variant-numeric: tabular-nums; outline: none;
 }
@@ -192,13 +209,13 @@ a { color: inherit; }
 input[type='range'] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 0; cursor: pointer; }
 input[type='range']::-webkit-slider-runnable-track {
   height: 4px; border-radius: 2px;
-  background: linear-gradient(to right, var(--acc) var(--p, 50%), var(--line) var(--p, 50%));
+  background: linear-gradient(to right, var(--acc) var(--p, 50%), var(--stone-hi) var(--p, 50%));
 }
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
   background: var(--card); border: 3px solid var(--acc); margin-top: -9px;
 }
-input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
+input[type='range']::-moz-range-track { height: 4px; border-radius: 2px; background: var(--stone-hi); }
 input[type='range']::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--acc); }
 input[type='range']::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--acc); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -206,15 +223,15 @@ input[type='range']::-moz-range-thumb { width: 16px; height: 16px; border-radius
   border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 6px 14px;
   min-height: 44px; font-size: 14px; cursor: pointer; font-variant-numeric: tabular-nums;
 }
-.chip:hover { border-color: var(--ink); }
-.chip[aria-pressed='true'] { border-color: var(--ink); background: var(--ink); color: var(--card); }
+.chip:hover { border-color: var(--line-hi); }
+.chip[aria-pressed='true'] { border-color: var(--acc); background: rgba(201, 168, 106, 0.14); color: var(--acc-hi); }
 .lbl { font-size: 14px; color: var(--mute); margin: 12px 0 6px; }
 .mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
 .mat {
   display: flex; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--line);
   border-radius: 10px; padding: 8px 10px; min-height: 52px; background: var(--card); cursor: pointer;
 }
-.mat:hover { border-color: var(--ink); }
+.mat:hover { border-color: var(--line-hi); }
 .mat[aria-pressed='true'] { border-color: var(--acc); box-shadow: inset 0 0 0 1px var(--acc); }
 .dot { width: 28px; height: 28px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
 .mat b { display: block; font-size: 14px; font-weight: 600; line-height: 1.2; }
@@ -223,7 +240,7 @@ input[type='range']::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .sw small { display: block; color: var(--mute); font-size: 13px; }
 .sw input {
   appearance: none; -webkit-appearance: none; width: 44px; height: 26px; border-radius: 13px;
-  background: var(--line); position: relative; cursor: pointer; flex: none; margin: 0; transition: background 0.15s;
+  background: var(--stone-hi); position: relative; cursor: pointer; flex: none; margin: 0; transition: background 0.15s;
 }
 .sw input::after {
   content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
@@ -280,14 +297,15 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
 .pole label { font-size: 13px; color: var(--mute); }
 .pole input, .pole select {
   min-height: 48px; border: 1px solid var(--line); border-radius: 9px; background: var(--soft);
-  color: var(--ink); font: 400 16px Geist, system-ui, sans-serif; padding: 0 10px;
+  color: var(--ink); font: 400 16px var(--sans); padding: 0 10px;
 }
+.pole input::placeholder { color: var(--dim); }
 .pole input:focus, .pole select:focus { border-color: var(--acc); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--acc) 25%, transparent); }
 .plik-pick {
   display: block; border: 1px dashed var(--line); border-radius: 9px; padding: 12px;
   text-align: center; cursor: pointer; color: var(--mute); font-size: 14px; min-height: 48px;
 }
-.plik-pick:hover { border-color: var(--ink); }
+.plik-pick:hover { border-color: var(--line-hi); }
 .tel-wybor { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 0; }
 .tel-wybor legend { font-size: 14px; font-weight: 600; padding: 0 4px; }
 .tel-nota { margin: 4px 0 8px; font-size: 13px; color: var(--mute); }
@@ -298,8 +316,8 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
 .switch.zgoda input { margin-top: 3px; width: 20px; height: 20px; accent-color: var(--acc); }
 .switch.zgoda .box { display: none; }
 .form-blad {
-  background: color-mix(in srgb, var(--acc) 16%, transparent); border-radius: 9px;
-  padding: 10px 12px; font-size: 14px;
+  background: rgba(194, 64, 44, 0.16); border-left: 3px solid var(--zar); border-radius: 9px;
+  padding: 10px 12px; font-size: 14px; color: var(--ink);
 }
 .form-nota { color: var(--mute); font-size: 13px; }
 .nav { display: grid; gap: 8px; }
@@ -318,8 +336,10 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
   background: var(--card); border-top: 1px solid var(--line);
   align-items: center; justify-content: space-between; gap: 12px;
 }
-.mbar b { font-size: 26px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mbar b { font-family: var(--serif-ozdobny); font-size: 30px; color: var(--acc-hi); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mbar span { color: var(--mute); font-size: 14px; }
+.mbar-info b { font-family: var(--sans); font-size: 16px; font-weight: 600; color: var(--ink); display: block; }
+.mbar-info span { display: block; font-size: 13px; line-height: 1.3; }
 
 .stopka { padding: 0 max(3vw, 16px) 100px; max-width: 1440px; margin: 0 auto; color: var(--mute); font-size: 13px; }
 .stopka p { margin: 6px 0; }

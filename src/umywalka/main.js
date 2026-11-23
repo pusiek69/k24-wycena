@@ -200,8 +200,10 @@ function rysujCene() {
       `<p>Wycena jest gotowa. Zostaw kontakt, a pokażemy kwotę od razu i wyślemy całe zestawienie na e-mail.</p>` +
       `<button class="btn acc" id="doForm">Pokaż cenę i wyślij zapytanie</button>` +
       `</div>`;
+    // Zamknięta cena: bez wielkiej cyfry, więc i bez ozdobnego kroju —
+    // inaczej „Wycena gotowa" łamało się na dwie linie i nachodziło na przycisk.
     mbar.innerHTML =
-      `<div><b>Wycena gotowa</b> <span>zostaw kontakt</span></div>` +
+      `<div class="mbar-info"><b>Wycena gotowa</b><span>zostaw kontakt, pokażemy kwotę</span></div>` +
       `<button class="btn acc" id="doFormM">Pokaż cenę</button>`;
     return;
   }

@@ -83,14 +83,25 @@ test('ceny biorą się z silnika i panelu, nie z kodu strony', () => {
 
 /* ═══════════════════════════════════════════ wygląd */
 
-test('akcent i krój są takie, jak chciał Dawid', () => {
+test('kalkulator trzyma paletę kam24h.pl, nie pomarańcz z artefaktu', () => {
   /*
-   * Pomarańcz #ff4f00 i Geist to WYBÓR KLIENTA z jego projektu — nie
-   * zmieniamy go, choćby trendy mówiły co innego. Test pilnuje, żeby
-   * ktoś (także ja przy następnej iteracji) tego nie „poprawił".
+   * Decyzja Dawida z 23.11 (po obejrzeniu wersji w jego kolorach):
+   * „popraw kolory kalkulatora na takie jak na głównej stronie zeby to
+   * wszystko pasowalo". Złota żyła zamiast pomarańczu, Cormorant
+   * w nagłówkach. Test pilnuje, żeby pomarańcz nie wrócił tylnymi drzwiami.
    */
-  assert.ok(CSS.includes('--acc: #ff4f00'), 'zniknął pomarańczowy akcent z projektu Dawida');
-  assert.match(CSS, /font-family: Geist/);
+  assert.ok(CSS.includes('--acc: #c9a86a'), 'akcentem ma być złota żyła ze style.css');
+  // Komentarze odcinamy: w nich pomarańcz jest wspomniany po to,
+  // żeby wyjaśnić, dlaczego go NIE używamy.
+  const reguly = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(!reguly.includes('#ff4f00'), 'wrócił pomarańcz z artefaktu');
+  assert.ok(!czytaj('src/umywalka/scena3d.js').includes('0xff4f00'), 'pomarańcz został w scenie 3D');
+  assert.match(CSS, /--serif-ozdobny: 'Cormorant'/);
+  // Te same wartości, co w style.css — inaczej strona i kalkulator się rozjadą.
+  const styl = czytaj('src/style.css');
+  for (const token of ['#13110f', '#1b1815', '#ece6da', '#c9a86a', '#b6ad9d']) {
+    assert.ok(styl.includes(token) && CSS.includes(token), `kolor ${token} rozjechał się ze stroną`);
+  }
 });
 
 test('fonty i biblioteka 3D są z naszego serwera, nie z CDN-a', () => {
@@ -99,7 +110,7 @@ test('fonty i biblioteka 3D są z naszego serwera, nie z CDN-a', () => {
   // adresu klienta do obcego serwera.
   assert.ok(!HTML.includes('fonts.googleapis.com'), 'font z Google Fonts');
   assert.ok(!HTML.includes('cdnjs'), 'biblioteka z CDN-a');
-  assert.match(CSS, /url\('\/fonty\/Geist-/);
+  assert.match(CSS, /url\('\/fonty\/cormorant-600\.woff2'\)/);
   assert.match(czytaj('src/umywalka/scena3d.js'), /import\('three'\)/);
 });
 

@@ -41,7 +41,6 @@
     "esbuild@0.28.1": true
   },
   "dependencies": {
-    "geist": "^1.9.2",
     "three": "^0.128.0"
   }
 }
