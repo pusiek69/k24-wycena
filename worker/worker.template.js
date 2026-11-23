@@ -561,6 +561,18 @@ async function obsluzLead(request, env, cors) {
    */
   const umywalka = String(d.produkt || '') === 'umywalka';
 
+  /*
+   * WIZUALIZACJA UMYWALKI (23.11.2026) — obrazek wygenerowany w przeglądarce
+   * klienta: jego bryła z podpisami i kwotą. Idzie załącznikiem do obu maili.
+   * Klient ma co pokazać w domu, Dawid od razu widzi, co ktoś skonfigurował.
+   * Limit 6 MB w base64 — przy 1200 × 900 JPEG to z grubsza dziesięciokrotny
+   * zapas, a chroni przed wysłaniem czegoś, czego poczta i tak nie przyjmie.
+   */
+  const wizualizacja =
+    umywalka && typeof d.wizualizacja === 'string' && d.wizualizacja.length > 1000 && d.wizualizacja.length < 6_000_000
+      ? [{ filename: 'umywalka-wizualizacja.jpg', content: d.wizualizacja }]
+      : [];
+
   // 1. zgłoszenie do firmy — pełne rozbicie, transkrypcja i załącznik
   const doFirmyOdp = await resend(env, {
     from: odKogo,
@@ -569,7 +581,7 @@ async function obsluzLead(request, env, cors) {
     subject: (umywalka ? 'UMYWALKA — ' : '') + tematLeada(klient, szczegoly, wycena),
     html: mailDoFirmy(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript, linkEdycji: adresEdycji, partner }),
     text: leadTekstem(klient, szczegoly, { wycena, uwaga, transkrypcja: d.transcript }),
-    attachments: zalaczniki.length ? zalaczniki : undefined,
+    attachments: zalaczniki.length || wizualizacja.length ? [...zalaczniki, ...wizualizacja] : undefined,
   });
 
   // 2. wycena do klienta
@@ -581,8 +593,9 @@ async function obsluzLead(request, env, cors) {
       ? 'Pana/Pani wycena umywalki — Kamieniarstwo 24h'
       : 'Pana/Pani wycena blatu — Kamieniarstwo 24h',
     html: umywalka
-      ? mailDoKlientaUmywalka(imie, wycena, szczegoly)
+      ? mailDoKlientaUmywalka(imie, wycena, szczegoly, wizualizacja.length > 0)
       : mailDoKlienta(imie, wycena, uwaga, linkPlyty, szczegoly),
+    attachments: wizualizacja.length ? wizualizacja : undefined,
   });
 
   // Zapis do bazy stoi wyżej (przed mailami) — patrz komentarz przy nim.
@@ -1826,7 +1839,7 @@ function podsumowanieDlaKlienta(s) {
  * zdanie o konfiguracji i co jest w cenie. Rozkroju, metrów i stawek
  * warsztatu tu nie ma — te idą wyłącznie do Dawida.
  */
-function mailDoKlientaUmywalka(imie, wycena, szczegoly) {
+function mailDoKlientaUmywalka(imie, wycena, szczegoly, zWizualizacja) {
   const kwota = Number(szczegoly?.razemZaokr || szczegoly?.razem || 0);
   const zMontazem = !szczegoly?.odbiorWlasny;
   const zintegrowana = szczegoly?.typ === 'zintegrowana';
@@ -1876,6 +1889,15 @@ function mailDoKlientaUmywalka(imie, wycena, szczegoly) {
         <li>demontaż starej umywalki</li>
       </ul>
     </div>
+    ${
+      zWizualizacja
+        ? `<p style="margin:18px 0 0;padding:14px 16px;background:#1b1815;border:1px solid rgba(201,168,106,.25);
+                     border-left:3px solid #c9a86a;border-radius:4px;color:#d8cfbc;font-size:15px;line-height:1.55">
+             <strong style="color:#c9a86a">W załączniku</strong> jest wizualizacja Pana/Pani umywalki —
+             ten sam widok, który był na stronie, razem z wymiarami i kwotą.
+           </p>`
+        : ''
+    }
     <p style="color:#8c8474;font-size:13px;line-height:1.6;margin:20px 0">
       Wycena jest orientacyjna i nie stanowi oferty w rozumieniu art. 66 §1 Kodeksu cywilnego.
       ${

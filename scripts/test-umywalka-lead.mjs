@@ -104,7 +104,7 @@ test('temat do Dawida: UMYWALKA z przodu, blat dokładnie jak dotąd', () => {
 test('mail do klienta: osobny szablon umywalki, blatowy nietknięty', () => {
   assert.match(SZABLON, /'Pana\/Pani wycena umywalki — Kamieniarstwo 24h'/);
   assert.match(SZABLON, /'Pana\/Pani wycena blatu — Kamieniarstwo 24h'/);
-  assert.match(SZABLON, /function mailDoKlientaUmywalka\(imie, wycena, szczegoly\)/);
+  assert.match(SZABLON, /function mailDoKlientaUmywalka\(imie, wycena, szczegoly, zWizualizacja\)/);
   assert.match(SZABLON, /mailDoKlienta\(imie, wycena, uwaga, linkPlyty, szczegoly\)/);
 });
 
@@ -114,6 +114,21 @@ test('mail umywalkowy nie zdradza warsztatu', () => {
   for (const slowo of ['m.b.', 'formatk', 'rozkr', 'marż', 'rabat']) {
     assert.ok(!tresc.includes(slowo), `mail do klienta nie może zawierać „${slowo}"`);
   }
+});
+
+test('wizualizacja umywalki jedzie zalacznikiem do obu maili', () => {
+  // Obrazek powstaje w przegladarce klienta i ma trafic i do niego,
+  // i do Dawida — klient pokaze go w domu, Dawid od razu widzi konfiguracje.
+  assert.match(SZABLON, /const wizualizacja =/);
+  assert.match(SZABLON, /umywalka-wizualizacja\.jpg/);
+  assert.match(SZABLON, /\[\.\.\.zalaczniki, \.\.\.wizualizacja\]/);
+  // Limit rozmiaru, zeby nie probowac wyslac czegos, czego poczta nie przyjmie.
+  assert.match(SZABLON, /6_000_000/);
+});
+
+test('zgloszenie blatu nie dostaje pola wizualizacji', () => {
+  // Warunek `umywalka &&` pilnuje, zeby sciezka blatow zostala bez zmian.
+  assert.match(SZABLON, /umywalka && typeof d\.wizualizacja === 'string'/);
 });
 
 /* ═══════════════════════════════════════════ SMS */

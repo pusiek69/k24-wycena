@@ -37,9 +37,10 @@ function slabySprzet() {
  * @param {HTMLElement} p.scena      kontener (pozycjonowany)
  * @param {HTMLElement} p.etykiety   warstwa na chipy z wymiarami
  * @param {Function} p.stan          () => stan konfiguratora
- * @param {Function} p.faktura       () => parametry tekstury kamienia
+ * @param {Function} p.wyglad        () => { plik, faktura } — zdjęcie wzoru
+ *                                   kamienia albo parametry tekstury rysowanej
  */
-export async function uruchomPodglad({ scena, etykiety, stan, faktura }) {
+export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
   let T;
   try {
     T = await import('three');
@@ -144,11 +145,38 @@ export async function uruchomPodglad({ scena, etykiety, stan, faktura }) {
     return (texC[klucz] = t);
   }
 
+  /**
+   * PRAWDZIWY WZÓR KAMIENIA ze zdjęcia katalogowego Architype.
+   *
+   * Zdjęcie leży u nas (public/wzory), wczytuje się dopiero przy wyborze
+   * wzoru i kafelkuje po bryle w skali 1 m — dzięki temu żyła na blacie ma
+   * mniej więcej taki rozmiar jak na prawdziwej płycie. Gdy zdjęcia nie ma
+   * (kilkanaście wzorów z cennika go nie ma), zostaje tekstura rysowana.
+   */
+  const ladowarka = new T.TextureLoader();
+  function zeZdjecia(plik) {
+    if (texC[plik]) return texC[plik];
+    const t = ladowarka.load(
+      plik,
+      () => kick(),
+      undefined,
+      () => {
+        // Nie udało się wczytać — nie zostawiamy klienta z czarną bryłą.
+        delete texC[plik];
+      }
+    );
+    t.wrapS = t.wrapT = T.MirroredRepeatWrapping;
+    t.encoding = T.sRGBEncoding;
+    t.anisotropy = R.capabilities.getMaxAnisotropy();
+    return (texC[plik] = t);
+  }
+
   /** Materiał kamienia: zwykły i podświetlony (do najechania na formatkę). */
-  function kamien(f) {
-    const klucz = JSON.stringify(f);
+  function kamien(w) {
+    const klucz = w.plik || JSON.stringify(w.faktura);
     if (matC[klucz]) return matC[klucz];
-    const a = new T.MeshStandardMaterial({ map: tekstura(f), roughness: 0.42, metalness: 0 });
+    const mapa = w.plik ? zeZdjecia(w.plik) : tekstura(w.faktura);
+    const a = new T.MeshStandardMaterial({ map: mapa, roughness: 0.42, metalness: 0 });
     const b = a.clone();
     b.emissive = new T.Color(0xff4f00);
     b.emissiveIntensity = 0.42;
@@ -236,7 +264,7 @@ export async function uruchomPodglad({ scena, etykiety, stan, faktura }) {
     });
 
     meshes = [];
-    cur = kamien(faktura());
+    cur = kamien(wyglad());
     const idx = {};
     lista.forEach((r) => (idx[r.k] = r.i));
 
@@ -347,7 +375,11 @@ export async function uruchomPodglad({ scena, etykiety, stan, faktura }) {
     const vf = (cam.fov * Math.PI) / 180;
     const hf = 2 * Math.atan(Math.tan(vf / 2) * cam.aspect);
     tgtT.copy(s.center);
-    radT = (s.radius / Math.sin(Math.min(vf, hf) / 2)) * (cam.aspect < 1.1 ? 1.02 : 0.86);
+    /*
+     * Na wąskim ekranie odsuwamy kamerę mocniej: etykiety wymiarów stoją
+     * POZA bryłą i przy ciasnym kadrze wychodziły poza krawędź podglądu.
+     */
+    radT = (s.radius / Math.sin(Math.min(vf, hf) / 2)) * (cam.aspect < 1.1 ? 1.08 : 0.86);
   }
 
   function kick() {
@@ -478,5 +510,71 @@ export async function uruchomPodglad({ scena, etykiety, stan, faktura }) {
     if (widoczna) kick();
   });
 
-  return { build, podswietl, widok, rozloz };
+  /**
+   * ZRZUT DO WIZUALIZACJI — jednorazowy render w wyższej rozdzielczości.
+   *
+   * Bryła złożona, kąt katalogowy, bez linii wymiarowych (te dorysujemy
+   * na gotowym obrazku, w rozdzielczości obrazka). Renderujemy i czytamy
+   * piksele w jednym kroku, więc nie trzeba trzymać bufora rysowania
+   * przez całą sesję — przy podglądzie na telefonie to realna oszczędność.
+   *
+   * Po wszystkim scena wraca dokładnie do stanu, w jakim była.
+   */
+  function zrzut({ szer = 1400, wys = 1000 } = {}) {
+    const zapasExT = exT;
+    const zapasEx = ex;
+    const zapasTh = th;
+    const zapasPh = ph;
+    const zapasRad = rad;
+    const zapasTgt = tgt.clone();
+    const zapasPr = R.getPixelRatio();
+    const rozmiar = new T.Vector2();
+    R.getSize(rozmiar);
+
+    try {
+      ex = exT = 0;
+      meshes.forEach((o) => {
+        o.position.copy(o.userData.b);
+        if (o.userData.hideEx) o.visible = true;
+      });
+      dimG.visible = false;
+
+      th = thT = 0.72;
+      ph = phT = 0.42;
+      R.setPixelRatio(1);
+      R.setSize(szer, wys, false);
+      cam.aspect = szer / wys;
+      cam.updateProjectionMatrix();
+      dopasuj();
+      // Ciaśniejszy kadr niż w podglądzie: na obrazku bryła ma wypełniać
+      // miejsce, a nie pływać w pustce.
+      rad = radT * 0.78;
+      tgt.copy(tgtT);
+
+      const c = Math.cos(ph);
+      cam.position.set(tgt.x + rad * Math.sin(th) * c, tgt.y + rad * Math.sin(ph), tgt.z + rad * Math.cos(th) * c);
+      cam.lookAt(tgt);
+      R.render(sc, cam);
+      return R.domElement.toDataURL('image/png');
+    } catch {
+      return null;
+    } finally {
+      exT = zapasExT;
+      ex = zapasEx;
+      th = thT = zapasTh;
+      ph = phT = zapasPh;
+      rad = radT = zapasRad;
+      tgt.copy(zapasTgt);
+      tgtT.copy(zapasTgt);
+      R.setPixelRatio(zapasPr);
+      R.setSize(rozmiar.x, rozmiar.y, false);
+      cam.aspect = rozmiar.x / Math.max(1, rozmiar.y);
+      cam.updateProjectionMatrix();
+      dimG.visible = true;
+      dopasuj();
+      kick();
+    }
+  }
+
+  return { build, podswietl, widok, rozloz, zrzut };
 }

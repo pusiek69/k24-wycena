@@ -333,6 +333,20 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
   .low { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 600px) {
+  /* Na telefonie nagłówek ma zająć jeden oddech, nie pół ekranu —
+     klient ma zobaczyć bryłę od razu po wejściu. */
+  .top { padding: 12px 16px 8px; gap: 8px; }
+  .top p { font-size: 15px; margin-top: 4px; }
+  h1 { font-size: clamp(23px, 6.4vw, 32px); }
+  .tel { padding: 6px 12px; min-height: 44px; }
+  .tel b { font-size: 16px; }
+
+  /* Przyciski nad podglądem mają zmieścić się w JEDNYM rzędzie —
+     inaczej zjadają sto pikseli sceny na telefonie. */
+  .sui { gap: 6px; }
+  .seg button { padding: 6px 9px; font-size: 13px; min-height: 36px; }
+  #ex { padding: 6px 10px; font-size: 13px; min-height: 36px; }
+
   table { font-size: 13px; }
   th, td { padding: 7px 4px; }
   .read { right: 16px; bottom: 12px; }
@@ -343,4 +357,42 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
 }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+}
+
+/* ─────────────────────────── finał: wizualizacja, cena i „co dalej" */
+
+.final {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 1fr);
+  gap: 18px;
+  margin-top: 14px;
+}
+.final-obraz {
+  grid-column: 1 / -1;
+  margin: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--soft);
+}
+.final-obraz img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.final-obraz figcaption {
+  padding: 8px 12px; font-size: 13px; color: var(--mute);
+  border-top: 1px solid var(--line); background: var(--card);
+}
+.final-cena .tl { font-size: 14px; color: var(--mute); }
+.final-linie { list-style: none; margin: 14px 0 0; padding: 0; }
+.final-linie li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 15px;
+}
+.final-linie b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.final-dalej h3 { margin-bottom: 8px; }
+.final-dalej ol { margin: 0 0 14px; padding-left: 20px; font-size: 15px; line-height: 1.6; }
+.final-dalej ol li { margin-bottom: 6px; }
+.final-dalej .row { margin-bottom: 10px; }
+.final-dalej .btn { flex: 1 1 auto; text-align: center; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+@media (max-width: 760px) {
+  .final { grid-template-columns: minmax(0, 1fr); }
 }

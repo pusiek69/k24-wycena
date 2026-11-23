@@ -129,7 +129,10 @@ test('nagłówki mają text-wrap: balance', () => {
 
 test('podgląd 3D ma opis i działa też bez WebGL', () => {
   assert.match(HTML, /aria-label="Podgląd 3D umywalki"/);
-  assert.match(HTML, /Podgląd 3D jest niedostępny/);
+  // Komunikat zastępczy wstawia main.js dopiero, gdy podgląd nie wstanie —
+  // w HTML stoi informacja o przygotowywaniu, żeby kadr nie był pusty.
+  assert.match(HTML, /Przygotowuję podgląd 3D/);
+  assert.match(MAIN, /Podgląd 3D jest niedostępny/);
   // Brak WebGL nie może zatrzymać wyceny — scena zwraca wtedy null.
   assert.match(czytaj('src/umywalka/scena3d.js'), /return null/);
 });

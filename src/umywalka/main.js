@@ -39,6 +39,8 @@ import {
 import { wycenUmywalke } from './wycena-umywalki.js';
 import { znacznikPolowki, podpowiedzPolowki, ostrzezeniaWykonawcze } from './podpowiedzi.js';
 import { POLECANE, ODCIENIE, fakturaDekoru, probkaDekoru } from './dekory-polecane.js';
+import { plikWzoru } from './wzory-dekorow.js';
+import { zrobWizualizacje, nazwaPliku, pobierz, udostepnij } from './wizualizacja.js';
 import { uruchomPodglad } from './scena3d.js';
 import { formularzUmywalki, potwierdzenieWyslania } from './formularz.js';
 import * as ga from './zdarzenia.js';
@@ -87,7 +89,16 @@ let wyslane = null;
 let przypiete = null;
 
 const firma = () => FIRMY.find((f) => f.slug === S.marka) || FIRMY[0];
-const faktura = () => fakturaDekoru(S.marka, S.dekor, kolorDekoru(S.dekor, S.marka));
+
+/**
+ * Wygląd kamienia na bryle: najpierw prawdziwe zdjęcie wzoru z katalogu
+ * Architype, a gdy danego wzoru nie mamy w zdjęciach — tekstura rysowana
+ * w zbliżonym kolorze.
+ */
+const wyglad = () => ({
+  plik: plikWzoru(S.marka, S.dekor),
+  faktura: fakturaDekoru(S.marka, S.dekor, kolorDekoru(S.dekor, S.marka)),
+});
 
 /* ═════════════════════════════════════════════════════ adres */
 
@@ -207,11 +218,15 @@ function rysujCene() {
     `<div class="legend">${udzialy
       .map((u) => `<span><i class="key" style="background:${KOLORY_POZYCJI[u.id] || 'var(--mute)'}"></i>${krotko(u.id)} ${Math.round(u.procent)}%</span>`)
       .join('')}</div>` +
-    `<div class="row"><button class="btn acc" id="doForm">Wyślij zapytanie</button></div>`;
+    (wyslane
+      ? `<div class="row"><a class="btn" href="tel:+48796991128" data-miejsce="umywalka-cena">Zadzwoń 796 991 128</a></div>`
+      : `<div class="row"><button class="btn acc" id="doForm">Wyślij zapytanie</button></div>`);
 
   mbar.innerHTML =
     `<div><b>${zl(W.razemZaokr)}</b> <span>brutto</span></div>` +
-    `<button class="btn acc" id="doFormM">Wyślij zapytanie</button>`;
+    (wyslane
+      ? `<a class="btn" href="tel:+48796991128" data-miejsce="umywalka-pasek">Zadzwoń</a>`
+      : `<button class="btn acc" id="doFormM">Wyślij zapytanie</button>`);
 }
 
 const krotko = (id) =>
@@ -404,9 +419,14 @@ function rysujKamienie() {
     .map((p) => {
       const f = fakturaDekoru(p.marka, p.dekor, kolorDekoru(p.dekor, p.marka));
       const wybrany = p.marka === S.marka && p.dekor === S.dekor;
+      // Kropka pokazuje PRAWDZIWY wzór, jeśli mamy zdjęcie z katalogu.
+      const mini = plikWzoru(p.marka, p.dekor, true);
+      const tlo = mini
+        ? `background-image:url('${mini}');background-size:cover;background-position:center`
+        : `background:radial-gradient(circle at 32% 30%,${f.sp[1] || f.sp[0]},${f.base} 45%,${f.vein} 150%)`;
       return (
         `<button class="mat" data-dekor="${p.dekor}" data-marka="${p.marka}" data-grubosc="${p.grubosc}" aria-pressed="${String(wybrany)}">` +
-        `<span class="dot" style="background:radial-gradient(circle at 32% 30%,${f.sp[1] || f.sp[0]},${f.base} 45%,${f.vein} 150%)"></span>` +
+        `<span class="dot" style="${tlo}"></span>` +
         `<span><b>${p.dekor}</b><small>${p.marka === 'keralini' ? 'Keralini' : 'Avant Quartz'}</small></span></button>`
       );
     })
@@ -447,20 +467,18 @@ function rysujFormularz() {
     return;
   }
 
-  if (wyslane) {
-    box.replaceChildren(potwierdzenieWyslania({ ...wyslane, mailWyslany: wyslane.mailWyslany }));
-    return;
-  }
+  if (wyslane) return rysujFinal(box);
 
   box.replaceChildren(
     formularzUmywalki({
       wycena: W,
       link: location.href,
+      wizualizacja: () => zrobWizualizacje({ podglad, wycena: W }),
       poWyslaniu: (dane) => {
         wyslane = dane;
+        $('#lead').scrollIntoView({ behavior: 'smooth', block: 'start' });
         rysuj();
         rysujFormularz();
-        $('#total').scrollIntoView({ behavior: 'smooth', block: 'center' });
       },
     })
   );
@@ -468,6 +486,86 @@ function rysujFormularz() {
   // Zdarzenie „zobaczył formularz" dopiero przy pierwszym dotknięciu pola —
   // sam fakt, że formularz jest na stronie, niczego jeszcze nie mówi.
   box.addEventListener('focusin', () => ga.formularz(W?.razemZaokr), { once: true });
+}
+
+/**
+ * FINAŁ — to, po co klient tu przyszedł.
+ *
+ * Ładny obrazek jego umywalki, kwota, co jest w cenie i co dalej. Obrazek
+ * da się pobrać albo wysłać dalej jednym tapnięciem: pierwsze, co robi
+ * człowiek z taką wyceną, to pokazuje ją drugiej osobie w domu.
+ */
+function rysujFinal(box) {
+  const obraz = wyslane.obraz;
+  // Po wysłaniu nagłówek „Zapytanie o tę umywalkę" przestaje być prawdą.
+  const tytul = document.querySelector('#lead h2');
+  if (tytul) tytul.textContent = 'Twoja umywalka';
+  box.replaceChildren();
+  box.append(potwierdzenieWyslania({ ...wyslane, mailWyslany: wyslane.mailWyslany }));
+
+  const final = document.createElement('div');
+  final.className = 'final';
+  final.innerHTML =
+    (obraz?.dataURL
+      ? `<figure class="final-obraz">` +
+        `<img src="${obraz.dataURL}" id="obrazFinal" alt="Wizualizacja Twojej umywalki ${W.stan.L} × ${W.stan.W} cm, ${W.dekor}">` +
+        `<figcaption>Dotknij obrazka, żeby zapisać go w telefonie.</figcaption>` +
+        `</figure>`
+      : '') +
+    `<div class="final-cena">` +
+    `<div class="tl">Twoja umywalka</div>` +
+    `<div class="big">${Math.round(W.razemZaokr).toLocaleString('pl-PL')} zł <small>brutto</small></div>` +
+    `<div class="sub">${W.stan.mont ? 'z montażem (VAT 8% — lokal mieszkalny)' : 'odbiór własny z zakładu (VAT 23%)'}</div>` +
+    `<ul class="final-linie">` +
+    W.linieKlienta
+      .map(
+        (l) =>
+          `<li><span>${l.nazwa}</span><b>${l.wCenie ? 'w cenie' : zl(Math.round(l.brutto))}</b></li>`
+      )
+      .join('') +
+    `</ul>` +
+    (W.tanszaWersja && W.tanszaWersja < W.razemZaokr
+      ? `<p class="info">Tańsza wersja: ten sam kamień jako blat pod umywalkę nablatową — około <b>${zl(W.tanszaWersja)}</b>.</p>`
+      : '') +
+    `</div>` +
+    `<div class="final-dalej">` +
+    `<h3>Co dalej</h3>` +
+    `<ol>` +
+    `<li><b>Pomiar u klienta</b> — przyjeżdżamy z Prolinerem i mierzymy co do milimetra. W cenie.</li>` +
+    `<li><b>Projekt 3D do zatwierdzenia</b> — widzi Pan/Pani dokładnie tę umywalkę przed cięciem. W cenie.</li>` +
+    `<li><b>Wykonanie i montaż</b> — termin ustalamy przy zamówieniu.</li>` +
+    `</ol>` +
+    `<div class="row">` +
+    (obraz?.dataURL ? `<button class="btn acc" id="pobierzObraz">Pobierz wizualizację</button>` : '') +
+    (obraz?.blob ? `<button class="btn" id="udostepnijObraz" hidden>Wyślij dalej</button>` : '') +
+    `<a class="btn" href="tel:+48796991128" data-miejsce="umywalka-final">Zadzwoń 796 991 128</a>` +
+    `</div>` +
+    `<p class="info">Wycena orientacyjna — wiążąca cena po pomiarze. Zestawienie poszło na podany adres e-mail.</p>` +
+    `</div>`;
+  box.append(final);
+
+  if (obraz?.dataURL) {
+    const zapisz = () => pobierz(obraz.dataURL, nazwaPliku(W));
+    $('#pobierzObraz').addEventListener('click', zapisz);
+    // Na telefonie obrazek jest mały — dotknięcie go zapisuje plik,
+    // bo właśnie po to klient tam patrzy.
+    $('#obrazFinal')?.addEventListener('click', zapisz);
+  }
+  const przyciskUdostepnij = $('#udostepnijObraz');
+  if (przyciskUdostepnij && obraz?.blob && navigator.canShare) {
+    // Pokazujemy tylko tam, gdzie system naprawdę to umie (telefony).
+    try {
+      const plik = new File([obraz.blob], nazwaPliku(W), { type: 'image/jpeg' });
+      if (navigator.canShare({ files: [plik] })) {
+        przyciskUdostepnij.hidden = false;
+        przyciskUdostepnij.addEventListener('click', () =>
+          udostepnij(obraz.blob, nazwaPliku(W), `Moja umywalka z kamienia — ${W.opis}`)
+        );
+      }
+    } catch {
+      /* brak obsługi — zostaje samo pobieranie */
+    }
+  }
 }
 
 /* ═════════════════════════════════════════════════════ zdarzenia UI */
@@ -641,13 +739,22 @@ uruchomPodglad({
   scena: $('#stage'),
   etykiety: $('#lab'),
   stan: () => S,
-  faktura,
+  wyglad,
 })
   .then((p) => {
     podglad = p;
-    if (!p) $('#nogl').hidden = false;
-    else podglad.build(FORMATKI);
+    if (!p) return brakPodgladu();
+    // Podgląd gotowy — komunikat „przygotowuję" znika dopiero teraz,
+    // żeby kadr nie stał pusty i nie wyglądał na zepsuty.
+    $('#nogl').hidden = true;
+    podglad.build(FORMATKI);
   })
-  .catch(() => {
-    $('#nogl').hidden = false;
-  });
+  .catch(brakPodgladu);
+
+function brakPodgladu() {
+  const box = $('#nogl');
+  if (!box) return;
+  box.hidden = false;
+  box.textContent =
+    'Podgląd 3D jest niedostępny w tej przeglądarce. Wycena i lista formatek liczą się normalnie.';
+}

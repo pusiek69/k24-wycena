@@ -26,9 +26,11 @@ const OPIS_PLIKU = 'Zdjęcie łazienki lub projekt (opcjonalnie, do 8 MB)';
  * @param {object} p
  * @param {object} p.wycena   wynik `wycenUmywalke()`
  * @param {string} p.link     adres tej konfiguracji (wraca w mailu do Dawida)
- * @param {Function} p.poWyslaniu  (dane) => void — rysuje kartę z ceną
+ * @param {Function} p.poWyslaniu  (dane) => void — rysuje finał z ceną
+ * @param {Function} [p.wizualizacja] () => Promise<{dataURL, blob}> — obrazek
+ *        umywalki klienta; idzie razem ze zgłoszeniem i wraca na finał
  */
-export function formularzUmywalki({ wycena, link, poWyslaniu }) {
+export function formularzUmywalki({ wycena, link, poWyslaniu, wizualizacja }) {
   const bledy = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
   // Główna akcja strony — pomarańczowa, jak reszta akcentów w projekcie Dawida.
   const przycisk = h('button', { class: 'btn acc', type: 'submit' }, 'Pokaż wycenę i wyślij mailem');
@@ -157,6 +159,20 @@ export function formularzUmywalki({ wycena, link, poWyslaniu }) {
     }
 
     przycisk.disabled = true;
+    przycisk.textContent = 'Przygotowuję wizualizację…';
+
+    /*
+     * Wizualizację robimy TERAZ, a nie po wysłaniu: ma pojechać razem ze
+     * zgłoszeniem, żeby klient znalazł ją w mailu obok kwoty. Gdyby się
+     * nie udała (stary telefon, brak WebGL), zgłoszenie i tak leci —
+     * obrazek jest nagrodą, nie warunkiem.
+     */
+    let obraz = null;
+    try {
+      obraz = typeof wizualizacja === 'function' ? await wizualizacja() : null;
+    } catch {
+      obraz = null;
+    }
     przycisk.textContent = 'Wysyłam…';
 
     const zgloszenie = {
@@ -170,6 +186,9 @@ export function formularzUmywalki({ wycena, link, poWyslaniu }) {
       szczegoly: szczegolyUmywalki(wycena, link),
       zrodlo: zrodloLeada(),
       partner: partnerDoLeada(),
+      // Wizualizacja bez nagłówka „data:image/jpeg;base64," — worker dokłada
+      // ją do maila jako załącznik.
+      wizualizacja: obraz?.dataURL ? obraz.dataURL.split(',')[1] : undefined,
     };
 
     const zalacznik = plik.files?.[0];
@@ -186,12 +205,14 @@ export function formularzUmywalki({ wycena, link, poWyslaniu }) {
     try {
       await wyslijLead(zgloszenie);
       ga.lead(wycena.razemZaokr, wycena.pak?.polowka);
-      poWyslaniu({ ...dane, mailWyslany: true });
+      poWyslaniu({ ...dane, mailWyslany: true, obraz });
     } catch {
       try {
-        await wyslijLeadZapasowo({ ...zgloszenie, uwagi: 'Umywalka z kamienia — ' + wycena.opis });
+        // Ścieżka awaryjna (formularz Netlify) nie uniesie obrazka —
+        // ważne, żeby nie zgubić kontaktu, wizualizację klient ma na ekranie.
+        await wyslijLeadZapasowo({ ...zgloszenie, wizualizacja: undefined, uwagi: 'Umywalka z kamienia — ' + wycena.opis });
         ga.lead(wycena.razemZaokr, wycena.pak?.polowka);
-        poWyslaniu({ ...dane, mailWyslany: false });
+        poWyslaniu({ ...dane, mailWyslany: false, obraz });
       } catch {
         przycisk.disabled = false;
         przycisk.textContent = 'Spróbuj ponownie';
