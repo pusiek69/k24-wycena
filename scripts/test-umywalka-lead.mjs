@@ -86,7 +86,7 @@ test('umywalka NIE woła konwersji leada blatowego', () => {
 
 test('zgłoszenie umywalki niesie produkt i rozbicie dla Dawida', () => {
   assert.match(FORMULARZ, /produkt: 'umywalka'/);
-  for (const pole of ['kawalki', 'polowka', 'm2Platne', 'pozycje', 'stawkaVat', 'konfiguracja']) {
+  for (const pole of ['formatki', 'polowka', 'm2Platne', 'pozycje', 'stawkaVat', 'konfiguracja']) {
     assert.ok(FORMULARZ.includes(pole + ':'), `brak ${pole} w szczegółach dla Dawida`);
   }
 });

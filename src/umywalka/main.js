@@ -1,68 +1,614 @@
 /**
  * KALKULATOR UMYWALEK — strona `/umywalka-na-wymiar`.
  *
- * Zasada konstrukcyjna: prosto na wierzchu, mądrze pod spodem. Jedna
- * decyzja na ekran, wszystko ma sensowne ustawienie domyślne — „Dalej"
- * zawsze działa jednym tapnięciem, a kto chce, rozwija „Więcej opcji".
+ * Układ, sterowanie i podgląd 3D pochodzą z projektu Dawida (23.11.2026).
+ * Zmienione jest jedno, za to najważniejsze: CENA. U niego liczyła się jako
+ * pole formatek + 25% odpadu × stawka za metr; tutaj liczy ją silnik wyceny
+ * blatów — ten sam katalog, te same promocje i, co decyduje o kwocie,
+ * prawdziwe pakowanie na płytę z możliwością kupienia POŁÓWKI.
  *
- * Cena liczy się w przeglądarce tym samym silnikiem co blaty, więc bryła,
- * znaczek połówki płyty i podpowiedzi reagują od razu na ruch suwaka.
- * Rysunek przerysowuje się natychmiast; pakowanie na płytę (droższe) jest
- * opóźnione o 120 ms, żeby przeciąganie suwaka było gładkie.
+ * Druga różnica: stawki robocizny nie są edytowalne na stronie. Klient nie
+ * ma po co ich widzieć ani tym bardziej zmieniać — przychodzą z panelu Dawida.
  *
- * Kwoty pojawiają się dopiero po formularzu — decyzja Dawida z 23.11.2026.
- * Przed nim klient widzi tylko kotwicę „od … zł" w kroku 1.
- *
- * ⚠ Ta strona nie dotyka kalkulatora blatów: korzysta z jego silnika,
- *   katalogu i klocków formularza, ale nie zmienia w nich niczego.
+ * BRAMKA: `CENA_PO_FORMULARZU` decyduje, czy kwota jest widoczna od razu,
+ * czy dopiero po zostawieniu kontaktu. Jeden warunek, do przestawienia
+ * w sekundę, gdy Dawid podejmie decyzję.
  */
-import '../style.css';
 import './umywalka.css';
 
 import keralini from '../firms/keralini.js';
 import avantQuartz from '../firms/avant-quartz.js';
-import { h, zl } from '../app/dom.js';
+import { grubosciDekoru } from '../firms/index.js';
+import { kolorDekoru } from '../app/kolory-dekorow.js';
 import { inicjujZgody, zmienZgody } from '../analytics/zgody.js';
 import { sledzTelefony } from '../analytics/zdarzenia.js';
 import { zapamietajZrodlo } from '../app/zrodlo.js';
 import { pobierzUstawienia } from '../api.js';
 import { scalUstawienia, zastosujUstawienia } from '../app/ustawienia.js';
-import { kolorDekoru } from '../app/kolory-dekorow.js';
-import { grubosciDekoru } from '../firms/index.js';
 
-import { STAN_DOMYSLNY, PRESETY, ZAKRESY, normalizuj, nieckaStanu } from './geometria.js';
-import { wycenUmywalke, cenaOd } from './wycena-umywalki.js';
-import { podpowiedz, znacznikPolowki } from './podpowiedzi.js';
-import { svgBryly, svgRozlozenia, podlaczObrot } from './bryla.js';
-import { POLECANE, ODCIENIE, START, probkaDekoru, wOdcieniu } from './dekory-polecane.js';
+import {
+  STAN_DOMYSLNY,
+  zacisnij,
+  limity,
+  formatki,
+  szerokoscZlewu,
+  iloscBokow,
+  ranty,
+  plytaCm,
+} from './model.js';
+import { wycenUmywalke } from './wycena-umywalki.js';
+import { znacznikPolowki, podpowiedzPolowki, ostrzezeniaWykonawcze } from './podpowiedzi.js';
+import { POLECANE, ODCIENIE, fakturaDekoru, probkaDekoru } from './dekory-polecane.js';
+import { uruchomPodglad } from './scena3d.js';
 import { formularzUmywalki, potwierdzenieWyslania } from './formularz.js';
-import { kartaCeny } from './wynik.js';
 import * as ga from './zdarzenia.js';
 
-const FIRMY = [keralini, avantQuartz];
-const ILE_KROKOW = 4;
-/* Kotwicę „od … zł" w kroku 1 da się wyłączyć bez zmian w kodzie strony. */
-const POKAZ_OD = true;
+/** Czy kwota pojawia się dopiero po zostawieniu kontaktu. */
+const CENA_PO_FORMULARZU = true;
 
-const stan = {
-  ...STAN_DOMYSLNY,
-  marka: START.marka,
-  dekor: START.dekor,
-  grubosc: START.grubosc,
-  L: 100,
-  G: 50,
+const FIRMY = [keralini, avantQuartz];
+const $ = (s) => document.querySelector(s);
+const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');
+const f2 = (v) => v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const zl = (v) => Math.round(v).toLocaleString('pl-PL') + ' zł';
+const liczba = (s) => parseFloat(String(s).replace(',', '.').replace(/\s/g, ''));
+
+const DIM = {
+  L: 'Długość blatu',
+  W: 'Głębokość blatu',
+  H: 'Grubość z pogrubieniem',
+  sL: 'Szerokość zlewu',
+  gap: 'Mostek między zlewami',
+  sW: 'Głębokość zlewu (od przodu)',
+  ins: 'Wstawka',
+};
+const PRESETY = [
+  [80, 46],
+  [100, 50],
+  [120, 50],
+  [160, 50],
+];
+const KOLORY_POZYCJI = {
+  material: 'var(--ink)',
+  pogrubienie: '#ff4f00',
+  niecka: '#8d939b',
+  otwory: '#c4c8cd',
+  montaz: '#e2c9b8',
 };
 
-let krok = 1;
-let obrot = -18;
-let rozlozone = false;
+let S = { ...STAN_DOMYSLNY };
 let stawki = scalUstawienia(null);
+let W = null; // ostatnia wycena
+let FORMATKI = [];
+let podglad = null;
 let odcienFiltr = null;
 let pelnyKatalog = false;
 let wyslane = null;
-let ostatniaWycena = null;
+let przypiete = null;
 
-const firma = () => FIRMY.find((f) => f.slug === stan.marka) || FIRMY[0];
+const firma = () => FIRMY.find((f) => f.slug === S.marka) || FIRMY[0];
+const faktura = () => fakturaDekoru(S.marka, S.dekor, kolorDekoru(S.dekor, S.marka));
+
+/* ═════════════════════════════════════════════════════ adres */
+
+const slug = (s) =>
+  String(s || '')
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+function czytajURL() {
+  const p = new URLSearchParams(location.search);
+  if (!p.toString()) return;
+  const liczby = ['L', 'W', 'H', 'sL', 'gap', 'sW', 'ins', 'n', 'holes'];
+  for (const k of liczby) {
+    const v = liczba(p.get(k));
+    if (Number.isFinite(v)) S[k] = v;
+  }
+  if (p.get('mode')) S.mode = p.get('mode') === 'top' ? 'top' : 'int';
+  if (p.get('mont')) S.mont = p.get('mont') === '1';
+  if (p.get('reuse')) S.reuse = p.get('reuse') === '1';
+  if (p.get('left')) S.left = p.get('left') === '1';
+  if (p.get('right')) S.right = p.get('right') === '1';
+
+  const d = (p.get('d') || '').split(':');
+  if (d.length === 3) {
+    const f = FIRMY.find((x) => x.slug === d[0]);
+    const nazwa = f && Object.keys(f.dekory || {}).find((n) => slug(n) === d[1]);
+    if (nazwa) {
+      S.marka = d[0];
+      S.dekor = nazwa;
+      S.grubosc = d[2];
+    }
+  }
+}
+
+function zapiszURL() {
+  const p = new URLSearchParams({
+    mode: S.mode,
+    L: String(S.L),
+    W: String(S.W),
+    H: String(S.H),
+    n: String(S.n),
+    sL: String(S.sL),
+    gap: String(S.gap),
+    sW: String(S.sW),
+    ins: String(S.ins),
+    holes: String(S.holes),
+    mont: S.mont ? '1' : '0',
+    reuse: S.reuse ? '1' : '0',
+    left: S.left ? '1' : '0',
+    right: S.right ? '1' : '0',
+    d: `${S.marka}:${slug(S.dekor)}:${S.grubosc}`,
+  });
+  history.replaceState(null, '', `${location.pathname}?${p}`);
+}
+
+/* ═════════════════════════════════════════════════════ przeliczanie */
+
+function przelicz(przebuduj = true) {
+  zacisnij(S);
+  FORMATKI = formatki(S);
+  W = wycenUmywalke({ firma: firma(), stan: S, stawki });
+  zapiszURL();
+  if (podglad && przebuduj) podglad.build(FORMATKI);
+  rysuj();
+  kontrolki();
+}
+
+/* ═════════════════════════════════════════════════════ rysowanie */
+
+function rysuj() {
+  rysujCene();
+  rysujFormatki();
+  rysujRozbicie();
+  rysujOdczyt();
+  rysujOstrzezenia();
+  rysujPolowke();
+}
+
+function rysujCene() {
+  const box = $('#total');
+  const mbar = $('#mbar');
+  if (!W?.ok) {
+    box.innerHTML = `<div class="tl">Cena</div><p class="info">${W?.blad || 'Policzymy tę konfigurację indywidualnie — proszę zadzwonić.'}</p>`;
+    mbar.innerHTML = '';
+    return;
+  }
+
+  const ukryta = CENA_PO_FORMULARZU && !wyslane;
+
+  if (ukryta) {
+    box.innerHTML =
+      `<div class="tl">Cena orientacyjna</div>` +
+      `<div class="zamek">` +
+      `<div class="big">— — —<small> zł brutto</small></div>` +
+      `<p>Wycena jest gotowa. Zostaw kontakt, a pokażemy kwotę od razu i wyślemy całe zestawienie na e-mail.</p>` +
+      `<button class="btn acc" id="doForm">Pokaż cenę i wyślij zapytanie</button>` +
+      `</div>`;
+    mbar.innerHTML =
+      `<div><b>Wycena gotowa</b> <span>zostaw kontakt</span></div>` +
+      `<button class="btn acc" id="doFormM">Pokaż cenę</button>`;
+    return;
+  }
+
+  const udzialy = W.udzialy;
+  box.innerHTML =
+    `<div class="tl">Cena orientacyjna</div>` +
+    `<div class="big">${Math.round(W.razemZaokr).toLocaleString('pl-PL')} zł <small>brutto</small></div>` +
+    `<div class="sub">netto ${zl(W.razemNetto)} · VAT ${Math.round(W.stawkaVat * 100)}% · ` +
+    `${f2(W.m2Formatek)} m² kamienia w ${FORMATKI.length} ${FORMATKI.length === 1 ? 'formatce' : 'formatkach'}</div>` +
+    `<div class="split">${udzialy
+      .map((u) => `<i style="width:${u.procent.toFixed(2)}%;background:${KOLORY_POZYCJI[u.id] || 'var(--mute)'}" title="${u.nazwa}"></i>`)
+      .join('')}</div>` +
+    `<div class="legend">${udzialy
+      .map((u) => `<span><i class="key" style="background:${KOLORY_POZYCJI[u.id] || 'var(--mute)'}"></i>${krotko(u.id)} ${Math.round(u.procent)}%</span>`)
+      .join('')}</div>` +
+    `<div class="row"><button class="btn acc" id="doForm">Wyślij zapytanie</button></div>`;
+
+  mbar.innerHTML =
+    `<div><b>${zl(W.razemZaokr)}</b> <span>brutto</span></div>` +
+    `<button class="btn acc" id="doFormM">Wyślij zapytanie</button>`;
+}
+
+const krotko = (id) =>
+  ({ material: 'Kamień', pogrubienie: 'Krawędź', niecka: 'Zlew', otwory: 'Otwory', montaz: 'Montaż' })[id] || id;
+
+function rysujFormatki() {
+  $('#cut').innerHTML = FORMATKI.map(
+    (x) =>
+      `<tr data-k="${x.k}"><td><span class="no">${x.i}</span></td><td>${x.n}${x.cut ? ' <em>z wycinki</em>' : ''}</td>` +
+      `<td class="r nw">${fd(x.a)} × ${fd(x.b)}</td><td class="r">${x.q}</td><td class="r nw">${f2(x.m)}</td></tr>`
+  ).join('');
+
+  const sztuk = FORMATKI.reduce((s, x) => s + x.q, 0);
+  const plyta = W?.ok ? W.plyta : null;
+  $('#cutF').innerHTML =
+    `<tr><td></td><td>Razem</td><td></td><td class="r">${sztuk}</td><td class="r nw">${f2(W?.m2Formatek || 0)}</td></tr>` +
+    (W?.ok
+      ? `<tr><td></td><td colspan="3">Materiał do kupienia: ${opisPlyty(W)}${plyta ? ` (${fd(plyta.w)} × ${fd(plyta.h)} cm)` : ''}</td>` +
+        `<td class="r nw">${f2(W.m2Platne)}</td></tr>`
+      : '');
+}
+
+/** „pół płyty" zamiast „2,56 m² materiału" — tak to widzi kamieniarz. */
+function opisPlyty(w) {
+  const p = w.pak || {};
+  if (p.polowka && !p.plytyPelne) return 'pół płyty';
+  if (p.polowka) return `${p.plytyPelne} i pół płyty`;
+  return `${p.plytyPelne} ${p.plytyPelne === 1 ? 'płyta' : p.plytyPelne < 5 ? 'płyty' : 'płyt'}`;
+}
+
+function rysujRozbicie() {
+  const karta = $('#brkCard');
+  if (!W?.ok) return (karta.hidden = true);
+
+  if (CENA_PO_FORMULARZU && !wyslane) {
+    karta.hidden = false;
+    $('#brk').innerHTML =
+      `<p class="info">Rozbicie ceny pokażemy razem z kwotą — po zostawieniu kontaktu. ` +
+      `Zawsze widać, za co dokładnie się płaci: kamień, wykonanie, montaż.</p>`;
+    return;
+  }
+
+  karta.hidden = false;
+  $('#brk').innerHTML =
+    W.pozycje
+      .filter((p) => p.brutto > 0 || p.wCenie)
+      .map(
+        (p) =>
+          `<div class="bi"><i class="key" style="background:${KOLORY_POZYCJI[p.id] || 'var(--mute)'}"></i>` +
+          `<div><b>${p.nazwa}</b><small>${opisPozycji(p)}</small></div>` +
+          `<span class="v">${p.wCenie ? 'w cenie' : zl(p.brutto)}</span></div>`
+      )
+      .join('') +
+    `<div class="bi tot"><span></span><div><b>Razem brutto</b>` +
+    `<small>w tym VAT ${Math.round(W.stawkaVat * 100)}%: ${zl(W.razem - W.razemNetto)} · netto ${zl(W.razemNetto)}</small></div>` +
+    `<span class="v">${zl(W.razemZaokr)}</span></div>`;
+}
+
+/**
+ * Opis pozycji BEZ stawek warsztatu — klient widzi ilość i czego dotyczy,
+ * a nie po ile liczymy metr bieżący.
+ */
+function opisPozycji(p) {
+  if (p.id === 'material') return `${opisPlyty(W)} · ${f2(W.m2Platne)} m²`;
+  if (p.id === 'pogrubienie') return `cięcie pod kątem, klejenie i poler: ${f2(p.ilosc)} m krawędzi`;
+  if (p.id === 'niecka') return p.ilosc > 1 ? 'dwa zlewy: ścianki, spadek, poler wnętrza' : 'ścianki, dno ze spadkiem, poler wnętrza';
+  if (p.id === 'otwory') return `${p.ilosc} szt.`;
+  if (p.id === 'montaz') return 'dojazd, wniesienie, poziomowanie, silikonowanie';
+  if (p.id === 'projekt') return 'projekt do zatwierdzenia i pomiar przed wykonaniem';
+  return '';
+}
+
+function rysujOdczyt() {
+  $('#rd1').textContent = `${fd(S.L)} × ${fd(S.W)} × ${fd(S.H)} cm`;
+  const opisKamienia = `${firma().nazwa} ${S.dekor}, płyta ${fd(plytaCm(S))} cm`;
+  $('#rd2').textContent =
+    (S.mode === 'int'
+      ? S.n === 2
+        ? `2 zlewy ${fd(S.sL)} × ${fd(S.sW)}, mostek ${fd(S.gap)} · `
+        : `zlew ${fd(S.sL)} × ${fd(S.sW)} · `
+      : 'pod umywalkę nablatową · ') + opisKamienia;
+
+  $('#hint').textContent =
+    $('#ex').getAttribute('aria-pressed') === 'true' ? 'Numery jak na liście formatek' : 'Przeciągnij, aby obrócić';
+}
+
+function rysujOstrzezenia() {
+  const r = ranty(S);
+  if (S.mode === 'int') {
+    $('#sinkInfo').textContent =
+      `Dno${S.n === 2 ? ' każdego zlewu' : ''}: płyta spadkowa ${fd(S.sL)} × ${fd(S.sW - S.ins)}` +
+      `${S.ins > 0 ? ` + wstawka ${fd(S.sL)} × ${fd(S.ins)}` : ''}. ` +
+      `Rant: ${fd(r.bok)} cm po bokach${S.n === 2 ? `, mostek ${fd(S.gap)} cm` : ''}, ${fd(r.przod)} cm z przodu i z tyłu.`;
+  }
+
+  const lista = ostrzezeniaWykonawcze(S);
+
+  $('#warnTop').innerHTML = lista
+    .map((x) => `<p class="${x.rodzaj === 'info' ? 'info' : 'warn'}">${x.tekst}</p>`)
+    .join('');
+}
+
+/**
+ * Połówka płyty — jedyne miejsce, gdzie kalkulator sam coś radzi.
+ * Bez kwot przed formularzem: „o połowę mniej kamienia", nie „mniej o 2 000 zł".
+ */
+function rysujPolowke() {
+  const box = $('#polowka');
+  if (!W?.ok) return (box.innerHTML = '');
+
+  const znak = znacznikPolowki(W.pak);
+  if (znak) {
+    box.innerHTML = `<p class="ok-znak">✓ ${znak.tekst} — kamień w najtańszym wariancie zakupu.</p>`;
+    return;
+  }
+
+  const rada = podpowiedzPolowki({ stan: S, pak: W.pak, plyta: W.plyta });
+  if (!rada) return (box.innerHTML = '');
+
+  box.innerHTML =
+    `<div class="polowka"><p>${rada.tekst}</p>` +
+    (rada.akcja ? `<button class="btn acc" id="ustawPolowke">${rada.akcja.etykieta}</button>` : '') +
+    `</div>`;
+  if (rada.akcja) {
+    $('#ustawPolowke').addEventListener('click', () => {
+      S.L = rada.akcja.zmiana.L;
+      S.sL = Math.min(S.sL, S.L - 10);
+      ga.start(S.mode);
+      przelicz();
+    });
+  }
+}
+
+/* ═════════════════════════════════════════════════════ kontrolki */
+
+function wierszWymiaru(k) {
+  return (
+    `<div class="dim" id="d-${k}"><div class="dl"><label for="n-${k}">${DIM[k]}</label>` +
+    `<span class="num"><input id="n-${k}" data-k="${k}" type="text" inputmode="decimal" autocomplete="off"><i>cm</i></span></div>` +
+    `<input id="r-${k}" data-k="${k}" type="range" step="0.5" aria-label="${DIM[k]}"></div>`
+  );
+}
+
+function kontrolki() {
+  const l = limity(S);
+  const int = S.mode === 'int';
+
+  $('#d-gap').hidden = S.n !== 2;
+  $('label[for=n-sL]').textContent = S.n === 2 ? 'Szerokość każdego zlewu' : 'Szerokość zlewu';
+
+  for (const k of ['L', 'W', 'H', 'sL', 'gap', 'sW', 'ins']) {
+    const n = $('#n-' + k);
+    const r = $('#r-' + k);
+    if (document.activeElement !== n) n.value = String(S[k]).replace('.', ',');
+    r.min = l[k][0];
+    r.max = l[k][1];
+    r.value = S[k];
+    r.style.setProperty('--p', ((S[k] - l[k][0]) / Math.max(0.001, l[k][1] - l[k][0])) * 100 + '%');
+  }
+
+  $('#sinkCard').hidden = !int;
+  $('#reuseRow').hidden = !int;
+  document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  document.querySelectorAll('[data-side]').forEach((b) => b.setAttribute('aria-pressed', String(!!S[b.dataset.side])));
+  document.querySelectorAll('[data-pre]').forEach((b) => {
+    const [a, c] = b.dataset.pre.split(',').map(Number);
+    b.setAttribute('aria-pressed', String(a === S.L && c === S.W));
+  });
+  document.querySelectorAll('[data-n]').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.n === S.n)));
+  $('#hn').textContent = S.holes;
+  $('#mont').checked = !!S.mont;
+  $('#reuse').checked = !!S.reuse;
+  $('#holeHint').textContent = int
+    ? S.n === 2
+      ? 'baterie (po jednej na zlew), dozownik'
+      : 'bateria, dozownik'
+    : 'odpływ umywalki, bateria';
+
+  rysujKamienie();
+  rysujGrubosci();
+}
+
+function rysujKamienie() {
+  $('#odcienie').innerHTML = ODCIENIE.map(
+    (o) => `<button class="chip" data-odcien="${o.id}" aria-pressed="${String(odcienFiltr === o.id)}">${o.nazwa}</button>`
+  ).join('');
+
+  const lista = pelnyKatalog ? wszystkieDekory() : POLECANE.filter((p) => !odcienFiltr || p.odcien === odcienFiltr);
+  $('#mats').innerHTML = lista
+    .map((p) => {
+      const f = fakturaDekoru(p.marka, p.dekor, kolorDekoru(p.dekor, p.marka));
+      const wybrany = p.marka === S.marka && p.dekor === S.dekor;
+      return (
+        `<button class="mat" data-dekor="${p.dekor}" data-marka="${p.marka}" data-grubosc="${p.grubosc}" aria-pressed="${String(wybrany)}">` +
+        `<span class="dot" style="background:radial-gradient(circle at 32% 30%,${f.sp[1] || f.sp[0]},${f.base} 45%,${f.vein} 150%)"></span>` +
+        `<span><b>${p.dekor}</b><small>${p.marka === 'keralini' ? 'Keralini' : 'Avant Quartz'}</small></span></button>`
+      );
+    })
+    .join('');
+
+  const ile = FIRMY.reduce((s, f) => s + Object.keys(f.dekory || {}).length, 0);
+  $('#wszystkie').textContent = pelnyKatalog ? 'Pokaż krótką listę' : `Pokaż wszystkie wzory (${ile})`;
+}
+
+function wszystkieDekory() {
+  const out = [];
+  for (const f of FIRMY) {
+    for (const nazwa of Object.keys(f.dekory || {})) {
+      const g = grubosciDekoru(f, nazwa);
+      if (!g.length) continue;
+      out.push({ marka: f.slug, dekor: nazwa, grubosc: g[0], probka: probkaDekoru(f.slug, nazwa, kolorDekoru(nazwa, f.slug)) });
+    }
+  }
+  return out.sort((a, b) => a.dekor.localeCompare(b.dekor, 'pl'));
+}
+
+function rysujGrubosci() {
+  const dostepne = grubosciDekoru(firma(), S.dekor);
+  $('#thick').innerHTML = dostepne
+    .map(
+      (g) =>
+        `<button data-grubosc="${g}" aria-pressed="${String(g === S.grubosc)}">${fd(Number(g) / 10)} cm</button>`
+    )
+    .join('');
+}
+
+/* ═════════════════════════════════════════════════════ formularz */
+
+function rysujFormularz() {
+  const box = $('#leadBox');
+  if (!W?.ok) {
+    box.innerHTML = '';
+    return;
+  }
+
+  if (wyslane) {
+    box.replaceChildren(potwierdzenieWyslania({ ...wyslane, mailWyslany: wyslane.mailWyslany }));
+    return;
+  }
+
+  box.replaceChildren(
+    formularzUmywalki({
+      wycena: W,
+      link: location.href,
+      poWyslaniu: (dane) => {
+        wyslane = dane;
+        rysuj();
+        rysujFormularz();
+        $('#total').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      },
+    })
+  );
+
+  // Zdarzenie „zobaczył formularz" dopiero przy pierwszym dotknięciu pola —
+  // sam fakt, że formularz jest na stronie, niczego jeszcze nie mówi.
+  box.addEventListener('focusin', () => ga.formularz(W?.razemZaokr), { once: true });
+}
+
+/* ═════════════════════════════════════════════════════ zdarzenia UI */
+
+const panel = $('#panel');
+
+panel.addEventListener('input', (e) => {
+  const t = e.target;
+  const k = t.dataset.k;
+  if (!k) return;
+  ga.start(S.mode);
+  if (t.type === 'range') {
+    S[k] = +t.value;
+    przelicz();
+  } else {
+    const v = liczba(t.value);
+    const l = limity(S)[k];
+    if (Number.isFinite(v) && v >= l[0] && v <= l[1]) {
+      S[k] = v;
+      przelicz();
+    }
+  }
+});
+
+panel.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.id === 'mont' || t.id === 'reuse') {
+    S[t.id] = t.checked;
+    ga.start(S.mode);
+    przelicz(t.id !== 'reuse');
+    return;
+  }
+  const k = t.dataset.k;
+  if (!k || t.type === 'range') return;
+  const v = liczba(t.value);
+  if (Number.isFinite(v)) S[k] = v;
+  przelicz();
+  t.value = String(S[k]).replace('.', ',');
+});
+
+panel.addEventListener('keydown', (e) => {
+  const t = e.target;
+  const k = t.dataset.k;
+  if (!k || t.type === 'range' || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+  e.preventDefault();
+  S[k] = +S[k] + (e.key === 'ArrowUp' ? 0.5 : -0.5);
+  przelicz();
+  t.value = String(S[k]).replace('.', ',');
+});
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const d = b.dataset;
+
+  if (d.mode) {
+    S.mode = d.mode;
+    ga.start(S.mode);
+    przelicz();
+  } else if (d.side) {
+    S[d.side] = !S[d.side];
+    przelicz();
+  } else if (d.pre) {
+    const [a, c] = d.pre.split(',').map(Number);
+    Object.assign(S, { L: a, W: c, sL: szerokoscZlewu(S, a), sW: c - 15 });
+    ga.start(S.mode);
+    przelicz();
+  } else if (d.n) {
+    const v = +d.n;
+    if (v !== S.n) {
+      S.n = v;
+      S.sL = szerokoscZlewu(S, S.L);
+      if (v === 2 && S.holes === 1) S.holes = 2;
+      else if (v === 1 && S.holes === 2) S.holes = 1;
+    }
+    przelicz();
+  } else if (d.dekor) {
+    S.marka = d.marka;
+    S.dekor = d.dekor;
+    const g = grubosciDekoru(firma(), S.dekor);
+    if (!g.includes(S.grubosc)) S.grubosc = d.grubosc || g[0];
+    ga.start(S.mode);
+    przelicz();
+  } else if (d.grubosc) {
+    S.grubosc = d.grubosc;
+    przelicz();
+  } else if (d.odcien) {
+    odcienFiltr = odcienFiltr === d.odcien ? null : d.odcien;
+    pelnyKatalog = false;
+    rysujKamienie();
+  } else if (d.view) {
+    document.querySelectorAll('#views button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    podglad && podglad.widok(d.view);
+  } else if (b.id === 'wszystkie') {
+    pelnyKatalog = !pelnyKatalog;
+    odcienFiltr = null;
+    rysujKamienie();
+  } else if (b.id === 'ex') {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on));
+    b.textContent = on ? 'Złóż z powrotem' : 'Rozłóż na formatki';
+    podglad && podglad.rozloz(on);
+    rysujOdczyt();
+  } else if (b.id === 'hm' || b.id === 'hp') {
+    S.holes = Math.max(0, Math.min(3, S.holes + (b.id === 'hp' ? 1 : -1)));
+    przelicz();
+  } else if (b.id === 'doForm' || b.id === 'doFormM') {
+    $('#lead').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#leadBox').querySelector('input')?.focus({ preventScroll: true });
+  }
+});
+
+// Najechanie na wiersz formatki podświetla element na podglądzie.
+const tabela = $('#cut');
+tabela.addEventListener('mouseover', (e) => {
+  const r = e.target.closest('tr');
+  if (r && podglad) podglad.podswietl(r.dataset.k);
+});
+tabela.addEventListener('mouseleave', () => podglad && podglad.podswietl(przypiete));
+tabela.addEventListener('click', (e) => {
+  const r = e.target.closest('tr');
+  if (!r) return;
+  przypiete = przypiete === r.dataset.k ? null : r.dataset.k;
+  tabela.querySelectorAll('tr').forEach((x) => x.classList.toggle('hl', x.dataset.k === przypiete));
+  podglad && podglad.podswietl(przypiete);
+});
+
+$('#cookies')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  zmienZgody();
+});
+
+// Dolny pasek chowa się, gdy karta z ceną i tak jest na ekranie.
+try {
+  const mb = $('#mbar');
+  new IntersectionObserver((wpisy) => wpisy.forEach((x) => mb.classList.toggle('off', x.isIntersecting)), {
+    threshold: 0.3,
+  }).observe($('#total'));
+} catch {
+  /* bez obserwatora pasek po prostu zostaje */
+}
 
 /* ═════════════════════════════════════════════════════ start */
 
@@ -70,812 +616,13 @@ inicjujZgody();
 sledzTelefony();
 zapamietajZrodlo();
 
-const korzen = document.getElementById('umywalka');
-const scena = document.getElementById('scena');
-const panel = document.getElementById('panel');
-const pasek = document.getElementById('pasek');
-
-/* ═════════════════════════════════════════════════════ adres */
-
-const slug = (s) =>
-  String(s || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/ł/g, 'l')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-
-function czytajURL() {
-  const p = new URLSearchParams(location.search);
-  if (!p.toString()) return;
-
-  if (p.get('t')) stan.typ = p.get('t') === 'n' ? 'nablatowa' : 'zintegrowana';
-
-  const w = (p.get('w') || '').match(/^(\d{2,3})x(\d{2,3})$/);
-  if (w) {
-    stan.L = Number(w[1]);
-    stan.G = Number(w[2]);
-  }
-
-  const pg = p.get('p');
-  if (pg === 'b') stan.pogrubienie = 'boki';
-  else if (pg === 'f') stan.pogrubienie = 'front';
-  else if (pg === 'x') stan.pogrubienie = 'brak';
-
-  const d = (p.get('d') || '').split(':');
-  if (d.length === 3) {
-    const f = FIRMY.find((x) => x.slug === d[0]);
-    const nazwa = f && Object.keys(f.dekory || {}).find((n) => slug(n) === d[1]);
-    if (nazwa) {
-      stan.marka = d[0];
-      stan.dekor = nazwa;
-      stan.grubosc = d[2];
-    }
-  }
-
-  if (p.get('m')) stan.montaz = p.get('m') === '1';
-  if (p.get('b')) stan.bateria = p.get('b') === 'sciana' ? 'sciana' : 'blat';
-  if (p.get('h')) stan.H = Number(p.get('h')) || stan.H;
-  if (p.get('k')) krok = Math.min(ILE_KROKOW, Math.max(1, Number(p.get('k')) || 1));
-
-  Object.assign(stan, normalizuj(stan));
-}
-
-function adres() {
-  const p = new URLSearchParams({
-    t: stan.typ === 'nablatowa' ? 'n' : 'z',
-    w: `${stan.L}x${stan.G}`,
-    h: String(stan.H),
-    p: { boki: 'b', front: 'f', brak: 'x' }[stan.pogrubienie] || 'b',
-    d: `${stan.marka}:${slug(stan.dekor)}:${stan.grubosc}`,
-    m: stan.montaz ? '1' : '0',
-    b: stan.bateria,
-  });
-  return `${location.pathname}?${p}`;
-}
-
-function zapiszURL({ nowy } = {}) {
-  const cel = `${adres()}&k=${krok}`;
-  if (nowy) history.pushState({ krok }, '', cel);
-  else history.replaceState({ krok }, '', cel);
-}
-
-/* ═════════════════════════════════════════════════════ przeliczanie */
-
-let timerPakowania = null;
-
-function wycena() {
-  return wycenUmywalke({ firma: firma(), stan, stawki, dataISO: undefined });
-}
-
-/** Szybka ścieżka: sam rysunek i wymiar. Woła się przy każdym ruchu suwaka. */
-function odswiezBryle() {
-  const ramka = scena.querySelector('.bryla-ramka');
-  if (!ramka) return;
-
-  const probka = probkaDekoru(stan.marka, stan.dekor, kolorDekoru(stan.dekor, stan.marka));
-  const rysunek = rozlozone
-    ? svgRozlozenia({ stan, probka })
-    : svgBryly({ stan, probka, obrot });
-  ramka.replaceChildren(rysunek);
-
-  const wymiar = scena.querySelector('.scena-wymiar');
-  if (wymiar) wymiar.textContent = `${stan.L} × ${stan.G} × ${stan.H} cm`;
-}
-
-/** Wolna ścieżka: pakowanie na płytę, znaczek połówki i podpowiedź. */
-function odswiezPodpowiedzi() {
-  clearTimeout(timerPakowania);
-  timerPakowania = setTimeout(() => {
-    const w = wycena();
-    ostatniaWycena = w.ok ? w : null;
-
-    const znak = w.ok ? znacznikPolowki(w.pak) : null;
-    const pole = scena.querySelector('.scena-znaczek');
-    if (pole) {
-      pole.textContent = znak ? znak.tekst : '';
-      pole.hidden = !znak;
-    }
-
-    const rada = w.ok ? podpowiedz({ stan: w.stan, pak: w.pak, plyta: w.plyta }) : null;
-    const box = scena.querySelector('.scena-rada');
-    if (!box) return;
-    box.replaceChildren();
-    box.hidden = !rada;
-    if (!rada) return;
-
-    box.append(h('span', { class: 'rada-tekst' }, rada.tekst));
-    if (rada.akcja) {
-      box.append(
-        h(
-          'button',
-          {
-            class: 'btn-maly',
-            type: 'button',
-            onclick: () => {
-              Object.assign(stan, normalizuj({ ...stan, ...rada.akcja.zmiana }));
-              zapiszURL();
-              rysuj();
-            },
-          },
-          rada.akcja.etykieta
-        )
-      );
-    }
-  }, 120);
-}
-
-/* ═════════════════════════════════════════════════════ rysowanie */
-
-function rysuj() {
-  rysujScene();
-  rysujPanel();
-  rysujPasek();
-  odswiezPodpowiedzi();
-}
-
-function rysujScene() {
-  if (scena.querySelector('.bryla-ramka')) {
-    odswiezBryle();
-    return;
-  }
-
-  const ramka = h('div', {
-    class: 'bryla-ramka',
-    tabindex: '0',
-    role: 'group',
-    'aria-label': 'Podgląd umywalki — przeciągnij, aby obrócić',
-  });
-
-  const przelacznik = h(
-    'button',
-    {
-      class: 'btn-przezroczysty',
-      type: 'button',
-      onclick: () => {
-        rozlozone = !rozlozone;
-        przelacznik.textContent = rozlozone ? 'Pokaż bryłę' : 'Rozłóż na części';
-        przelacznik.setAttribute('aria-pressed', String(rozlozone));
-        odswiezBryle();
-      },
-      'aria-pressed': 'false',
-    },
-    'Rozłóż na części'
-  );
-
-  scena.replaceChildren(
-    ramka,
-    h('div', { class: 'scena-wymiar' }, `${stan.L} × ${stan.G} × ${stan.H} cm`),
-    h('div', { class: 'scena-znaczek', 'aria-live': 'polite', hidden: true }),
-    h('div', { class: 'scena-rada', 'aria-live': 'polite', hidden: true }),
-    h('div', { class: 'scena-narzedzia' }, przelacznik, h('span', { class: 'scena-hint' }, 'przeciągnij, aby obrócić'))
-  );
-
-  podlaczObrot(ramka, {
-    odczyt: () => obrot,
-    zapis: (v) => {
-      obrot = v;
-      if (!rozlozone) odswiezBryle();
-    },
-  });
-
-  odswiezBryle();
-}
-
-function rysujPanel() {
-  if (wyslane) return rysujWynik();
-
-  const ekrany = { 1: krokRodzaj, 2: krokWymiar, 3: krokKamien, 4: krokWycena };
-  panel.replaceChildren(ekrany[krok]());
-  panel.scrollIntoView?.({ block: 'nearest' });
-}
-
-function rysujPasek() {
-  if (wyslane || krok >= ILE_KROKOW) {
-    pasek.replaceChildren();
-    pasek.hidden = true;
-    return;
-  }
-
-  pasek.hidden = false;
-  pasek.replaceChildren(
-    h('span', { class: 'pasek-krok' }, `Krok ${krok} z ${ILE_KROKOW}`),
-    h(
-      'button',
-      {
-        class: 'btn',
-        type: 'button',
-        onclick: () => idzDo(krok + 1),
-      },
-      krok === 3 ? 'Pokaż wycenę' : 'Dalej'
-    )
-  );
-}
-
-function idzDo(nowy) {
-  krok = Math.min(ILE_KROKOW, Math.max(1, nowy));
-  ga.krok(krok);
-  zapiszURL({ nowy: true });
-  rysuj();
-  /*
-   * Przewijamy do SCENY, nie na sam początek strony. Na telefonie nagłówek
-   * z hasłem zajmuje prawie cały pierwszy ekran — skok na górę po każdym
-   * kroku wyrzucałby klienta do nagłówka zamiast do pytania.
-   */
-  (scena || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-/* ═════════════════════════════════════════════════════ krok 1 */
-
-function krokRodzaj() {
-  const karta = (typ, tytul, opis) =>
-    h(
-      'button',
-      {
-        class: 'wybor-karta' + (stan.typ === typ ? ' wybrana' : ''),
-        type: 'button',
-        onclick: () => {
-          stan.typ = typ;
-          Object.assign(stan, normalizuj(stan));
-          ga.start(typ);
-          zapiszURL();
-          idzDo(2);
-        },
-      },
-      h('span', { class: 'wybor-rysunek' }, miniatura(typ)),
-      h('span', { class: 'wybor-tytul' }, tytul),
-      h('span', { class: 'wybor-opis' }, opis)
-    );
-
-  const od = POKAZ_OD ? cenaOd({ firmy: FIRMY, polecane: POLECANE, stawki }) : 0;
-
-  return h(
-    'section',
-    { class: 'ekran' },
-    naglowek('Jaką umywalkę robimy?', 'Wybierz rodzaj — wszystko inne ustawisz dalej.'),
-    h(
-      'div',
-      { class: 'wybor-karty' },
-      karta('zintegrowana', 'Zlew wycięty w kamieniu', 'Umywalka i blat z jednej płyty, bez łączeń.'),
-      karta('nablatowa', 'Blat pod umywalkę nablatową', 'Kamienny blat, na nim Twoja umywalka.')
-    ),
-    od
-      ? h(
-          'p',
-          { class: 'kotwica' },
-          'Umywalka z kamienia na wymiar — od ',
-          h('b', {}, zl(od)),
-          ' z montażem.'
-        )
-      : null
-  );
-}
-
-/** Mała bryła na kafelku wyboru — ten sam renderer, bez etykiet. */
-function miniatura(typ) {
-  const probka = probkaDekoru(stan.marka, stan.dekor, kolorDekoru(stan.dekor, stan.marka));
-  return svgBryly({
-    stan: { ...stan, typ, L: 120, G: 50, H: 15 },
-    probka,
-    obrot: -22,
-    wymiary: false,
-  });
-}
-
-/* ═════════════════════════════════════════════════════ krok 2 */
-
-function krokWymiar() {
-  const pigulki = h(
-    'div',
-    { class: 'pigulki' },
-    PRESETY.map((p) =>
-      h(
-        'button',
-        {
-          class: 'pigulka' + (stan.L === p.L && stan.G === p.G ? ' wybrana' : ''),
-          type: 'button',
-          onclick: () => {
-            Object.assign(stan, normalizuj({ ...stan, L: p.L, G: p.G }));
-            zapiszURL();
-            rysuj();
-          },
-        },
-        `${p.L} cm`
-      )
-    )
-  );
-
-  return h(
-    'section',
-    { class: 'ekran' },
-    naglowek('Jaki wymiar?', 'Zacznij od gotowego rozmiaru, potem dociągnij suwakiem.'),
-    pigulki,
-    suwak('Długość', 'L', ZAKRESY.L, 'cm'),
-    pogrubienieWybor(),
-    podsumowanieDomyslnych(),
-    wiecejOpcji()
-  );
-}
-
-function suwak(etykieta, klucz, [min, max], jednostka) {
-  const id = `u-${klucz}`;
-  const liczbowe = h('input', {
-    type: 'number',
-    id,
-    class: 'suwak-liczba',
-    value: stan[klucz],
-    min,
-    max: Math.max(max, stan[klucz]),
-    step: '1',
-    inputmode: 'numeric',
-    'aria-label': `${etykieta} w ${jednostka}`,
-  });
-
-  const zakres = h('input', {
-    type: 'range',
-    class: 'suwak-zakres',
-    value: stan[klucz],
-    min,
-    max,
-    step: '1',
-    'aria-labelledby': id,
-  });
-
-  const zmien = (wartosc, zrodlo) => {
-    const v = Number(wartosc);
-    if (!Number.isFinite(v)) return;
-    stan[klucz] = Math.round(v);
-    Object.assign(stan, normalizuj(stan));
-    if (zrodlo !== 'liczba') liczbowe.value = stan[klucz];
-    if (zrodlo !== 'zakres') zakres.value = Math.min(max, Math.max(min, stan[klucz]));
-    zapiszURL();
-    odswiezBryle();
-    odswiezPodpowiedzi();
-  };
-
-  zakres.addEventListener('input', (e) => zmien(e.target.value, 'zakres'));
-  liczbowe.addEventListener('input', (e) => zmien(e.target.value, 'liczba'));
-
-  return h(
-    'div',
-    { class: 'pole-suwak' },
-    h('label', { for: id }, etykieta),
-    h('div', { class: 'suwak-rzad' }, zakres, liczbowe, h('span', { class: 'suwak-jednostka' }, jednostka))
-  );
-}
-
-function pogrubienieWybor() {
-  const opcje = [
-    ['brak', 'Cienka krawędź', 'grubość samej płyty'],
-    ['front', 'Gruby front', 'pogrubiony przód'],
-    ['boki', 'Gruby front i boki', 'pogrubienie z trzech stron'],
-  ].filter(([id]) => !(id === 'brak' && stan.typ === 'zintegrowana'));
-
-  return h(
-    'div',
-    { class: 'pole-grupa' },
-    h('span', { class: 'pole-etykieta' }, 'Krawędź'),
-    h(
-      'div',
-      { class: 'kafelki' },
-      opcje.map(([id, tytul, opis]) =>
-        h(
-          'button',
-          {
-            class: 'kafelek' + (stan.pogrubienie === id ? ' wybrany' : ''),
-            type: 'button',
-            onclick: () => {
-              Object.assign(stan, normalizuj({ ...stan, pogrubienie: id }));
-              zapiszURL();
-              rysuj();
-            },
-          },
-          h('span', { class: 'kafelek-rysunek' }, krawedzRysunek(id)),
-          h('span', { class: 'kafelek-tytul' }, tytul),
-          h('span', { class: 'kafelek-opis' }, opis)
-        )
-      )
-    ),
-    stan.typ === 'zintegrowana'
-      ? h(
-          'p',
-          { class: 'pole-nota' },
-          'Przy zlewie w kamieniu front zakrywa nieckę — dlatego zawsze jest pogrubiony.'
-        )
-      : null
-  );
-}
-
-/** Mały przekrój krawędzi — czytelniejszy niż ikona. */
-function krawedzRysunek(rodzaj) {
-  const probka = probkaDekoru(stan.marka, stan.dekor, kolorDekoru(stan.dekor, stan.marka));
-  return svgBryly({
-    stan: {
-      ...stan,
-      typ: 'nablatowa',
-      L: 60,
-      G: 40,
-      H: rodzaj === 'brak' ? 2 : 12,
-      pogrubienie: rodzaj,
-      bokL: true,
-      bokP: true,
-    },
-    probka,
-    obrot: -26,
-    wymiary: false,
-  });
-}
-
-function podsumowanieDomyslnych() {
-  const opis = [
-    stan.montaz ? 'Z montażem' : 'Odbiór własny',
-    stan.mocowanie === 'szafka' ? 'na szafce' : 'podwieszana',
-    stan.bateria === 'blat' ? 'bateria z blatu' : 'bateria ze ściany',
-  ].join(' · ');
-
-  const rozwiniete = h('div', { class: 'przelaczniki', hidden: true });
-  rozwiniete.append(
-    segment('Montaż', 'montaz', [
-      [true, 'Z montażem'],
-      [false, 'Odbiorę sam'],
-    ]),
-    segment('Mocowanie', 'mocowanie', [
-      ['szafka', 'Na szafce'],
-      ['podwieszana', 'Podwieszana'],
-    ]),
-    segment('Bateria', 'bateria', [
-      ['blat', 'Z blatu'],
-      ['sciana', 'Ze ściany'],
-    ])
-  );
-
-  const link = h(
-    'button',
-    {
-      class: 'link-zmien',
-      type: 'button',
-      onclick: () => {
-        rozwiniete.hidden = !rozwiniete.hidden;
-        link.textContent = rozwiniete.hidden ? 'zmień' : 'zwiń';
-      },
-    },
-    'zmień'
-  );
-
-  return h(
-    'div',
-    { class: 'domyslne' },
-    h('span', { class: 'domyslne-opis' }, opis),
-    link,
-    rozwiniete
-  );
-}
-
-function segment(etykieta, klucz, opcje) {
-  return h(
-    'div',
-    { class: 'segment' },
-    h('span', { class: 'segment-etykieta' }, etykieta),
-    h(
-      'div',
-      { class: 'segment-opcje' },
-      opcje.map(([wartosc, tytul]) =>
-        h(
-          'button',
-          {
-            class: 'segment-opcja' + (stan[klucz] === wartosc ? ' wybrana' : ''),
-            type: 'button',
-            onclick: () => {
-              stan[klucz] = wartosc;
-              Object.assign(stan, normalizuj(stan));
-              zapiszURL();
-              rysuj();
-            },
-          },
-          tytul
-        )
-      )
-    )
-  );
-}
-
-function wiecejOpcji() {
-  const n = nieckaStanu(stan);
-  const tresc = h('div', { class: 'wiecej-tresc', hidden: true });
-
-  /*
-   * `append` to goły DOM — `null` wszedłby na stronę jako napis „null"
-   * (przerabiane w repozytorium 30.08.2026 na ofertach klientów). Stąd
-   * `filter(Boolean)`, a nie warunki wprost w argumentach.
-   */
-  tresc.append(
-    ...[
-      suwak('Głębokość', 'G', ZAKRESY.G, 'cm'),
-      suwak('Wysokość krawędzi', 'H', ZAKRESY.H, 'cm'),
-      stan.pogrubienie === 'boki'
-        ? h(
-            'div',
-            { class: 'pole-grupa' },
-            h('span', { class: 'pole-etykieta' }, 'Pogrubione boki'),
-            h(
-              'div',
-              { class: 'segment-opcje' },
-              przelacznikBoku('bokL', 'Lewy'),
-              przelacznikBoku('bokP', 'Prawy')
-            )
-          )
-        : null,
-      stan.typ === 'zintegrowana' ? nieckaPola(n) : null,
-      grubosciPola(),
-    ].filter(Boolean)
-  );
-
-  const przycisk = h(
-    'button',
-    {
-      class: 'wiecej-przycisk',
-      type: 'button',
-      'aria-expanded': 'false',
-      onclick: () => {
-        const otwarte = tresc.hidden;
-        tresc.hidden = !otwarte;
-        przycisk.setAttribute('aria-expanded', String(otwarte));
-        przycisk.textContent = otwarte ? 'Mniej opcji' : 'Więcej opcji';
-      },
-    },
-    'Więcej opcji'
-  );
-
-  return h('div', { class: 'wiecej' }, przycisk, tresc);
-}
-
-function przelacznikBoku(klucz, tytul) {
-  return h(
-    'button',
-    {
-      class: 'segment-opcja' + (stan[klucz] ? ' wybrana' : ''),
-      type: 'button',
-      'aria-pressed': String(!!stan[klucz]),
-      onclick: () => {
-        stan[klucz] = !stan[klucz];
-        zapiszURL();
-        rysuj();
-      },
-    },
-    tytul
-  );
-}
-
-function nieckaPola(n) {
-  const polePola = (etykieta, klucz, wartosc, min, max) => {
-    const input = h('input', {
-      type: 'number',
-      class: 'suwak-liczba',
-      value: wartosc,
-      min,
-      max,
-      step: '1',
-      inputmode: 'numeric',
-    });
-    input.addEventListener('input', () => {
-      stan.niecka = { ...stan.niecka, [klucz]: Number(input.value) };
-      Object.assign(stan, normalizuj(stan));
-      odswiezBryle();
-      odswiezPodpowiedzi();
-      zapiszURL();
-    });
-    return h('div', { class: 'pole-male' }, h('label', {}, etykieta), input);
-  };
-
-  return h(
-    'div',
-    { class: 'pole-grupa' },
-    h('span', { class: 'pole-etykieta' }, 'Zlew w kamieniu'),
-    h(
-      'div',
-      { class: 'pola-rzad' },
-      polePola('Długość', 'L', n.L, 40, stan.L - 16),
-      polePola('Szerokość', 'G', n.G, 20, stan.G - 12),
-      polePola('Głębokość', 'H', n.H, ZAKRESY.nieckaH[0], ZAKRESY.nieckaH[1])
-    ),
-    h('p', { class: 'pole-nota' }, 'Puste pola wyliczymy sami — zwykle tak jest najlepiej.')
-  );
-}
-
-function grubosciPola() {
-  const dostepne = grubosciDekoru(firma(), stan.dekor);
-  if (dostepne.length < 2) return null;
-
-  return h(
-    'div',
-    { class: 'pole-grupa' },
-    h('span', { class: 'pole-etykieta' }, 'Grubość płyty'),
-    h(
-      'div',
-      { class: 'segment-opcje' },
-      dostepne.map((g) =>
-        h(
-          'button',
-          {
-            class: 'segment-opcja' + (stan.grubosc === g ? ' wybrana' : ''),
-            type: 'button',
-            onclick: () => {
-              stan.grubosc = g;
-              zapiszURL();
-              rysuj();
-            },
-          },
-          `${Number(g) / 10} cm`.replace('.', ',')
-        )
-      )
-    )
-  );
-}
-
-/* ═════════════════════════════════════════════════════ krok 3 */
-
-function krokKamien() {
-  const filtry = h(
-    'div',
-    { class: 'pigulki' },
-    ODCIENIE.map((o) =>
-      h(
-        'button',
-        {
-          class: 'pigulka' + (odcienFiltr === o.id ? ' wybrana' : ''),
-          type: 'button',
-          onclick: () => {
-            odcienFiltr = odcienFiltr === o.id ? null : o.id;
-            rysujPanel();
-          },
-        },
-        o.nazwa
-      )
-    )
-  );
-
-  const lista = pelnyKatalog ? wszystkieDekory() : POLECANE.filter((p) => wOdcieniu(p, odcienFiltr));
-
-  const kafelki = h(
-    'div',
-    { class: 'dekory' },
-    lista.map((p) =>
-      h(
-        'button',
-        {
-          class: 'dekor' + (stan.dekor === p.dekor && stan.marka === p.marka ? ' wybrany' : ''),
-          type: 'button',
-          onclick: () => {
-            stan.marka = p.marka;
-            stan.dekor = p.dekor;
-            stan.grubosc = p.grubosc;
-            zapiszURL();
-            rysuj();
-          },
-        },
-        h('span', {
-          class: 'dekor-probka',
-          style: `background:${p.probka}`,
-          'aria-hidden': 'true',
-        }),
-        h('span', { class: 'dekor-nazwa' }, p.dekor),
-        h('span', { class: 'dekor-marka' }, p.marka === 'keralini' ? 'Keralini' : 'Avant Quartz')
-      )
-    )
-  );
-
-  const ile = FIRMY.reduce((suma, f) => suma + Object.keys(f.dekory || {}).length, 0);
-
-  return h(
-    'section',
-    { class: 'ekran' },
-    naglowek('Z jakiego kamienia?', 'Dotknij wzoru — bryła od razu zmieni kolor.'),
-    pelnyKatalog ? null : filtry,
-    kafelki,
-    h(
-      'button',
-      {
-        class: 'link-zmien',
-        type: 'button',
-        onclick: () => {
-          pelnyKatalog = !pelnyKatalog;
-          odcienFiltr = null;
-          rysujPanel();
-        },
-      },
-      pelnyKatalog ? 'Pokaż krótką listę' : `Pokaż wszystkie (${ile})`
-    ),
-    h(
-      'p',
-      { class: 'pole-nota' },
-      'Kolory na kafelkach są przybliżone. Prawdziwą próbkę pokażemy przy pomiarze, ' +
-        'a wybrany wzór zobaczysz na projekcie 3D.'
-    )
-  );
-}
-
-function wszystkieDekory() {
-  const lista = [];
-  for (const f of FIRMY) {
-    for (const nazwa of Object.keys(f.dekory || {})) {
-      const grubosci = grubosciDekoru(f, nazwa);
-      if (!grubosci.length) continue;
-      lista.push({
-        marka: f.slug,
-        dekor: nazwa,
-        grubosc: grubosci[0],
-        probka: probkaDekoru(f.slug, nazwa, kolorDekoru(nazwa, f.slug)),
-      });
-    }
-  }
-  return lista.sort((a, b) => a.dekor.localeCompare(b.dekor, 'pl'));
-}
-
-/* ═════════════════════════════════════════════════════ krok 4 */
-
-function krokWycena() {
-  const w = wycena();
-  if (!w.ok) {
-    return h(
-      'section',
-      { class: 'ekran' },
-      naglowek('Policzymy to indywidualnie', w.blad || 'Zadzwoń — podamy cenę od ręki.'),
-      h('a', { class: 'btn', href: 'tel:+48796991128' }, 'Zadzwoń 796 991 128')
-    );
-  }
-
-  ostatniaWycena = w;
-  ga.formularz(w.razemZaokr);
-
-  return h(
-    'section',
-    { class: 'ekran' },
-    formularzUmywalki({
-      wycena: w,
-      link: location.origin + adres(),
-      poWyslaniu: (dane) => {
-        wyslane = dane;
-        rysuj();
-        (scena || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' });
-      },
-    })
-  );
-}
-
-function rysujWynik() {
-  const w = ostatniaWycena || wycena();
-  panel.replaceChildren(
-    h(
-      'section',
-      { class: 'ekran' },
-      potwierdzenieWyslania({ ...wyslane, mailWyslany: wyslane.mailWyslany }),
-      kartaCeny(w)
-    )
-  );
-}
-
-/* ═════════════════════════════════════════════════════ drobne */
-
-function naglowek(tytul, podtytul) {
-  return h(
-    'header',
-    { class: 'ekran-naglowek' },
-    h('h2', {}, tytul),
-    podtytul ? h('p', {}, podtytul) : null
-  );
-}
-
-/* ═════════════════════════════════════════════════════ uruchomienie
- *
- * Start stoi NA KOŃCU pliku, a nie w połowie: funkcje są wynoszone na górę
- * modułu, ale `const` i `let` nie. Start z połowy pliku sięgał do stałych
- * zadeklarowanych niżej i strona wywracała się na „Cannot access … before
- * initialization" — rysunek był, podpowiedzi już nie.
- */
+$('#dimsTop').innerHTML = ['L', 'W', 'H'].map(wierszWymiaru).join('');
+$('#dimsSink').innerHTML = ['sL', 'gap', 'sW', 'ins'].map(wierszWymiaru).join('');
+$('#presets').innerHTML = PRESETY.map((p) => `<button class="chip" data-pre="${p}">${p[0]} × ${p[1]}</button>`).join('');
 
 czytajURL();
-rysuj();
+przelicz(false);
+rysujFormularz();
 
 // Stawki z panelu Dawida dochodzą po chwili — do tego czasu liczymy
 // domyślnymi, więc nic nie mruga i nic nie czeka na sieć.
@@ -883,18 +630,24 @@ pobierzUstawienia()
   .then((zBazy) => {
     stawki = scalUstawienia(zBazy);
     zastosujUstawienia(FIRMY, zBazy);
-    rysuj();
+    przelicz(false);
+    rysujFormularz();
   })
   .catch(() => {});
 
-window.addEventListener('popstate', () => {
-  czytajURL();
-  rysuj();
-});
-
-document.getElementById('cookies')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  zmienZgody();
-});
-
-if (korzen) korzen.dataset.gotowe = '1';
+// Podgląd 3D dociąga się osobno: strona i wycena działają, zanim wczyta się
+// biblioteka — a gdy WebGL jest niedostępny, zostaje komunikat zastępczy.
+uruchomPodglad({
+  scena: $('#stage'),
+  etykiety: $('#lab'),
+  stan: () => S,
+  faktura,
+})
+  .then((p) => {
+    podglad = p;
+    if (!p) $('#nogl').hidden = false;
+    else podglad.build(FORMATKI);
+  })
+  .catch(() => {
+    $('#nogl').hidden = false;
+  });

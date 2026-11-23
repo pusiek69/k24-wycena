@@ -1,21 +1,17 @@
 /**
- * CENA UMYWALKI — materiał z silnika blatów, robocizna z panelu Dawida.
+ * CENA UMYWALKI — formatki z modelu, pieniądze z silnika blatów.
  *
- * Nie ma tu drugiego silnika wyceny i nie może go być. Materiał liczy
- * `wycen()` z `src/engine/wycena.js`: on zna cennik, promocje (z regułą
- * „tańsza wygrywa"), format płyty i to, że Keralini oraz Avant wolno kupić
- * w POŁÓWCE 320 × 80. Przy umywalce to nie detal — połówka zamiast całej
- * płyty to różnica rzędu dwóch tysięcy złotych na jednej sztuce.
+ * Projekt Dawida liczył materiał tak: pole formatek + 25% odpadu × stawka
+ * za metr. To wygodne, ale nieprawdziwe — kamienia nie kupuje się na metry,
+ * tylko w płytach. Keralini i Avant (dystrybucja Architype) pozwalają kupić
+ * POŁOWĘ płyty 320 × 160, i właśnie o to toczy się gra: umywalka, która
+ * mieści się w połówce, kosztuje materiałowo o około dwa tysiące złotych
+ * mniej niż ta o kilka centymetrów dłuższa. Ryczałtowy odpad tego nie widzi.
  *
- * Z wyniku silnika bierzemy WYŁĄCZNIE pozycję materiału. Reszta jego
- * pozycji dotyczy blatu kuchennego (wycięcie pod zlew podblatowy, pod płytę
- * grzewczą, obróbka od metra blatu) i do umywalki się nie stosuje — tutaj
- * robocizna to pogrubienie krawędzi, niecka, otwory i montaż.
- *
- * Stawki robocizny są zapisane BRUTTO PRZY 23% — taka jest konwencja całego
- * repozytorium (patrz `firms/_domyslne.js#zCennika`). Silnik schodzi z nich
- * na netto i nalicza VAT wariantu, więc umywalka z montażem (8%) jest dla
- * klienta brutto tańsza, zamiast po cichu zostawiać różnicę w zakładzie.
+ * Dlatego materiał liczy `wycen()` z `src/engine` — ten sam silnik, katalog
+ * i promocje co kalkulator blatów. Stąd bierzemy WYŁĄCZNIE pozycję materiału;
+ * reszta jego pozycji dotyczy blatu kuchennego. Robocizna umywalki to
+ * pogrubienie krawędzi, niecka, otwory i montaż — stawkami z panelu Dawida.
  *
  * ⚠ W tym pliku są wyłącznie ceny dla klienta. Tego, po ile kamień wchodzi
  *   do zakładu, nie ma tu i być nie może — to zostaje w pricing/zrodla,
@@ -24,22 +20,27 @@
 import { wycen } from '../engine/wycena.js';
 import { DOMYSLNE } from '../app/ustawienia.js';
 import {
-  normalizuj,
+  STAN_DOMYSLNY,
+  zacisnij,
+  formatki,
   odcinki,
   mbPogrubienia,
-  otwory,
   m2Blatu,
-  ostrzezeniaWymiarow,
+  iloscZlewow,
+  grube,
   opisKonfiguracji,
-  nieckaStanu,
-} from './geometria.js';
+  ranty,
+} from './model.js';
 
 const grosze = (n) => Math.round(n * 100) / 100;
 const do50 = (n) => Math.round(n / 50) * 50;
 
 /**
  * Stawka z panelu → kwota brutto przy stawce VAT tej wyceny.
- * Dokładnie ta sama konwersja, którą stosuje silnik (`kwotaBrutto`).
+ * Dokładnie ta sama konwersja, którą stosuje silnik (`kwotaBrutto`):
+ * stawki są zapisane BRUTTO PRZY 23%, schodzimy na netto i naliczamy VAT
+ * wariantu. Dzięki temu montaż w mieszkaniu (8%) jest brutto tańszy dla
+ * klienta, zamiast po cichu zostawiać różnicę w zakładzie.
  */
 function zeStawki(kwota, firma, vat) {
   const wartosc = Number(kwota) || 0;
@@ -50,32 +51,30 @@ function zeStawki(kwota, firma, vat) {
 
 /**
  * @param {object} p
- * @param {object} p.firma    konfiguracja marki (Keralini / Avant Quartz)
- * @param {object} p.stan     konfiguracja klienta (patrz geometria.js)
- * @param {object} [p.stawki] stawki z panelu; brak = wartości domyślne
+ * @param {object} p.firma     konfiguracja marki (Keralini / Avant Quartz)
+ * @param {object} p.stan      stan konfiguratora (patrz model.js)
+ * @param {object} [p.stawki]  stawki z panelu; brak = wartości domyślne
  * @param {string} [p.dataISO] data wyceny (promocje)
  * @param {boolean} [p.bezAlternatywy] blokada rekurencji dla „tańszej wersji"
  */
 export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } = {}) {
   if (!firma) return { ok: false, blad: 'Nie wiem, z jakiego kamienia liczyć.' };
 
-  const s = normalizuj(stan);
+  const S = zacisnij({ ...STAN_DOMYSLNY, ...(stan || {}) });
   const st = { ...DOMYSLNE, ...(stawki || {}) };
-  const kawalkiDoCiecia = odcinki(s);
+  const lista = formatki(S);
 
   // ---------- materiał: silnik blatów, bez żadnych zmian ----------
   const material = wycen(
     firma,
     {
-      dekor: s.dekor,
-      grubosc: s.grubosc,
-      odcinki: kawalkiDoCiecia,
+      dekor: S.dekor,
+      grubosc: S.grubosc,
+      odcinki: odcinki(S),
       opcje: {
-        dostawa: s.montaz ? 'montaz' : 'odbior',
-        // Umywalka jest zawsze w łazience. Dla silnika to informacja, że
-        // nie ma tu pomiaru Prolinerem ani podstawy obróbki blatu
-        // kuchennego — i tak bierzemy od niego tylko materiał, ale niech
-        // liczy to, co jest prawdą.
+        dostawa: S.mont ? 'montaz' : 'odbior',
+        // Umywalka jest zawsze w łazience: bez pomiaru Prolinerem
+        // i bez podstawy obróbki blatu kuchennego.
         pomieszczenie: 'lazienka',
       },
     },
@@ -89,14 +88,14 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
   const materialBrutto = pozycjaMaterialu?.brutto || 0;
 
   // ---------- robocizna umywalki ----------
-  const mb = mbPogrubienia(s);
-  const iloscOtworow = otwory(s);
-  const powierzchnia = m2Blatu(s);
+  const mb = mbPogrubienia(S);
+  const zlewy = iloscZlewow(S);
+  const powierzchnia = m2Blatu(S);
 
   const pozycje = [
     {
       id: 'material',
-      nazwa: `${firma.nazwa} ${s.dekor}, grubość ${s.grubosc} mm`,
+      nazwa: `${firma.nazwa} ${S.dekor}, grubość ${S.grubosc} mm`,
       brutto: materialBrutto,
     },
     {
@@ -107,19 +106,20 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
     },
     {
       id: 'niecka',
-      nazwa: 'Zlew wycięty w kamieniu — wykonanie i odpływ',
-      brutto: s.typ === 'zintegrowana' ? zeStawki(st.umywalkaNiecka, firma, vat) : 0,
+      nazwa: zlewy > 1 ? 'Zlewy wycięte w kamieniu' : 'Zlew wycięty w kamieniu',
+      brutto: zeStawki(st.umywalkaNiecka, firma, vat) * zlewy,
+      ilosc: zlewy,
     },
     {
       id: 'otwory',
-      nazwa: iloscOtworow === 1 ? 'Otwór w blacie' : 'Otwory w blacie',
-      brutto: zeStawki(st.otwor, firma, vat) * iloscOtworow,
-      ilosc: iloscOtworow,
+      nazwa: S.holes === 1 ? 'Otwór w blacie' : 'Otwory w blacie',
+      brutto: zeStawki(st.otwor, firma, vat) * S.holes,
+      ilosc: S.holes,
     },
     {
       id: 'montaz',
       nazwa: 'Transport i montaż u klienta',
-      brutto: s.montaz
+      brutto: S.mont
         ? zeStawki(Number(st.montazBaza) + Number(st.montazZaM2) * powierzchnia, firma, vat)
         : 0,
     },
@@ -135,16 +135,14 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
 
   /*
    * TAŃSZA WERSJA — ta sama płyta jako blat pod umywalkę nablatową.
-   *
    * Klient, dla którego zlew w kamieniu jest za drogi, dostaje konkretną
-   * alternatywę z kwotą, a nie samo „mamy też tańsze opcje". Liczona tym
-   * samym kodem, więc nie może się rozjechać z główną wyceną.
+   * kwotę, a nie samo „mamy też tańsze opcje".
    */
   let tanszaWersja = 0;
-  if (!bezAlternatywy && s.typ === 'zintegrowana') {
+  if (!bezAlternatywy && S.mode === 'int') {
     const alternatywa = wycenUmywalke({
       firma,
-      stan: { ...s, typ: 'nablatowa' },
+      stan: { ...S, mode: 'top' },
       stawki,
       dataISO,
       bezAlternatywy: true,
@@ -154,55 +152,63 @@ export function wycenUmywalke({ firma, stan, stawki, dataISO, bezAlternatywy } =
 
   return {
     ok: true,
-    stan: s,
+    stan: S,
     firma,
-    dekor: s.dekor,
-    grubosc: s.grubosc,
-    niecka: nieckaStanu(s),
-    kawalki: kawalkiDoCiecia,
+    dekor: S.dekor,
+    grubosc: S.grubosc,
+    formatki: lista,
+    m2Formatek: grosze(lista.reduce((s, x) => s + x.m, 0)),
     pak: material.pak,
     plyta: material.plyta,
     m2Platne: material.m2Platne,
     materialNetto: materialBrutto / (1 + vat),
     promo: material.promo || null,
-    oszczednosc: material.oszczednosc || 0,
     stawkaVat: vat,
+    mb,
+    ranty: ranty(S),
     pozycje,
-    linieKlienta: linieKlienta(pozycje, s, firma),
+    udzialy: udzialy(pozycje, razem),
+    linieKlienta: linieKlienta(pozycje, S, firma),
     razem,
     razemNetto: razem / (1 + vat),
     razemZaokr: do50(razem),
     tanszaWersja,
-    opis: opisKonfiguracji(s),
-    ostrzezenia: [...ostrzezeniaWymiarow(s), ...(material.ostrzezenia || [])],
+    opis: opisKonfiguracji(S),
+    ostrzezenia: material.ostrzezenia || [],
   };
 }
 
+/** Paski udziału pod kwotą — tak jak w projekcie Dawida. */
+function udzialy(pozycje, razem) {
+  if (!razem) return [];
+  return pozycje
+    .filter((p) => p.brutto > 0)
+    .map((p) => ({ id: p.id, nazwa: p.nazwa, procent: (p.brutto / razem) * 100 }));
+}
+
 /**
- * Cztery linie, które widzi klient.
- *
- * Nie pokazujemy ani stawek warsztatu, ani metrów, ani kawałków do
- * wycięcia — rozkrój to know-how zakładu. Klient ma widzieć, za co płaci,
- * w słowach, których sam używa.
+ * Cztery linie, które widzi klient — bez stawek warsztatu i bez metrów.
+ * Klient ma widzieć, za co płaci, w słowach, których sam używa.
  */
-function linieKlienta(pozycje, stan, firma) {
+function linieKlienta(pozycje, S, firma) {
   const kwota = (id) => pozycje.find((p) => p.id === id)?.brutto || 0;
   const wykonanie = kwota('pogrubienie') + kwota('niecka') + kwota('otwory');
 
-  const skladniki = ['pogrubiona krawędź'];
-  if (stan.typ === 'zintegrowana') skladniki.push('zlew w kamieniu');
-  skladniki.push(otwory(stan) === 1 ? 'otwór' : 'otwory');
+  const skladniki = [];
+  if (grube(S)) skladniki.push('pogrubiona krawędź');
+  if (S.mode === 'int') skladniki.push(S.n > 1 ? 'dwa zlewy w kamieniu' : 'zlew w kamieniu');
+  if (S.holes > 0) skladniki.push(S.holes === 1 ? 'otwór' : 'otwory');
 
   return [
     {
-      nazwa: `Kamień (${firma.nazwa} ${stan.dekor}, ${stan.grubosc} mm)`,
+      nazwa: `Kamień (${firma.nazwa} ${S.dekor}, ${S.grubosc} mm)`,
       brutto: kwota('material'),
     },
     {
-      nazwa: `Wykonanie: ${skladniki.join(', ')}`,
+      nazwa: skladniki.length ? `Wykonanie: ${skladniki.join(', ')}` : 'Wykonanie',
       brutto: wykonanie,
     },
-    stan.montaz
+    S.mont
       ? { nazwa: 'Transport i montaż', brutto: kwota('montaz') }
       : { nazwa: 'Odbiór własny — bez montażu', brutto: 0 },
     {
@@ -214,11 +220,8 @@ function linieKlienta(pozycje, stan, firma) {
 }
 
 /**
- * Kotwica „od … zł" w kroku 1 (§7.6) — liczona, nie wpisana z palca.
- *
+ * Kotwica „od … zł" — liczona, nie wpisana z palca.
  * Najmniejsza umywalka z najtańszego polecanego kamienia, z montażem.
- * Gdyby kiedyś zmieniły się stawki albo cennik, liczba na stronie zmieni
- * się razem z nimi.
  */
 export function cenaOd({ firmy, polecane, stawki, dataISO } = {}) {
   let min = Infinity;
@@ -228,7 +231,17 @@ export function cenaOd({ firmy, polecane, stawki, dataISO } = {}) {
     if (!firma) continue;
     const w = wycenUmywalke({
       firma,
-      stan: { typ: 'zintegrowana', L: 80, G: 46, H: 15, dekor: p.dekor, grubosc: p.grubosc, montaz: true },
+      stan: {
+        ...STAN_DOMYSLNY,
+        L: 80,
+        W: 46,
+        sL: 60,
+        sW: 31,
+        marka: p.marka,
+        dekor: p.dekor,
+        grubosc: p.grubosc,
+        mont: true,
+      },
       stawki,
       dataISO,
       bezAlternatywy: true,

@@ -83,14 +83,24 @@ test('ceny biorą się z silnika i panelu, nie z kodu strony', () => {
 
 /* ═══════════════════════════════════════════ wygląd */
 
-test('paleta jest z tokenów strony — zero nowych kolorów markowych', () => {
-  // Pomarańcz z artefaktu Dawida i „fiolet AI" nie mają tu wstępu.
-  for (const zakazany of ['#ff6', '#f60', '#f97316', '#fb923c', '#7c3aed', '#8b5cf6', '#6366f1']) {
-    assert.ok(!CSS.toLowerCase().includes(zakazany), `zakazany kolor ${zakazany}`);
-  }
-  for (const token of ['--vein', '--slab', '--stone', '--cream', '--serif-ozdobny']) {
-    assert.ok(CSS.includes(token), `brak tokenu ${token} — styl odkleił się od strony`);
-  }
+test('akcent i krój są takie, jak chciał Dawid', () => {
+  /*
+   * Pomarańcz #ff4f00 i Geist to WYBÓR KLIENTA z jego projektu — nie
+   * zmieniamy go, choćby trendy mówiły co innego. Test pilnuje, żeby
+   * ktoś (także ja przy następnej iteracji) tego nie „poprawił".
+   */
+  assert.ok(CSS.includes('--acc: #ff4f00'), 'zniknął pomarańczowy akcent z projektu Dawida');
+  assert.match(CSS, /font-family: Geist/);
+});
+
+test('fonty i biblioteka 3D są z naszego serwera, nie z CDN-a', () => {
+  // Content-Security-Policy strony dopuszcza tylko własne zasoby —
+  // zewnętrzny CDN byłby zablokowany, a i tak nie chcemy wysyłać
+  // adresu klienta do obcego serwera.
+  assert.ok(!HTML.includes('fonts.googleapis.com'), 'font z Google Fonts');
+  assert.ok(!HTML.includes('cdnjs'), 'biblioteka z CDN-a');
+  assert.match(CSS, /url\('\/fonty\/Geist-/);
+  assert.match(czytaj('src/umywalka/scena3d.js'), /import\('three'\)/);
 });
 
 test('bez gradientów tęczowych, bez szkła, bez emoji w interfejsie', () => {
@@ -103,12 +113,12 @@ test('bez gradientów tęczowych, bez szkła, bez emoji w interfejsie', () => {
 });
 
 test('ruch jest wyłączany przy prefers-reduced-motion', () => {
-  assert.match(CSS, /@media \(prefers-reduced-motion: no-preference\)/);
-  assert.match(czytaj('src/umywalka/wynik.js'), /prefers-reduced-motion: reduce/);
+  assert.match(CSS, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(czytaj('src/umywalka/scena3d.js'), /prefers-reduced-motion: reduce/);
 });
 
 test('cyfry w cenach są tabularne (nie skaczą przy przeliczaniu)', () => {
-  assert.match(CSS, /\.cena-kwota[\s\S]*?font-variant-numeric: tabular-nums/);
+  assert.match(CSS, /\.big\s*\{[\s\S]*?font-variant-numeric: tabular-nums/);
 });
 
 test('nagłówki mają text-wrap: balance', () => {
@@ -117,23 +127,47 @@ test('nagłówki mają text-wrap: balance', () => {
 
 /* ═══════════════════════════════════════════ dostępność */
 
-test('bryła ma opis dla czytnika ekranu', () => {
-  assert.match(czytaj('src/umywalka/bryla.js'), /role: 'img'/);
-  assert.match(czytaj('src/umywalka/bryla.js'), /'aria-label'/);
+test('podgląd 3D ma opis i działa też bez WebGL', () => {
+  assert.match(HTML, /aria-label="Podgląd 3D umywalki"/);
+  assert.match(HTML, /Podgląd 3D jest niedostępny/);
+  // Brak WebGL nie może zatrzymać wyceny — scena zwraca wtedy null.
+  assert.match(czytaj('src/umywalka/scena3d.js'), /return null/);
 });
 
-test('znaczek i podpowiedź są ogłaszane przez czytnik (aria-live)', () => {
-  assert.match(MAIN, /'aria-live': 'polite'/);
+test('znaczek i ostrzeżenia są ogłaszane przez czytnik (aria-live)', () => {
+  assert.match(HTML, /id="polowka" aria-live="polite"/);
+  assert.match(HTML, /id="warnTop" aria-live="polite"/);
 });
 
-test('bryłę da się obrócić klawiaturą', () => {
-  assert.match(czytaj('src/umywalka/bryla.js'), /ArrowLeft/);
-  assert.match(MAIN, /tabindex: '0'/);
+test('podgląd oszczędza słabsze telefony', () => {
+  const scena = czytaj('src/umywalka/scena3d.js');
+  assert.match(scena, /slabySprzet/);
+  assert.match(scena, /setPixelRatio/);
+  // Nie renderujemy, gdy podglądu nie widać — telefon niepotrzebnie grzeje.
+  assert.match(scena, /visibilitychange/);
 });
 
-test('przyciski mają wysokość pod kciuk (44 px, główne 56)', () => {
+test('przyciski mają wysokość pod kciuk (44 px, główna akcja 52)', () => {
   assert.match(CSS, /min-height: 44px/);
-  assert.match(CSS, /min-height: 56px/);
+  assert.match(CSS, /\.btn\.acc \{[^}]*min-height: 52px/);
+});
+
+test('strona NIE pokazuje edytowalnych stawek warsztatu', () => {
+  // W projekcie Dawida była sekcja „Twoje stawki" — to narzędzie warsztatowe,
+  // nie treść dla klienta. Stawki przychodzą z panelu.
+  assert.ok(!HTML.includes('Twoje stawki'), 'sekcja stawek została na stronie');
+  assert.ok(!MAIN.includes('localStorage'), 'stawki nie mogą siedzieć w przeglądarce klienta');
+  assert.match(MAIN, /pobierzUstawienia/);
+});
+
+test('bramka cenowa to jeden warunek do przestawienia', () => {
+  assert.match(MAIN, /const CENA_PO_FORMULARZU = (true|false);/);
+});
+
+test('zapytanie wysyła się formularzem, nie kopiowaniem do schowka', () => {
+  assert.ok(!HTML.includes('Kopiuj wycenę'), 'został przycisk kopiowania z wersji warsztatowej');
+  assert.match(HTML, /Zapytanie o tę umywalkę/);
+  assert.match(MAIN, /formularzUmywalki/);
 });
 
 /* ═══════════════════════════════════════════ AI */

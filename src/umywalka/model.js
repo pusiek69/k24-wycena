@@ -1,0 +1,293 @@
+/**
+ * MODEL UMYWALKI — stan, granice i geometria.
+ *
+ * ŹRÓDŁO: projekt Dawida (artefakt z 23.11.2026). Przeniesiony do repozytorium
+ * prawie bez zmian, bo jest dobry: zna dwa zlewy z mostkiem, wstawkę, płytę
+ * spadkową, dno z wycinki blatu i pogrubienie wybranych boków. Zostawiam jego
+ * nazwy pól (L, W, H, sL, gap, sW, ins) — kod bryły i kontrolek jest na nich
+ * oparty, a przepisywanie nazw to tylko okazja do pomyłki.
+ *
+ * Co tu NIE wchodzi: ceny. Formatki z tego pliku idą do silnika wyceny blatów,
+ * który sam liczy płyty, połówki i promocje (patrz wycena-umywalki.js).
+ *
+ * Jednostki: centymetry. Oś x = długość, y = w górę, z = głębokość (przód +z).
+ */
+
+/** Stan startowy — ten sam, od którego zaczyna projekt Dawida. */
+export const STAN_DOMYSLNY = {
+  mode: 'int', // 'int' = zlew wycięty w kamieniu, 'top' = blat pod nablatową
+  L: 120, // długość blatu
+  W: 50, // głębokość blatu
+  H: 15, // wysokość widocznej krawędzi (z pogrubieniem)
+  left: true, // pogrubienie lewego boku
+  right: true, // pogrubienie prawego boku
+  n: 1, // liczba zlewów (1 albo 2)
+  sL: 100, // szerokość zlewu
+  gap: 15, // mostek między zlewami
+  sW: 35, // głębokość zlewu (od przodu)
+  ins: 5, // wstawka przy tylnej krawędzi niecki
+  marka: 'keralini',
+  dekor: 'Absolute White Structured',
+  grubosc: '12', // mm — grubość płyty z katalogu
+  holes: 1, // otwory w blacie (bateria, dozownik)
+  mont: true, // montaż u klienta
+  reuse: false, // dno i wstawka z wycinki blatu
+};
+
+/** Grubość płyty w centymetrach (katalog podaje milimetry). */
+export const plytaCm = (S) => Math.max(0.6, (Number(S.grubosc) || 20) / 10);
+
+/** Czy krawędź jest pogrubiona, czy to goła grubość płyty. */
+export const grube = (S) => S.H > plytaCm(S) + 0.01;
+
+/** Ile boków pogrubiamy (0–2). */
+export const iloscBokow = (S) => (S.left ? 1 : 0) + (S.right ? 1 : 0);
+
+/** Ile zlewów wycinamy (przy blacie pod nablatową — zero). */
+export const iloscZlewow = (S) => (S.mode === 'int' ? S.n : 0);
+
+const polowki = (v) => Math.floor(v * 2) / 2;
+
+/** Szerokość zlewu dopasowana do długości blatu (przy zmianie presetu). */
+export const szerokoscZlewu = (S, L) =>
+  S.n === 2 ? polowki((L - 20 - S.gap) / 2) : L - 20;
+
+/** Granice suwaków — zależą od siebie nawzajem, stąd funkcja, a nie stała. */
+export function limity(S) {
+  const int = S.mode === 'int';
+  const dwa = S.n === 2;
+  const t = plytaCm(S);
+  return {
+    L: [40, 300],
+    W: [30, 80],
+    H: [int ? 15 : t, int ? 30 : 20],
+    sL: [30, Math.max(30, dwa ? (S.L - 10 - S.gap) / 2 : S.L - 10)],
+    gap: [8, dwa ? Math.max(8, Math.min(60, S.L - 10 - 2 * S.sL)) : 60],
+    sW: [25, Math.max(25, S.W - 10)],
+    ins: [0, Math.max(0, Math.min(10, S.sW - 15))],
+  };
+}
+
+/**
+ * Przycięcie wszystkich wymiarów do granic.
+ *
+ * Dwa przebiegi, bo granice zależą od siebie: skrócenie blatu zmienia
+ * dopuszczalną szerokość zlewu, a ta — dopuszczalny mostek.
+ */
+export function zacisnij(S) {
+  S.n = S.n === 2 ? 2 : 1;
+  S.holes = Math.max(0, Math.min(3, Math.round(Number(S.holes) || 0)));
+  for (let i = 0; i < 2; i++) {
+    const l = limity(S);
+    for (const k in l) {
+      const v = Number(S[k]);
+      S[k] = Math.min(l[k][1], Math.max(l[k][0], Number.isFinite(v) ? v : l[k][0]));
+    }
+  }
+  return S;
+}
+
+/** Środki zlewów na osi długości (jeden na środku, dwa symetrycznie z mostkiem). */
+export function srodkiZlewow(S) {
+  const n = Math.max(1, iloscZlewow(S));
+  const g = n > 1 ? S.gap : 0;
+  const calosc = n * S.sL + (n - 1) * g;
+  return [...Array(n)].map((_, i) => -calosc / 2 + S.sL / 2 + i * (S.sL + g));
+}
+
+/**
+ * FORMATKI DO WYCIĘCIA — lista elementów z wymiarami i liczbą sztuk.
+ *
+ * `cut: true` znaczy „wychodzi z wycinki po zlewie" — przy włączonej opcji
+ * takiego kawałka NIE dokładamy do zakupu materiału, bo on już jest w cenie
+ * blatu, z którego wypadł.
+ */
+export function formatki(S) {
+  const { L, W, H, sL, sW, ins } = S;
+  const int = S.mode === 'int';
+  const boki = iloscBokow(S);
+  const n = S.n;
+  const lista = [];
+
+  lista.push({
+    k: 'top',
+    n: int ? (n > 1 ? 'Blat z 2 otworami na zlewy' : 'Blat z otworem na zlew') : 'Blat',
+    a: L,
+    b: W,
+    q: 1,
+  });
+
+  if (grube(S)) {
+    lista.push({ k: 'front', n: 'Pogrubienie przód', a: L, b: H, q: 1 });
+    if (boki) lista.push({ k: 'side', n: boki > 1 ? 'Pogrubienie boki' : 'Pogrubienie bok', a: W, b: H, q: boki });
+  }
+
+  if (int) {
+    lista.push(
+      { k: 'wl', n: 'Ścianka zlewu długa', a: sL, b: H, q: 2 * n },
+      { k: 'ws', n: 'Ścianka zlewu krótka', a: sW, b: H, q: 2 * n },
+      { k: 'slope', n: 'Płyta spadkowa (dno)', a: sL, b: sW - ins, q: n, cut: !!S.reuse }
+    );
+    if (ins > 0) lista.push({ k: 'ins', n: 'Wstawka', a: sL, b: ins, q: n, cut: !!S.reuse });
+  }
+
+  lista.forEach((x, i) => {
+    x.i = i + 1;
+    x.m = (x.a * x.b * x.q) / 1e4;
+  });
+  return lista;
+}
+
+/**
+ * Odcinki dla silnika wyceny — każda sztuka osobno, bo pakowanie układa
+ * pojedyncze prostokąty. Kawałki „z wycinki" pomijamy: ich materiał już
+ * kupiliśmy razem z blatem.
+ */
+export function odcinki(S) {
+  const out = [];
+  for (const f of formatki(S)) {
+    if (f.cut) continue;
+    for (let i = 0; i < f.q; i++) out.push({ dl: f.a, gl: f.b, nazwa: f.n });
+  }
+  return out;
+}
+
+/**
+ * Metry bieżące krawędzi klejonej pod kątem: przód + pogrubione boki.
+ * (We wcześniejszej wersji projektu liczony był sam przód — stąd 1,20 mb
+ * zamiast 2,20 przy umywalce 120 × 50 z dwoma bokami.)
+ */
+export const mbPogrubienia = (S) => (grube(S) ? (S.L + S.W * iloscBokow(S)) / 100 : 0);
+
+/** Powierzchnia blatu w m² — od niej liczy się stawka montażu. */
+export const m2Blatu = (S) => Math.round(((S.L * S.W) / 1e4) * 1000) / 1000;
+
+/** Rant wokół zlewu: po bokach, z przodu i z tyłu — stąd ostrzeżenia. */
+export function ranty(S) {
+  const dwa = S.n === 2;
+  const bok = (S.L - S.n * S.sL - (dwa ? S.gap : 0)) / 2;
+  const przod = (S.W - S.sW) / 2;
+  return { bok: Math.round(bok * 10) / 10, przod: Math.round(przod * 10) / 10 };
+}
+
+/**
+ * BRYŁY DO RYSUNKU 3D — prostopadłościany w układzie sceny.
+ *
+ * Każdy wpis: `k` rodzaj (zgodny z formatkami, po nim numerek i podświetlenie),
+ * `s` rozmiar, `p` środek, `ex` kierunek rozsunięcia przy „Rozłóż na formatki".
+ */
+export function bryly(S) {
+  const { L, W, H, sL, sW, ins } = S;
+  const t = plytaCm(S);
+  const int = S.mode === 'int';
+  const P = [];
+  const e = 0.04;
+  const th = grube(S);
+
+  const x0 = -L / 2;
+  const x1 = L / 2;
+  const zf = W / 2;
+  const zb = -W / 2;
+  const sz0 = -sW / 2;
+  const sz1 = sW / 2;
+  const ty = H - t;
+  const up = [0, 22 + H, 0];
+
+  const B = (k, a0, a1, y0, y1, z0, z1, ex, extra = {}) =>
+    P.push({
+      k,
+      s: [a1 - a0, y1 - y0, z1 - z0],
+      p: [(a0 + a1) / 2, (y0 + y1) / 2, (z0 + z1) / 2],
+      ex,
+      ...extra,
+    });
+
+  const lx = S.left && th ? x0 + e : x0;
+  const rx = S.right && th ? x1 - e : x1;
+  const fz = th ? zf - e : zf;
+  const cs = srodkiZlewow(S);
+  const n = int ? S.n : 1;
+
+  if (int) {
+    // Blat wokół otworów: pas z przodu, pas z tyłu i kawałki między zlewami.
+    B('top', lx, rx, ty, H, sz1, fz, up);
+    B('top', lx, rx, ty, H, zb, sz0, up);
+    const xs = [lx, ...cs.flatMap((c) => [c - sL / 2, c + sL / 2]), rx];
+    for (let i = 0; i < xs.length; i += 2) B('top', xs[i], xs[i + 1], ty, H, sz0, sz1, up);
+  } else {
+    B('top', lx, rx, ty, H, zb, fz, up);
+  }
+
+  if (th) {
+    B('front', x0, x1, 0, H - e, zf - t, zf, [0, 0, 26]);
+    if (S.left) B('side', x0, x0 + t, 0, H - e, zb, zf - e, [-26, 0, 0]);
+    if (S.right) B('side', x1 - t, x1, 0, H - e, zb, zf - e, [26, 0, 0]);
+  }
+
+  if (int) {
+    cs.forEach((c) => {
+      const a0 = c - sL / 2;
+      const a1 = c + sL / 2;
+      const sp = n > 1 ? c * 0.35 : 0;
+      const X = (x, y, z) => [x + sp, y, z];
+
+      B('wl', a0, a1, 0, H - e, sz1 + e, sz1 + t, X(0, 0, 9));
+      B('wl', a0, a1, 0, H - e, sz0 - t, sz0 - e, X(0, 0, -9));
+      B('ws', a0 - t, a0 - e, 0, H - e, sz0, sz1, X(-9, 0, 0));
+      B('ws', a1 + e, a1 + t, 0, H - e, sz0, sz1, X(9, 0, 0));
+
+      // Dno ze spadkiem do odpływu — lekko pochylona płyta.
+      const gp = ins > 0 ? 1 : 0;
+      const zA = sz0 + ins + gp;
+      const yB = t + 0.6;
+      const rozpietosc = sz1 - zA;
+      const spad = Math.max(1.5, rozpietosc * 0.06);
+      const kat = Math.atan2(spad, rozpietosc);
+      P.push({
+        k: 'slope',
+        s: [sL - 2 * e, t, Math.hypot(rozpietosc, spad)],
+        p: [c, yB + spad / 2 - (t / 2) * Math.cos(kat), (zA + sz1) / 2 + (t / 2) * Math.sin(kat)],
+        rx: -kat,
+        ex: X(0, 14, 0),
+      });
+      if (ins > 0) B('ins', a0 + e, a1 - e, yB - t, yB, sz0 + e, sz0 + ins, X(0, 25, -6));
+      // Ciemny kanał odpływu — sam dołek, żeby dno nie wyglądało na płaskie.
+      B('chan', a0 + e, a1 - e, 0, 0.4, sz0, zA + 0.5, [0, 0, 0], { dark: 1, hideEx: 1 });
+    });
+  } else {
+    P.push({ k: 'bowl', obj: 'bowl', p: [0, H, 3], ex: up });
+  }
+
+  for (let i = 0; i < Math.min(S.holes, n); i++) {
+    P.push({
+      k: 'tap',
+      obj: 'tap',
+      p: [int ? cs[i] : 0, H, int ? (zb + sz0) / 2 : zb + 5],
+      ex: up,
+    });
+  }
+
+  return P;
+}
+
+/** Jedno zdanie o konfiguracji — na kartę, do maila i do tematu zgłoszenia. */
+export function opisKonfiguracji(S) {
+  const czesci = [`Umywalka ${fd(S.L)} × ${fd(S.W)} cm`];
+  if (S.mode === 'int') {
+    czesci.push(
+      S.n === 2
+        ? `dwa zlewy w kamieniu ${fd(S.sL)} × ${fd(S.sW)}, mostek ${fd(S.gap)} cm`
+        : `zlew wycięty w kamieniu ${fd(S.sL)} × ${fd(S.sW)}`
+    );
+  } else {
+    czesci.push('blat pod umywalkę nablatową');
+  }
+  if (grube(S)) {
+    const boki = iloscBokow(S);
+    czesci.push(`krawędź ${fd(S.H)} cm${boki ? ` (przód + ${boki === 2 ? '2 boki' : 'bok'})` : ''}`);
+  }
+  czesci.push(S.mont ? 'z montażem' : 'odbiór własny');
+  return czesci.join(', ');
+}
+
+const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');

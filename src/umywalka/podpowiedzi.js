@@ -1,194 +1,123 @@
 /**
- * PODPOWIEDZI Z REGUŁ — „pomysł 0" ze specyfikacji: bez AI, bez kosztu.
+ * PODPOWIEDZI — reguły, zero AI, zero kosztu.
  *
- * To jest ta część, która ma sprawiać, że kalkulator „rozumie, co robię".
- * Nie trzeba do tego modelu językowego: trzeba wiedzieć, co w kamieniarstwie
- * naprawdę decyduje o cenie i o tym, czy rzecz da się dobrze zrobić.
+ * Dwie rodziny:
  *
- * Reguła numer jeden to POŁÓWKA PŁYTY. Keralini i Avant wolno kupić
- * w połowie formatu (320 × 80 zamiast 320 × 160). Umywalka, która się
- * w niej mieści, kosztuje materiałowo połowę tego, co umywalka kilka
- * centymetrów dłuższa. Klient nie ma skąd tego wiedzieć — i właśnie
- * dlatego mu to mówimy, razem z gotowym przyciskiem „ustaw 169 cm".
+ * 1. OSTRZEŻENIA WYKONAWCZE — z projektu Dawida: wąski rant, wąski mostek
+ *    między zlewami, za mało miejsca na baterię. To wiedza z hali, nie
+ *    z internetu, i dlatego zostaje słowo w słowo.
  *
- * Progi liczymy SILNIKIEM, nie wpisujemy ich z palca: zmiana formatu płyty
- * w cenniku dostawcy ma sama przestawić podpowiedzi.
+ * 2. POŁÓWKA PŁYTY — nasza, bo tylko my widzimy, co robi silnik wyceny.
+ *    Keralini i Avant wolno kupić w połowie formatu 320 × 160. Umywalka,
+ *    która się w niej mieści, kosztuje materiałowo połowę tego, co umywalka
+ *    kilka centymetrów dłuższa. Klient nie ma skąd tego wiedzieć — więc
+ *    mówimy mu to sami i dajemy gotowy przycisk „Ustaw 169 cm".
  *
- * Zasady: najwyżej jedna podpowiedź naraz (ta najważniejsza), nigdy kwota
- * przed formularzem, nigdy ton zakazu — „zrobimy też cieńszą", a nie
- * „nie wolno".
+ * Progi połówki liczymy SILNIKIEM, nie wpisujemy ich z palca: zmiana formatu
+ * płyty w cenniku dostawcy ma sama przestawić podpowiedzi.
  */
 import { upakuj } from '../engine/pakowanie.js';
-import { normalizuj, odcinki, nieckaStanu, ostrzezeniaWymiarow, ZAKRESY } from './geometria.js';
+import { zacisnij, odcinki, ranty } from './model.js';
 
-/** Czy przy takim stanie wystarczy połówka płyty. */
-function mieciSieWPolowce(stan, plyta) {
+/** Czy przy takiej konfiguracji wystarczy połówka płyty. */
+function mieciSieWPolowce(S, plyta) {
   if (!plyta?.polowkaDozwolona) return false;
-  const pak = upakuj(odcinki(stan), plyta);
+  const pak = upakuj(odcinki(S), plyta);
   return pak.polowka === true && pak.plytyPelne === 0;
 }
 
-/**
- * Znaczek pod bryłą, gdy klient trafił w połówkę.
- *
- * Osobno od podpowiedzi, bo to nie rada, tylko potwierdzenie — ma być
- * widoczne cały czas, nie zamiast innej wskazówki.
- */
+/** Znaczek nad ceną, gdy klient trafił w połówkę. */
 export function znacznikPolowki(pak) {
   if (!pak || pak.polowka !== true || pak.plytyPelne > 0) return null;
-  return { ok: true, tekst: '✓ Mieści się w połówce płyty' };
+  return { ok: true, tekst: 'Mieści się w połówce płyty' };
 }
 
 /**
- * Najbliższy wymiar, który zmieści się w połówce.
+ * Najbliższa długość, która zmieści się w połówce.
  *
- * Najpierw skracamy długość (co 1 cm, maksymalnie o 40 cm i nie poniżej
- * 60 cm) — to zmiana, którą klient najłatwiej zaakceptuje. Jeśli to nie
- * pomaga, schodzimy z głębokości (co 1 cm, nie poniżej 40 cm).
- *
- * @returns {{L:number}|{G:number}|{L:number,G:number}|null}
+ * Skracamy co 1 cm, najwyżej o 40 cm i nie poniżej 60 — dłuższe szukanie
+ * daje propozycje, których nikt nie przyjmie („zamiast 180 proponujemy 110").
+ * Zlew przycina się sam razem z blatem (patrz `zacisnij`).
  */
-export function najblizszaPolowka(stan, plyta) {
-  const s = normalizuj(stan);
+export function najblizszaPolowka(S, plyta) {
   if (!plyta?.polowkaDozwolona) return null;
-
-  const dolnaL = Math.max(ZAKRESY.L[0], s.L - 40);
-  for (let L = s.L - 1; L >= dolnaL; L--) {
-    // Niecka liczona automatycznie zmienia się razem z blatem — dlatego
-    // nie wolno podmienić samej długości i zostawić starej niecki.
-    if (mieciSieWPolowce({ ...s, L }, plyta)) return { L };
-  }
-
-  for (let G = s.G - 1; G >= ZAKRESY.G[0]; G--) {
-    if (mieciSieWPolowce({ ...s, G }, plyta)) return { G };
-    // Przy bardzo głębokiej umywalce sama głębokość nie wystarczy —
-    // próbujemy jeszcze raz ze skróconą długością.
-    const zKrotszym = najblizszaDlugosc({ ...s, G }, plyta);
-    if (zKrotszym) return { L: zKrotszym, G };
-  }
-
-  return null;
-}
-
-function najblizszaDlugosc(stan, plyta) {
-  const dolna = Math.max(ZAKRESY.L[0], stan.L - 40);
-  for (let L = stan.L - 1; L >= dolna; L--) {
-    if (mieciSieWPolowce({ ...stan, L }, plyta)) return L;
+  const dolna = Math.max(60, Math.round(S.L) - 40);
+  for (let L = Math.round(S.L) - 1; L >= dolna; L--) {
+    const kandydat = zacisnij({ ...S, L, sL: Math.min(S.sL, L - 10) });
+    if (mieciSieWPolowce(kandydat, plyta)) return { L };
   }
   return null;
 }
-
-/* ──────────────────────────────────────────────────────── reguły */
 
 /**
- * Reguła 1 — połówka płyty. Najdroższa rzecz w całej wycenie.
- * Przed formularzem BEZ kwot: mówimy „tańszy kamień", nie „mniej o 2 000 zł".
+ * Ostrzeżenia wykonawcze z projektu Dawida — teksty jego, bo to jego wiedza
+ * o tym, co pęka przy transporcie.
  */
-function regulaPolowki(stan, pak, plyta) {
+export function ostrzezeniaWykonawcze(S) {
+  const lista = [];
+  if (S.mode !== 'int') {
+    return [
+      {
+        rodzaj: 'info',
+        tekst:
+          'Umywalka nablatowa nie jest wliczona w cenę. Otwór na jej odpływ ' +
+          'policz w „Otworach w blacie".',
+      },
+    ];
+  }
+
+  const r = ranty(S);
+  if (r.bok < 6 || r.przod < 6) {
+    lista.push({
+      rodzaj: 'uwaga',
+      tekst:
+        'Wąski rant przy zlewie (poniżej 6 cm) — blat łatwiej pęknie przy ' +
+        'transporcie i montażu.',
+    });
+  }
+  if (S.n === 2 && S.gap < 10) {
+    lista.push({
+      rodzaj: 'uwaga',
+      tekst: 'Wąski mostek między zlewami (poniżej 10 cm) — łatwo go złamać przy transporcie.',
+    });
+  }
+  if (S.holes > 0 && r.przod < 7) {
+    lista.push({
+      rodzaj: 'uwaga',
+      tekst:
+        'Za zlewem zostaje mniej niż 7 cm — otwór Ø35 na baterię może się nie ' +
+        'zmieścić, rozważ baterię ścienną.',
+    });
+  }
+  return lista;
+}
+
+/**
+ * Podpowiedź o połówce płyty — najwyżej jedna, z gotową akcją.
+ *
+ * Przed formularzem BEZ kwot: mówimy „o połowę mniej kamienia", a nie
+ * „mniej o 2 000 zł". Kwoty pokazujemy dopiero przy cenie.
+ */
+export function podpowiedzPolowki({ stan, pak, plyta } = {}) {
+  if (!stan || !plyta) return null;
   if (znacznikPolowki(pak)) return null;
-  if (!plyta?.polowkaDozwolona) return null;
+  if (!plyta.polowkaDozwolona) return null;
 
   const zmiana = najblizszaPolowka(stan, plyta);
-  if (!zmiana) return null;
-
-  const L = zmiana.L ?? stan.L;
-  const G = zmiana.G ?? stan.G;
-  const opis = zmiana.G !== undefined ? `${L} × ${G} cm` : `${L} cm`;
+  if (!zmiana) {
+    return {
+      id: 'calaPlyta',
+      tekst:
+        'Przy tym wymiarze kupujemy całą płytę — z drugiej połowy dorobimy ' +
+        'półkę albo parapet w tym samym kamieniu.',
+    };
+  }
 
   return {
     id: 'polowka',
-    waga: 1,
     tekst:
-      `Przy ${opis} zmieścimy się w połowie płyty — kamienia potrzeba o połowę mniej. ` +
-      'Przy obecnym wymiarze trzeba kupić całą płytę.',
-    akcja: {
-      etykieta: zmiana.G !== undefined ? `Ustaw ${L} × ${G} cm` : `Ustaw ${L} cm`,
-      zmiana,
-    },
+      `Przy długości ${zmiana.L} cm zmieścimy się w połowie płyty — kamienia ` +
+      'potrzeba o połowę mniej. Przy obecnym wymiarze trzeba kupić całą płytę.',
+    akcja: { etykieta: `Ustaw ${zmiana.L} cm`, zmiana },
   };
-}
-
-/**
- * Reguła 2 — bateria z blatu potrzebuje rantu, na którym stanie.
- *
- * ⚠ ODSTĘPSTWO OD SPECYFIKACJI, ŚWIADOME (23.11.2026).
- * Specyfikacja §10.2 podaje próg 8 cm, ale przy niecce liczonej jej własnym
- * wzorem (`zG = G − 15`) i głębokości 50 cm rant wychodzi 7,5 cm — czyli
- * DOMYŚLNA umywalka Dawida (100 × 35 w blacie 120 × 50, dokładnie jak
- * w jego artefakcie) dostawałaby ostrzeżenie przy każdym otwarciu strony.
- * Podpowiedź, która zapala się zawsze, przestaje być podpowiedzią.
- * Dlatego próg to 7 cm: 7,5 cm przechodzi, a realnie za wąski rant (6 cm
- * i mniej) nadal ostrzega. Do potwierdzenia przez Dawida na pierwszej
- * realnej umywalce — wtedy albo próg, albo wzór niecki.
- */
-function regulaBaterii(stan) {
-  if (stan.bateria !== 'blat') return null;
-  if (stan.typ !== 'zintegrowana') return null;
-
-  const n = nieckaStanu(stan);
-  const rant = Math.round(((stan.G - n.G) / 2) * 10) / 10;
-  if (rant >= 7) return null;
-
-  return {
-    id: 'bateria',
-    waga: 2,
-    tekst:
-      `Przy tej niecce zostaje po ${String(rant).replace('.', ',')} cm z każdej strony — ` +
-      'bateria z blatu może się nie zmieścić. Rozważ baterię ze ściany.',
-  };
-}
-
-/** Reguła 3 — proporcje krawędzi. Sugestia, nie zakaz. */
-function regulaKrawedzi(stan) {
-  if (stan.H >= 15) return null;
-  return {
-    id: 'krawedz',
-    waga: 3,
-    tekst: 'Krawędź wygląda najlepiej od 15 cm w górę — cieńszą też zrobimy.',
-  };
-}
-
-/** Reguła 4 — wymiar poza suwakami. Zawsze z obietnicą ceny. */
-function regulaWymiaru(stan) {
-  const ostrzezenia = ostrzezeniaWymiarow(stan);
-  if (!ostrzezenia.length) return null;
-  return { id: 'wymiar', waga: 4, tekst: ostrzezenia[0] };
-}
-
-/** Reguła 5 — skoro i tak cała płyta, niech druga połowa na coś pójdzie. */
-function regulaCalejPlyty(stan, pak, plyta) {
-  if (znacznikPolowki(pak)) return null;
-  if (najblizszaPolowka(stan, plyta)) return null;
-  return {
-    id: 'calaPlyta',
-    waga: 5,
-    tekst:
-      'Przy tym wymiarze kupujemy całą płytę — z drugiej połowy dorobimy ' +
-      'półkę albo parapet w tym samym kamieniu.',
-  };
-}
-
-/**
- * Jedna podpowiedź — ta najważniejsza.
- *
- * Dwie rady naraz pod bryłą czyta się jak listę zarzutów; klient wtedy nie
- * robi żadnej z nich. Kolejność ważności jest w `waga`.
- *
- * @param {{stan:object, pak:object, plyta:object}} p
- */
-export function podpowiedz({ stan, pak, plyta } = {}) {
-  if (!stan) return null;
-  const s = normalizuj(stan);
-
-  const kandydaci = [
-    regulaPolowki(s, pak, plyta),
-    regulaBaterii(s),
-    regulaKrawedzi(s),
-    regulaWymiaru(s),
-    regulaCalejPlyty(s, pak, plyta),
-  ].filter(Boolean);
-
-  if (!kandydaci.length) return null;
-  kandydaci.sort((a, b) => a.waga - b.waga);
-  return kandydaci[0];
 }

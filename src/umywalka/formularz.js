@@ -30,7 +30,8 @@ const OPIS_PLIKU = 'Zdjęcie łazienki lub projekt (opcjonalnie, do 8 MB)';
  */
 export function formularzUmywalki({ wycena, link, poWyslaniu }) {
   const bledy = h('div', { class: 'form-blad', hidden: true, role: 'alert' });
-  const przycisk = h('button', { class: 'btn', type: 'submit' }, 'Pokaż wycenę i wyślij mailem');
+  // Główna akcja strony — pomarańczowa, jak reszta akcentów w projekcie Dawida.
+  const przycisk = h('button', { class: 'btn acc', type: 'submit' }, 'Pokaż wycenę i wyślij mailem');
 
   const plikOpis = h('span', { class: 'plik-opis' }, OPIS_PLIKU);
   const plik = h('input', {
@@ -217,11 +218,11 @@ export function formularzUmywalki({ wycena, link, poWyslaniu }) {
       'ul',
       { class: 'bramka-lista' },
       h('li', {}, `Kamień: ${wycena.firma.nazwa} · ${wycena.dekor}`),
-      h('li', {}, `Wymiar: ${wycena.stan.L} × ${wycena.stan.G} cm`),
+      h('li', {}, `Wymiar: ${wycena.stan.L} × ${wycena.stan.W} cm`),
       h(
         'li',
         {},
-        wycena.stan.montaz
+        wycena.stan.mont
           ? 'W cenie: wykonanie, projekt 3D, pomiar u klienta, montaż'
           : 'W cenie: wykonanie, projekt 3D (bez montażu — odbiór własny)'
       )
@@ -271,14 +272,20 @@ export function szczegolyUmywalki(w, link) {
     firma: w.firma?.nazwa || '',
     dekor: w.dekor || '',
     grubosc: w.grubosc || '',
-    typ: w.stan.typ,
-    wymiar: { L: w.stan.L, G: w.stan.G, H: w.stan.H },
-    niecka: w.niecka,
-    pogrubienie: w.stan.pogrubienie,
-    mocowanie: w.stan.mocowanie,
-    bateria: w.stan.bateria,
-    // Kawałki z wymiarami — rozkrój do warsztatu.
-    kawalki: (w.kawalki || []).map((k) => ({ nazwa: k.nazwa, dl: k.dl, gl: k.gl })),
+    typ: w.stan.mode === 'int' ? 'zlew w kamieniu' : 'blat pod umywalkę nablatową',
+    wymiar: { L: w.stan.L, W: w.stan.W, H: w.stan.H },
+    zlewy:
+      w.stan.mode === 'int'
+        ? { ile: w.stan.n, sL: w.stan.sL, sW: w.stan.sW, mostek: w.stan.n === 2 ? w.stan.gap : 0, wstawka: w.stan.ins }
+        : null,
+    // Dno i wstawka z wycinki po zlewie — wtedy nie dokładamy ich do zakupu.
+    zWycinki: !!w.stan.reuse,
+    boki: { lewy: !!w.stan.left, prawy: !!w.stan.right },
+    otwory: w.stan.holes,
+    mbKrawedzi: w.mb,
+    ranty: w.ranty,
+    // Formatki z wymiarami — rozkrój do warsztatu.
+    formatki: (w.formatki || []).map((f) => ({ nr: f.i, nazwa: f.n, dl: f.a, gl: f.b, szt: f.q, zWycinki: !!f.cut })),
     plyta: { w: w.plyta?.w, h: w.plyta?.h },
     polowka: !!w.pak?.polowka,
     plytyPelne: w.pak?.plytyPelne ?? 0,
@@ -292,7 +299,7 @@ export function szczegolyUmywalki(w, link) {
     stawkaVat: w.stawkaVat,
     razem: Math.round((w.razem || 0) * 100) / 100,
     razemZaokr: w.razemZaokr,
-    odbiorWlasny: !w.stan.montaz,
+    odbiorWlasny: !w.stan.mont,
     pomieszczenie: 'lazienka',
     konfiguracja: link || '',
     ostrzezenia: w.ostrzezenia || [],

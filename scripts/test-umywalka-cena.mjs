@@ -22,7 +22,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STAN_DOMYSLNY, normalizuj } from '../src/umywalka/geometria.js';
+import { STAN_DOMYSLNY, zacisnij } from '../src/umywalka/model.js';
 import { wycenUmywalke } from '../src/umywalka/wycena-umywalki.js';
 import { DOMYSLNE } from '../src/app/ustawienia.js';
 
@@ -34,7 +34,7 @@ const DATA = '2026-11-23';
 const grosze = (n) => Math.round(n * 100) / 100;
 
 function policz(zmiany = {}, opcje = {}) {
-  const stan = normalizuj({ ...STAN_DOMYSLNY, L: 120, G: 50, H: 15, ...zmiany });
+  const stan = zacisnij({ ...STAN_DOMYSLNY, dekor: 'Absolute Naturale', L: 120, W: 50, H: 15, sL: 100, sW: 35, ins: 5, ...zmiany });
   return wycenUmywalke({
     firma: firma(stan.marka),
     stan,
@@ -62,7 +62,7 @@ test('120 × 50 Keralini 12 mm z montażem → 5 214,16 zł, pokazane 5 200 zł'
 });
 
 test('ta sama umywalka bez montażu (odbiór, VAT 23%) → 4 300 zł', () => {
-  const w = policz({ montaz: false });
+  const w = policz({ mont: false });
 
   assert.equal(w.stawkaVat, 0.23);
   assert.equal(kwota(w, 'montaz'), 0);
@@ -71,7 +71,7 @@ test('ta sama umywalka bez montażu (odbiór, VAT 23%) → 4 300 zł', () => {
 });
 
 test('najmniejsza: 80 × 46 Avant Clermont 20 mm z montażem → 4 500 zł', () => {
-  const w = policz({ L: 80, G: 46, marka: 'avant-quartz', dekor: 'Clermont', grubosc: '20' });
+  const w = policz({ L: 80, W: 46, sL: 60, sW: 31, marka: 'avant-quartz', dekor: 'Clermont', grubosc: '20' });
 
   assert.equal(w.ok, true);
   assert.equal(grosze(w.razem), 4491.93);
@@ -81,20 +81,23 @@ test('najmniejsza: 80 × 46 Avant Clermont 20 mm z montażem → 4 500 zł', () 
 /* ═══════════════════════════════════════════ połówka płyty */
 
 test('presety mieszczą się w połówce płyty (2,56 m²)', () => {
-  for (const [L, G] of [
+  for (const [L, W] of [
     [80, 46],
     [100, 50],
     [120, 50],
     [160, 50],
   ]) {
-    const w = policz({ L, G });
-    assert.equal(w.pak.polowka, true, `${L} × ${G} powinno zmieścić się w połówce`);
-    assert.equal(w.pak.m2Kupione, 2.56, `${L} × ${G}`);
+    const w = policz({ L, W });
+    assert.equal(w.pak.polowka, true, `${L} × ${W} powinno zmieścić się w połówce`);
+    assert.equal(w.pak.m2Kupione, 2.56, `${L} × ${W}`);
   }
 });
 
-test('200 × 50 wymaga całej płyty (5,12 m²)', () => {
-  const w = policz({ L: 200, G: 50 });
+test('240 × 60 nie mieści się w połówce — potrzeba całej płyty', () => {
+  // Przy geometrii z projektu Dawida granica przy głębokości 60 cm wypada
+  // na 173 cm: ścianki zlewu są niższe niż w pierwszym podejściu i lepiej
+  // się pakują, więc w połówce mieści się więcej niż wcześniej.
+  const w = policz({ L: 240, W: 60, sL: 150, sW: 45 });
   assert.equal(w.pak.polowka, false);
   assert.equal(w.pak.m2Kupione, 5.12);
 });
@@ -120,25 +123,27 @@ test('stawka z panelu zmienia cenę (pogrubienie 250 zł/m.b.)', () => {
 test('bez ustawień z panelu liczymy wartościami domyślnymi', () => {
   const w = wycenUmywalke({
     firma: firma('keralini'),
-    stan: normalizuj({ ...STAN_DOMYSLNY, L: 120, G: 50, H: 15 }),
+    stan: zacisnij({ ...STAN_DOMYSLNY, dekor: 'Absolute Naturale', L: 120, W: 50, H: 15, sL: 100, sW: 35, ins: 5 }),
     dataISO: DATA,
   });
   assert.equal(w.razemZaokr, 5200);
 });
 
 test('bateria ze ściany: przy zlewie w kamieniu nie ma płatnego otworu', () => {
-  const w = policz({ bateria: 'sciana' });
+  const w = policz({ holes: 0 });
   assert.equal(kwota(w, 'otwory'), 0);
 });
 
-test('nablatowa: odpływ + bateria = dwa otwory, bez ryczałtu niecki', () => {
-  const w = policz({ typ: 'nablatowa' });
-  assert.equal(kwota(w, 'otwory'), 324);
-  assert.equal(kwota(w, 'niecka'), 0);
+test('nablatowa: liczba otworów z kontrolki, bez ryczałtu za zlew', () => {
+  // Przy blacie pod umywalkę nablatową klient sam ustawia, ile otworów
+  // wycinamy (odpływ, bateria) — stąd dwa osobne przypadki.
+  assert.equal(kwota(policz({ mode: 'top' }), 'otwory'), 162);
+  assert.equal(kwota(policz({ mode: 'top', holes: 2 }), 'otwory'), 324);
+  assert.equal(kwota(policz({ mode: 'top' }), 'niecka'), 0);
 });
 
 test('nablatowa jest tańsza od zlewu w kamieniu na tym samym wymiarze', () => {
-  assert.ok(policz({ typ: 'nablatowa' }).razem < policz().razem);
+  assert.ok(policz({ mode: 'top' }).razem < policz().razem);
 });
 
 test('montaż liczy się od powierzchni blatu, nie od kupionej płyty', () => {
@@ -190,7 +195,7 @@ test('wykonanie to suma pogrubienia, niecki i otworów', () => {
 test('tańsza wersja: ten sam kamień jako blat pod umywalkę nablatową', () => {
   const w = policz();
   assert.ok(w.tanszaWersja > 0);
-  assert.equal(w.tanszaWersja, policz({ typ: 'nablatowa' }).razemZaokr);
+  assert.equal(w.tanszaWersja, policz({ mode: 'top' }).razemZaokr);
 });
 
 /* ═══════════════════════════════════════════ odporność */
@@ -201,9 +206,11 @@ test('nieznany dekor nie wywraca wyceny — zwraca czytelny błąd', () => {
   assert.ok(w.blad);
 });
 
-test('wymiar poza zakresem liczy się mimo ostrzeżenia', () => {
-  const w = policz({ L: 240, G: 70 });
+test('nietypowo duża umywalka liczy się normalnie, bez odmowy', () => {
+  // Suwaki w projekcie Dawida sięgają 300 × 80 cm — takiego blatu nie
+  // odrzucamy, tylko kupujemy pod niego całe płyty.
+  const w = policz({ L: 280, W: 75, sL: 200, sW: 60 });
   assert.equal(w.ok, true);
   assert.ok(w.razemZaokr > 0);
-  assert.ok(w.ostrzezenia.length >= 1);
+  assert.ok(w.pak.plytyPelne >= 1);
 });

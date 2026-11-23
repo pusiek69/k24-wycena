@@ -3,8 +3,7 @@
 <head>
   <!-- Google tag (gtag.js) — Google Ads AW-18396227572.
        Zgody MUSZĄ stać przed wczytaniem gtag.js: Consent Mode v2 czyta
-       ustawienie domyślne w momencie startu tagu. Baner (src/analytics/zgody.js)
-       tylko je AKTUALIZUJE po wyborze klienta. -->
+       ustawienie domyślne w momencie startu tagu. -->
   <script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
@@ -28,92 +27,150 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Umywalka z kamienia na wymiar — kalkulator</title>
-  <meta name="description" content="Policz umywalkę z kamienia na wymiar: zlew wycięty w kamieniu albo blat pod umywalkę nablatową. Projekt 3D i pomiar w cenie." />
+  <meta name="description" content="Policz umywalkę z kamienia na wymiar: zlew wycięty w kamieniu albo blat pod umywalkę nablatową. Podgląd 3D na żywo, projekt 3D i pomiar w cenie." />
 
   <!-- ⚠ STRONA UKRYTA (faza 1, 23.11.2026).
-       Nie ma jej w sitemapie ani w żadnym linku na stronie — czeka na
-       „publikuj" Dawida. Do tego czasu: noindex, nofollow. Po decyzji
-       o publikacji zdejmuje się tę metę, dopisuje adres do sitemapy
-       i dodaje linki ze strony głównej oraz z /blaty-lazienkowe. -->
+       Nie ma jej w sitemapie ani w żadnym linku — czeka na „publikuj" Dawida. -->
   <meta name="robots" content="noindex, nofollow" />
-  <meta name="theme-color" content="#13110f" />
+  <meta name="theme-color" content="#e9eaec" />
 
   <link rel="icon" href="/logo-k24h.png" />
   <link rel="apple-touch-icon" href="/logo-k24h.png" />
+  <link rel="preload" as="font" type="font/woff2" href="/fonty/Geist-SemiBold.woff2" crossorigin />
 </head>
 <body>
-  <a class="skip" href="#tresc">Przejdź do treści</a>
+<header class="top">
+  <div>
+    <h1>Umywalka z kamienia na wymiar</h1>
+    <p>Zmieniasz wymiar — od razu zmienia się bryła, lista formatek i cena.</p>
+  </div>
+  <a class="tel" href="tel:+48796991128" data-miejsce="naglowek">
+    <span aria-hidden="true">☎</span>
+    <span><small>Wolisz zadzwonić?</small><b>796 991 128</b></span>
+  </a>
+</header>
 
-  <header class="wrap">
-    <div class="topbar">
-      <a class="logo" href="/">
-        <img class="logo-img" src="/logo-k24h.png" width="42" height="54" alt="Kamieniarstwo 24h — blaty kamienne Tarnobrzeg" />
-      </a>
-      <a class="phone-btn" href="tel:+48796991128" data-miejsce="naglowek">
-        <span class="ph-ico" aria-hidden="true">☎</span>
-        <span class="ph-txt">
-          <span class="ph-lbl">Wolisz zadzwonić?</span>
-          <span class="ph-num">796 991 128</span>
-        </span>
-      </a>
+<main class="app">
+  <section class="stage" id="stage" aria-label="Podgląd 3D umywalki">
+    <div class="lab" id="lab"></div>
+    <div class="sui">
+      <div class="seg" id="views" role="group" aria-label="Widok">
+        <button data-view="iso" aria-pressed="true">3D</button><button data-view="front" aria-pressed="false">Przód</button><button data-view="top" aria-pressed="false">Góra</button>
+      </div>
+      <button class="btn" id="ex" aria-pressed="false">Rozłóż na formatki</button>
     </div>
-    <h1>Umywalka z kamienia<br><em>na wymiar.</em></h1>
-    <p class="sub">
-      Zmieniasz wymiar — od razu widzisz bryłę. Zlew wycięty w jednej płycie
-      z blatem, bez łączeń i bez silikonu w narożniku.
-    </p>
-  </header>
+    <div class="read"><b id="rd1"></b><span id="rd2"></span></div>
+    <div class="hint" id="hint">Przeciągnij, aby obrócić</div>
+    <p class="nogl" id="nogl" hidden>Podgląd 3D jest niedostępny w tej przeglądarce. Wycena i formatki liczą się normalnie.</p>
+  </section>
 
-  <main id="tresc" class="umywalka" data-gotowe="0">
-    <!-- Bryła na żywo. Do czasu wczytania skryptu zostaje pusta — treścią
-         tej strony jest sam konfigurator, więc nie ma tu czego indeksować. -->
-    <section id="scena" class="scena" aria-label="Podgląd umywalki"></section>
-    <div id="panel"></div>
-    <div id="pasek" class="pasek" hidden></div>
+  <aside class="panel" id="panel">
+    <div class="card total" id="total"></div>
 
-    <noscript>
-      <p class="pole-nota">
-        Kalkulator potrzebuje JavaScriptu. Zadzwoń:
-        <a href="tel:+48796991128">796 991 128</a> — policzymy umywalkę przez telefon.
-      </p>
-    </noscript>
-  </main>
+    <div class="card">
+      <div class="seg wide" id="mode" role="group" aria-label="Rodzaj">
+        <button data-mode="int" aria-pressed="true">Zlew wycięty w kamieniu</button><button data-mode="top" aria-pressed="false">Pod umywalkę nablatową</button>
+      </div>
+      <div class="lbl">Szybkie wymiary</div>
+      <div class="chips" id="presets"></div>
+      <div id="dimsTop" style="margin-top:8px"></div>
+      <div id="polowka" aria-live="polite"></div>
+      <div class="lbl">Pogrubienie boków</div>
+      <div class="chips"><button class="chip" data-side="left" aria-pressed="true">Lewy bok</button><button class="chip" data-side="right" aria-pressed="true">Prawy bok</button></div>
+      <p class="info">Wyłącz bok, gdy blat wchodzi we wnękę między ściany.</p>
+      <div id="warnTop" aria-live="polite"></div>
+    </div>
 
-  <footer class="wrap stopka">
-    <p class="foot-line">
-      Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748 ·
-      tel. <a href="tel:+48796991128" data-miejsce="stopka">796 991 128</a> ·
-      pon.–pt. 8:00–18:00 ·
-      <a href="/polityka-prywatnosci">Polityka prywatności</a> ·
-      <a href="#" id="cookies">Ustawienia cookies</a>
-    </p>
-    <p class="foot-note">
-      Ceny w kalkulatorze są orientacyjne (brutto) i nie stanowią oferty
-      w rozumieniu art. 66 §1 Kodeksu cywilnego. Ostateczna cena po pomiarze
-      u klienta.
-    </p>
-  </footer>
+    <div class="card" id="sinkCard">
+      <h3>Zlew</h3>
+      <div class="seg wide" id="nsink" role="group" aria-label="Liczba zlewów" style="margin-bottom:6px"><button data-n="1" aria-pressed="true">Jeden zlew</button><button data-n="2" aria-pressed="false">Dwa zlewy</button></div>
+      <div id="dimsSink"></div>
+      <p class="info" id="sinkInfo"></p>
+    </div>
 
-  <!--
-    Ukryta kopia formularza — po niej Netlify rozpoznaje formularz przy publikacji.
-    Używany tylko awaryjnie, gdy Worker nie odpowiada — żeby nie zgubić kontaktu.
-    Ten sam formularz „pomiar" co na stronie głównej: zgłoszenia z umywalki
-    trafiają tam, gdzie reszta, a rozpoznaje je dopisek w polu „uwagi".
-  -->
-  <form name="pomiar" data-netlify="true" netlify-honeypot="firma-www" hidden>
-    <input type="text" name="imie" />
-    <input type="tel" name="telefon" />
-    <input type="email" name="email" />
-    <input type="text" name="miejscowosc" />
-    <input type="text" name="termin" />
-    <input type="text" name="telefonZgoda" />
-    <input type="text" name="uwagi" />
-    <input type="text" name="wycena" />
-    <input type="text" name="kwota" />
-    <input type="checkbox" name="zgoda" />
-    <input type="text" name="firma-www" />
-  </form>
+    <div class="card">
+      <h3>Kamień</h3>
+      <div class="chips" id="odcienie" style="margin-bottom:8px"></div>
+      <div class="mats" id="mats"></div>
+      <button class="btn" id="wszystkie" style="margin-top:8px;width:100%"></button>
+      <div class="lbl">Grubość płyty</div>
+      <div class="seg" id="thick" role="group" aria-label="Grubość płyty"></div>
+      <p class="info">Kolory na kafelkach są przybliżone — prawdziwą próbkę pokażemy przy pomiarze, a wybrany wzór zobaczy Pan/Pani na projekcie 3D.</p>
+    </div>
 
-  <script type="module" src="/src/umywalka/main.js"></script>
+    <div class="card">
+      <h3>Dodatki</h3>
+      <div class="dl" style="min-height:48px">
+        <span>Otwory w blacie<small style="display:block;color:var(--mute);font-size:13px" id="holeHint">bateria, dozownik</small></span>
+        <span class="step"><button id="hm" aria-label="Mniej otworów">−</button><output id="hn">1</output><button id="hp" aria-label="Więcej otworów">+</button></span>
+      </div>
+      <label class="sw"><span>Montaż u klienta<small>bez montażu: odbiór w zakładzie, VAT 23%</small></span><input type="checkbox" id="mont"></label>
+      <label class="sw" id="reuseRow"><span>Dno i wstawka z wycinki blatu<small>wycinka z otworu idzie na płytę spadkową — taniej</small></span><input type="checkbox" id="reuse"></label>
+    </div>
+  </aside>
+</main>
+
+<section class="low">
+  <div class="card">
+    <h2>Formatki do wycięcia</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Nr</th><th>Element</th><th class="r">Wymiar cm</th><th class="r">Szt.</th><th class="r">m²</th></tr></thead>
+      <tbody id="cut"></tbody><tfoot id="cutF"></tfoot>
+    </table></div>
+    <p class="info">Najedź na wiersz, a element podświetli się na podglądzie. Numery zgadzają się z widokiem „Rozłóż na formatki”.</p>
+  </div>
+
+  <div class="card" id="brkCard">
+    <h2>Rozbicie ceny</h2>
+    <div id="brk"></div>
+  </div>
+
+  <div class="card full" id="lead">
+    <h2>Zapytanie o tę umywalkę</h2>
+    <div id="leadBox"></div>
+  </div>
+</section>
+
+<footer class="stopka">
+  <p>
+    Kamieniarstwo 24h · Aaron sp. z o.o. · ul. Szpitalna 8, 39-400 Tarnobrzeg · NIP 8672241748 ·
+    tel. <a href="tel:+48796991128" data-miejsce="stopka">796 991 128</a> · pon.–pt. 8:00–18:00 ·
+    <a href="/polityka-prywatnosci">Polityka prywatności</a> ·
+    <a href="#" id="cookies">Ustawienia cookies</a>
+  </p>
+  <p>
+    Ceny w kalkulatorze są orientacyjne (brutto) i nie stanowią oferty w rozumieniu
+    art. 66 §1 Kodeksu cywilnego. Ostateczna cena po pomiarze u klienta.
+  </p>
+</footer>
+
+<div class="mbar" id="mbar"></div>
+
+<noscript>
+  <p class="info" style="padding:16px">
+    Kalkulator potrzebuje JavaScriptu. Zadzwoń: <a href="tel:+48796991128">796 991 128</a> —
+    policzymy umywalkę przez telefon.
+  </p>
+</noscript>
+
+<!--
+  Ukryta kopia formularza — po niej Netlify rozpoznaje formularz przy publikacji.
+  Używany tylko awaryjnie, gdy Worker nie odpowiada, żeby nie zgubić kontaktu.
+-->
+<form name="pomiar" data-netlify="true" netlify-honeypot="firma-www" hidden>
+  <input type="text" name="imie" />
+  <input type="tel" name="telefon" />
+  <input type="email" name="email" />
+  <input type="text" name="miejscowosc" />
+  <input type="text" name="termin" />
+  <input type="text" name="telefonZgoda" />
+  <input type="text" name="uwagi" />
+  <input type="text" name="wycena" />
+  <input type="text" name="kwota" />
+  <input type="checkbox" name="zgoda" />
+  <input type="text" name="firma-www" />
+</form>
+
+<script type="module" src="/src/umywalka/main.js"></script>
 </body>
 </html>
