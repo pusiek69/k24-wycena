@@ -44,6 +44,7 @@ import { podlaczPodglad } from '../app/podglad-wzoru.js';
 import { zrobWizualizacje, nazwaPliku, pobierz, udostepnij } from './wizualizacja.js';
 import { uruchomPodglad } from './scena3d.js';
 import { formularzUmywalki, potwierdzenieWyslania } from './formularz.js';
+import { znanyKlient, imieKlienta, zapomnijKlienta } from './pamiec-klienta.js';
 import * as ga from './zdarzenia.js';
 
 /** Czy kwota pojawia się dopiero po zostawieniu kontaktu. */
@@ -71,12 +72,17 @@ const PRESETY = [
   [120, 50],
   [160, 50],
 ];
+/*
+ * Paski udziału w cenie — odcienie kamienia i złota, jak reszta strony.
+ * (Do 24.11.2026 siedział tu pomarańcz #ff4f00 z artefaktu: przeoczenie
+ * przy zmianie palety, widoczne w legendzie pod kwotą.)
+ */
 const KOLORY_POZYCJI = {
-  material: 'var(--ink)',
-  pogrubienie: '#ff4f00',
-  niecka: '#8d939b',
-  otwory: '#c4c8cd',
-  montaz: '#e2c9b8',
+  material: 'var(--acc-hi)',
+  pogrubienie: 'var(--acc)',
+  niecka: '#8a7244',
+  otwory: '#6b6257',
+  montaz: '#b6ad9d',
 };
 
 let S = { ...STAN_DOMYSLNY };
@@ -182,6 +188,20 @@ function rysuj() {
   rysujPolowke();
 }
 
+/*
+ * JEDNO miejsce, które decyduje o tym, czy klient widzi kwoty.
+ *
+ * Kto już raz zostawił kontakt, widzi ceny od razu — także przy kolejnej
+ * wizycie i po każdej zmianie konfiguracji (zlecenie Dawida, 23.11.2026).
+ * Bramka ma zebrać kontakt RAZ, a nie męczyć tego samego człowieka przy
+ * każdym ruchu suwaka.
+ *
+ * Warunek siedzi w funkcji, a nie w dwóch kopiach, bo przy dwóch kopiach
+ * karta ceny i rozbicie potrafią pokazywać co innego — tak właśnie było
+ * przez chwilę przy pierwszym podejściu.
+ */
+const cenaUkryta = () => CENA_PO_FORMULARZU && !wyslane && !znanyKlient();
+
 function rysujCene() {
   const box = $('#total');
   const mbar = $('#mbar');
@@ -191,7 +211,7 @@ function rysujCene() {
     return;
   }
 
-  const ukryta = CENA_PO_FORMULARZU && !wyslane;
+  const ukryta = cenaUkryta();
 
   if (ukryta) {
     box.innerHTML =
@@ -221,6 +241,14 @@ function rysujCene() {
     `<div class="legend">${udzialy
       .map((u) => `<span><i class="key" style="background:${KOLORY_POZYCJI[u.id] || 'var(--mute)'}"></i>${krotko(u.id)} ${Math.round(u.procent)}%</span>`)
       .join('')}</div>` +
+    // Powitanie dla kogoś, kto zostawił kontakt wcześniej — razem z wyjściem
+    // z pamięci, bo telefon bywa wspólny i nie zawsze patrzy ta sama osoba.
+    (!wyslane && znanyKlient()
+      ? `<p class="znany-klient">` +
+        (imieKlienta() ? `Witamy ponownie, ${imieKlienta()}. ` : 'Witamy ponownie. ') +
+        `Kwoty widać od razu — kontakt już mamy. ` +
+        `<button type="button" class="link-zmien" id="toNieJa">to nie ja</button></p>`
+      : '') +
     (wyslane
       ? `<div class="row"><a class="btn" href="tel:+48796991128" data-miejsce="umywalka-cena">Zadzwoń 796 991 128</a></div>`
       : `<div class="row"><button class="btn acc" id="doForm">Wyślij zapytanie</button></div>`);
@@ -264,7 +292,7 @@ function rysujRozbicie() {
   const karta = $('#brkCard');
   if (!W?.ok) return (karta.hidden = true);
 
-  if (CENA_PO_FORMULARZU && !wyslane) {
+  if (cenaUkryta()) {
     karta.hidden = false;
     $('#brk').innerHTML =
       `<p class="info">Rozbicie ceny pokażemy razem z kwotą — po zostawieniu kontaktu. ` +
@@ -679,15 +707,26 @@ document.addEventListener('click', (e) => {
     pelnyKatalog = !pelnyKatalog;
     odcienFiltr = null;
     rysujKamienie();
+  } else if (b.id === 'wym') {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on));
+    podglad && podglad.pokazWymiary(on);
   } else if (b.id === 'ex') {
     const on = b.getAttribute('aria-pressed') !== 'true';
     b.setAttribute('aria-pressed', String(on));
-    b.textContent = on ? 'Złóż z powrotem' : 'Rozłóż na formatki';
+    // Na telefonie dłuższa część etykiety jest ukryta w CSS — dzięki temu
+    // przyciski mieszczą się w jednym rzędzie i nie zjadają sceny.
+    b.innerHTML = on ? 'Złóż<span class="dlugie"> z powrotem</span>' : 'Rozłóż<span class="dlugie"> na formatki</span>';
     podglad && podglad.rozloz(on);
     rysujOdczyt();
   } else if (b.id === 'hm' || b.id === 'hp') {
     S.holes = Math.max(0, Math.min(3, S.holes + (b.id === 'hp' ? 1 : -1)));
     przelicz();
+  } else if (b.id === 'toNieJa') {
+    // Wspólny telefon albo komputer w salonie — da się wyjść z pamięci.
+    zapomnijKlienta();
+    rysuj();
+    rysujFormularz();
   } else if (b.id === 'doForm' || b.id === 'doFormM') {
     $('#lead').scrollIntoView({ behavior: 'smooth', block: 'start' });
     $('#leadBox').querySelector('input')?.focus({ preventScroll: true });

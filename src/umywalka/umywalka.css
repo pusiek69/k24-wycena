@@ -125,6 +125,11 @@ a { color: inherit; }
   font-variant-numeric: tabular-nums; transition: opacity 0.2s;
 }
 .lb.sink { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1.5px var(--acc), 0 1px 3px rgba(0, 0, 0, 0.5); }
+
+/* Wyłącznik wymiarów — klient chce czasem zobaczyć sam kamień. */
+.lab.bez-wymiarow .lb.d { opacity: 0 !important; }
+
+.sui-prawo { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .lb.n {
   width: 26px; height: 26px; padding: 0; display: grid; place-items: center;
   border-radius: 50%; background: var(--ink); color: var(--bg);
@@ -191,6 +196,18 @@ a { color: inherit; }
 .zamek { display: grid; gap: 10px; }
 .zamek .big { color: var(--mute); letter-spacing: 0.02em; }
 .zamek p { margin: 0; color: var(--mute); font-size: 14px; }
+
+/* Powitanie dla kogoś, kto zostawił kontakt wcześniej. */
+.znany-klient {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--acc);
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--mute);
+}
+.znany-klient .link-zmien { min-height: 0; font-size: 13px; padding: 0 2px; }
 
 .dim { padding: 5px 0 2px; }
 .dl { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -364,6 +381,11 @@ tfoot tr:last-child td { color: var(--mute); font-weight: 500; font-size: 14px; 
   /* Przyciski nad podglądem mają zmieścić się w JEDNYM rzędzie —
      inaczej zjadają sto pikseli sceny na telefonie. */
   .sui { gap: 6px; }
+  /* Plakietki wymiarowe mniejsze: na wąskim ekranie bryła jest mała,
+     a opis tej samej wielkości co na monitorze zasłaniał model. */
+  .dlugie { display: none; }
+  .lb { font-size: 11px; padding: 2px 6px; border-radius: 3px; }
+  .lb.n { width: 22px; height: 22px; font-size: 11px; }
   .seg button { padding: 6px 9px; font-size: 13px; min-height: 36px; }
   #ex { padding: 6px 10px; font-size: 13px; min-height: 36px; }
 

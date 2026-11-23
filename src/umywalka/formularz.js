@@ -18,6 +18,7 @@ import { KANALY, potwierdzenie } from '../app/kontakt-telefon.js';
 import { zrodloLeada } from '../app/zrodlo.js';
 import { partnerDoLeada } from '../app/partner.js';
 import * as ga from './zdarzenia.js';
+import { zapamietajKlienta, zapamietanyKlient } from './pamiec-klienta.js';
 
 const MAX_PLIK = 8 * 1024 * 1024; // 8 MB
 const OPIS_PLIKU = 'Zdjęcie łazienki lub projekt (opcjonalnie, do 8 MB)';
@@ -54,31 +55,45 @@ export function formularzUmywalki({ wycena, link, poWyslaniu, wizualizacja }) {
     plikOpis.textContent = `✓ ${f.name} (${(f.size / 1048576).toFixed(1)} MB)`;
   });
 
+  /*
+   * Kto już raz zostawił kontakt, dostaje pola wypełnione — ale zwykłe,
+   * do poprawienia. Dane siedzą wyłącznie w jego przeglądarce.
+   */
+  const znany = zapamietanyKlient() || {};
+
   const form = h(
     'form',
     { class: 'lead-form', novalidate: true },
     h(
       'div',
       { class: 'form-siatka' },
-      pole('imie', 'Imię', { type: 'text', autocomplete: 'given-name', placeholder: 'Jak się zwracać?' }),
+      pole('imie', 'Imię', {
+        type: 'text',
+        autocomplete: 'given-name',
+        placeholder: 'Jak się zwracać?',
+        value: znany.name || '',
+      }),
       pole('telefon', 'Telefon *', {
         type: 'tel',
         inputmode: 'tel',
         autocomplete: 'tel',
         placeholder: '600 100 200',
+        value: znany.phone || '',
       }),
       pole('email', 'E-mail *', {
         type: 'email',
         inputmode: 'email',
         autocomplete: 'email',
         placeholder: 'na ten adres wyślemy wycenę',
+        value: znany.email || '',
       }),
       pole('miejscowosc', 'Miejscowość *', {
         type: 'text',
         autocomplete: 'address-level2',
         placeholder: 'ustalimy rejon pomiaru',
+        value: znany.city || '',
       }),
-      wybor('termin', 'Kiedy planujesz umywalkę? *', TERMINY)
+      wybor('termin', 'Kiedy planujesz umywalkę? *', TERMINY, znany.termin || '')
     ),
 
     h('label', { class: 'plik-pick', for: 'u-plik' }, plikOpis),
@@ -100,7 +115,12 @@ export function formularzUmywalki({ wycena, link, poWyslaniu, wizualizacja }) {
           h(
             'label',
             { class: 'tel-opcja' },
-            h('input', { type: 'radio', name: 'telefonZgoda', value: k.id }),
+            h('input', {
+              type: 'radio',
+              name: 'telefonZgoda',
+              value: k.id,
+              ...(k.id === znany.telefonZgoda ? { checked: true } : {}),
+            }),
             h('span', { class: 'tel-znak' }, k.id === 'tak' ? '☎' : '✉'),
             h('span', { class: 'tel-tekst' }, k.label)
           )
@@ -204,6 +224,8 @@ export function formularzUmywalki({ wycena, link, poWyslaniu, wizualizacja }) {
 
     try {
       await wyslijLead(zgloszenie);
+      // Od tej chwili ten klient widzi ceny od razu — w tej przeglądarce.
+      zapamietajKlienta(dane);
       ga.lead(wycena.razemZaokr, wycena.pak?.polowka);
       poWyslaniu({ ...dane, mailWyslany: true, obraz });
     } catch {
@@ -211,6 +233,7 @@ export function formularzUmywalki({ wycena, link, poWyslaniu, wizualizacja }) {
         // Ścieżka awaryjna (formularz Netlify) nie uniesie obrazka —
         // ważne, żeby nie zgubić kontaktu, wizualizację klient ma na ekranie.
         await wyslijLeadZapasowo({ ...zgloszenie, wizualizacja: undefined, uwagi: 'Umywalka z kamienia — ' + wycena.opis });
+        zapamietajKlienta(dane);
         ga.lead(wycena.razemZaokr, wycena.pak?.polowka);
         poWyslaniu({ ...dane, mailWyslany: false, obraz });
       } catch {
@@ -338,7 +361,7 @@ function pole(nazwa, etykieta, atrybuty) {
   );
 }
 
-function wybor(nazwa, etykieta, opcje) {
+function wybor(nazwa, etykieta, opcje, wybrane = '') {
   return h(
     'div',
     { class: 'pole' },
@@ -347,7 +370,9 @@ function wybor(nazwa, etykieta, opcje) {
       'select',
       { id: 'u-' + nazwa, name: nazwa },
       h('option', { value: '' }, 'wybierz…'),
-      opcje.map((o) => h('option', { value: o.id }, o.label))
+      opcje.map((o) =>
+        h('option', { value: o.id, ...(o.id === wybrane ? { selected: true } : {}) }, o.label)
+      )
     )
   );
 }

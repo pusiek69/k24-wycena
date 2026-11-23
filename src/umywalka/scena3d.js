@@ -246,6 +246,7 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
   let cur = null;
   let hlK = null;
   let widoczna = true;
+  let wymiaryWlaczone = true;
 
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const tgt = new T.Vector3(0, 8, 0);
@@ -292,13 +293,25 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
       meshes.push(o);
     });
 
-    // Linie wymiarowe — pomarańczowe, jak na stole kamieniarskim.
+    /*
+     * WYMIAROWANIE JAK NA RYSUNKU TECHNICZNYM — linie i opisy POZA bryłą.
+     *
+     * Zgłoszenie Dawida ze zrzutu telefonu (23.11.2026): „nie widac wogule
+     * umywalki bo wymiary na niej sa". Przy umywalce 271 cm na ekranie
+     * 375 px bryła jest mała, a plakietki zostają tej samej wielkości —
+     * i zasłaniały model prawie w całości.
+     *
+     * Dlatego odsunięcie linii (`o`) rośnie razem z bryłą, a opisy zlewów
+     * wyprowadzamy przed front, z cienką linią odniesienia. Na wąskim
+     * ekranie opisów zlewów nie ma wcale — ten sam wymiar stoi pod bryłą
+     * w podpisie („2 zlewy 70 × 35, mostek 15").
+     */
     const { L, W, H, sL, sW } = S;
     const x0 = -L / 2;
     const x1 = L / 2;
     const zf = W / 2;
     const zb = -W / 2;
-    const o = 11;
+    const o = Math.max(12, Math.min(34, Math.max(L, W) * 0.085));
     const pts = [];
     const ln = (a, b) => pts.push(v3(a), v3(b));
     ln([x0, 0, zf + 3], [x0, 0, zf + o + 3]);
@@ -310,6 +323,13 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     ln([x0 - 3, 0, zf], [x0 - o - 3, 0, zf]);
     ln([x0 - 3, H, zf], [x0 - o - 3, H, zf]);
     ln([x0 - o, 0, zf], [x0 - o, H, zf]);
+
+    // Linie odniesienia do zlewów — od przedniej krawędzi w dół, pod opis.
+    const ciasno = scena.clientWidth < 520;
+    const zlewy = S.mode === 'int' && !ciasno ? srodkiZlewow(S) : [];
+    const zOpisu = zf + o * 2.1;
+    for (const c of zlewy) ln([c, 0, zf + 3], [c, 0, zOpisu]);
+
     const ls = new T.LineSegments(new T.BufferGeometry().setFromPoints(pts), lineM);
     ls.renderOrder = 9;
     dimG.add(ls);
@@ -330,10 +350,9 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     add(fd(L) + ' cm', [0, 0, zf + o], 'd');
     add(fd(W) + ' cm', [x1 + o, 0, 0], 'd');
     add(fd(H) + ' cm', [x0 - o, H / 2, zf], 'd');
-    if (S.mode === 'int') {
-      srodkiZlewow(S).forEach((c) =>
-        add(`${S.n > 1 ? '' : 'zlew '}${fd(sL)} × ${fd(sW)}`, [c, H, 0], 'd sink')
-      );
+    // Opisy zlewów PRZED bryłą, na końcu linii odniesienia — nigdy na niej.
+    for (const c of zlewy) {
+      add(`${S.n > 1 ? '' : 'zlew '}${fd(sL)} × ${fd(sW)}`, [c, 0, zOpisu], 'd sink');
     }
 
     const byK = {};
@@ -410,7 +429,7 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
       o.position.copy(o.userData.b).addScaledVector(o.userData.e, e);
       if (o.userData.hideEx) o.visible = e < 0.05;
     });
-    dimG.visible = e < 0.02;
+    dimG.visible = e < 0.02 && wymiaryWlaczone;
 
     const c = Math.cos(ph);
     cam.position.set(tgt.x + rad * Math.sin(th) * c, tgt.y + rad * Math.sin(ph), tgt.z + rad * Math.cos(th) * c);
@@ -422,13 +441,23 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     const v = new T.Vector3();
     labs.forEach((l) => {
       v.copy(l.v).addScaledVector(l.e, e).project(cam);
-      const widac = (l.c === 'n' ? e > 0.6 : e < 0.02) && v.z < 1;
+      const widac = (l.c === 'n' ? e > 0.6 : e < 0.02 && wymiaryWlaczone) && v.z < 1;
       l.el.style.opacity = widac ? 1 : 0;
       l.el.style.transform =
         `translate(${(((v.x + 1) / 2) * w).toFixed(1)}px,${(((1 - v.y) / 2) * h).toFixed(1)}px) translate(-50%,-50%)`;
     });
 
     if (ruch) kick();
+  }
+
+  /**
+   * Wyłącznik wymiarów. Bywa, że klient chce po prostu obejrzeć bryłę —
+   * wtedy znikają i linie, i opisy, a wraca sam kamień.
+   */
+  function pokazWymiary(on) {
+    wymiaryWlaczone = on;
+    etykiety.classList.toggle('bez-wymiarow', !on);
+    kick();
   }
 
   function podswietl(k) {
@@ -578,5 +607,5 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
     }
   }
 
-  return { build, podswietl, widok, rozloz, zrzut };
+  return { build, podswietl, widok, rozloz, zrzut, pokazWymiary };
 }
