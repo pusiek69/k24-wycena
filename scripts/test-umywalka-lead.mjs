@@ -174,3 +174,101 @@ test('SMS o umywalce zaczyna się od słowa UMYWALKA', () => {
   });
   assert.match(sms, /^UMYWALKA Nowa wycena: Anna/);
 });
+
+/* ════════════════════════ rozbicie dla Dawida — na prawdziwym zgłoszeniu */
+
+/*
+ * ZGŁOSZENIE TESTOWE DAWIDA (24.11.2026) pokazało, czego regexy po
+ * źródle nie widzą: mail do firmy renderuje SZABLON BLATÓW, a ten czyta
+ * `mb`, `materialBrutto`, `uslugiBrutto` i flagę `wCenie`. Umywalka
+ * wysyłała własne nazwy, więc Dawid dostał w nagłówku „0 m.b.", pod
+ * rozbiciem „materiał 0 zł · usługi 0 zł", a w pozycjach wiersz
+ * „Wycięcie pod umywalkę podblatową — 0 zł" przy zamówieniu na zlew
+ * wycięty w kamieniu. Dlatego tutaj liczymy prawdziwą wycenę i oglądamy
+ * ładunek, który poleci do workera.
+ */
+const { STAN_DOMYSLNY, zacisnij } = await import('../src/umywalka/model.js');
+const { wycenUmywalke } = await import('../src/umywalka/wycena-umywalki.js');
+const { DOMYSLNE } = await import('../src/app/ustawienia.js');
+const { szczegolyUmywalki } = await import('../src/umywalka/formularz.js');
+const { wczytajSilnik } = await import('./lib/silnik.mjs');
+const silnik = await wczytajSilnik();
+
+function ladunek(zmiany = {}) {
+  const stan = zacisnij({
+    ...STAN_DOMYSLNY,
+    dekor: 'Absolute Naturale',
+    L: 120,
+    W: 50,
+    H: 15,
+    sL: 100,
+    sW: 35,
+    ins: 5,
+    ...zmiany,
+  });
+  const w = wycenUmywalke({
+    firma: silnik.FIRMY.find((f) => f.slug === stan.marka),
+    stan,
+    stawki: DOMYSLNE,
+    dataISO: '2026-11-23',
+  });
+  assert.ok(w.ok, w.blad);
+  return { w, s: szczegolyUmywalki(w, 'https://kam24h.pl/umywalka-na-wymiar?x=1') };
+}
+
+test('nagłówek maila do Dawida dostaje prawdziwe metry pogrubienia', () => {
+  const { w, s } = ladunek();
+  assert.ok(w.mb > 0, 'wycena bez metrów — zły przykład kontrolny');
+  // Szablon blatów sięga po `s.mb`; `mbKrawedzi` zostaje dla czytelności.
+  assert.equal(s.mb, w.mb);
+  assert.equal(s.mbKrawedzi, w.mb);
+});
+
+test('podsumowanie „materiał · usługi" nie jest zerowe', () => {
+  const { w, s } = ladunek();
+  assert.ok(s.materialBrutto > 0, 'materiał zerowy');
+  assert.ok(s.uslugiBrutto > 0, 'usługi zerowe');
+  // Suma musi się domknąć na kwocie, którą widzi klient.
+  assert.equal(Math.round(s.materialBrutto + s.uslugiBrutto), Math.round(w.razem));
+});
+
+test('pozycja za 0 zł nie trafia do rozbicia', () => {
+  // Zlew wycięty w kamieniu: umywalek podblatowych nie ma ani jednej.
+  const { s } = ladunek({ mode: 'int' });
+  const nazwy = s.pozycje.map((p) => p.nazwa);
+  assert.ok(
+    !nazwy.some((n) => /podblatow/i.test(n)),
+    'przy zlewie w kamieniu wisiała pozycja o umywalce podblatowej'
+  );
+  for (const p of s.pozycje) {
+    assert.ok(p.brutto > 0 || p.wCenie, `pozycja „${p.nazwa}" za 0 zł bez flagi wCenie`);
+  }
+});
+
+test('świadczenia gratis zachowują flagę wCenie', () => {
+  // Bez niej szablon drukuje projekt 3D jako pozycję za 0 zł.
+  const { s } = ladunek();
+  const projekt = s.pozycje.find((p) => /projekt 3d/i.test(p.nazwa));
+  assert.ok(projekt, 'projekt 3D zniknął z rozbicia');
+  assert.equal(projekt.wCenie, true);
+});
+
+test('każdy z trzech rodzajów nazywa się w zgłoszeniu po swojemu', () => {
+  assert.equal(ladunek({ mode: 'int' }).s.typ, 'zlew w kamieniu');
+  assert.equal(ladunek({ mode: 'under' }).s.typ, 'blat z otworami pod umywalki podblatowe');
+  assert.equal(ladunek({ mode: 'top' }).s.typ, 'blat pod umywalki nablatowe');
+});
+
+test('przy umywalkach kupowanych osobno Dawid zna liczbę i rozstaw', () => {
+  for (const mode of ['under', 'top']) {
+    const { s } = ladunek({ mode, n: 2, L: 200, sL: 45, gap: 15 });
+    assert.equal(s.umywalki.ile, 2, `${mode}: zgubiona liczba umywalek`);
+    assert.equal(s.umywalki.rodzaj, mode === 'under' ? 'podblatowa' : 'nablatowa');
+    assert.equal(s.umywalki.odstep, 15, `${mode}: zgubiony rozstaw`);
+    assert.equal(s.zlewy, null, `${mode}: to nie jest zlew w kamieniu`);
+  }
+  // Przy zlewie w kamieniu ta sama treść siedzi w `zlewy` — bez powtórki.
+  const int = ladunek({ mode: 'int' }).s;
+  assert.equal(int.umywalki, null);
+  assert.ok(int.zlewy.ile >= 1);
+});

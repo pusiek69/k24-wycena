@@ -311,21 +311,45 @@ export function potwierdzenieWyslania({ telefonZgoda, phone, mailWyslany }) {
  * otwiera dokładnie tę konfigurację.
  */
 export function szczegolyUmywalki(w, link) {
+  const S = w.stan;
+  const int = S.mode === 'int';
+  const pod = S.mode === 'under';
+
+  /*
+   * MAIL DO DAWIDA CZYTA SZABLON BLATÓW (złapane na zgłoszeniu testowym
+   * Dawida 24.11.2026). Szablon sięga po `mb`, `materialBrutto`
+   * i `uslugiBrutto` — nazwy z lejka blatów. Nie wysyłaliśmy ich, więc
+   * w nagłówku stało „0 m.b.", a pod rozbiciem „materiał 0 zł · usługi
+   * 0 zł", chociaż pogrubienie było policzone i płatne. Wysyłamy je pod
+   * tymi nazwami, których szablon szuka — zamiast ruszać workera.
+   */
+  const materialBrutto = (w.pozycje || []).find((p) => p.id === 'material')?.brutto || 0;
+
   return {
     produkt: 'umywalka',
     firma: w.firma?.nazwa || '',
     dekor: w.dekor || '',
     grubosc: w.grubosc || '',
-    typ: w.stan.mode === 'int' ? 'zlew w kamieniu' : 'blat pod umywalkę nablatową',
-    wymiar: { L: w.stan.L, W: w.stan.W, H: w.stan.H },
-    zlewy:
-      w.stan.mode === 'int'
-        ? { ile: w.stan.n, sL: w.stan.sL, sW: w.stan.sW, mostek: w.stan.n === 2 ? w.stan.gap : 0, wstawka: w.stan.ins }
-        : null,
+    typ: int
+      ? 'zlew w kamieniu'
+      : pod
+        ? 'blat z otworami pod umywalki podblatowe'
+        : 'blat pod umywalki nablatowe',
+    wymiar: { L: S.L, W: S.W, H: S.H },
+    zlewy: int ? { ile: S.n, sL: S.sL, sW: S.sW, mostek: S.n === 2 ? S.gap : 0, wstawka: S.ins } : null,
+    /*
+     * Ceramika idzie z zakupu klienta, ale rozkrój otworów robimy my —
+     * Dawid musi znać ich liczbę, wymiar i rozstaw. Przy zlewie w kamieniu
+     * ta sama treść siedzi w `zlewy` i tu byłaby powtórzeniem.
+     */
+    umywalki: int
+      ? null
+      : { ile: S.n, rodzaj: pod ? 'podblatowa' : 'nablatowa', sL: S.sL, sW: S.sW, odstep: S.n > 1 ? S.gap : 0 },
     // Dno i wstawka z wycinki po zlewie — wtedy nie dokładamy ich do zakupu.
-    zWycinki: !!w.stan.reuse,
-    boki: { lewy: !!w.stan.left, prawy: !!w.stan.right },
-    otwory: w.stan.holes,
+    zWycinki: !!S.reuse,
+    boki: { lewy: !!S.left, prawy: !!S.right },
+    otwory: S.holes,
+    mb: w.mb,
     mbKrawedzi: w.mb,
     ranty: w.ranty,
     // Formatki z wymiarami — rozkrój do warsztatu.
@@ -335,11 +359,23 @@ export function szczegolyUmywalki(w, link) {
     plytyPelne: w.pak?.plytyPelne ?? 0,
     m2Blatu: Math.round((w.pak?.m2Blatu ?? 0) * 1000) / 1000,
     m2Platne: w.m2Platne ?? 0,
-    pozycje: (w.pozycje || []).map((p) => ({
-      nazwa: p.nazwa,
-      brutto: Math.round((p.brutto || 0) * 100) / 100,
-      ...(p.ilosc ? { ilosc: p.ilosc } : {}),
-    })),
+    materialBrutto,
+    uslugiBrutto: Math.round(((w.razem || 0) - materialBrutto) * 100) / 100,
+    /*
+     * Pozycje bez naliczenia pomijamy. Przy zlewie w kamieniu w rozbiciu
+     * dla Dawida wisiało „Wycięcie pod umywalkę podblatową — 0 zł" —
+     * pozycja, której w tym zamówieniu nie ma. `wCenie` musi przeżyć
+     * mapowanie, bo po nim szablon poznaje świadczenia gratis; bez tej
+     * flagi projekt 3D drukował się jako pozycja za 0 zł.
+     */
+    pozycje: (w.pozycje || [])
+      .filter((p) => p.wCenie || (p.brutto || 0) > 0)
+      .map((p) => ({
+        nazwa: p.nazwa,
+        brutto: Math.round((p.brutto || 0) * 100) / 100,
+        ...(p.ilosc ? { ilosc: p.ilosc } : {}),
+        ...(p.wCenie ? { wCenie: true } : {}),
+      })),
     stawkaVat: w.stawkaVat,
     razem: Math.round((w.razem || 0) * 100) / 100,
     razemZaokr: w.razemZaokr,
