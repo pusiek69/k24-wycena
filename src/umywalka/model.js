@@ -67,6 +67,65 @@ export const iloscMisek = (S) => (S.mode === 'int' ? 0 : S.n);
  * gdzie je postawić: każda potrzebuje swojej szerokości, odstępu między
  * sąsiadkami i rantu przy ścianach.
  */
+/*
+ * MISA PODBLATOWA — jak posadzić ceramikę pod wyciętym otworem.
+ *
+ * Profil misy w scena3d.js jest toczony wokół osi: spód na wysokości 0,
+ * rant na 13,5, największy promień 21. Pierwsza wersja wieszała ją
+ * ujemną skalą (`scale.y = -0.85`) i wychodziło dokładnie odwrotnie niż
+ * w rzeczywistości: okrągły SPÓD lądował pod otworem jak kopuła, rant
+ * zwisał na dole, a odbite normalne oświetlały misę od środka.
+ * Zgłoszone przez Dawida 24.11.2026.
+ *
+ * Prawidłowo: misa stoi normalnie, tylko zjeżdża o własną wysokość w
+ * dół, więc RANT siada na wysokości zaczepienia — czyli na spodzie
+ * płyty — a czasza wisi pod nim. Owal zamiast koła, bo wycięcie jest
+ * prostokątne (sL × sW): koło zostawiałoby szpary w rogach. Rant jest
+ * o 4% szerszy od otworu, bo podblatową przykręca się OD SPODU i
+ * kamień ma zakrywać jej krawędź.
+ */
+export const PROFIL_MISY = { rant: 13.5, promien: 21 };
+
+/*
+ * Obrys misy to ZAOKRĄGLONY PROSTOKĄT (superelipsa), nie owal. Wycięcie
+ * w kamieniu jest prostokątne, a owal wpisany w prostokąt dotyka tylko
+ * środków boków — w czterech rogach zostawały ciemne dziury na wylot
+ * (widać to było dopiero na podglądzie, 24.11.2026).
+ *
+ * Dobór liczbowy, nie na oko: żeby rant zakrył róg otworu, musi być
+ * spełnione 2 / zakładka^wykładnik ≤ 1. Owal (wykładnik 2) wymagałby
+ * zakładki 41%, zaokrąglenie 4 — 19%; tyle kamienia dookoła nie ma.
+ * Wykładnik 12 wystarcza przy zakładce 7% i wygląda jak to, czym jest:
+ * prostokątna umywalka podblatowa z miękkimi narożnikami.
+ */
+export const OBRYS_WYKLADNIK = 12;
+export const OBRYS_ZAKLADKA = 1.07;
+
+export function promienObrysu(kat, a, b, n = OBRYS_WYKLADNIK) {
+  const c = Math.abs(Math.cos(kat)) / a;
+  const s = Math.abs(Math.sin(kat)) / b;
+  return 1 / Math.pow(Math.pow(c, n) + Math.pow(s, n), 1 / n);
+}
+
+export function obrysMisy(S) {
+  const sL = Math.max(10, Number(S?.sL) || 40);
+  const sW = Math.max(10, Number(S?.sW) || 35);
+  const { rant } = PROFIL_MISY;
+
+  // Rant szerszy od otworu: podblatową przykręca się OD SPODU,
+  // więc kamień ma zakrywać jej krawędź dookoła.
+  const a = (sL / 2) * OBRYS_ZAKLADKA;
+  const b = (sW / 2) * OBRYS_ZAKLADKA;
+
+  // Umywalka jest głęboka mniej więcej w proporcji do swojego węższego
+  // wymiaru, ale nigdy jak miska i nigdy jak wiadro.
+  const glebokosc = Math.min(15, Math.max(7, Math.min(sL, sW) * 0.38));
+  const sy = glebokosc / rant;
+
+  // Przesunięcie misy w jej grupie: rant na zero, czasza pod spodem.
+  return { a, b, sy, glebokosc, dy: -rant * sy };
+}
+
 export function maksUmywalek(S) {
   if (S.mode === 'int') return 2;
   const szer = Math.max(30, Number(S.sL) || 40);
@@ -83,6 +142,40 @@ const polowki = (v) => Math.floor(v * 2) / 2;
 /** Szerokość zlewu dopasowana do długości blatu (przy zmianie presetu). */
 export const szerokoscZlewu = (S, L) =>
   S.n === 2 ? polowki((L - 20 - S.gap) / 2) : L - 20;
+
+/**
+ * Szerokość wycięcia po zmianie długości blatu albo liczby umywalek.
+ *
+ * ZLEW W KAMIENIU wykuwamy sami, więc wypełnia blat — im większy, tym
+ * lepiej, i tak liczyło to `szerokoscZlewu`.
+ *
+ * NABLATOWA I PODBLATOWA to kupiona ceramika o swoim rozmiarze. Wspólna
+ * reguła robiła z nich potwory: po wybraniu dwóch podblatowych na blacie
+ * 200 cm otwór rósł z 45 do 82,5 cm każdy (złapane na podglądzie
+ * 24.11.2026) — razem z ceną wycięć i bezsensownym rysunkiem. Tutaj
+ * wymiar zostaje taki, jaki klient ustawił; zmniejsza się tylko wtedy,
+ * gdy przestaje się mieścić.
+ */
+export function szerokoscWyciecia(S, L) {
+  if (S.mode === 'int') return szerokoscZlewu(S, L);
+  const granice = limity({ ...S, L });
+  return Math.min(Math.max(Number(S.sL) || 40, granice.sL[0]), granice.sL[1]);
+}
+
+/*
+ * Największa sensowna umywalka z półki. [DOMYŚLNE — do potwierdzenia
+ * przez Dawida]: podblatowe i nablatowe z katalogów mają 40–60 cm.
+ * Suwak wolno przeciągnąć dalej, jeśli klient wie, co robi; ta granica
+ * działa tylko przy PRZEŁĄCZENIU typu, żeby zlew kuty w kamieniu
+ * (nieraz i 110 cm) nie przenosił swojego rozmiaru na kupioną ceramikę.
+ */
+export const CERAMIKA_MAKS = 60;
+
+/** Szerokość wycięcia po zmianie rodzaju umywalki. */
+export function szerokoscPoZmianieTypu(S) {
+  if (S.mode === 'int') return szerokoscZlewu(S, S.L);
+  return Math.min(Number(S.sL) || 40, CERAMIKA_MAKS);
+}
 
 /** Granice suwaków — zależą od siebie nawzajem, stąd funkcja, a nie stała. */
 export function limity(S) {
@@ -363,5 +456,33 @@ export function opisKonfiguracji(S) {
   return czesci.join(', ');
 }
 
+/**
+ * Podpis pod nagłówkiem wizualizacji — sam przedmiot, bez wymiarów blatu
+ * (te są niżej, na karcie konfiguracji).
+ *
+ * Mieszka tutaj, a nie w wizualizacja.js, bo tamta kopia nie znała trybu
+ * „under" i na renderze z dwiema podblatowymi pisała „Blat pod umywalkę
+ * nablatową" — zła nazwa produktu na obrazku, który klient pokazuje
+ * rodzinie i który leci załącznikiem w mailu (24.11.2026).
+ */
+export function podpisUmywalki(S) {
+  const ile = Math.max(1, Number(S?.n) || 1);
+  const wym = `${fd(S.sL)} × ${fd(S.sW)} cm`;
+  const kazdy = ile > 1 ? `${wym} każdy` : wym;
+
+  if (S.mode === 'int') {
+    return ile > 1
+      ? `${wielka(slownie(ile))} zlewy wycięte w kamieniu · ${kazdy}`
+      : `Zlew wycięty w kamieniu · ${wym}`;
+  }
+  if (S.mode === 'under') {
+    return ile > 1
+      ? `${wielka(slownie(ile))} otwory pod umywalki podblatowe · ${kazdy}`
+      : `Otwór pod umywalkę podblatową · ${wym}`;
+  }
+  return ile > 1 ? `Blat pod ${slownie(ile)} umywalki nablatowe` : 'Blat pod umywalkę nablatową';
+}
+
 const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');
 const slownie = (n) => ({ 2: 'dwa', 3: 'trzy' })[n] || String(n);
+const wielka = (s) => s.charAt(0).toUpperCase() + s.slice(1);

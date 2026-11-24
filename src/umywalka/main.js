@@ -31,7 +31,8 @@ import {
   zacisnij,
   limity,
   formatki,
-  szerokoscZlewu,
+  szerokoscWyciecia,
+  szerokoscPoZmianieTypu,
   maksUmywalek,
   zOtworem,
   iloscBokow,
@@ -718,7 +719,7 @@ document.addEventListener('click', (e) => {
     S.mode = d.mode;
     // Z dwóch zlewów w kamieniu na trzy umywalki nablatowe da się przejść
     // tylko wtedy, gdy blat jest dość długi — `zacisnij` to przytnie.
-    S.sL = szerokoscZlewu(S, S.L);
+    S.sL = szerokoscPoZmianieTypu(S);
     ga.start(S.mode);
     przelicz();
   } else if (d.side) {
@@ -726,7 +727,7 @@ document.addEventListener('click', (e) => {
     przelicz();
   } else if (d.pre) {
     const [a, c] = d.pre.split(',').map(Number);
-    Object.assign(S, { L: a, W: c, sL: szerokoscZlewu(S, a), sW: c - 15 });
+    Object.assign(S, { L: a, W: c, sL: szerokoscWyciecia(S, a), sW: c - 15 });
     ga.start(S.mode);
     przelicz();
   } else if (d.n) {
@@ -734,7 +735,7 @@ document.addEventListener('click', (e) => {
     if (v !== S.n) {
       const poprzednie = S.n;
       S.n = v;
-      S.sL = szerokoscZlewu(S, S.L);
+      S.sL = szerokoscWyciecia(S, S.L);
       // Liczba otworów podpowiada się z liczby umywalek: jedna bateria
       // (albo jeden odpływ) na miskę. Klient może to potem zmienić.
       if (S.holes === poprzednie) S.holes = Math.min(3, v);

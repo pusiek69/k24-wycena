@@ -13,6 +13,7 @@
  *
  * Rysujemy na zwykłym canvasie, bez żadnej biblioteki.
  */
+import { podpisUmywalki } from './model.js';
 
 const SZER = 1200;
 const WYS = 900;
@@ -109,14 +110,9 @@ function naglowek(g, w) {
 
   g.fillStyle = SZARY;
   g.font = font(400, 22);
-  const S = w.stan;
-  const opis =
-    S.mode === 'int'
-      ? S.n === 2
-        ? `Dwa zlewy wycięte w kamieniu · ${fd(S.sL)} × ${fd(S.sW)} cm każdy`
-        : `Zlew wycięty w kamieniu · ${fd(S.sL)} × ${fd(S.sW)} cm`
-      : 'Blat pod umywalkę nablatową';
-  g.fillText(opis, 64, 164);
+  // Podpis bierzemy z modelu — druga kopia tej treści już raz skłamała
+  // o rodzaju umywalki na gotowym renderze (patrz podpisUmywalki).
+  g.fillText(podpisUmywalki(w.stan), 64, 164);
 }
 
 /** Render bryły wklejony tak, by nie zasłaniał podpisów. */

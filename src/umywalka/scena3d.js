@@ -19,7 +19,7 @@
  *
  * Układ: x = długość, y = w górę, z = głębokość (przód = +z). Centymetry.
  */
-import { bryly, srodkiZlewow } from './model.js';
+import { bryly, srodkiZlewow, obrysMisy, promienObrysu, PROFIL_MISY } from './model.js';
 
 /** Czy to sprzęt, na którym trzeba oszczędzać. */
 function slabySprzet() {
@@ -219,21 +219,69 @@ export async function uruchomPodglad({ scena, etykiety, stan, wyglad }) {
   }
 
   /**
-   * Ceramiczna misa. Nablatowa stoi na kamieniu całą bryłą; podblatowa
-   * wisi pod otworem, więc obracamy ją i chowamy pod blat — widać wtedy
-   * samą czaszę przez wycięcie, dokładnie jak w rzeczywistości.
+   * Ceramiczna misa. Nablatowa stoi na kamieniu całą bryłą i jest okrągła.
+   *
+   * Podblatowa WISI POD otworem: rant przylega od spodu do płyty, czasza
+   * schodzi w dół, a przez wycięcie widać jej wnętrze. Obrys dociskamy do
+   * zaokrąglonego prostokąta (patrz obrysMisy), bo wycięcie w kamieniu
+   * jest prostokątne — okrągła misa zostawiałaby szpary w rogach.
    */
   function misa(S, pod = false) {
     const pts = [
       [0, 0], [9, 0], [15, 1.5], [19, 5], [20.5, 11], [21, 13.5],
       [20, 13.5], [19.2, 10.5], [17.6, 6], [13.6, 2.8], [8, 1.7], [0, 1.7],
     ].map((a) => new T.Vector2(a[0], a[1]));
-    const o = new T.Mesh(new T.LatheGeometry(pts, oszczedzaj ? 28 : 56), ceramika);
-    const skala = Math.min(1, (Number(S.sL) || 40) / 42);
-    o.scale.set(skala, pod ? -0.85 : 1, skala);
+    const geo = new T.LatheGeometry(pts, oszczedzaj ? 28 : 56);
+    const m = pod ? obrysMisy(S) : null;
+
+    if (pod) {
+      const poz = geo.attributes.position;
+      for (let i = 0; i < poz.count; i++) {
+        const x = poz.getX(i);
+        const z = poz.getZ(i);
+        const r = Math.hypot(x, z);
+        if (r > 1e-6) {
+          // Promień profilu (0…21) rozciągnięty na obrys w tym kierunku.
+          const k = promienObrysu(Math.atan2(z, x), m.a, m.b) / PROFIL_MISY.promien;
+          poz.setX(i, x * k);
+          poz.setZ(i, z * k);
+        }
+        // Rant (13,5 w profilu) ląduje na zerze — czyli na spodzie płyty.
+        poz.setY(i, poz.getY(i) * m.sy + m.dy);
+      }
+      poz.needsUpdate = true;
+      // Po deformacji stare normalne kłamią — światło szłoby bokiem.
+      geo.computeVertexNormals();
+    }
+
+    const o = new T.Mesh(geo, ceramika);
+    let skala = 1;
+    if (!pod) {
+      skala = Math.min(1, (Number(S.sL) || 40) / 42);
+      o.scale.set(skala, 1, skala);
+    }
     o.castShadow = !oszczedzaj;
+    /*
+     * Misa musi ŁAPAĆ cień, nie tylko go rzucać. Bez tego kamień dookoła
+     * otworu nie kładł na niej nic i wnętrze podblatowej czytało się jak
+     * biała plama namalowana na blacie — płasko, bez głębi.
+     */
+    o.receiveShadow = !oszczedzaj;
     const g = new T.Group();
     g.add(o);
+
+    /*
+     * ODPŁYW. Biała czasza w białym świetle nie ma czego pokazać oku —
+     * z góry obie miski czytały się jak płaska plama, a podblatowa wręcz
+     * jak prostokąt namalowany na kamieniu. Ciemny korek na dnie daje
+     * punkt zaczepienia i głębię, a przy okazji jest tym, czym w każdej
+     * umywalce jest naprawdę. Dno profilu leży na wysokości 1,7.
+     */
+    const korek = new T.Mesh(new T.CircleGeometry(2.1 * (pod ? 1 : skala), oszczedzaj ? 16 : 28), ciemny);
+    korek.rotation.x = -Math.PI / 2;
+    korek.position.y = pod ? 1.7 * m.sy + m.dy + 0.06 : 1.76;
+    g.add(korek);
+
     return g;
   }
 
