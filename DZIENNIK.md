@@ -5,6 +5,22 @@ Pamięć między sesjami SEO. Każda sesja: przeczytaj od góry, dopisz wpis na 
 
 ---
 
+## 2026-11-24 — Umywalka z kamienia: worker wdrozony, lejek dziala end-to-end; podblatowa poprawiona po zgloszeniu Dawida
+
+**Worker (bramka B3 ZALICZONA).** Dawid odpalil `wdroz-worker-umywalka.bat`. Wdrozenie potwierdzone z logu wranglera: `Uploaded k24h (6,88 s)`, `Deployed k24h triggers`, Current Version ID `03fb3a92-0b94-4de9-abc8-f136e6152299`; bindingi przezyly (`env.BAZA` D1, `env.SMS_MOST_WORKER`), `GET /kolekcje` -> 200. Jego zgloszenie testowe przeszlo cala droga: temat do firmy „UMYWALKA — Nowa wycena…", mail do klienta „Pana/Pani wycena umywalki", wizualizacja `umywalka-wizualizacja.jpg` (67 kB) w OBU mailach, SMS potwierdzony przez Dawida. Lejek umywalek dziala na produkcji.
+
+**Naprawione tego samego dnia (a589195).** Zgloszenie testowe odslonilo, ze mail do firmy renderuje szablon blatow i czyta inne nazwy pol: naglowek pisal „0 m.b." mimo platnego pogrubienia, pod rozbiciem „material 0 zl · uslugi 0 zl", w pozycjach wisialo „Wyciecie pod umywalke podblatowa — 0 zl" przy zlewie w kamieniu, a projekt 3D drukowal sie jako pozycja za 0 zl (mapowanie gubilo `wCenie`). Przy okazji `typ` nie znal podblatowej i opisywal ja jako nablatowa. Wszystko po stronie przegladarki — workera nie trzeba bylo wdrazac drugi raz.
+
+**Podblatowa 3D (3a5eab8).** Dawid: „zle jest wykonany podblatowy wizualizacja jest bledna". Potwierdzone na produkcji. Misa byla wieszana ujemna skala, czyli do gory dnem — pod otworem sterczal okragly spod (kopula), rant zwisal na dole, normalne odwrocone. Dalej: okragla misa w prostokatnym wycieciu zostawiala dziury w rogach; biala czasza bez cienia i bez odplywu czytala sie plasko; render finalowy mial wlasna kopie opisu i przy dwoch podblatowych pisal „Blat pod umywalke nablatowa"; zmiana liczby umywalek rozdmuchiwala wyciecie z 45 do 82,5 cm. Wszystko poprawione i obejrzane okiem: 1/2/3 miski, przelaczanie typow, 3D/przod/gora, formatki, telefon 375 px, render finalowy.
+
+**Stan bramek:** `npm test` 1239/1239, bundle czysty, przeglad produkcji czysty, test dymny workera 81/81. Checklist: jedna niezgodnosc, ta sama od poczatku (§8.1 „191 vs 188 dekorow", commit b435d15 — czeka na decyzje Dawida).
+
+**Strona nadal UKRYTA:** `noindex`, poza sitemapa, bez linkow. Czekamy na slowo „publikuj" i na korekte stawek [PRZYKLADOWYCH] w panelu. Lista czynnosci publikacyjnych: `docs/PUBLIKACJA-UMYWALKI.md`.
+
+**Dawid:** stawki w panelu (pogrubienie 200 zl/mb, zlew w kamieniu 1200 zl, podblatowa z istniejacej `zlewPodblatowy` 450 netto), prog rantu przy baterii 7 cm, granica 60 cm dla kupionej ceramiki [DOMYSLNE], decyzja o publikacji, decyzja 191 vs 188 dekorow.
+
+---
+
 ## 2026-11-11 (sesja automatyczna) — BEZ nowej zmiany: 10 commitow nadal NIE wypchnietych (dziewiaty dzien); push niemozliwy z tej sesji
 
 **Stan:** origin/main bez nowych commitow (fetch OK), lokalnie 10 przed origin (opis spieku d854ea8 + sitemapa + wpisy dziennika). `git push`: brak poswiadczen GitHub (could not read Username). Nie dokladam zmian na wierzch niewdrozonej.
