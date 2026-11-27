@@ -2,51 +2,51 @@
   "_info": "Zdjęcia wzorów z katalogu Architype (dystrybutor Keralini i Avant Quartz), za zgodą dystrybutora. GENEROWANE: node scripts/zbierz-wzory.mjs. `slab` = cała płyta (podgląd dla klienta), `zoom` = zbliżenie (tekstura 3D). Ścieżki względem https://architype.pl/media/images/<rozmiar>/stones/",
   "keralini": {
     "absolute-black": {
-      "slab": "Keralini/Absolute%20Black/Absolute-Black-4.jpg",
+      "slab": "Keralini/Absolute%20Black/Absolute-Black_pl.jpg",
       "zoom": "Keralini/Absolute%20Black/Absolute-Black--zoom.jpg"
     },
     "absolute-grey": {
-      "slab": null,
+      "slab": "Keralini/Absolute%20Grey/Absolute-Grey_pl.jpg",
       "zoom": "Keralini/Absolute%20Grey/Absolute-Grey--zoom.jpg"
     },
     "absolute-white": {
-      "slab": null,
+      "slab": "Keralini/Absolute%20White/Absolute-White.jpg",
       "zoom": "Keralini/Absolute%20White/Absolute-White--zoom.jpg"
     },
     "carrara-gold": {
-      "slab": null,
-      "zoom": "Keralini/Carrara%20Gold/Carrara-Gold--zoom.jpg"
+      "slab": "Keralini/Carrara%20Gold/26.11.2026/Pl-Carrara-Gold-1280%D1%85720-.jpg",
+      "zoom": "Keralini/Carrara%20Gold/26.11.2026/Carrara-Gold_--zoom.jpg"
     },
     "icelanic-white": {
-      "slab": null,
+      "slab": "Keralini/Icelanic%20White/Icelanic-White_pl.jpg",
       "zoom": "Keralini/Icelanic%20White/Icelanic-White--zoom.jpg"
     },
     "laurent": {
-      "slab": null,
-      "zoom": "Keralini/Laurent/NEW/LAURENT_--zoom.jpg"
+      "slab": "Keralini/Laurent/26.11.2026/Pl-Laurent-1280%D1%85720-.jpg",
+      "zoom": "Keralini/Laurent/26.11.2026/Laurent_--zoom.jpg"
     },
     "pandora": {
-      "slab": null,
+      "slab": "Keralini/Pandora/NEW/Pandora_plita.jpg",
       "zoom": "Keralini/Pandora/NEW/Pandora--zoom.jpg"
     },
     "saturnia": {
-      "slab": "Keralini/Saturnia/Saturnia-4.jpg",
+      "slab": "Keralini/Saturnia/Saturnia_plita.jpg",
       "zoom": "Keralini/Saturnia/Saturnia--zoom.jpg"
     },
     "breccia-stone-beige": {
-      "slab": null,
+      "slab": "Keralini/Breccia%20Stone%20Beige/Breccia-Stone-Beige_Pl--%D0%90.jpg",
       "zoom": "Keralini/Breccia%20Stone%20Beige/Breccia-Stone-Beige_--zoom.jpg"
     },
     "canela-roma": {
-      "slab": null,
+      "slab": "Keralini/Canela%20Roma/Canela-Roma-pl-1.jpg",
       "zoom": "Keralini/Canela%20Roma/Canela-Roma_--zoom.jpg"
     },
     "crystal-cream": {
-      "slab": null,
+      "slab": "Keralini/Crystal%20Cream/NEW/Crystal-Cream_pl-1.jpg",
       "zoom": "Keralini/Crystal%20Cream/NEW/Crystal-Cream--zoom.jpg"
     },
     "macaubas-beige": {
-      "slab": null,
+      "slab": "Keralini/Macaubas%20Beige/Macaubas-Beige-Plita.jpg",
       "zoom": "Keralini/Macaubas%20Beige/Macaubas-Beige_--zoom.jpg"
     },
     "absolute": {
@@ -78,11 +78,11 @@
       "zoom": "Keralini/Statuario%20Leonardo/Statuario_Leonardo_zoom_v2.jpg"
     },
     "taj-mahal": {
-      "slab": null,
+      "slab": "Keralini/Taj%20Mahal/Taj-Mahal.jpg",
       "zoom": "Keralini/Taj%20Mahal/Taj-Mahal.jpg"
     },
     "arabescato": {
-      "slab": null,
+      "slab": "Keralini/Arabescato/Keralini-1280%D1%85720-Arabescato-%D0%90_1.jpg",
       "zoom": "Keralini/Arabescato/Arabescato_zoom.jpg"
     },
     "ballet": {
@@ -94,7 +94,7 @@
       "zoom": "Keralini/Black%20Diamond/Black_Diamond_zoom.jpg"
     },
     "boulevard-black": {
-      "slab": null,
+      "slab": "Keralini/Boulevard%20Black/Boulevard_Black_sl1.jpg",
       "zoom": "Keralini/Boulevard%20Black/Boulevard_Black_zoom.jpg"
     },
     "concrete-ash": {
@@ -130,7 +130,7 @@
       "zoom": "Keralini/170522.22/Masada_ZOOM.jpg"
     },
     "meraki": {
-      "slab": null,
+      "slab": "Keralini/Meraki/Meraki_A_sl_v3.jpg",
       "zoom": "Keralini/Meraki/Meraki_zoom.jpg"
     },
     "monte-bianco": {
@@ -170,7 +170,7 @@
       "zoom": "Keralini/Travertino%20White/Travertino_White_zoom.jpg"
     },
     "makrana": {
-      "slab": "Keralini/Makrana/Makrana-4.jpg",
+      "slab": "Keralini/Makrana/Makrana_1.jpg",
       "zoom": "Keralini/Makrana/Makrana_1.jpg"
     }
   },
@@ -196,51 +196,51 @@
       "zoom": "Avant%20Quartz/5754%20Calacatta%20Viviez/5754-Calacatta--Viviez-1.jpg"
     },
     "patagonia-brive": {
-      "slab": "Avant%20Quartz/5900%20Patagonia%20Brive/5900-Patagonia-Brive-4.jpg",
+      "slab": "Avant%20Quartz/5900%20Patagonia%20Brive/5900-Patagonia-Brive-1.jpg",
       "zoom": "Avant%20Quartz/5900%20Patagonia%20Brive/5900-Patagonia-Brive-1.jpg"
     },
     "nimes-marfil": {
-      "slab": "Avant%20Quartz/2130%20Nimes%20Marfil/2130-Nimes-Marfil-4.jpg",
+      "slab": "Avant%20Quartz/2130%20Nimes%20Marfil/2130-Nimes-Marfil-1.jpg",
       "zoom": "Avant%20Quartz/2130%20Nimes%20Marfil/2130-Nimes-Marfil-1.jpg"
     },
     "royal-beige": {
-      "slab": null,
+      "slab": "Avant%20Quartz/9030%20Royal%20Beige/new/9030%20Royal%20Beige%20%283%29.jpg",
       "zoom": "Avant%20Quartz/9030%20Royal%20Beige/new/9030%20Royal%20Beige%20%283%29.jpg"
     },
     "arabescato-alencon": {
-      "slab": "Avant%20Quartz/9070%20Arabescato%20Alencon/9070-Arabescato-Alencon-4.jpg",
+      "slab": "Avant%20Quartz/9070%20Arabescato%20Alencon/9070-Arabescato-Alencon-1.jpg",
       "zoom": "Avant%20Quartz/9070%20Arabescato%20Alencon/9070-Arabescato-Alencon-1.jpg"
     },
     "blave": {
-      "slab": "Avant%20Quartz/9172%20Blave/9172-Blave-4.jpg",
+      "slab": "Avant%20Quartz/9172%20Blave/9172-Blave-1.jpg",
       "zoom": "Avant%20Quartz/9172%20Blave/9172-Blave-1.jpg"
     },
     "gordes": {
-      "slab": "Avant%20Quartz/7005%20Gordes/7005-Gordes-4.jpg",
+      "slab": "Avant%20Quartz/7005%20Gordes/7005-Gordes-1.jpg",
       "zoom": "Avant%20Quartz/7005%20Gordes/7005-Gordes-1.jpg"
     },
     "calacatta-troyes": {
-      "slab": "Avant%20Quartz/7970%20Calacatta%20Troyes/7970-Calacatta-Troyes-4.jpg",
+      "slab": "Avant%20Quartz/7970%20Calacatta%20Troyes/7970-Calacatta-Troyes-1.jpg",
       "zoom": "Avant%20Quartz/7970%20Calacatta%20Troyes/7970-Calacatta-Troyes-1.jpg"
     },
     "nantes": {
-      "slab": "Avant%20Quartz/8011H%20Nantes/8011H-Nantes-4.jpg",
+      "slab": "Avant%20Quartz/8011H%20Nantes/8011H-Nantes-1.jpg",
       "zoom": "Avant%20Quartz/8011H%20Nantes/8011H-Nantes-1.jpg"
     },
     "tarn": {
-      "slab": "Avant%20Quartz/8580%20Tarn/new/8580-Tarn-4.jpg",
+      "slab": "Avant%20Quartz/8580%20Tarn/new/8580-Tarn-1.jpg",
       "zoom": "Avant%20Quartz/8580%20Tarn/new/8580-Tarn-1.jpg"
     },
     "reze": {
-      "slab": "Avant%20Quartz/8811H%20Reze/8811H-Reze-4.jpg",
+      "slab": "Avant%20Quartz/8811H%20Reze/8811H-Reze-1.jpg",
       "zoom": "Avant%20Quartz/8811H%20Reze/8811H-Reze-1.jpg"
     },
     "chablis": {
-      "slab": "Avant%20Quartz/8950%20Chablis/8950-Chablis-4.jpg",
+      "slab": "Avant%20Quartz/8950%20Chablis/8950-Chablis-1.jpg",
       "zoom": "Avant%20Quartz/8950%20Chablis/8950-Chablis-1.jpg"
     },
     "travertine-lacaze": {
-      "slab": "Avant%20Quartz/5850H%20Travertine%20Lacaze/5850H-Travertine-Lacaze-int-4.jpg",
+      "slab": "Avant%20Quartz/5850H%20Travertine%20Lacaze/5850H-Travertine-Lacaze-1.jpg",
       "zoom": "Avant%20Quartz/5850H%20Travertine%20Lacaze/5850H-Travertine-Lacaze-1.jpg"
     },
     "dijon": {
@@ -248,7 +248,7 @@
       "zoom": "Avant%20Quartz/1000/1000_Dijon%D0%B0_ZOOM.jpg"
     },
     "botticino-bourges": {
-      "slab": null,
+      "slab": "Avant%20Quartz/2030/2030-Botticino-Bourges_1.jpg",
       "zoom": "Avant%20Quartz/2030/2030-Botticino-Bourges_1.jpg"
     },
     "bourbonnais": {
@@ -276,11 +276,11 @@
       "zoom": "Avant%20Quartz/7600/7600_Calacatta_Le_Noir_ZOOM.jpg"
     },
     "calacatta-normandie": {
-      "slab": null,
+      "slab": "Avant%20Quartz/5710/5710_Calacatta_Normandie_sl_v4.jpg",
       "zoom": "Avant%20Quartz/5710/5710_Calacatta_Normandie_zoom_v4.jpg"
     },
     "calacatta-riviera": {
-      "slab": null,
+      "slab": "Avant%20Quartz/5720/5720_Calacatta_Riviera_sl_v4.jpg",
       "zoom": "Avant%20Quartz/5720/5720_Calacatta_Riviera_zoom_v4.jpg"
     },
     "blanche": {
@@ -296,7 +296,7 @@
       "zoom": "Avant%20Quartz/1004/1004_White_Quartz_zoom.jpg"
     },
     "amiens": {
-      "slab": null,
+      "slab": "Avant%20Quartz/1012/1012-Amiens_1.jpg",
       "zoom": "Avant%20Quartz/1012/1012-Amiens_1.jpg"
     },
     "bergerac": {
@@ -312,7 +312,7 @@
       "zoom": "Avant%20Quartz/1220/1220_Clermont_ZOOM.jpg"
     },
     "sorbonne": {
-      "slab": null,
+      "slab": "Avant%20Quartz/1222/14.jpg",
       "zoom": "Avant%20Quartz/1222/14%20detal.jpg"
     },
     "lumiere": {
@@ -336,7 +336,7 @@
       "zoom": "Avant%20Quartz/2115/2115_Azur_Creme_zoom.jpg"
     },
     "corsica": {
-      "slab": null,
+      "slab": "Avant%20Quartz/9010/9010-Corsica_1.jpg",
       "zoom": "Avant%20Quartz/9010/9010-Corsica_1.jpg"
     },
     "gris-fonce": {
@@ -344,7 +344,7 @@
       "zoom": "Avant%20Quartz/9050/9050_Calacatta_Gris_Fonce_ZOOM.jpg"
     },
     "patagonia-mortinica": {
-      "slab": null,
+      "slab": "Avant%20Quartz/9060/new/9060%20Patagonia%20Martinica%20%281%29.jpg",
       "zoom": "Avant%20Quartz/9060/new/9060%20Patagonia%20Martinica%20%281%29.jpg"
     },
     "calacatta-eno": {
@@ -356,11 +356,11 @@
       "zoom": "Avant%20Quartz/7030/7030_Calacatta_Chenonceau_ZOOM.jpg"
     },
     "calacatta-mont-saint-michel": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7060/new/Plita-7060-Calacatta-Mont-Saint-Michel.jpg",
       "zoom": "Avant%20Quartz/7060/new/zoom-7060-Calacatta-Mont-Saint-Michel.jpg"
     },
     "calacatta-versailles": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7070/new/7070_Calacatta_Versailles_pl-2n.jpg",
       "zoom": "Avant%20Quartz/7070/new/7070_Calacatta_Versailles_zoom2.jpg"
     },
     "statuario-lille": {
@@ -376,7 +376,7 @@
       "zoom": "Avant%20Quartz/7404/7404_Calacatta_Venato_zoom.jpg"
     },
     "calacatta-bianco": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7440/7440-Calacatta-Bianco-plita.jpg",
       "zoom": "Avant%20Quartz/7440/7440_Calacatta_Bianco_zoom.jpg"
     },
     "calacatta-bron": {
@@ -384,23 +384,23 @@
       "zoom": "Avant%20Quartz/7520L/7520L_Calacatta_Bron_1920x1080px.jpg"
     },
     "calacatta-noir-satin": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7530L/7530L_Calacatta_Noir_Satin_sl_v2.jpg",
       "zoom": "Avant%20Quartz/7530L/7530L_Calacatta_Noir_Satin_zoom_v2.jpg"
     },
     "calacatta-concorde": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7540/7540_Calacatta_Concorde_sl_v2.jpg",
       "zoom": "Avant%20Quartz/7540/7540_Calacatta_Concorde_zoom_v2.jpg"
     },
     "calacatta-cannes-gold": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7550/7550_Calacatta_Cannes_Gold_sl_v2.jpg",
       "zoom": "Avant%20Quartz/7550/7550_Calacatta_Cannes_Gold_zoom_v2.jpg"
     },
     "calacatta-cannes-gold-h": {
-      "slab": "Avant%20Quartz/553/7550H-Calacatta-Cannes-Gold-4.jpg",
+      "slab": "Avant%20Quartz/553/7550H-Calacatta-Cannes-Gold.jpg",
       "zoom": "Avant%20Quartz/553/7550H-Calacatta-Cannes-Gold.jpg"
     },
     "calacatta-monaco": {
-      "slab": null,
+      "slab": "Avant%20Quartz/7570/7570_Calacatta_Monaco_sl_v2.jpg",
       "zoom": "Avant%20Quartz/7570/7570_Calacatta_Monaco_zoom_v2.jpg"
     },
     "calacatta-pantin": {
@@ -416,11 +416,11 @@
       "zoom": "Avant%20Quartz/7700/7700_Calacatta_Marseille_ZOOM.jpg"
     },
     "mulen": {
-      "slab": "Avant%20Quartz/8100_/New%202025/8100-Mulen-4.jpg",
+      "slab": "Avant%20Quartz/8100_/New%202025/8100-Mulen-plita-zoom.jpg",
       "zoom": "Avant%20Quartz/8100_/New%202025/8100-Mulen-plita-zoom.jpg"
     },
     "chamonix": {
-      "slab": null,
+      "slab": "Avant%20Quartz/8600H/8600H_Chamonix_sl_mat.jpg",
       "zoom": "Avant%20Quartz/8600H/8600H_Chamonix_zoom_mat.jpg"
     },
     "cassis": {
@@ -428,7 +428,7 @@
       "zoom": "Avant%20Quartz/8800H/8800H_Cassis_zoom.jpg"
     },
     "bretagne": {
-      "slab": null,
+      "slab": "Avant%20Quartz/8900H/8900H_Bretagne_sl_v2.jpg",
       "zoom": "Avant%20Quartz/8900H/8900H_Bretagne_zoom_v2.jpg"
     }
   }

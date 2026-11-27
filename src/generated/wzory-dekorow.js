@@ -24,11 +24,11 @@ export const WZORY = {
     },
     "Absolute Grey Structured": {
       "k": "absolute-grey",
-      "slab": false
+      "slab": true
     },
     "Absolute White Structured": {
       "k": "absolute-white",
-      "slab": false
+      "slab": true
     },
     "Ballet Naturale": {
       "k": "ballet",
@@ -36,11 +36,11 @@ export const WZORY = {
     },
     "Boulevard Black Naturale": {
       "k": "boulevard-black",
-      "slab": false
+      "slab": true
     },
     "Breccia Stone Beige Naturale": {
       "k": "breccia-stone-beige",
-      "slab": false
+      "slab": true
     },
     "Calacatta Oro Naturale": {
       "k": "calacatta-oro",
@@ -52,15 +52,15 @@ export const WZORY = {
     },
     "Canela Roma Naturale": {
       "k": "canela-roma",
-      "slab": false
+      "slab": true
     },
     "Carrara Gold Naturale": {
       "k": "carrara-gold",
-      "slab": false
+      "slab": true
     },
     "Crystal Cream Naturale": {
       "k": "crystal-cream",
-      "slab": false
+      "slab": true
     },
     "Fior Di Bosco Naturale": {
       "k": "fior-di-bosco",
@@ -72,7 +72,7 @@ export const WZORY = {
     },
     "Icelanic White Naturale": {
       "k": "icelanic-white",
-      "slab": false
+      "slab": true
     },
     "Kenya Naturale": {
       "k": "kenya",
@@ -84,11 +84,11 @@ export const WZORY = {
     },
     "Laurent Naturale": {
       "k": "laurent",
-      "slab": false
+      "slab": true
     },
     "Macaubas Beige Naturale": {
       "k": "macaubas-beige",
-      "slab": false
+      "slab": true
     },
     "Makrana Naturale": {
       "k": "makrana",
@@ -104,7 +104,7 @@ export const WZORY = {
     },
     "Meraki Naturale": {
       "k": "meraki",
-      "slab": false
+      "slab": true
     },
     "Monte Bianco Naturale": {
       "k": "monte-bianco",
@@ -116,7 +116,7 @@ export const WZORY = {
     },
     "Pandora FULBODY Naturale": {
       "k": "pandora",
-      "slab": false
+      "slab": true
     },
     "Patagonia Naturale": {
       "k": "patagonia",
@@ -148,7 +148,7 @@ export const WZORY = {
     },
     "Taj Mahal Naturale": {
       "k": "taj-mahal",
-      "slab": false
+      "slab": true
     },
     "Tinta Unita Bianco Naturale": {
       "k": "tinta-unita-bianco",
@@ -186,7 +186,7 @@ export const WZORY = {
     },
     "Amiens": {
       "k": "amiens",
-      "slab": false
+      "slab": true
     },
     "Reims": {
       "k": "reims",
@@ -202,7 +202,7 @@ export const WZORY = {
     },
     "Botticino Bourges": {
       "k": "botticino-bourges",
-      "slab": false
+      "slab": true
     },
     "Champagne": {
       "k": "champagne",
@@ -230,11 +230,11 @@ export const WZORY = {
     },
     "Calacatta Normandie": {
       "k": "calacatta-normandie",
-      "slab": false
+      "slab": true
     },
     "Calacatta Riviera": {
       "k": "calacatta-riviera",
-      "slab": false
+      "slab": true
     },
     "Calacatta Chery": {
       "k": "calacatta-chery",
@@ -262,11 +262,11 @@ export const WZORY = {
     },
     "Calacatta Mont Saint Michel": {
       "k": "calacatta-mont-saint-michel",
-      "slab": false
+      "slab": true
     },
     "Calacatta Versailles": {
       "k": "calacatta-versailles",
-      "slab": false
+      "slab": true
     },
     "Aquitaine Blanca": {
       "k": "aquitaine-blanca",
@@ -282,7 +282,7 @@ export const WZORY = {
     },
     "Calacatta Bianco": {
       "k": "calacatta-bianco",
-      "slab": false
+      "slab": true
     },
     "Calacatta Bearn": {
       "k": "calacatta-bearn",
@@ -294,11 +294,11 @@ export const WZORY = {
     },
     "Calacatta Concorde": {
       "k": "calacatta-concorde",
-      "slab": false
+      "slab": true
     },
     "Calacatta Cannes Gold": {
       "k": "calacatta-cannes-gold",
-      "slab": false
+      "slab": true
     },
     "Calacatta Cannes Gold H": {
       "k": "calacatta-cannes-gold-h",
@@ -306,7 +306,7 @@ export const WZORY = {
     },
     "Calacatta Monaco": {
       "k": "calacatta-monaco",
-      "slab": false
+      "slab": true
     },
     "Calacatta Pantin": {
       "k": "calacatta-pantin",
@@ -330,7 +330,7 @@ export const WZORY = {
     },
     "Chamonix": {
       "k": "chamonix",
-      "slab": false
+      "slab": true
     },
     "Cassis": {
       "k": "cassis",
@@ -342,7 +342,7 @@ export const WZORY = {
     },
     "Bretagne": {
       "k": "bretagne",
-      "slab": false
+      "slab": true
     },
     "Bourbonnais": {
       "k": "bourbonnais",
@@ -350,11 +350,11 @@ export const WZORY = {
     },
     "Corsica": {
       "k": "corsica",
-      "slab": false
+      "slab": true
     },
     "Royal Beige": {
       "k": "royal-beige",
-      "slab": false
+      "slab": true
     },
     "Gris Fonce": {
       "k": "gris-fonce",
@@ -362,7 +362,7 @@ export const WZORY = {
     },
     "Patagonia Martinica": {
       "k": "patagonia-mortinica",
-      "slab": false
+      "slab": true
     },
     "Arabescato Alencon": {
       "k": "arabescato-alencon",
@@ -378,7 +378,7 @@ export const WZORY = {
     },
     "Sorbona": {
       "k": "sorbonne",
-      "slab": false
+      "slab": true
     },
     "Calacatta Eno": {
       "k": "calacatta-eno",
