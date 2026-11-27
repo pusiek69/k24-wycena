@@ -21,22 +21,45 @@ const { WZORY } = await import('file://' + path.join(ROOT, 'src/generated/wzory-
 const argumenty = process.argv.slice(2);
 const stronaArg = argumenty.findIndex((a) => a === '--strona');
 const strona = stronaArg >= 0 ? Number(argumenty[stronaArg + 1]) : null;
-const szukane = argumenty
-  .filter((a, i) => a !== '--strona' && !(stronaArg >= 0 && i === stronaArg + 1))
-  .map((s) => s.toLowerCase());
+const katalogIdx = argumenty.findIndex((a) => a === '--katalog');
+const pomin = new Set();
+for (const i of [stronaArg, katalogIdx]) if (i >= 0) pomin.add(i).add(i + 1);
+const szukane = argumenty.filter((_, i) => !pomin.has(i)).map((s) => s.toLowerCase());
 const NA_STRONE = 18;
 const KAFELEK = 360;
 const PODPIS = 26;
 
+/*
+ * Źródłem jest albo katalog wzorów z repo (domyślnie), albo dowolny inny
+ * folder — `--katalog <ścieżka>`. To drugie służy do oglądania zdjęć,
+ * które jeszcze nie weszły do repo, na przykład Cosentino, gdzie czekamy
+ * na potwierdzenie zgody na użycie zdjęć.
+ */
+const katalogArg = katalogIdx;
+const KATALOG = katalogArg >= 0 ? argumenty[katalogArg + 1] : null;
+
 const wybrane = [];
-for (const marka of Object.keys(WZORY)) {
-  for (const [nazwa, v] of Object.entries(WZORY[marka])) {
-    if (!v.slab) continue;
-    const plik = path.join(ROOT, 'public/wzory', marka, `${v.k}-slab.webp`);
-    if (!fs.existsSync(plik)) continue;
-    const etykieta = `${marka}/${nazwa}`.toLowerCase();
-    if (szukane.length && !szukane.some((s) => etykieta.includes(s))) continue;
-    wybrane.push({ marka, nazwa, plik });
+if (KATALOG) {
+  const marki = fs.readdirSync(KATALOG).filter((d) => fs.statSync(path.join(KATALOG, d)).isDirectory());
+  for (const marka of marki) {
+    for (const f of fs.readdirSync(path.join(KATALOG, marka)).filter((f) => f.endsWith('-slab.webp'))) {
+      const nazwa = f.replace(/-slab\.webp$/, '');
+      const etykieta = `${marka}/${nazwa}`.toLowerCase();
+      if (szukane.length && !szukane.some((s) => etykieta.includes(s))) continue;
+      wybrane.push({ marka, nazwa, plik: path.join(KATALOG, marka, f) });
+    }
+  }
+  wybrane.sort((a, b) => (a.marka + a.nazwa).localeCompare(b.marka + b.nazwa, 'pl'));
+} else {
+  for (const marka of Object.keys(WZORY)) {
+    for (const [nazwa, v] of Object.entries(WZORY[marka])) {
+      if (!v.slab) continue;
+      const plik = path.join(ROOT, 'public/wzory', marka, `${v.k}-slab.webp`);
+      if (!fs.existsSync(plik)) continue;
+      const etykieta = `${marka}/${nazwa}`.toLowerCase();
+      if (szukane.length && !szukane.some((s) => etykieta.includes(s))) continue;
+      wybrane.push({ marka, nazwa, plik });
+    }
   }
 }
 
