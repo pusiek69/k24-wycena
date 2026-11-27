@@ -1,0 +1,1612 @@
+{
+  "_info": "PLIK GENEROWANY AUTOMATYCZNIE — nie edytuj ręcznie. Źródło: pricing/zrodla/dekton.zasady.json (poza gitem). Przelicz: npm run cennik Zawartość: cena KOŃCOWA NETTO za 1 m² płyty dla klienta (VAT dolicza aplikacja). Nie ma tu cen zakupowych ani rabatów.",
+  "_firma": "dekton",
+  "_wygenerowano": "2026-11-27",
+  "_dekorow": 66,
+  "dekory": {
+    "Aeris": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Danae": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Dunna": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Eter": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Evok": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Keena": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Keon": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Kovik": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Lunar 22": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Mooné": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Thala": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Trilium": {
+      "8": {
+        "cena": 506,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 728,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 842,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Bromo": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Halo": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Kira": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Kreta": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nacre": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Sirius25": {
+      "8": {
+        "cena": 715,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1024,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1192,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Adia": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Albarium 22": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Argentium": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Aura 22": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ava": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Avorio": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Ceppo": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Domoos25": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Grafite": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Grigio": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Kelya": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Laos": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Marina": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Marmorio": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nebbia": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nebu": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Polar": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Sabbia": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Sandik": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Soke": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Trevi": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Umber": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Zenith": {
+      "8": {
+        "cena": 836,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1199,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1405,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Daze": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Entzo 22": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Laurent": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Malibu": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Morpheus": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Nara": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Neural": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Opera": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Rem": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Reverie": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Salina": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Somnia": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1387,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1632,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Uyuni": {
+      "8": {
+        "cena": 963,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Arga": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Awake": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Bergen": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Helena 22": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Khalo": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Limbo": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Lucid": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Taga": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Trance": {
+      "8": {
+        "cena": 1157,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "12": {
+        "cena": 1660,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      },
+      "20": {
+        "cena": 1962,
+        "plyta": {
+          "w": 330,
+          "h": 163,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Awake Book Match": {
+      "8": {
+        "cena": 1390,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Lucid Book Match": {
+      "8": {
+        "cena": 1390,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    },
+    "Trance Lineal Match": {
+      "8": {
+        "cena": 1390,
+        "plyta": {
+          "w": 320,
+          "h": 144,
+          "polowkaDozwolona": false
+        }
+      }
+    }
+  }
+}

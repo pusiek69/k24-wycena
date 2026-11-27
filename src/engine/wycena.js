@@ -267,7 +267,31 @@ export function wycen(firma, w, dataISO) {
 
     if (o.typ === 'wybor') {
       const wariant = (o.warianty || []).find((x) => x.id === v);
-      if (!wariant || !wariant.cena) continue;
+      // Wariant też bywa zależny od wzoru — Volcano robią przy trzech
+      // kolorach Silestone z pięćdziesięciu. Gdyby przyszedł w żądaniu
+      // przy innym dekorze, nie doliczamy go wcale.
+      if (!wariant || !opcjaDostepna(wariant, w.dekor)) continue;
+
+      /*
+       * DOPŁATA PROCENTEM OD MATERIAŁU, a nie stawką za metr.
+       *
+       * Silestone: wykończenie suede i volcano kosztuje dokładnie 10%
+       * więcej od polerowanego — tak to liczy cennik Cosentino. Cena metra
+       * zależy u nich od grupy i grubości (od 489 do 2065 zł netto), więc
+       * płaska kwota za m² kłamałaby w obie strony: za mało w grupie 7,
+       * za dużo w grupie 1.
+       */
+      if (wariant.procentMaterialu && cenaM2Netto > 0) {
+        pozycje.push({
+          grupa: 'usługi',
+          nazwa: wariant.label,
+          detal: `${round1(m2Platne)} m² · +${Math.round(wariant.procentMaterialu * 100)}% do ceny kamienia`,
+          brutto: cenaM2Netto * wariant.procentMaterialu * m2Platne * (1 + vat),
+        });
+        continue;
+      }
+
+      if (!wariant.cena) continue;
       // Niektóre wycięcia bywają w blacie więcej niż raz — w łazience dwie
       // umywalki obok siebie to normalna zabudowa. Liczbę bierzemy z osobnego
       // pola (`o.iloscZ`), żeby rodzaj i sztuki zostały niezależne.

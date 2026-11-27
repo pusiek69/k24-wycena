@@ -4,21 +4,22 @@
     "Służą do znalezienia ich przy następnej zmianie cennika — nie edytuj ręcznie.",
     "\"historia\" to kwoty już wycofane — checklista pilnuje, żeby nie wróciły."
   ],
-  "_zapisano": "2026-10-29",
+  "_zapisano": "2026-11-27",
   "kwoty": {
     "konglomeratProste": 7200,
     "konglomeratL": 8650,
     "konglomeratM2Od": 505,
-    "konglomeratM2Do": 2103,
+    "konglomeratM2Do": 2900,
     "spiekProste": 7300,
-    "spiekL": 9250,
-    "spiekM2Od": 620,
-    "spiekM2Do": 2110
+    "spiekL": 8600,
+    "spiekM2Od": 546,
+    "spiekM2Do": 2119
   },
   "historia": [
     490,
     552,
     556,
+    620,
     629,
     671,
     764,
@@ -26,6 +27,8 @@
     1683,
     1916,
     2025,
+    2103,
+    2110,
     2306,
     2451,
     3600,
@@ -76,6 +79,7 @@
     8550,
     8700,
     8900,
+    9250,
     9600
   ],
   "liczby": {
@@ -90,6 +94,6 @@
     "konglomeratWzory": 234,
     "konglomeratDekory": 234,
     "spiekWzory": 502,
-    "wszystkieWzory": 700
+    "wszystkieWzory": 800
   }
 }

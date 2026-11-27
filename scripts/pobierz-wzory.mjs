@@ -187,6 +187,40 @@ async function main() {
     }
   }
 
+  /*
+   * COSENTINO (Silestone i Dekton) — inna droga do tej samej mapy.
+   *
+   * Tu nie ma po czym zgadywać nazw plików: katalog Cosentino oddaje
+   * zdjęcie całej płyty pod adresem wyliczanym z kodu koloru, a przypisanie
+   * „dekor z cennika → kod" jest już gotowe w scripts/kolory-cosentino.json.
+   * Wystarczy je przepisać.
+   *
+   * Dekory oznaczone `slabKwadrat` zostają BEZ zdjęcia — katalog oddał
+   * przy nich kwadratową próbkę zamiast płyty, a Dawid prosił wprost
+   * o całe płyty, nie miniaturki. Fallback proceduralny jest lepszy niż
+   * wycinek udający płytę.
+   */
+  const COSENTINO = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts', 'kolory-cosentino.json'), 'utf8'));
+  for (const marka of ['silestone', 'dekton']) {
+    przypisane[marka] = {};
+    const katalog = JSON.parse(
+      fs.readFileSync(path.join(ROOT, 'src', 'generated', `${marka}.dekory.json`), 'utf8')
+    );
+    for (const nazwa of Object.keys(katalog.dekory)) {
+      const v = COSENTINO[marka]?.[nazwa];
+      if (!v?.slug || !v.kod || v.slabKwadrat) {
+        bezZdjecia.push(`${marka}: ${nazwa}`);
+        continue;
+      }
+      const plik = path.join(KATALOG, marka, `${v.slug}-slab.webp`);
+      if (!fs.existsSync(plik)) {
+        bezZdjecia.push(`${marka}: ${nazwa}`);
+        continue;
+      }
+      przypisane[marka][nazwa] = { k: v.slug, slab: true };
+    }
+  }
+
   const tresc = `/**
  * WZORY KAMIENIA — mapa „dekor z cennika → pliki ze zdjęciami".
  *

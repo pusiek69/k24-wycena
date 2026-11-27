@@ -18,6 +18,8 @@ import './umywalka.css';
 
 import keralini from '../firms/keralini.js';
 import avantQuartz from '../firms/avant-quartz.js';
+import silestone from '../firms/silestone.js';
+import dekton from '../firms/dekton.js';
 import { grubosciDekoru } from '../firms/index.js';
 import { kolorDekoru } from '../app/kolory-dekorow.js';
 import { inicjujZgody, zmienZgody } from '../analytics/zgody.js';
@@ -53,7 +55,20 @@ import * as ga from './zdarzenia.js';
 /** Czy kwota pojawia się dopiero po zostawieniu kontaktu. */
 const CENA_PO_FORMULARZU = true;
 
-const FIRMY = [keralini, avantQuartz];
+/*
+ * Marki dostępne na umywalkę.
+ *
+ * Keralini i Avant Quartz były od początku — pozwalają kupić POŁOWĘ płyty,
+ * a przy umywalce to potrafi zbić cenę o jakieś dwa tysiące, więc stąd
+ * podpowiedź „Ustaw X cm".
+ *
+ * Silestone i Dekton (Cosentino) doszły 27.11.2026. Połówek u nich nie ma
+ * [DOMYŚLNE do potwierdzenia u przedstawiciela], więc podpowiedź połówki
+ * po prostu się nie pokaże — reszta liczy się tak samo. Dekton wnosi
+ * płyty do 330 × 163 cm, czyli większe niż standardowe 320 × 160: długa
+ * umywalka wychodzi z jednej płyty tam, gdzie indziej trzeba by ją łączyć.
+ */
+const FIRMY = [keralini, avantQuartz, silestone, dekton];
 const $ = (s) => document.querySelector(s);
 const fd = (v) => (Math.round(v * 10) / 10).toLocaleString('pl-PL');
 const f2 = (v) => v.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

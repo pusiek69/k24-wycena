@@ -1,6 +1,6 @@
 import { h, zl, liczba, uprosc } from './dom.js';
 import { poprzednieWymiary, zapomnijWymiary, opisWymiarow } from './pamiec-wymiarow.js';
-import { opcjaDostepna } from '../engine/opcje-dekoru.js';
+import { opcjaDostepna, wariantyDostepne } from '../engine/opcje-dekoru.js';
 import { FIRMY, grubosciDekoru, cenaWpisu } from '../firms/index.js';
 import { wycen } from '../engine/wycena.js';
 import { upakuj, opisPlyt } from '../engine/pakowanie.js';
@@ -614,6 +614,16 @@ function opcjaWidok(o, stan, a, f) {
   const cenaBrutto = (c) => ((f.cenyUslug || 'brutto') === 'netto' ? c * vat : c);
 
   if (o.typ === 'wybor') {
+    /*
+     * Wariant też bywa zależny od wzoru. Silestone robi Volcano przy
+     * trzech kolorach z pięćdziesięciu, a Suede przy części — klient nie
+     * ma prawa zobaczyć przycisku, którego nie da się zamówić.
+     * Wariant bez `tylkoDekory` pokazuje się zawsze, więc pozostałe
+     * cenniki wyglądają dokładnie jak dotąd.
+     */
+    const warianty = wariantyDostepne(o, stan.dekor);
+    if (warianty.length < 2) return null;
+
     return h(
       'div',
       { class: 'opcja' },
@@ -622,7 +632,7 @@ function opcjaWidok(o, stan, a, f) {
       h(
         'div',
         { class: 'o-warianty' },
-        o.warianty.map((wv) =>
+        warianty.map((wv) =>
           h(
             'button',
             {

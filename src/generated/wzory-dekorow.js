@@ -408,6 +408,406 @@ export const WZORY = {
       "k": "travertine-lacaze",
       "slab": true
     }
+  },
+  "silestone": {
+    "Arden Blue": {
+      "k": "arden-blue",
+      "slab": true
+    },
+    "Blanco Norte 14": {
+      "k": "blanco-norte14",
+      "slab": true
+    },
+    "Gris Expo": {
+      "k": "gris-expo",
+      "slab": true
+    },
+    "Linen Cream": {
+      "k": "linen-cream",
+      "slab": true
+    },
+    "Marengo": {
+      "k": "marengo",
+      "slab": true
+    },
+    "Motion Grey": {
+      "k": "motion-grey",
+      "slab": true
+    },
+    "Night Tebas 18": {
+      "k": "night-tebas18",
+      "slab": true
+    },
+    "White Storm 14": {
+      "k": "white-storm14",
+      "slab": true
+    },
+    "Brass Relish": {
+      "k": "brass-relish",
+      "slab": true
+    },
+    "Cinder Craze": {
+      "k": "cinder-craze",
+      "slab": true
+    },
+    "Concrete Pulse": {
+      "k": "concrete-pulse",
+      "slab": true
+    },
+    "Coral Clay Colour": {
+      "k": "coral-clay-colour",
+      "slab": true
+    },
+    "Lagoon": {
+      "k": "lagoon",
+      "slab": true
+    },
+    "Lime Delight": {
+      "k": "lime-delight",
+      "slab": true
+    },
+    "Miami White 17": {
+      "k": "miami-white",
+      "slab": true
+    },
+    "Persian White": {
+      "k": "persian-white",
+      "slab": true
+    },
+    "Siberian": {
+      "k": "siberian",
+      "slab": true
+    },
+    "Ariel": {
+      "k": "ariel",
+      "slab": true
+    },
+    "Blanco Stellar 13": {
+      "k": "stellar-blanco13",
+      "slab": true
+    },
+    "Bronze Rivers": {
+      "k": "bronze-rivers",
+      "slab": true
+    },
+    "Calacatta Tova": {
+      "k": "calacatta-tova",
+      "slab": true
+    },
+    "Charcoal Soapstone": {
+      "k": "charcoal-soapstone",
+      "slab": true
+    },
+    "Desert Silver": {
+      "k": "desert-silver",
+      "slab": true
+    },
+    "Miami Vena": {
+      "k": "miami-vena",
+      "slab": true
+    },
+    "Snowy Ibiza": {
+      "k": "snowy-ibiza",
+      "slab": true
+    },
+    "Blanco Zeus": {
+      "k": "white-zeus",
+      "slab": true
+    },
+    "Et. Statuario": {
+      "k": "et-statuario",
+      "slab": true
+    },
+    "FFROM 01": {
+      "k": "ffrom01",
+      "slab": true
+    },
+    "FFROM 02": {
+      "k": "ffrom02",
+      "slab": true
+    },
+    "FFROM 03": {
+      "k": "ffrom03",
+      "slab": true
+    },
+    "Nolita 23": {
+      "k": "nolita",
+      "slab": true
+    },
+    "Poblenou": {
+      "k": "poblenou",
+      "slab": true
+    },
+    "RAW A": {
+      "k": "raw-a",
+      "slab": true
+    },
+    "White Arabesque": {
+      "k": "white-arabesque",
+      "slab": true
+    },
+    "Et. Marquina": {
+      "k": "et-marquina",
+      "slab": true
+    },
+    "Et. Calacatta Gold": {
+      "k": "et-calacatta-gold",
+      "slab": true
+    },
+    "Ethereal Glow": {
+      "k": "ethereal-glow",
+      "slab": true
+    },
+    "Ethereal Noctis": {
+      "k": "ethereal-noctis",
+      "slab": true
+    },
+    "Blanc Élysée": {
+      "k": "blanc-elysee",
+      "slab": true
+    },
+    "Jardin Emerald": {
+      "k": "jardin-emerald",
+      "slab": true
+    },
+    "Parisien Bleu": {
+      "k": "parisien-bleu",
+      "slab": true
+    },
+    "Rivière Rose": {
+      "k": "riviere-rose",
+      "slab": true
+    },
+    "Romantic Ash": {
+      "k": "romantic-ash",
+      "slab": true
+    },
+    "Versailles Ivory": {
+      "k": "versailles-ivory",
+      "slab": true
+    }
+  },
+  "dekton": {
+    "Aeris": {
+      "k": "aeris",
+      "slab": true
+    },
+    "Danae": {
+      "k": "danae",
+      "slab": true
+    },
+    "Dunna": {
+      "k": "dunna",
+      "slab": true
+    },
+    "Eter": {
+      "k": "eter",
+      "slab": true
+    },
+    "Evok": {
+      "k": "evok",
+      "slab": true
+    },
+    "Keena": {
+      "k": "keena",
+      "slab": true
+    },
+    "Kovik": {
+      "k": "kovik",
+      "slab": true
+    },
+    "Lunar 22": {
+      "k": "lunar",
+      "slab": true
+    },
+    "Mooné": {
+      "k": "moone",
+      "slab": true
+    },
+    "Thala": {
+      "k": "thala",
+      "slab": true
+    },
+    "Trilium": {
+      "k": "trilium",
+      "slab": true
+    },
+    "Bromo": {
+      "k": "bromo",
+      "slab": true
+    },
+    "Halo": {
+      "k": "halo",
+      "slab": true
+    },
+    "Kira": {
+      "k": "kira",
+      "slab": true
+    },
+    "Kreta": {
+      "k": "kreta",
+      "slab": true
+    },
+    "Nacre": {
+      "k": "nacre",
+      "slab": true
+    },
+    "Adia": {
+      "k": "adia",
+      "slab": true
+    },
+    "Albarium 22": {
+      "k": "albarium",
+      "slab": true
+    },
+    "Argentium": {
+      "k": "argentium",
+      "slab": true
+    },
+    "Aura 22": {
+      "k": "aura",
+      "slab": true
+    },
+    "Ava": {
+      "k": "ava",
+      "slab": true
+    },
+    "Avorio": {
+      "k": "avorio",
+      "slab": true
+    },
+    "Ceppo": {
+      "k": "ceppo",
+      "slab": true
+    },
+    "Domoos25": {
+      "k": "domoos",
+      "slab": true
+    },
+    "Grafite": {
+      "k": "grafite",
+      "slab": true
+    },
+    "Grigio": {
+      "k": "grigio",
+      "slab": true
+    },
+    "Kelya": {
+      "k": "kelya",
+      "slab": true
+    },
+    "Laos": {
+      "k": "laos",
+      "slab": true
+    },
+    "Marina": {
+      "k": "marina",
+      "slab": true
+    },
+    "Marmorio": {
+      "k": "marmorio",
+      "slab": true
+    },
+    "Nebbia": {
+      "k": "nebbia",
+      "slab": true
+    },
+    "Nebu": {
+      "k": "nebu",
+      "slab": true
+    },
+    "Polar": {
+      "k": "polar",
+      "slab": true
+    },
+    "Sabbia": {
+      "k": "sabbia",
+      "slab": true
+    },
+    "Sandik": {
+      "k": "sandik",
+      "slab": true
+    },
+    "Soke": {
+      "k": "soke",
+      "slab": true
+    },
+    "Trevi": {
+      "k": "trevi",
+      "slab": true
+    },
+    "Umber": {
+      "k": "umber",
+      "slab": true
+    },
+    "Entzo 22": {
+      "k": "entzo",
+      "slab": true
+    },
+    "Laurent": {
+      "k": "laurent",
+      "slab": true
+    },
+    "Morpheus": {
+      "k": "morpheus",
+      "slab": true
+    },
+    "Nara": {
+      "k": "nara",
+      "slab": true
+    },
+    "Neural": {
+      "k": "neural",
+      "slab": true
+    },
+    "Rem": {
+      "k": "rem",
+      "slab": true
+    },
+    "Reverie": {
+      "k": "reverie",
+      "slab": true
+    },
+    "Salina": {
+      "k": "salina",
+      "slab": true
+    },
+    "Somnia": {
+      "k": "somnia",
+      "slab": true
+    },
+    "Arga": {
+      "k": "arga",
+      "slab": true
+    },
+    "Awake": {
+      "k": "awake",
+      "slab": true
+    },
+    "Bergen": {
+      "k": "bergen",
+      "slab": true
+    },
+    "Helena 22": {
+      "k": "helena",
+      "slab": true
+    },
+    "Khalo": {
+      "k": "khalo",
+      "slab": true
+    },
+    "Lucid": {
+      "k": "lucid",
+      "slab": true
+    },
+    "Taga": {
+      "k": "taga",
+      "slab": true
+    },
+    "Trance": {
+      "k": "trance",
+      "slab": true
+    }
   }
 };
 
